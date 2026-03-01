@@ -2,8 +2,10 @@ import { Hono } from 'hono'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
+import type { AssistantRuntime } from '../mastra/assistant-runtime'
 import { createBearerAuthMiddleware } from './auth-middleware'
 import { registerAssistantsRoute } from './routes/assistants-route'
+import { registerChatRoute } from './routes/chat-route'
 import { registerHealthRoute } from './routes/health-route'
 import { registerProvidersRoute } from './routes/providers-route'
 import { registerThreadsRoute } from './routes/threads-route'
@@ -15,6 +17,7 @@ type CreateAppOptions = {
     assistants: AssistantsRepository
     threads: ThreadsRepository
   }
+  assistantRuntime?: AssistantRuntime
 }
 
 export function createApp(options: CreateAppOptions): Hono {
@@ -34,6 +37,12 @@ export function createApp(options: CreateAppOptions): Hono {
     registerThreadsRoute(app, {
       threadsRepo: options.repositories.threads,
       assistantsRepo: options.repositories.assistants
+    })
+  }
+
+  if (options.assistantRuntime) {
+    registerChatRoute(app, {
+      assistantRuntime: options.assistantRuntime
     })
   }
 
