@@ -38,15 +38,30 @@ export function shouldShowProviderModelsField(isPrebuilt: boolean): boolean {
 type ProvidersFormProps = {
   initialValue?: Partial<ProviderFormValues>
   isSubmitting?: boolean
+  isTestingConnection?: boolean
   isPrebuilt?: boolean
   onSubmit: (values: SaveProviderInput) => Promise<void> | void
+  onTestConnection?: (values: SaveProviderInput) => Promise<void> | void
+}
+
+function toProviderPayload(values: ProviderFormValues, showProviderModels: boolean): SaveProviderInput {
+  return {
+    name: values.name.trim(),
+    type: values.type,
+    apiKey: values.apiKey.trim(),
+    apiHost: values.apiHost.trim() || undefined,
+    selectedModel: values.selectedModel.trim(),
+    providerModels: showProviderModels ? parseProviderModelsInput(values.providerModelsText) : undefined
+  }
 }
 
 export function ProvidersForm({
   initialValue,
   isSubmitting,
+  isTestingConnection,
   isPrebuilt = false,
-  onSubmit
+  onSubmit,
+  onTestConnection
 }: ProvidersFormProps): React.JSX.Element {
   const [values, setValues] = useState<ProviderFormValues>({
     name: initialValue?.name ?? '',
@@ -81,18 +96,25 @@ export function ProvidersForm({
       return
     }
 
-    await onSubmit({
-      name: values.name,
-      type: values.type,
-      apiKey: values.apiKey,
-      apiHost: values.apiHost || undefined,
-      selectedModel: values.selectedModel,
-      providerModels: showProviderModels ? parseProviderModelsInput(values.providerModelsText) : undefined
-    })
+    await onSubmit(toProviderPayload(values, showProviderModels))
+  }
+
+  const handleTestConnection = async () => {
+    if (!onTestConnection) {
+      return
+    }
+
+    const formErrors = validateProviderForm(values)
+    setErrors(formErrors)
+    if (Object.keys(formErrors).length > 0) {
+      return
+    }
+
+    await onTestConnection(toProviderPayload(values, showProviderModels))
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '12px', maxWidth: '680px' }}>
+    <form className="ui-form-grid" onSubmit={handleSubmit}>
       <label>
         Provider Name
         <input value={values.name} onChange={(event) => updateValue('name', event.target.value)} />
@@ -151,9 +173,21 @@ export function ProvidersForm({
         </label>
       ) : null}
 
-      <button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Saving...' : 'Save Provider'}
-      </button>
+      <div className="ui-form-actions">
+        {onTestConnection ? (
+          <button
+            type="button"
+            className="ui-button ui-button--ghost"
+            onClick={() => void handleTestConnection()}
+            disabled={isSubmitting || isTestingConnection}
+          >
+            {isTestingConnection ? 'Testing...' : 'Test Connection'}
+          </button>
+        ) : null}
+        <button type="submit" className="ui-button ui-button--primary" disabled={isSubmitting}>
+          {isSubmitting ? 'Saving...' : 'Save Provider'}
+        </button>
+      </div>
     </form>
   )
 }

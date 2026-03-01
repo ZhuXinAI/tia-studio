@@ -2,15 +2,19 @@ import { Link, Outlet } from 'react-router-dom'
 
 export function AppShell(): React.JSX.Element {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', minHeight: '100vh' }}>
-      <aside style={{ borderRight: '1px solid #1f1f1f', padding: '16px' }}>
-        <h2 style={{ marginTop: 0 }}>tia-studio</h2>
-        <nav style={{ display: 'grid', gap: '8px' }}>
-          <Link to="/assistants">Assistants</Link>
-          <Link to="/settings/providers">Model Provider</Link>
+    <div className="app-shell">
+      <aside className="app-shell__sidebar">
+        <h2 className="app-shell__title">tia-studio</h2>
+        <nav className="app-shell__nav">
+          <Link className="app-shell__nav-link" to="/assistants">
+            Assistants
+          </Link>
+          <Link className="app-shell__nav-link" to="/settings/providers">
+            Model Provider
+          </Link>
         </nav>
       </aside>
-      <main style={{ padding: '20px' }}>
+      <main className="app-shell__content">
         <Outlet />
       </main>
     </div>

@@ -20,7 +20,7 @@ function createAssistant(overrides?: Partial<AssistantRecord>): AssistantRecord 
 }
 
 function createProvider(overrides?: Partial<ProviderRecord>): ProviderRecord {
-  return {
+  const baseProvider: ProviderRecord = {
     id: 'provider-1',
     name: 'OpenAI',
     type: 'openai',
@@ -29,7 +29,15 @@ function createProvider(overrides?: Partial<ProviderRecord>): ProviderRecord {
     selectedModel: 'gpt-5',
     providerModels: null,
     enabled: true,
-    ...overrides
+    createdAt: '2026-03-01T00:00:00.000Z',
+    updatedAt: '2026-03-01T00:00:00.000Z'
+  }
+
+  return {
+    ...baseProvider,
+    ...overrides,
+    createdAt: overrides?.createdAt ?? baseProvider.createdAt,
+    updatedAt: overrides?.updatedAt ?? baseProvider.updatedAt
   }
 }
 

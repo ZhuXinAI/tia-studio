@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   createProvider,
   listProviders,
+  providerConnectionEventName,
+  testProviderConnection,
   updateProvider,
   type ProviderRecord,
   type SaveProviderInput
@@ -41,7 +43,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const [isTestingConnection, setIsTestingConnection] = useState(false)
   const [toast, setToast] = useState<ToastState | null>(null)
 
   const selectedProvider = useMemo(() => {
@@ -54,8 +56,6 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
   const refreshProviders = useCallback(async () => {
     setIsLoading(true)
-    setLoadError(null)
-
     try {
       const nextProviders = await listProviders()
       setProviders(nextProviders)
@@ -66,8 +66,6 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
         return nextProviders.at(0)?.id ?? null
       })
-    } catch (error) {
-      setLoadError(toErrorMessage(error))
     } finally {
       setIsLoading(false)
     }
@@ -89,17 +87,33 @@ export function ProvidersSettingsPage(): React.JSX.Element {
             provider.id === updatedProvider.id ? updatedProvider : provider
           )
         )
-        setToast({ kind: 'success', message: 'Provider updated.' })
+        setToast({ kind: 'success', message: 'Provider saved locally.' })
       } else {
         const createdProvider = await createProvider(values)
         setProviders((currentProviders) => [createdProvider, ...currentProviders])
         setSelectedProviderId(createdProvider.id)
-        setToast({ kind: 'success', message: 'Provider created.' })
+        setToast({ kind: 'success', message: 'Provider created locally.' })
       }
     } catch (error) {
       setToast({ kind: 'error', message: toErrorMessage(error) })
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleTestConnection = async (values: SaveProviderInput) => {
+    setIsTestingConnection(true)
+    setToast(null)
+    try {
+      await testProviderConnection(values)
+      setToast({
+        kind: 'success',
+        message: `Connection test event sent (${providerConnectionEventName}).`
+      })
+    } catch (error) {
+      setToast({ kind: 'error', message: toErrorMessage(error) })
+    } finally {
+      setIsTestingConnection(false)
     }
   }
 
@@ -109,100 +123,74 @@ export function ProvidersSettingsPage(): React.JSX.Element {
   }
 
   return (
-    <section style={{ display: 'grid', gap: '16px' }}>
-      <h1 style={{ margin: 0 }}>Model Provider Settings</h1>
-      <p style={{ margin: 0 }}>
-        Configure provider credentials, API host, and one selected model for each provider.
-      </p>
+    <section className="provider-page">
+      <header className="provider-page__header">
+        <h1>Model Provider Settings</h1>
+        <p>
+          Stored offline on this desktop. Saving does not call external services.
+          Use <code>Test Connection</code> to emit a local check event.
+        </p>
+      </header>
 
       {toast ? (
         <p
           role={toast.kind === 'error' ? 'alert' : 'status'}
-          style={{
-            margin: 0,
-            color: toast.kind === 'error' ? '#ff6b6b' : '#6cd96c',
-            border: `1px solid ${toast.kind === 'error' ? '#ff6b6b' : '#6cd96c'}`,
-            padding: '8px 12px',
-            borderRadius: '8px',
-            width: 'fit-content'
-          }}
+          className={`ui-toast ${toast.kind === 'error' ? 'ui-toast--error' : 'ui-toast--success'}`}
         >
           {toast.message}
         </p>
       ) : null}
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '280px minmax(360px, 1fr)',
-          gap: '20px',
-          alignItems: 'start'
-        }}
-      >
-        <aside style={{ display: 'grid', gap: '12px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0 }}>Providers</h2>
-            <button type="button" onClick={startCreateFlow} disabled={isSubmitting}>
+      <div className="provider-page__grid">
+        <aside className="ui-card provider-list">
+          <div className="provider-list__top">
+            <h2>Providers</h2>
+            <button type="button" className="ui-button ui-button--ghost" onClick={startCreateFlow}>
               + New
             </button>
           </div>
 
-          {isLoading ? <p style={{ margin: 0 }}>Loading providers...</p> : null}
-
-          {loadError ? (
-            <div style={{ display: 'grid', gap: '8px' }}>
-              <p style={{ margin: 0, color: '#ff6b6b' }}>{loadError}</p>
-              <button type="button" onClick={() => void refreshProviders()}>
-                Retry
-              </button>
-            </div>
-          ) : null}
-
+          {isLoading ? <p className="ui-muted">Loading providers...</p> : null}
           {!isLoading && providers.length === 0 ? (
-            <p style={{ margin: 0 }}>No providers yet. Create one to get started.</p>
+            <p className="ui-muted">No providers yet. Create one to get started.</p>
           ) : null}
 
-          <div style={{ display: 'grid', gap: '8px' }}>
+          <div className="provider-list__items">
             {providers.map((provider) => {
               const isActive = provider.id === selectedProviderId
               return (
                 <button
                   key={provider.id}
                   type="button"
+                  className={`provider-item ${isActive ? 'provider-item--active' : ''}`}
                   onClick={() => {
                     setSelectedProviderId(provider.id)
                     setToast(null)
                   }}
-                  disabled={isSubmitting}
-                  style={{
-                    textAlign: 'left',
-                    borderRadius: '10px',
-                    border: `1px solid ${isActive ? '#6cd96c' : '#3a3a3a'}`,
-                    background: isActive ? '#1b261b' : '#0f0f0f',
-                    color: '#f8f8f8',
-                    padding: '10px 12px'
-                  }}
+                  disabled={isSubmitting || isTestingConnection}
                 >
-                  <div style={{ fontWeight: 700 }}>{provider.name}</div>
-                  <div style={{ fontSize: '12px', opacity: 0.8 }}>
+                  <span className="provider-item__name">{provider.name}</span>
+                  <span className="provider-item__meta">
                     {provider.type} / {provider.selectedModel}
-                  </div>
+                  </span>
                 </button>
               )
             })}
           </div>
         </aside>
 
-        <div style={{ display: 'grid', gap: '12px' }}>
-          <h2 style={{ margin: 0 }}>{selectedProvider ? 'Edit Provider' : 'Create Provider'}</h2>
+        <section className="ui-card provider-editor">
+          <h2>{selectedProvider ? 'Edit Provider' : 'Create Provider'}</h2>
           <ProvidersForm
             key={selectedProvider?.id ?? 'new-provider'}
             initialValue={toInitialFormValue(selectedProvider)}
             isPrebuilt={Boolean(selectedProvider?.providerModels?.length)}
             isSubmitting={isSubmitting}
+            isTestingConnection={isTestingConnection}
             onSubmit={handleSubmit}
+            onTestConnection={handleTestConnection}
           />
-        </div>
+        </section>
       </div>
     </section>
   )
