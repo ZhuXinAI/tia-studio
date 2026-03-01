@@ -1,4 +1,8 @@
 import { useMemo, useState } from 'react'
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
+import { Label } from '../../../components/ui/label'
+import { Textarea } from '../../../components/ui/textarea'
 import type { ProviderType, SaveProviderInput } from './providers-query'
 
 export type ProviderFormValues = {
@@ -114,15 +118,22 @@ export function ProvidersForm({
   }
 
   return (
-    <form className="ui-form-grid" onSubmit={handleSubmit}>
-      <label>
-        Provider Name
-        <input value={values.name} onChange={(event) => updateValue('name', event.target.value)} />
-      </label>
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <div className="space-y-2">
+        <Label htmlFor="provider-name">Provider Name</Label>
+        <Input
+          id="provider-name"
+          value={values.name}
+          onChange={(event) => updateValue('name', event.target.value)}
+          placeholder="OpenAI"
+        />
+      </div>
 
-      <label>
-        Type
+      <div className="space-y-2">
+        <Label htmlFor="provider-type">Type</Label>
         <select
+          id="provider-type"
+          className="border-input file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-[3px] focus-visible:ring-ring/50"
           value={values.type}
           onChange={(event) => updateValue('type', event.target.value as ProviderType)}
         >
@@ -132,31 +143,44 @@ export function ProvidersForm({
           <option value="anthropic">Anthropic</option>
           <option value="ollama">Ollama</option>
         </select>
-      </label>
+      </div>
 
-      <label>
-        API Key
-        <input value={values.apiKey} onChange={(event) => updateValue('apiKey', event.target.value)} />
-      </label>
+      <div className="space-y-2">
+        <Label htmlFor="provider-api-key">API Key</Label>
+        <Input
+          id="provider-api-key"
+          value={values.apiKey}
+          onChange={(event) => updateValue('apiKey', event.target.value)}
+          placeholder="sk-..."
+        />
+      </div>
 
-      <label>
-        API Host
-        <input value={values.apiHost} onChange={(event) => updateValue('apiHost', event.target.value)} />
-      </label>
+      <div className="space-y-2">
+        <Label htmlFor="provider-api-host">API Host</Label>
+        <Input
+          id="provider-api-host"
+          value={values.apiHost}
+          onChange={(event) => updateValue('apiHost', event.target.value)}
+          placeholder="https://api.openai.com/v1"
+        />
+      </div>
 
-      <label>
-        Selected Model
-        <input
+      <div className="space-y-2">
+        <Label htmlFor="provider-selected-model">Selected Model</Label>
+        <Input
+          id="provider-selected-model"
           value={values.selectedModel}
           onChange={(event) => updateValue('selectedModel', event.target.value)}
+          placeholder="gpt-5"
         />
-      </label>
+      </div>
 
-      {errors.selectedModel ? <p style={{ color: '#ff6b6b', margin: 0 }}>{errors.selectedModel}</p> : null}
+      {errors.selectedModel ? <p className="text-destructive text-sm">{errors.selectedModel}</p> : null}
 
-      <label style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+      <label className="flex items-center gap-2 text-sm text-muted-foreground">
         <input
           type="checkbox"
+          className="border-input h-4 w-4 rounded border bg-transparent"
           checked={hasProviderModels}
           onChange={(event) => setHasProviderModels(event.target.checked)}
         />
@@ -164,29 +188,31 @@ export function ProvidersForm({
       </label>
 
       {showProviderModels ? (
-        <label>
-          Provider Models (optional)
-          <textarea
+        <div className="space-y-2">
+          <Label htmlFor="provider-models-list">Provider Models (optional)</Label>
+          <Textarea
+            id="provider-models-list"
             value={values.providerModelsText}
             onChange={(event) => updateValue('providerModelsText', event.target.value)}
+            placeholder="MiniMax-M2.5, MiniMax-M2.5-lightning"
           />
-        </label>
+        </div>
       ) : null}
 
-      <div className="ui-form-actions">
+      <div className="flex flex-wrap justify-end gap-2">
         {onTestConnection ? (
-          <button
+          <Button
             type="button"
-            className="ui-button ui-button--ghost"
+            variant="outline"
             onClick={() => void handleTestConnection()}
             disabled={isSubmitting || isTestingConnection}
           >
             {isTestingConnection ? 'Testing...' : 'Test Connection'}
-          </button>
+          </Button>
         ) : null}
-        <button type="submit" className="ui-button ui-button--primary" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Saving...' : 'Save Provider'}
-        </button>
+        </Button>
       </div>
     </form>
   )

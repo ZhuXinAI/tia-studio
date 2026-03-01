@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Bot, Plus } from 'lucide-react'
 import { AssistantEditor } from '../assistant-editor'
 import {
   createAssistant,
@@ -9,6 +10,9 @@ import {
   type SaveAssistantInput
 } from '../assistants-query'
 import { listProviders, type ProviderRecord } from '../../settings/providers/providers-query'
+import { Button } from '../../../components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
+import { cn } from '../../../lib/utils'
 
 type ToastState = {
   kind: 'success' | 'error'
@@ -88,79 +92,102 @@ export function AssistantsPage(): React.JSX.Element {
   }
 
   return (
-    <section className="assistants-page">
-      <header className="assistants-page__header">
-        <div>
-          <h1>Assistants</h1>
-          <p>Create and configure assistants before starting threads.</p>
+    <section className="space-y-4">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Assistants</h1>
+          <p className="text-muted-foreground text-sm">
+            Create and configure assistants before starting threads.
+          </p>
         </div>
-        <button
+        <Button
           type="button"
-          className="ui-button ui-button--primary"
           onClick={() => {
             setIsCreatingAssistant(true)
             setToast(null)
           }}
         >
+          <Plus className="size-4" />
           New Assistant
-        </button>
+        </Button>
       </header>
 
       {toast ? (
         <p
           role={toast.kind === 'error' ? 'alert' : 'status'}
-          className={`ui-toast ${toast.kind === 'error' ? 'ui-toast--error' : 'ui-toast--success'}`}
+          className={cn(
+            'rounded-md border px-3 py-2 text-sm',
+            toast.kind === 'error'
+              ? 'border-destructive/70 text-destructive'
+              : 'border-emerald-400/70 text-emerald-300'
+          )}
         >
           {toast.message}
         </p>
       ) : null}
 
-      <div className="assistants-page__grid">
-        <aside className="ui-card assistants-list">
-          <h2>Library</h2>
-          {isLoading ? <p className="ui-muted">Loading assistants...</p> : null}
-          {!isLoading && assistants.length === 0 ? (
-            <p className="ui-muted">No assistants yet. Click New Assistant.</p>
-          ) : null}
+      <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>Library</CardTitle>
+            <CardDescription>Pick an assistant to edit.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {isLoading ? <p className="text-muted-foreground text-sm">Loading assistants...</p> : null}
+            {!isLoading && assistants.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No assistants yet. Click New Assistant.</p>
+            ) : null}
 
-          <div className="assistants-list__items">
-            {assistants.map((assistant) => {
-              const isActive = assistant.id === selectedAssistantId && !isCreatingAssistant
-              return (
-                <button
-                  key={assistant.id}
-                  type="button"
-                  className={`assistants-list__item ${isActive ? 'assistants-list__item--active' : ''}`}
-                  onClick={() => {
-                    setSelectedAssistantId(assistant.id)
-                    setIsCreatingAssistant(false)
-                    setToast(null)
-                  }}
-                >
-                  <span className="assistants-list__name">{assistant.name}</span>
-                  <span className="assistants-list__meta">{assistant.providerId}</span>
-                </button>
-              )
-            })}
-          </div>
-        </aside>
+            <div className="space-y-2">
+              {assistants.map((assistant) => {
+                const isActive = assistant.id === selectedAssistantId && !isCreatingAssistant
+                return (
+                  <button
+                    key={assistant.id}
+                    type="button"
+                    className={cn(
+                      'w-full rounded-md border px-3 py-2 text-left transition-colors',
+                      isActive
+                        ? 'border-primary/80 bg-primary/10'
+                        : 'border-border/70 bg-card/60 hover:bg-accent/30'
+                    )}
+                    onClick={() => {
+                      setSelectedAssistantId(assistant.id)
+                      setIsCreatingAssistant(false)
+                      setToast(null)
+                    }}
+                  >
+                    <p className="font-medium">{assistant.name}</p>
+                    <p className="text-muted-foreground text-xs">{assistant.providerId}</p>
+                  </button>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
 
-        <section className="ui-card assistants-editor">
-          <h2>{isCreatingAssistant ? 'Create Assistant' : 'Assistant Editor'}</h2>
-          {providers.length === 0 ? (
-            <p className="ui-muted">
-              Add a provider first in <Link to="/settings/providers">Model Provider</Link>.
-            </p>
-          ) : (
-            <AssistantEditor
-              key={isCreatingAssistant ? 'new-assistant' : selectedAssistant?.id ?? 'empty-assistant'}
-              providers={providers}
-              initialValue={isCreatingAssistant ? null : selectedAssistant}
-              isSubmitting={isSubmitting}
-              onSubmit={handleSubmitAssistant}
-            />
-          )}
-        </section>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>{isCreatingAssistant ? 'Create Assistant' : 'Assistant Editor'}</CardTitle>
+            <CardDescription>Workspace path and provider are required before chat.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {providers.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                <Bot className="mr-1 inline size-4" />
+                Add a provider first in <Link to="/settings/providers">Model Provider</Link>.
+              </p>
+            ) : (
+              <AssistantEditor
+                key={isCreatingAssistant ? 'new-assistant' : selectedAssistant?.id ?? 'empty-assistant'}
+                providers={providers}
+                initialValue={isCreatingAssistant ? null : selectedAssistant}
+                isSubmitting={isSubmitting}
+                onSubmit={handleSubmitAssistant}
+              />
+            )}
+          </CardContent>
+        </Card>
       </div>
     </section>
   )

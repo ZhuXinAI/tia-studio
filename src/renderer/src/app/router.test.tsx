@@ -32,5 +32,6 @@ describe('app router', () => {
 
     expect(html).toContain('Workspace')
     expect(html).toContain('Settings')
+    expect(html).toContain('data-slot="button"')
   })
 })

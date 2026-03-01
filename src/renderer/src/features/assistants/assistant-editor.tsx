@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
 import type { SaveAssistantInput, AssistantRecord } from './assistants-query'
 import type { ProviderRecord } from '../settings/providers/providers-query'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
+import { Label } from '../../components/ui/label'
 
 type AssistantEditorValues = {
   name: string
@@ -77,17 +80,24 @@ export function AssistantEditor({
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '10px' }}>
-      <h3 style={{ margin: 0 }}>{title}</h3>
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <h3 className="text-sm font-medium">{title}</h3>
 
-      <label>
-        Name
-        <input value={values.name} onChange={(event) => handleInput('name', event.target.value)} />
-      </label>
+      <div className="space-y-2">
+        <Label htmlFor="assistant-name">Name</Label>
+        <Input
+          id="assistant-name"
+          value={values.name}
+          onChange={(event) => handleInput('name', event.target.value)}
+          placeholder="Research Copilot"
+        />
+      </div>
 
-      <label>
-        Provider
+      <div className="space-y-2">
+        <Label htmlFor="assistant-provider">Provider</Label>
         <select
+          id="assistant-provider"
+          className="border-input file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-[3px] focus-visible:ring-ring/50"
           value={values.providerId}
           onChange={(event) => handleInput('providerId', event.target.value)}
         >
@@ -98,26 +108,23 @@ export function AssistantEditor({
             </option>
           ))}
         </select>
-      </label>
+      </div>
 
-      <label>
-        Workspace Path
-        <input
+      <div className="space-y-2">
+        <Label htmlFor="assistant-workspace-path">Workspace Path</Label>
+        <Input
+          id="assistant-workspace-path"
           value={values.workspacePath}
           onChange={(event) => handleInput('workspacePath', event.target.value)}
           placeholder="/Users/name/workspace"
         />
-      </label>
+      </div>
 
-      {error ? (
-        <p role="alert" style={{ margin: 0, color: '#ff6b6b' }}>
-          {error}
-        </p>
-      ) : null}
+      {error ? <p role="alert" className="text-destructive text-sm">{error}</p> : null}
 
-      <button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting}>
         {isSubmitting ? 'Saving...' : initialValue ? 'Update Assistant' : 'Create Assistant'}
-      </button>
+      </Button>
     </form>
   )
 }

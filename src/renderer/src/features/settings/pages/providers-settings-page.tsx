@@ -9,6 +9,9 @@ import {
   type SaveProviderInput
 } from '../providers/providers-query'
 import { ProvidersForm } from '../providers/providers-form'
+import { Button } from '../../../components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
+import { cn } from '../../../lib/utils'
 
 type ToastState = {
   kind: 'success' | 'error'
@@ -123,74 +126,94 @@ export function ProvidersSettingsPage(): React.JSX.Element {
   }
 
   return (
-    <section className="provider-page">
-      <header className="provider-page__header">
-        <h1>Model Provider Settings</h1>
-        <p>
-          Stored offline on this desktop. Saving does not call external services.
-          Use <code>Test Connection</code> to emit a local check event.
+    <section className="space-y-4">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">Model Provider Settings</h1>
+        <p className="text-muted-foreground text-sm">
+          Stored offline on this desktop. Saving does not call external services. Use{' '}
+          <code className="rounded bg-muted px-1 py-0.5 text-xs">Test Connection</code> to emit a local
+          check event.
         </p>
       </header>
 
       {toast ? (
         <p
           role={toast.kind === 'error' ? 'alert' : 'status'}
-          className={`ui-toast ${toast.kind === 'error' ? 'ui-toast--error' : 'ui-toast--success'}`}
+          className={cn(
+            'rounded-md border px-3 py-2 text-sm',
+            toast.kind === 'error'
+              ? 'border-destructive/70 text-destructive'
+              : 'border-emerald-400/70 text-emerald-300'
+          )}
         >
           {toast.message}
         </p>
       ) : null}
 
-      <div className="provider-page__grid">
-        <aside className="ui-card provider-list">
-          <div className="provider-list__top">
-            <h2>Providers</h2>
-            <button type="button" className="ui-button ui-button--ghost" onClick={startCreateFlow}>
-              + New
-            </button>
-          </div>
+      <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle>Providers</CardTitle>
+              <Button type="button" variant="outline" size="sm" onClick={startCreateFlow}>
+                + New
+              </Button>
+            </div>
+            <CardDescription>One selected model per provider.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {isLoading ? <p className="text-muted-foreground text-sm">Loading providers...</p> : null}
+            {!isLoading && providers.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No providers yet. Create one to get started.</p>
+            ) : null}
 
-          {isLoading ? <p className="ui-muted">Loading providers...</p> : null}
-          {!isLoading && providers.length === 0 ? (
-            <p className="ui-muted">No providers yet. Create one to get started.</p>
-          ) : null}
+            <div className="space-y-2">
+              {providers.map((provider) => {
+                const isActive = provider.id === selectedProviderId
+                return (
+                  <button
+                    key={provider.id}
+                    type="button"
+                    className={cn(
+                      'w-full rounded-md border px-3 py-2 text-left transition-colors',
+                      isActive
+                        ? 'border-primary/80 bg-primary/10'
+                        : 'border-border/70 bg-card/60 hover:bg-accent/30'
+                    )}
+                    onClick={() => {
+                      setSelectedProviderId(provider.id)
+                      setToast(null)
+                    }}
+                    disabled={isSubmitting || isTestingConnection}
+                  >
+                    <p className="font-medium">{provider.name}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {provider.type} / {provider.selectedModel}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
 
-          <div className="provider-list__items">
-            {providers.map((provider) => {
-              const isActive = provider.id === selectedProviderId
-              return (
-                <button
-                  key={provider.id}
-                  type="button"
-                  className={`provider-item ${isActive ? 'provider-item--active' : ''}`}
-                  onClick={() => {
-                    setSelectedProviderId(provider.id)
-                    setToast(null)
-                  }}
-                  disabled={isSubmitting || isTestingConnection}
-                >
-                  <span className="provider-item__name">{provider.name}</span>
-                  <span className="provider-item__meta">
-                    {provider.type} / {provider.selectedModel}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </aside>
-
-        <section className="ui-card provider-editor">
-          <h2>{selectedProvider ? 'Edit Provider' : 'Create Provider'}</h2>
-          <ProvidersForm
-            key={selectedProvider?.id ?? 'new-provider'}
-            initialValue={toInitialFormValue(selectedProvider)}
-            isPrebuilt={Boolean(selectedProvider?.providerModels?.length)}
-            isSubmitting={isSubmitting}
-            isTestingConnection={isTestingConnection}
-            onSubmit={handleSubmit}
-            onTestConnection={handleTestConnection}
-          />
-        </section>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>{selectedProvider ? 'Edit Provider' : 'Create Provider'}</CardTitle>
+            <CardDescription>Credentials are saved locally only.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ProvidersForm
+              key={selectedProvider?.id ?? 'new-provider'}
+              initialValue={toInitialFormValue(selectedProvider)}
+              isPrebuilt={Boolean(selectedProvider?.providerModels?.length)}
+              isSubmitting={isSubmitting}
+              isTestingConnection={isTestingConnection}
+              onSubmit={handleSubmit}
+              onTestConnection={handleTestConnection}
+            />
+          </CardContent>
+        </Card>
       </div>
     </section>
   )
