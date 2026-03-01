@@ -1,7 +1,45 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { serve, type ServerType } from '@hono/node-server'
 import icon from '../../resources/icon.png?asset'
+import { resolveServerConfig } from './config/server-config'
+import { createApp } from './server/create-app'
+
+const serverConfig = resolveServerConfig({})
+let localApiServer: ServerType | null = null
+
+function startLocalApiServer(): void {
+  if (localApiServer) {
+    return
+  }
+
+  const apiApp = createApp({
+    token: serverConfig.token
+  })
+
+  localApiServer = serve(
+    {
+      fetch: apiApp.fetch,
+      hostname: serverConfig.host,
+      port: serverConfig.port
+    },
+    (serverInfo) => {
+      console.log(
+        `Tia local API is running on http://${serverInfo.address}:${serverInfo.port} (localhost only)`
+      )
+    }
+  )
+}
+
+function stopLocalApiServer(): void {
+  if (!localApiServer) {
+    return
+  }
+
+  localApiServer.close()
+  localApiServer = null
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -52,6 +90,7 @@ app.whenReady().then(() => {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
+  startLocalApiServer()
   createWindow()
 
   app.on('activate', function () {
@@ -64,6 +103,10 @@ app.whenReady().then(() => {
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
+app.on('before-quit', () => {
+  stopLocalApiServer()
+})
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
