@@ -89,6 +89,12 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+  ipcMain.handle('tia:get-desktop-config', () => {
+    return {
+      baseUrl: `http://${serverConfig.host}:${serverConfig.port}`,
+      authToken: serverConfig.token
+    }
+  })
 
   startLocalApiServer()
   createWindow()
