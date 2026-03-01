@@ -17,4 +17,20 @@ describe('app router', () => {
 
     expect(html).toContain('Model Provider Settings')
   })
+
+  it('renders assistants route with creation entrypoint', () => {
+    const router = createAppMemoryRouter(['/assistants'])
+    const html = renderToString(<RouterProvider router={router} />)
+
+    expect(html).toContain('Assistants')
+    expect(html).toContain('New Assistant')
+  })
+
+  it('renders workspace and settings sections in sidebar shell', () => {
+    const router = createAppMemoryRouter(['/assistants'])
+    const html = renderToString(<RouterProvider router={router} />)
+
+    expect(html).toContain('Workspace')
+    expect(html).toContain('Settings')
+  })
 })
