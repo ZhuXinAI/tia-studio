@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
+import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import type { AssistantRuntime } from '../mastra/assistant-runtime'
 import { createBearerAuthMiddleware } from './auth-middleware'
 import { registerAssistantsRoute } from './routes/assistants-route'
@@ -10,6 +11,7 @@ import { registerChatRoute } from './routes/chat-route'
 import { registerHealthRoute } from './routes/health-route'
 import { registerProvidersRoute } from './routes/providers-route'
 import { registerThreadsRoute } from './routes/threads-route'
+import { registerWebSearchSettingsRoute } from './routes/web-search-settings-route'
 
 type CreateAppOptions = {
   token: string
@@ -17,6 +19,7 @@ type CreateAppOptions = {
     providers: ProvidersRepository
     assistants: AssistantsRepository
     threads: ThreadsRepository
+    webSearchSettings: WebSearchSettingsRepository
   }
   assistantRuntime?: AssistantRuntime
 }
@@ -56,6 +59,9 @@ export function createApp(options: CreateAppOptions): Hono {
     registerThreadsRoute(app, {
       threadsRepo: options.repositories.threads,
       assistantsRepo: options.repositories.assistants
+    })
+    registerWebSearchSettingsRoute(app, {
+      webSearchSettingsRepo: options.repositories.webSearchSettings
     })
   }
 

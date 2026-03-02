@@ -49,7 +49,7 @@ export function ThreadSidebar({
   onDeleteThread
 }: ThreadSidebarProps): React.JSX.Element {
   return (
-    <Sidebar className="h-auto w-full border-r-0 border-b md:h-full md:w-80 md:border-r md:border-b-0">
+    <Sidebar className="h-full w-80 border-r border-b-0">
       <SidebarHeader className="space-y-3">
         <div className="space-y-1">
           <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">Main Chat</p>

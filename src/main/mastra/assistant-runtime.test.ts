@@ -5,8 +5,17 @@ import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { AppProvider } from '../persistence/repos/providers-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
+import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import { AssistantRuntimeService } from './assistant-runtime'
 import { createMastraInstance } from './store'
+
+const { toAISdkV5MessagesMock } = vi.hoisted(() => ({
+  toAISdkV5MessagesMock: vi.fn()
+}))
+
+vi.mock('@mastra/ai-sdk/ui', () => ({
+  toAISdkV5Messages: (messages: unknown) => toAISdkV5MessagesMock(messages)
+}))
 
 function buildAssistant(): AppAssistant {
   return {
@@ -45,7 +54,10 @@ describe('AssistantRuntimeService', () => {
       mastra,
       assistantsRepo: { getById: vi.fn() } as unknown as AssistantsRepository,
       providersRepo: { getById: vi.fn() } as unknown as ProvidersRepository,
-      threadsRepo: { getById: vi.fn() } as unknown as ThreadsRepository
+      threadsRepo: { getById: vi.fn() } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing')
+      } as unknown as WebSearchSettingsRepository
     })
 
     await (
@@ -56,42 +68,91 @@ describe('AssistantRuntimeService', () => {
 
     const agent = mastra.getAgentById('assistant-1')
     expect(agent.hasOwnMemory()).toBe(true)
+    expect(agent.hasOwnWorkspace()).toBe(true)
+
+    const memory = await agent.getMemory()
+    expect(memory?.getMergedThreadConfig().generateTitle).toBe(true)
   })
 
-  it('normalizes persisted thread message parts for ai sdk compatibility', async () => {
+  it('uses toAISdkV5Messages for chat history and excludes non-chat roles', async () => {
+    toAISdkV5MessagesMock.mockReset()
     const assistant = buildAssistant()
-    const listMessages = vi.fn(async () => ({
-      messages: [
-        {
-          id: 'assistant-msg-1',
-          role: 'assistant',
-          content: {
-            parts: [
-              {
-                type: 'reasoning',
-                reasoning: 'Planning answer'
-              },
-              {
-                type: 'text',
-                content: 'Hello from persisted history'
-              }
-            ],
-            metadata: { persisted: true }
-          }
-        },
-        {
-          id: 'user-msg-1',
-          role: 'user',
-          content: {
-            parts: [
-              {
-                type: 'text',
-                value: 'User question'
-              }
-            ]
-          }
+    const persistedMessages = [
+      {
+        id: 'db-assistant-msg-1',
+        role: 'assistant',
+        content: {
+          parts: [
+            {
+              type: 'reasoning',
+              details: [
+                {
+                  type: 'reasoning.summary',
+                  text: 'Think through options'
+                }
+              ]
+            },
+            {
+              type: 'text',
+              text: 'Final answer'
+            }
+          ]
         }
-      ]
+      },
+      {
+        id: 'db-user-msg-1',
+        role: 'user',
+        content: {
+          parts: [
+            {
+              type: 'text',
+              text: 'Question'
+            }
+          ]
+        }
+      }
+    ]
+
+    toAISdkV5MessagesMock.mockReturnValue([
+      {
+        id: 'assistant-msg-1',
+        role: 'assistant',
+        parts: [
+          {
+            type: 'reasoning',
+            text: 'Think through options'
+          },
+          {
+            type: 'text',
+            text: 'Final answer'
+          }
+        ],
+        metadata: { persisted: true }
+      },
+      {
+        id: 'user-msg-1',
+        role: 'user',
+        parts: [
+          {
+            type: 'text',
+            text: 'Question'
+          }
+        ]
+      },
+      {
+        id: 'system-msg-1',
+        role: 'system',
+        parts: [
+          {
+            type: 'text',
+            text: 'System note'
+          }
+        ]
+      }
+    ])
+
+    const listMessages = vi.fn(async () => ({
+      messages: persistedMessages
     }))
 
     const runtime = new AssistantRuntimeService({
@@ -112,7 +173,10 @@ describe('AssistantRuntimeService', () => {
           assistantId: assistant.id,
           resourceId: 'profile-1'
         }))
-      } as unknown as ThreadsRepository
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing')
+      } as unknown as WebSearchSettingsRepository
     })
 
     const messages = await runtime.listThreadMessages({
@@ -121,6 +185,7 @@ describe('AssistantRuntimeService', () => {
       profileId: 'profile-1'
     })
 
+    expect(toAISdkV5MessagesMock).toHaveBeenCalledWith(persistedMessages)
     expect(messages).toEqual([
       {
         id: 'assistant-msg-1',
@@ -128,11 +193,11 @@ describe('AssistantRuntimeService', () => {
         parts: [
           {
             type: 'reasoning',
-            text: 'Planning answer'
+            text: 'Think through options'
           },
           {
             type: 'text',
-            text: 'Hello from persisted history'
+            text: 'Final answer'
           }
         ],
         metadata: { persisted: true }
@@ -143,7 +208,7 @@ describe('AssistantRuntimeService', () => {
         parts: [
           {
             type: 'text',
-            text: 'User question'
+            text: 'Question'
           }
         ]
       }

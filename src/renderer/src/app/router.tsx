@@ -8,6 +8,7 @@ import { AppShell } from './layout/app-shell'
 import { AssistantsPage } from '../features/assistants/pages/assistants-page'
 import { ThreadPage } from '../features/threads/pages/thread-page'
 import { ProvidersSettingsPage } from '../features/settings/pages/providers-settings-page'
+import { WebSearchSettingsPage } from '../features/settings/pages/web-search-settings-page'
 
 export const appRoutes: RouteObject[] = [
   {
@@ -33,6 +34,10 @@ export const appRoutes: RouteObject[] = [
       {
         path: 'settings/providers',
         element: <ProvidersSettingsPage />
+      },
+      {
+        path: 'settings/web-search',
+        element: <WebSearchSettingsPage />
       }
     ]
   }

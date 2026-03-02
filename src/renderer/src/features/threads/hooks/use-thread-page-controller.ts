@@ -56,10 +56,7 @@ export function useThreadPageController() {
   const [isLoadingChatHistory, setIsLoadingChatHistory] = useState(false)
   const [isAssistantConfigDialogOpen, setIsAssistantConfigDialogOpen] = useState(false)
   const [isSavingAssistantConfig, setIsSavingAssistantConfig] = useState(false)
-  const [pendingThreadMessage, setPendingThreadMessage] = useState<PendingThreadMessage | null>(
-    null
-  )
-  const [isSubmittingPendingMessage, setIsSubmittingPendingMessage] = useState(false)
+  const [pendingThreadMessage, setPendingThreadMessage] = useState<PendingThreadMessage | null>(null)
   const profileId = useMemo(() => getActiveResourceId(), [])
 
   const selectedAssistant = useMemo(() => {
@@ -109,6 +106,7 @@ export function useThreadPageController() {
   const chat = useChat({
     id: selectedThread ? `${selectedAssistant?.id}:${selectedThread.id}` : 'default-chat',
     transport: chatTransport,
+    experimental_throttle: 48,
     onFinish: () => {
       if (!selectedThread) {
         return
@@ -139,7 +137,7 @@ export function useThreadPageController() {
     !isChatStreaming &&
     !isLoadingChatHistory &&
     !isCreatingThread &&
-    !isSubmittingPendingMessage
+    !pendingThreadMessage
 
   const showToast = useCallback((kind: ToastState['kind'], message: string): void => {
     setToast({ kind, message })
@@ -354,7 +352,6 @@ export function useThreadPageController() {
 
     let active = true
     setIsLoadingChatHistory(true)
-    setMessages([])
 
     void listThreadChatMessages({
       assistantId,
@@ -510,12 +507,11 @@ export function useThreadPageController() {
       return
     }
 
-    if (isLoadingChatHistory || isSubmittingPendingMessage) {
+    if (isLoadingChatHistory || isChatStreaming) {
       return
     }
 
     let active = true
-    setIsSubmittingPendingMessage(true)
 
     void sendMessage({
       text: pendingThreadMessage.text
@@ -533,18 +529,13 @@ export function useThreadPageController() {
         showToast('error', toErrorMessage(error))
         setPendingThreadMessage(null)
       })
-      .finally(() => {
-        if (active) {
-          setIsSubmittingPendingMessage(false)
-        }
-      })
 
     return () => {
       active = false
     }
   }, [
     isLoadingChatHistory,
-    isSubmittingPendingMessage,
+    isChatStreaming,
     pendingThreadMessage,
     selectedThread,
     sendMessage,
@@ -587,7 +578,7 @@ export function useThreadPageController() {
     isCreatingThread,
     deletingThreadId,
     isLoadingChatHistory,
-    isChatStreaming: isChatStreaming || isSubmittingPendingMessage,
+    isChatStreaming,
     chatError,
     loadError,
     composerValue,

@@ -1,23 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type ComponentType } from 'react'
-import {
-  BookOpen,
-  Bot,
-  Brain,
-  Cloud,
-  Database,
-  FileSearch,
-  Info,
-  Keyboard,
-  Monitor,
-  MousePointer2,
-  Search,
-  ServerCog,
-  Settings2,
-  SlidersHorizontal,
-  Trash2,
-  Zap
-} from 'lucide-react'
-import { NavLink } from 'react-router-dom'
+import { Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   createProvider,
   deleteProvider,
@@ -27,8 +9,9 @@ import {
   type ProviderRecord,
   type SaveProviderInput
 } from '../providers/providers-query'
+import { SettingsSidebarNav } from '../components/settings-sidebar-nav'
 import { ProvidersForm } from '../providers/providers-form'
-import { Button, buttonVariants } from '../../../components/ui/button'
+import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
 import { cn } from '../../../lib/utils'
 
@@ -36,96 +19,6 @@ type ToastState = {
   kind: 'success' | 'error'
   message: string
 }
-
-type SettingsNavItem = {
-  title: string
-  icon: ComponentType<{ className?: string }>
-  to?: string
-}
-
-type SettingsNavGroup = {
-  label: string
-  items: SettingsNavItem[]
-}
-
-const settingsNavGroups: SettingsNavGroup[] = [
-  {
-    label: 'Models',
-    items: [
-      {
-        title: 'Model Provider',
-        icon: Cloud,
-        to: '/settings/providers'
-      },
-      {
-        title: 'Default Model',
-        icon: Bot
-      }
-    ]
-  },
-  {
-    label: 'Preferences',
-    items: [
-      {
-        title: 'General Settings',
-        icon: SlidersHorizontal
-      },
-      {
-        title: 'Display Settings',
-        icon: Monitor
-      },
-      {
-        title: 'Data Settings',
-        icon: Database
-      }
-    ]
-  },
-  {
-    label: 'Tools',
-    items: [
-      {
-        title: 'MCP Servers',
-        icon: Zap
-      },
-      {
-        title: 'Web Search',
-        icon: Search
-      },
-      {
-        title: 'Memories',
-        icon: Brain
-      },
-      {
-        title: 'API Server',
-        icon: ServerCog
-      },
-      {
-        title: 'Document Processing',
-        icon: FileSearch
-      },
-      {
-        title: 'Quick Phrases',
-        icon: BookOpen
-      },
-      {
-        title: 'Keyboard Shortcuts',
-        icon: Keyboard
-      },
-      {
-        title: 'Quick Assistant',
-        icon: Settings2
-      },
-      {
-        title: 'Selection Assistant',
-        icon: MousePointer2
-      },
-      {
-        title: 'About & Feedback',
-        icon: Info
-      }
-    ]
-  }
-]
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -274,55 +167,9 @@ export function ProvidersSettingsPage(): React.JSX.Element {
   }
 
   return (
-    <section className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-6">
-      <aside className="lg:sticky lg:top-18 lg:self-start">
-        <Card className="border-border/70 bg-card/80">
-          <CardHeader className="pb-3">
-            <CardTitle>Settings</CardTitle>
-            <CardDescription>Configuration categories</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {settingsNavGroups.map((group) => (
-              <section key={group.label} className="space-y-1">
-                <h2 className="text-muted-foreground px-2 text-xs font-semibold tracking-wide uppercase">
-                  {group.label}
-                </h2>
-                {group.items.map((item) => {
-                  if (item.to) {
-                    return (
-                      <NavLink
-                        key={item.title}
-                        to={item.to}
-                        className={({ isActive }) =>
-                          cn(
-                            buttonVariants({ variant: isActive ? 'secondary' : 'ghost', size: 'sm' }),
-                            'w-full justify-start'
-                          )
-                        }
-                      >
-                        <item.icon className="size-4" />
-                        {item.title}
-                      </NavLink>
-                    )
-                  }
-
-                  return (
-                    <div
-                      key={item.title}
-                      className={cn(
-                        buttonVariants({ variant: 'ghost', size: 'sm' }),
-                        'pointer-events-none w-full justify-start opacity-65'
-                      )}
-                    >
-                      <item.icon className="size-4" />
-                      {item.title}
-                    </div>
-                  )
-                })}
-              </section>
-            ))}
-          </CardContent>
-        </Card>
+    <section className="grid gap-4 grid-cols-[260px_minmax(0,1fr)]">
+      <aside className="sticky top-18 self-start">
+        <SettingsSidebarNav />
       </aside>
 
       <div className="space-y-4">
@@ -349,7 +196,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
           </p>
         ) : null}
 
-        <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
+        <div className="grid gap-4 grid-cols-[300px_minmax(0,1fr)]">
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-2">

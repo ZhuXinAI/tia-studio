@@ -10,6 +10,7 @@ import { migrateAppSchema } from './persistence/migrate'
 import { AssistantsRepository } from './persistence/repos/assistants-repo'
 import { ProvidersRepository } from './persistence/repos/providers-repo'
 import { ThreadsRepository } from './persistence/repos/threads-repo'
+import { WebSearchSettingsRepository } from './persistence/repos/web-search-settings-repo'
 import { createApp } from './server/create-app'
 
 const serverConfig = resolveServerConfig({})
@@ -26,12 +27,14 @@ async function startLocalApiServer(): Promise<void> {
   const providersRepo = new ProvidersRepository(db)
   const assistantsRepo = new AssistantsRepository(db)
   const threadsRepo = new ThreadsRepository(db)
+  const webSearchSettingsRepo = new WebSearchSettingsRepository(db)
   const mastra = createMastraInstance(persistenceDatabasePath)
   const assistantRuntime = new AssistantRuntimeService({
     mastra,
     assistantsRepo,
     providersRepo,
-    threadsRepo
+    threadsRepo,
+    webSearchSettingsRepo
   })
 
   const apiApp = createApp({
@@ -39,7 +42,8 @@ async function startLocalApiServer(): Promise<void> {
     repositories: {
       providers: providersRepo,
       assistants: assistantsRepo,
-      threads: threadsRepo
+      threads: threadsRepo,
+      webSearchSettings: webSearchSettingsRepo
     },
     assistantRuntime
   })
@@ -71,12 +75,20 @@ function stopLocalApiServer(): void {
 }
 
 function createWindow(): void {
+  const isMac = process.platform === 'darwin'
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    width: 1280,
+    height: 860,
+    minWidth: 720,
+    minHeight: 640,
     show: false,
     autoHideMenuBar: true,
+    ...(isMac
+      ? {
+          titleBarStyle: 'hidden' as const
+        }
+      : {}),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

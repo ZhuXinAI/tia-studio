@@ -17,7 +17,15 @@ describe('app router', () => {
 
     expect(html).toContain('Model Provider Settings')
     expect(html).toContain('Model Provider')
-    expect(html).toContain('General Settings')
+    expect(html).toContain('Web Search')
+  })
+
+  it('renders web search settings route', () => {
+    const router = createAppMemoryRouter(['/settings/web-search'])
+    const html = renderToString(<RouterProvider router={router} />)
+
+    expect(html).toContain('Web Search')
+    expect(html).toContain('Default Search Engine')
   })
 
   it('renders assistants route with creation entrypoint', () => {

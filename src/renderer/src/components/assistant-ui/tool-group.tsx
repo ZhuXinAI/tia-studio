@@ -8,8 +8,8 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger
-} from '@renderer/components/ui/collapsible'
-import { cn } from '@renderer/lib/utils'
+} from '../ui/collapsible'
+import { cn } from '../../lib/utils'
 
 const ANIMATION_DURATION = 200
 

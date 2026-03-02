@@ -10,6 +10,7 @@ it('creates core app tables', async () => {
   expect(tableNames).toContain('app_providers')
   expect(tableNames).toContain('app_assistants')
   expect(tableNames).toContain('app_threads')
+  expect(tableNames).toContain('app_preferences')
 
   await db.close()
 })

@@ -7,11 +7,12 @@ import {
 import { useAISDKRuntime } from '@assistant-ui/react-ai-sdk'
 import type { UseChatHelpers } from '@ai-sdk/react'
 import type { UIMessage } from 'ai'
+import { createContext, useContext } from 'react'
 import { toErrorMessage } from '../thread-page-routing'
-import { Reasoning, ReasoningGroup } from '@renderer/components/assistant-ui/reasoning'
-import { MarkdownText } from '@renderer/components/assistant-ui/markdown-text'
-import { ToolFallback } from '@renderer/components/assistant-ui/tool-fallback'
-import { ToolGroup } from '@renderer/components/assistant-ui/tool-group'
+import { Reasoning, ReasoningGroup } from '../../../components/assistant-ui/reasoning'
+import { MarkdownText } from '../../../components/assistant-ui/markdown-text'
+import { ToolFallback } from '../../../components/assistant-ui/tool-fallback'
+import { ToolGroup } from '../../../components/assistant-ui/tool-group'
 
 type ThreadChatMessageListProps = {
   chat: UseChatHelpers<UIMessage>
@@ -21,6 +22,8 @@ type ThreadChatMessageListProps = {
   loadError: string | null
   chatError: unknown
 }
+
+const AssistantNameContext = createContext('Assistant')
 
 function UserTextPart(): React.JSX.Element {
   return <MessagePartPrimitive.Text className="text-sm leading-relaxed whitespace-pre-wrap" />
@@ -41,7 +44,9 @@ function UserMessageBubble(): React.JSX.Element {
   )
 }
 
-function AssistantMessageBubble({ assistantName }: { assistantName: string }): React.JSX.Element {
+function AssistantMessageBubble(): React.JSX.Element {
+  const assistantName = useContext(AssistantNameContext)
+
   return (
     <MessagePrimitive.Root className="mr-10 max-w-3xl rounded-xl border border-border/70 bg-background/55 px-4 py-3 shadow-sm">
       <p className="text-muted-foreground mb-1 text-[11px] font-medium uppercase tracking-wide">
@@ -74,47 +79,49 @@ export function ThreadChatMessageList({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <ThreadPrimitive.Root className="flex min-h-0 flex-1 flex-col">
-        <ThreadPrimitive.Viewport className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
-          <ThreadPrimitive.Empty>
-            <p className="text-muted-foreground text-sm">No messages yet.</p>
-          </ThreadPrimitive.Empty>
+      <AssistantNameContext.Provider value={assistantName}>
+        <ThreadPrimitive.Root className="flex min-h-0 flex-1 flex-col">
+          <ThreadPrimitive.Viewport className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
+            <ThreadPrimitive.Empty>
+              <p className="text-muted-foreground text-sm">No messages yet.</p>
+            </ThreadPrimitive.Empty>
 
-          <ThreadPrimitive.Messages
-            components={{
-              UserMessage: UserMessageBubble,
-              AssistantMessage: () => <AssistantMessageBubble assistantName={assistantName} />
-            }}
-          />
+            <ThreadPrimitive.Messages
+              components={{
+                UserMessage: UserMessageBubble,
+                AssistantMessage: AssistantMessageBubble
+              }}
+            />
 
-          {isLoadingChatHistory ? (
-            <p role="status" className="text-muted-foreground text-xs">
-              Loading thread history...
-            </p>
-          ) : null}
+            {isLoadingChatHistory ? (
+              <p role="status" className="text-muted-foreground text-xs">
+                Loading thread history...
+              </p>
+            ) : null}
 
-          {isChatStreaming ? (
-            <p role="status" className="text-muted-foreground text-xs">
-              Assistant is responding...
-            </p>
-          ) : null}
+            {isChatStreaming ? (
+              <p role="status" className="text-muted-foreground text-xs">
+                Assistant is responding...
+              </p>
+            ) : null}
 
-          {chatError ? (
-            <p role="alert" className="text-destructive text-sm">
-              {toErrorMessage(chatError)}
-            </p>
-          ) : null}
+            {chatError ? (
+              <p role="alert" className="text-destructive text-sm">
+                {toErrorMessage(chatError)}
+              </p>
+            ) : null}
 
-          {loadError ? (
-            <p
-              role="alert"
-              className="text-destructive rounded-md border border-destructive/60 px-3 py-2 text-sm"
-            >
-              {loadError}
-            </p>
-          ) : null}
-        </ThreadPrimitive.Viewport>
-      </ThreadPrimitive.Root>
+            {loadError ? (
+              <p
+                role="alert"
+                className="text-destructive rounded-md border border-destructive/60 px-3 py-2 text-sm"
+              >
+                {loadError}
+              </p>
+            ) : null}
+          </ThreadPrimitive.Viewport>
+        </ThreadPrimitive.Root>
+      </AssistantNameContext.Provider>
     </AssistantRuntimeProvider>
   )
 }

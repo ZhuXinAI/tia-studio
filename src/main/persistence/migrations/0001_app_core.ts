@@ -45,6 +45,12 @@ CREATE TABLE IF NOT EXISTS app_threads (
   FOREIGN KEY (assistant_id) REFERENCES app_assistants(id)
 );
 
+CREATE TABLE IF NOT EXISTS app_preferences (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_app_profiles_is_active ON app_profiles(is_active);
 CREATE INDEX IF NOT EXISTS idx_app_assistants_provider_id ON app_assistants(provider_id);
 CREATE INDEX IF NOT EXISTS idx_app_threads_assistant_id ON app_threads(assistant_id);

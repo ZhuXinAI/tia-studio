@@ -1,15 +1,19 @@
+import path from 'node:path'
 import { Agent } from '@mastra/core/agent'
-import { MockMemory } from '@mastra/core/memory'
+import type { MemoryConfig } from '@mastra/core/memory'
 import type { Mastra } from '@mastra/core/mastra'
-import type { InMemoryStore } from '@mastra/core/storage'
+import { LocalFilesystem, Workspace } from '@mastra/core/workspace'
 import { handleChatStream } from '@mastra/ai-sdk'
+import { toAISdkV5Messages } from '@mastra/ai-sdk/ui'
+import { Memory } from '@mastra/memory'
 import type { UIMessage } from 'ai'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
+import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import { ChatRouteError } from '../server/chat/chat-errors'
 import { resolveModel } from './model-resolver'
-import { browserSearchTool } from './tools/browser-search-tool'
+import { createBrowserSearchTool } from './tools/browser-search-tool'
 
 type StreamChatParams = {
   assistantId: string
@@ -30,14 +34,6 @@ type AssistantContext = {
   provider: NonNullable<Awaited<ReturnType<ProvidersRepository['getById']>>>
 }
 
-type PersistedMessagePart = {
-  type?: unknown
-  text?: unknown
-  reasoning?: unknown
-  content?: unknown
-  value?: unknown
-}
-
 export type AssistantRuntime = {
   streamChat: (params: StreamChatParams) => Promise<ReadableStream<unknown>>
   listThreadMessages: (params: ListThreadMessagesParams) => Promise<UIMessage[]>
@@ -48,7 +44,10 @@ type AssistantRuntimeServiceOptions = {
   assistantsRepo: AssistantsRepository
   providersRepo: ProvidersRepository
   threadsRepo: ThreadsRepository
+  webSearchSettingsRepo: WebSearchSettingsRepository
 }
+
+type JsonObject = Record<string, unknown>
 
 export class AssistantRuntimeService implements AssistantRuntime {
   private readonly registeredAgentSignatures = new Map<string, string>()
@@ -72,7 +71,10 @@ export class AssistantRuntimeService implements AssistantRuntime {
         trigger: params.trigger,
         memory: {
           thread: params.threadId,
-          resource: params.profileId
+          resource: params.profileId,
+          options: {
+            generateTitle: true
+          }
         }
       },
       sendReasoning: true
@@ -101,75 +103,9 @@ export class AssistantRuntimeService implements AssistantRuntime {
       perPage: false
     })
 
-    return messages
+    return toAISdkV5Messages(messages)
       .filter((message) => message.role === 'assistant' || message.role === 'user')
-      .map((message) => {
-        const metadata = message.content.metadata
-        const parts = Array.isArray(message.content.parts)
-          ? message.content.parts.map((part) => this.normalizePersistedPart(part))
-          : []
-        return {
-          id: message.id,
-          role: message.role,
-          parts: parts as UIMessage['parts'],
-          ...(metadata ? { metadata } : {})
-        } satisfies UIMessage
-      })
-  }
-
-  private readPersistedPartText(part: PersistedMessagePart): string {
-    if (typeof part.text === 'string') {
-      return part.text
-    }
-
-    if (typeof part.reasoning === 'string') {
-      return part.reasoning
-    }
-
-    if (typeof part.content === 'string') {
-      return part.content
-    }
-
-    if (typeof part.value === 'string') {
-      return part.value
-    }
-
-    return ''
-  }
-
-  private normalizePersistedPart(part: unknown): unknown {
-    if (!part || typeof part !== 'object') {
-      return part
-    }
-
-    const persistedPart = part as PersistedMessagePart
-    if (persistedPart.type === 'text') {
-      const { text, reasoning, content, value, ...rest } = persistedPart
-      void text
-      void reasoning
-      void content
-      void value
-      return {
-        ...rest,
-        type: 'text',
-        text: this.readPersistedPartText(persistedPart)
-      }
-    }
-
-    if (persistedPart.type === 'reasoning') {
-      const { text, reasoning, content, value, ...rest } = persistedPart
-      void text
-      void reasoning
-      void content
-      void value
-      return {
-        ...rest,
-        type: 'reasoning',
-        text: this.readPersistedPartText(persistedPart)
-      }
-    }
-
-    return part
+      .map((message) => message as UIMessage)
   }
 
   private async assertAssistantExists(assistantId: string): Promise<void> {
@@ -209,7 +145,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       throw new ChatRouteError(409, 'provider_model_missing', 'Assistant provider model is missing')
     }
 
-    if (Object.keys(assistant.workspaceConfig ?? {}).length === 0) {
+    if (!this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})) {
       throw new ChatRouteError(409, 'assistant_not_ready', 'Assistant workspace is not configured')
     }
 
@@ -228,22 +164,39 @@ export class AssistantRuntimeService implements AssistantRuntime {
       provider.updatedAt,
       provider.type,
       provider.selectedModel,
-      provider.apiHost ?? ''
+      provider.apiHost ?? '',
+      JSON.stringify(assistant.workspaceConfig ?? {}),
+      JSON.stringify(assistant.skillsConfig ?? {}),
+      JSON.stringify(assistant.memoryConfig ?? {})
     ].join('|')
 
     if (this.registeredAgentSignatures.get(assistant.id) === nextSignature) {
       return
     }
 
-    const tools = provider.type === 'ollama' ? { browserSearch: browserSearchTool } : undefined
+    const tools = {
+      browserSearch: createBrowserSearchTool({
+        resolveDefaultEngine: async () => this.options.webSearchSettingsRepo.getDefaultEngine(),
+        resolveKeepBrowserWindowOpen: async () =>
+          this.options.webSearchSettingsRepo.getKeepBrowserWindowOpen()
+      })
+    }
     const baseInstructions = assistant.instructions || 'You are a helpful assistant.'
     const agentInstructions = tools
       ? `${baseInstructions}\n\nWhen users ask for current web information, call the browserSearch tool before answering.`
       : baseInstructions
 
     const storage = this.options.mastra.getStorage()
-    const memory = new MockMemory(
-      storage ? { storage: storage as unknown as InMemoryStore } : undefined
+    const memory = new Memory({
+      ...(storage ? { storage } : {}),
+      options: {
+        ...this.resolveMemoryOptions(assistant.memoryConfig),
+        generateTitle: true
+      }
+    })
+    const workspace = await this.buildWorkspace(
+      assistant.workspaceConfig ?? {},
+      assistant.skillsConfig ?? {}
     )
 
     const agent = new Agent({
@@ -257,10 +210,98 @@ export class AssistantRuntimeService implements AssistantRuntime {
         selectedModel: provider.selectedModel
       }) as never,
       memory,
+      workspace,
       ...(tools ? { tools } : {})
     })
 
     this.options.mastra.addAgent(agent, assistant.id)
     this.registeredAgentSignatures.set(assistant.id, nextSignature)
   }
+
+  private async buildWorkspace(
+    workspaceConfig: JsonObject,
+    skillsConfig: JsonObject
+  ): Promise<Workspace> {
+    const rootPath = this.resolveWorkspaceRootPath(workspaceConfig)
+    if (!rootPath) {
+      throw new ChatRouteError(409, 'assistant_not_ready', 'Assistant workspace is not configured')
+    }
+
+    const skillsPaths = this.resolveSkillsPaths(skillsConfig)
+    const filesystem = new LocalFilesystem({ basePath: rootPath })
+    const workspace = new Workspace({
+      filesystem,
+      ...(skillsPaths.length > 0 ? { skills: skillsPaths } : {})
+    })
+
+    await workspace.init()
+    return workspace
+  }
+
+  private resolveWorkspaceRootPath(workspaceConfig: JsonObject): string | null {
+    const rootPath = this.toNonEmptyString(workspaceConfig.rootPath)
+    return rootPath ? path.resolve(rootPath) : null
+  }
+
+  private resolveSkillsPaths(skillsConfig: JsonObject): string[] {
+    const rawPaths = [
+      ...this.toStringList(skillsConfig.path),
+      ...this.toStringList(skillsConfig.paths),
+      ...this.toStringList(skillsConfig.skillPath),
+      ...this.toStringList(skillsConfig.skillPaths),
+      ...this.toStringList(skillsConfig.skills),
+      ...this.toStringList(skillsConfig.directories)
+    ]
+
+    const uniquePaths = new Set<string>()
+    for (const rawPath of rawPaths) {
+      uniquePaths.add(rawPath)
+    }
+
+    return [...uniquePaths]
+  }
+
+  private resolveMemoryOptions(memoryConfig: JsonObject | null): MemoryConfig {
+    const memoryConfigObject = memoryConfig ?? {}
+    const explicitOptions = this.toJsonObject(memoryConfigObject.options)
+    const baseOptions = Object.keys(explicitOptions).length > 0 ? explicitOptions : memoryConfigObject
+
+    return {
+      ...(baseOptions as MemoryConfig),
+      generateTitle: true
+    }
+  }
+
+  private toStringList(value: unknown): string[] {
+    if (typeof value === 'string') {
+      return this.toNonEmptyString(value) ? [value.trim()] : []
+    }
+
+    if (!Array.isArray(value)) {
+      return []
+    }
+
+    return value
+      .filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+  }
+
+  private toNonEmptyString(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null
+    }
+
+    const normalized = value.trim()
+    return normalized.length > 0 ? normalized : null
+  }
+
+  private toJsonObject(value: unknown): JsonObject {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return value as JsonObject
+    }
+
+    return {}
+  }
+
 }

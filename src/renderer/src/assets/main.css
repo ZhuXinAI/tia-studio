@@ -67,3 +67,11 @@ body {
 #root {
   min-height: 100vh;
 }
+
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}

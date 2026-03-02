@@ -44,22 +44,13 @@ export function ThreadChatCard({
     Boolean(selectedAssistant && readiness.canChat) && !isChatStreaming && !isLoadingChatHistory
 
   return (
-    <Card className="flex min-h-0 flex-1 flex-col border-border/80 bg-card/78 py-0">
-      <CardHeader className="border-b border-border/70 py-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1">
-            <CardTitle className="text-xl">
-              {selectedThread?.title ?? `Chat with ${selectedAssistant?.name ?? 'Assistant'}`}
-            </CardTitle>
-            <p className="text-muted-foreground text-sm">
-              {selectedAssistant
-                ? selectedThread
-                  ? `Using ${selectedAssistant.name}.`
-                  : `Using ${selectedAssistant.name}. Send a message to create a new thread.`
-                : 'Choose an assistant from the sidebar.'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+    <Card className="flex min-h-0 flex-1 flex-col gap-0 border-border/80 bg-card/78 py-0 rounded-none border-t-0">
+      <CardHeader className="border-b border-border/70 py-2">
+        <div className="flex h-full flex-nowrap items-center justify-between gap-3 overflow-hidden">
+          <CardTitle className="min-w-0 flex-1 truncate text-base">
+            {selectedThread?.title ?? `Chat with ${selectedAssistant?.name ?? 'Assistant'}`}
+          </CardTitle>
+          <div className="flex shrink-0 items-center gap-2">
             <div className="bg-muted/50 text-muted-foreground inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs">
               <Sparkles className="size-3.5" />
               Default assistant chat
@@ -76,15 +67,16 @@ export function ThreadChatCard({
             </Button>
           </div>
         </div>
+      </CardHeader>
+
+      <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden py-5">
         {!readiness.canChat && selectedAssistant ? (
-          <p className="text-muted-foreground rounded-md border border-amber-300/40 bg-amber-400/10 px-3 py-2 text-xs">
+          <p className="text-muted-foreground mb-4 rounded-md border border-amber-300/40 bg-amber-400/10 px-3 py-2 text-xs">
             Assistant setup is incomplete. Open Configure to set workspace path, provider, and
             prompt before sending messages.
           </p>
         ) : null}
-      </CardHeader>
 
-      <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden py-5">
         <ThreadChatMessageList
           chat={chat}
           assistantName={selectedAssistant?.name ?? 'Assistant'}

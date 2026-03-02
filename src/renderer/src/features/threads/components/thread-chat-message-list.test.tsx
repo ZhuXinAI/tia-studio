@@ -11,6 +11,9 @@ const useAISDKRuntimeMock = vi.fn((chat: unknown) => {
   void chat
   return { id: 'runtime' }
 })
+const threadMessagesComponentsMock = vi.fn((components: unknown) => {
+  void components
+})
 
 vi.mock('@assistant-ui/react-ai-sdk', () => ({
   useAISDKRuntime: (chat: unknown) => useAISDKRuntimeMock(chat)
@@ -42,7 +45,10 @@ vi.mock('@assistant-ui/react', () => {
       Root,
       Viewport,
       Empty,
-      Messages: () => null
+      Messages: ({ components }: { components: unknown }) => {
+        threadMessagesComponentsMock(components)
+        return null
+      }
     }
   }
 })
@@ -57,6 +63,7 @@ describe('thread chat message list', () => {
     document.body.appendChild(container)
     root = createRoot(container)
     useAISDKRuntimeMock.mockClear()
+    threadMessagesComponentsMock.mockClear()
   })
 
   afterEach(() => {
@@ -90,5 +97,49 @@ describe('thread chat message list', () => {
 
     expect(useAISDKRuntimeMock).toHaveBeenCalledTimes(1)
     expect(useAISDKRuntimeMock).toHaveBeenCalledWith(chat)
+  })
+
+  it('keeps assistant message component stable between rerenders', async () => {
+    const chat = {
+      messages: [],
+      status: 'ready',
+      error: null
+    } as unknown as UseChatHelpers<UIMessage>
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          chat={chat}
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    const firstComponents = threadMessagesComponentsMock.mock.calls[0]?.[0] as
+      | { AssistantMessage?: unknown }
+      | undefined
+    expect(firstComponents?.AssistantMessage).toBeDefined()
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          chat={chat}
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={true}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    const secondComponents = threadMessagesComponentsMock.mock.calls[1]?.[0] as
+      | { AssistantMessage?: unknown }
+      | undefined
+    expect(secondComponents?.AssistantMessage).toBe(firstComponents?.AssistantMessage)
   })
 })
