@@ -127,4 +127,14 @@ export class ProvidersRepository {
 
     return this.getById(id)
   }
+
+  async delete(id: string): Promise<boolean> {
+    const existing = await this.getById(id)
+    if (!existing) {
+      return false
+    }
+
+    await this.db.execute('DELETE FROM app_providers WHERE id = ?', [id])
+    return true
+  }
 }

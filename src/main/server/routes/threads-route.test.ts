@@ -93,4 +93,51 @@ describe('threads route', () => {
     const patched = await patchResponse.json()
     expect(patched.title).toBe('New title')
   })
+
+  it('deletes thread by id', async () => {
+    const provider = await providersRepo.create({
+      name: 'OpenAI',
+      type: 'openai',
+      apiKey: 'test-key',
+      selectedModel: 'gpt-5'
+    })
+    const assistant = await assistantsRepo.create({
+      name: 'Trip Planner',
+      providerId: provider.id
+    })
+    const createResponse = await app.request('http://localhost/v1/threads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assistantId: assistant.id,
+        resourceId: 'profile-default',
+        title: 'Delete me'
+      })
+    })
+    const created = await createResponse.json()
+
+    const deleteResponse = await app.request(`http://localhost/v1/threads/${created.id}`, {
+      method: 'DELETE'
+    })
+
+    expect(deleteResponse.status).toBe(204)
+
+    const listResponse = await app.request(
+      `http://localhost/v1/threads?assistantId=${assistant.id}`
+    )
+    const listBody = await listResponse.json()
+    expect(listBody).toEqual([])
+  })
+
+  it('returns 404 when deleting missing thread', async () => {
+    const response = await app.request('http://localhost/v1/threads/missing-thread', {
+      method: 'DELETE'
+    })
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: 'Thread not found'
+    })
+  })
 })

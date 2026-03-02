@@ -79,6 +79,19 @@ export class AssistantsRepository {
     return parseAssistantRow(row as Record<string, unknown>)
   }
 
+  async countByProviderId(providerId: string): Promise<number> {
+    const result = await this.db.execute(
+      'SELECT COUNT(*) AS total FROM app_assistants WHERE provider_id = ?',
+      [providerId]
+    )
+    const row = result.rows.at(0) as Record<string, unknown> | undefined
+    if (!row) {
+      return 0
+    }
+
+    return Number(row.total ?? 0)
+  }
+
   async create(input: CreateAssistantInput): Promise<AppAssistant> {
     const id = randomUUID()
     await this.db.execute(
@@ -128,5 +141,16 @@ export class AssistantsRepository {
     )
 
     return this.getById(id)
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const existing = await this.getById(id)
+    if (!existing) {
+      return false
+    }
+
+    await this.db.execute('DELETE FROM app_threads WHERE assistant_id = ?', [id])
+    await this.db.execute('DELETE FROM app_assistants WHERE id = ?', [id])
+    return true
   }
 }

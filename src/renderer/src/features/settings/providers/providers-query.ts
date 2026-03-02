@@ -1,3 +1,5 @@
+import { createApiClient } from '../../../lib/api-client'
+
 export type ProviderType = 'openai' | 'openai-response' | 'gemini' | 'anthropic' | 'ollama'
 
 export type ProviderRecord = {
@@ -23,19 +25,35 @@ export type SaveProviderInput = {
   enabled?: boolean
 }
 
-const providersStorageKey = 'tia.providers.v1'
-export const providerConnectionEventName = 'tia:provider:test-connection'
-
-function createProviderId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-
-  return `provider_${Date.now()}_${Math.random().toString(16).slice(2)}`
+type ProviderConnectionTestResult = {
+  ok: boolean
+  error?: string
 }
 
-function readProviders(): ProviderRecord[] {
-  const rawValue = window.localStorage.getItem(providersStorageKey)
+const apiClient = createApiClient()
+const legacyProvidersStorageKey = 'tia.providers.v1'
+export const providerConnectionEventName = 'tia:provider:test-connection'
+
+function normalizeProviderModels(providerModels?: string[]): string[] | null {
+  if (!providerModels || providerModels.length === 0) {
+    return null
+  }
+
+  return providerModels.map((model) => model.trim()).filter((model) => model.length > 0)
+}
+
+function normalizeSaveInput(input: SaveProviderInput): SaveProviderInput {
+  return {
+    ...input,
+    name: input.name.trim(),
+    apiHost: input.apiHost?.trim() || undefined,
+    selectedModel: input.selectedModel.trim(),
+    providerModels: normalizeProviderModels(input.providerModels) ?? undefined
+  }
+}
+
+function readLegacyProviders(): ProviderRecord[] {
+  const rawValue = window.localStorage.getItem(legacyProvidersStorageKey)
   if (!rawValue) {
     return []
   }
@@ -52,77 +70,70 @@ function readProviders(): ProviderRecord[] {
   }
 }
 
-function writeProviders(providers: ProviderRecord[]): void {
-  window.localStorage.setItem(providersStorageKey, JSON.stringify(providers))
+function clearLegacyProviders(): void {
+  window.localStorage.removeItem(legacyProvidersStorageKey)
 }
 
-function normalizeProviderModels(providerModels?: string[]): string[] | null {
-  if (!providerModels || providerModels.length === 0) {
-    return null
+async function migrateLegacyProvidersIfNeeded(existingProviders: ProviderRecord[]): Promise<boolean> {
+  if (existingProviders.length > 0) {
+    return false
   }
 
-  return providerModels
-    .map((model) => model.trim())
-    .filter((model) => model.length > 0)
+  const legacyProviders = readLegacyProviders()
+  if (legacyProviders.length === 0) {
+    return false
+  }
+
+  for (const provider of legacyProviders) {
+    await apiClient.post<ProviderRecord>('/v1/providers', {
+      name: provider.name,
+      type: provider.type,
+      apiKey: provider.apiKey,
+      apiHost: provider.apiHost ?? undefined,
+      selectedModel: provider.selectedModel,
+      providerModels: provider.providerModels ?? undefined,
+      enabled: provider.enabled
+    })
+  }
+
+  clearLegacyProviders()
+  return true
 }
 
 export async function listProviders(): Promise<ProviderRecord[]> {
-  return readProviders()
+  const providers = await apiClient.get<ProviderRecord[]>('/v1/providers')
+  const migrated = await migrateLegacyProvidersIfNeeded(providers)
+  if (!migrated) {
+    return providers
+  }
+
+  return apiClient.get<ProviderRecord[]>('/v1/providers')
 }
 
 export async function createProvider(input: SaveProviderInput): Promise<ProviderRecord> {
-  const now = new Date().toISOString()
-  const provider: ProviderRecord = {
-    id: createProviderId(),
-    name: input.name,
-    type: input.type,
-    apiKey: input.apiKey,
-    apiHost: input.apiHost?.trim() || null,
-    selectedModel: input.selectedModel.trim(),
-    providerModels: normalizeProviderModels(input.providerModels),
-    enabled: input.enabled !== false,
-    createdAt: now,
-    updatedAt: now
-  }
-
-  const providers = readProviders()
-  providers.unshift(provider)
-  writeProviders(providers)
-
-  return provider
+  return apiClient.post<ProviderRecord>('/v1/providers', normalizeSaveInput(input))
 }
 
 export async function updateProvider(
   providerId: string,
   input: Partial<SaveProviderInput>
 ): Promise<ProviderRecord> {
-  const providers = readProviders()
-  const providerIndex = providers.findIndex((provider) => provider.id === providerId)
-
-  if (providerIndex === -1) {
-    throw new Error('Provider not found')
-  }
-
-  const currentProvider = providers[providerIndex]
-  const nextProvider: ProviderRecord = {
-    ...currentProvider,
-    name: input.name ?? currentProvider.name,
-    type: input.type ?? currentProvider.type,
-    apiKey: input.apiKey ?? currentProvider.apiKey,
-    apiHost: input.apiHost === undefined ? currentProvider.apiHost : input.apiHost || null,
-    selectedModel: input.selectedModel?.trim() || currentProvider.selectedModel,
+  const normalizedInput: Partial<SaveProviderInput> = {
+    ...input,
+    name: input.name?.trim(),
+    apiHost: input.apiHost?.trim() || input.apiHost,
+    selectedModel: input.selectedModel?.trim(),
     providerModels:
       input.providerModels === undefined
-        ? currentProvider.providerModels
-        : normalizeProviderModels(input.providerModels),
-    enabled: input.enabled ?? currentProvider.enabled,
-    updatedAt: new Date().toISOString()
+        ? undefined
+        : normalizeProviderModels(input.providerModels) ?? undefined
   }
 
-  providers.splice(providerIndex, 1, nextProvider)
-  writeProviders(providers)
+  return apiClient.patch<ProviderRecord>(`/v1/providers/${providerId}`, normalizedInput)
+}
 
-  return nextProvider
+export async function deleteProvider(providerId: string): Promise<void> {
+  await apiClient.delete(`/v1/providers/${providerId}`)
 }
 
 export async function testProviderConnection(input: SaveProviderInput): Promise<void> {
@@ -136,4 +147,15 @@ export async function testProviderConnection(input: SaveProviderInput): Promise<
       }
     })
   )
+
+  const result = await apiClient.post<ProviderConnectionTestResult>('/v1/providers/test-connection', {
+    type: input.type,
+    apiKey: input.apiKey,
+    apiHost: input.apiHost?.trim() || undefined,
+    selectedModel: input.selectedModel.trim()
+  })
+
+  if (!result.ok) {
+    throw new Error(result.error ?? 'Connection check failed')
+  }
 }

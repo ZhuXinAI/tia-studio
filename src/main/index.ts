@@ -1,21 +1,47 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, type OpenDialogOptions } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { serve, type ServerType } from '@hono/node-server'
 import icon from '../../resources/icon.png?asset'
 import { resolveServerConfig } from './config/server-config'
+import { AssistantRuntimeService } from './mastra/assistant-runtime'
+import { createMastraInstance } from './mastra/store'
+import { migrateAppSchema } from './persistence/migrate'
+import { AssistantsRepository } from './persistence/repos/assistants-repo'
+import { ProvidersRepository } from './persistence/repos/providers-repo'
+import { ThreadsRepository } from './persistence/repos/threads-repo'
 import { createApp } from './server/create-app'
 
 const serverConfig = resolveServerConfig({})
 let localApiServer: ServerType | null = null
+let persistenceDatabasePath: string | null = null
 
-function startLocalApiServer(): void {
+async function startLocalApiServer(): Promise<void> {
   if (localApiServer) {
     return
   }
 
+  persistenceDatabasePath = join(app.getPath('userData'), 'tia-studio.db')
+  const db = await migrateAppSchema(persistenceDatabasePath)
+  const providersRepo = new ProvidersRepository(db)
+  const assistantsRepo = new AssistantsRepository(db)
+  const threadsRepo = new ThreadsRepository(db)
+  const mastra = createMastraInstance(persistenceDatabasePath)
+  const assistantRuntime = new AssistantRuntimeService({
+    mastra,
+    assistantsRepo,
+    providersRepo,
+    threadsRepo
+  })
+
   const apiApp = createApp({
-    token: serverConfig.token
+    token: serverConfig.token,
+    repositories: {
+      providers: providersRepo,
+      assistants: assistantsRepo,
+      threads: threadsRepo
+    },
+    assistantRuntime
   })
 
   localApiServer = serve(
@@ -28,6 +54,9 @@ function startLocalApiServer(): void {
       console.log(
         `Tia local API is running on http://${serverInfo.address}:${serverInfo.port} (localhost only)`
       )
+      if (persistenceDatabasePath) {
+        console.log(`Tia database path: ${persistenceDatabasePath}`)
+      }
     }
   )
 }
@@ -59,6 +88,12 @@ function createWindow(): void {
     mainWindow.show()
   })
 
+  if (is.dev) {
+    mainWindow.webContents.once('did-finish-load', () => {
+      mainWindow.webContents.openDevTools({ mode: 'detach' })
+    })
+  }
+
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
@@ -76,7 +111,7 @@ function createWindow(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
@@ -95,8 +130,24 @@ app.whenReady().then(() => {
       authToken: serverConfig.token
     }
   })
+  ipcMain.handle('tia:pick-directory', async (event) => {
+    const currentWindow = BrowserWindow.fromWebContents(event.sender)
+    const openDialogOptions: OpenDialogOptions = {
+      title: 'Select Workspace Folder',
+      properties: ['openDirectory', 'createDirectory']
+    }
+    const result = currentWindow
+      ? await dialog.showOpenDialog(currentWindow, openDialogOptions)
+      : await dialog.showOpenDialog(openDialogOptions)
 
-  startLocalApiServer()
+    if (result.canceled || result.filePaths.length === 0) {
+      return null
+    }
+
+    return result.filePaths[0]
+  })
+
+  await startLocalApiServer()
   createWindow()
 
   app.on('activate', function () {

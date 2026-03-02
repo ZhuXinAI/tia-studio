@@ -19,3 +19,10 @@ export const createProviderSchema = z.object({
 })
 
 export const updateProviderSchema = createProviderSchema.partial()
+
+export const testProviderConnectionSchema = z.object({
+  type: providerTypeSchema,
+  apiKey: z.string().min(1),
+  apiHost: z.string().url().optional(),
+  selectedModel: z.string().min(1)
+})

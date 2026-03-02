@@ -4,11 +4,11 @@ import { RouterProvider } from 'react-router-dom'
 import { createAppMemoryRouter } from './router'
 
 describe('app router', () => {
-  it('redirects root route to /assistants', async () => {
+  it('redirects root route to /chat', async () => {
     const router = createAppMemoryRouter(['/'])
 
     await router.navigate('/')
-    expect(router.state.location.pathname).toBe('/assistants')
+    expect(router.state.location.pathname).toBe('/chat')
   })
 
   it('renders provider settings route', () => {
@@ -16,6 +16,8 @@ describe('app router', () => {
     const html = renderToString(<RouterProvider router={router} />)
 
     expect(html).toContain('Model Provider Settings')
+    expect(html).toContain('Model Provider')
+    expect(html).toContain('General Settings')
   })
 
   it('renders assistants route with creation entrypoint', () => {
@@ -26,12 +28,12 @@ describe('app router', () => {
     expect(html).toContain('New Assistant')
   })
 
-  it('renders workspace and settings sections in sidebar shell', () => {
-    const router = createAppMemoryRouter(['/assistants'])
+  it('renders header nav with settings gear icon and no legacy control center sidebar', () => {
+    const router = createAppMemoryRouter(['/chat'])
     const html = renderToString(<RouterProvider router={router} />)
 
-    expect(html).toContain('Workspace')
-    expect(html).toContain('Settings')
+    expect(html).toContain('aria-label="Open settings"')
+    expect(html).not.toContain('Control Center')
     expect(html).toContain('data-slot="button"')
   })
 })

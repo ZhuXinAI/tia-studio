@@ -39,3 +39,7 @@ export async function updateAssistant(
 ): Promise<AssistantRecord> {
   return apiClient.patch<AssistantRecord>(`/v1/assistants/${assistantId}`, input)
 }
+
+export async function deleteAssistant(assistantId: string): Promise<void> {
+  await apiClient.delete(`/v1/assistants/${assistantId}`)
+}

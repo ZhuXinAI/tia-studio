@@ -4,9 +4,11 @@ import type { ProviderRecord } from '../settings/providers/providers-query'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { Textarea } from '../../components/ui/textarea'
 
 type AssistantEditorValues = {
   name: string
+  instructions: string
   providerId: string
   workspacePath: string
 }
@@ -15,12 +17,14 @@ type AssistantEditorProps = {
   providers: ProviderRecord[]
   initialValue?: AssistantRecord | null
   isSubmitting?: boolean
+  onSelectWorkspacePath?: () => Promise<string | null> | string | null
   onSubmit: (input: SaveAssistantInput) => Promise<void> | void
 }
 
 function toInitialValues(initialValue?: AssistantRecord | null): AssistantEditorValues {
   return {
     name: initialValue?.name ?? '',
+    instructions: initialValue?.instructions ?? '',
     providerId: initialValue?.providerId ?? '',
     workspacePath:
       typeof initialValue?.workspaceConfig?.rootPath === 'string'
@@ -49,20 +53,22 @@ export function AssistantEditor({
   providers,
   initialValue,
   isSubmitting,
+  onSelectWorkspacePath,
   onSubmit
 }: AssistantEditorProps): React.JSX.Element {
   const [values, setValues] = useState<AssistantEditorValues>(() => toInitialValues(initialValue))
   const [error, setError] = useState<string | null>(null)
+  const [isSelectingWorkspacePath, setIsSelectingWorkspacePath] = useState(false)
 
   const title = useMemo(() => {
     return initialValue ? 'Edit Assistant' : 'Create Assistant'
   }, [initialValue])
 
-  const handleInput = (key: keyof AssistantEditorValues, value: string) => {
+  const handleInput = (key: keyof AssistantEditorValues, value: string): void => {
     setValues((current) => ({ ...current, [key]: value }))
   }
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault()
     const validationError = validate(values)
     setError(validationError)
@@ -72,11 +78,31 @@ export function AssistantEditor({
 
     await onSubmit({
       name: values.name.trim(),
+      instructions: values.instructions.trim(),
       providerId: values.providerId,
       workspaceConfig: {
         rootPath: values.workspacePath.trim()
       }
     })
+  }
+
+  const handleSelectWorkspacePath = async (): Promise<void> => {
+    if (!onSelectWorkspacePath || isSelectingWorkspacePath) {
+      return
+    }
+
+    setError(null)
+    setIsSelectingWorkspacePath(true)
+    try {
+      const selectedPath = await onSelectWorkspacePath()
+      if (typeof selectedPath === 'string' && selectedPath.trim().length > 0) {
+        handleInput('workspacePath', selectedPath.trim())
+      }
+    } catch (selectError) {
+      setError(selectError instanceof Error ? selectError.message : 'Unable to pick workspace folder')
+    } finally {
+      setIsSelectingWorkspacePath(false)
+    }
   }
 
   return (
@@ -111,13 +137,34 @@ export function AssistantEditor({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="assistant-workspace-path">Workspace Path</Label>
-        <Input
-          id="assistant-workspace-path"
-          value={values.workspacePath}
-          onChange={(event) => handleInput('workspacePath', event.target.value)}
-          placeholder="/Users/name/workspace"
+        <Label htmlFor="assistant-prompt">Prompt</Label>
+        <Textarea
+          id="assistant-prompt"
+          rows={4}
+          value={values.instructions}
+          onChange={(event) => handleInput('instructions', event.target.value)}
+          placeholder="You are a helpful assistant that answers with concise, practical steps."
         />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="assistant-workspace-path">Workspace Path</Label>
+        <div className="flex items-center gap-2">
+          <Input
+            id="assistant-workspace-path"
+            value={values.workspacePath}
+            onChange={(event) => handleInput('workspacePath', event.target.value)}
+            placeholder="/Users/name/workspace"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isSubmitting || isSelectingWorkspacePath || !onSelectWorkspacePath}
+            onClick={() => void handleSelectWorkspacePath()}
+          >
+            {isSelectingWorkspacePath ? 'Opening...' : 'Browse'}
+          </Button>
+        </div>
       </div>
 
       {error ? <p role="alert" className="text-destructive text-sm">{error}</p> : null}

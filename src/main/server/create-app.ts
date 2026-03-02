@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
@@ -23,12 +24,30 @@ type CreateAppOptions = {
 export function createApp(options: CreateAppOptions): Hono {
   const app = new Hono()
 
+  app.use(
+    '/v1/*',
+    cors({
+      origin: (origin) => origin ?? '*',
+      allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowHeaders: ['Authorization', 'Content-Type']
+    })
+  )
   app.use('/v1/*', createBearerAuthMiddleware(options.token))
+  app.use(
+    '/chat/*',
+    cors({
+      origin: (origin) => origin ?? '*',
+      allowMethods: ['GET', 'POST', 'OPTIONS'],
+      allowHeaders: ['Authorization', 'Content-Type']
+    })
+  )
+  app.use('/chat/*', createBearerAuthMiddleware(options.token))
   registerHealthRoute(app)
 
   if (options.repositories) {
     registerProvidersRoute(app, {
-      providersRepo: options.repositories.providers
+      providersRepo: options.repositories.providers,
+      assistantsRepo: options.repositories.assistants
     })
     registerAssistantsRoute(app, {
       assistantsRepo: options.repositories.assistants,

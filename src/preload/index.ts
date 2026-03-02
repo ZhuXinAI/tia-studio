@@ -8,7 +8,8 @@ const tiaDesktop = {
     ipcRenderer.invoke('tia:get-desktop-config') as Promise<{
       baseUrl: string
       authToken: string
-    }>
+    }>,
+  pickDirectory: () => ipcRenderer.invoke('tia:pick-directory') as Promise<string | null>
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

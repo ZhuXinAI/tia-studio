@@ -7,6 +7,7 @@ declare global {
         baseUrl: string
         authToken: string
       }>
+      pickDirectory: () => Promise<string | null>
     }
   }
 }

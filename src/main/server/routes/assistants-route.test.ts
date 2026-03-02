@@ -4,17 +4,21 @@ import type { AppDatabase } from '../../persistence/client'
 import { migrateAppSchema } from '../../persistence/migrate'
 import { AssistantsRepository } from '../../persistence/repos/assistants-repo'
 import { ProvidersRepository } from '../../persistence/repos/providers-repo'
+import { ThreadsRepository } from '../../persistence/repos/threads-repo'
 import { registerAssistantsRoute } from './assistants-route'
 
 describe('assistants route', () => {
   let db: AppDatabase
   let app: Hono
   let providersRepo: ProvidersRepository
+  let assistantsRepo: AssistantsRepository
+  let threadsRepo: ThreadsRepository
 
   beforeEach(async () => {
     db = await migrateAppSchema(':memory:')
     providersRepo = new ProvidersRepository(db)
-    const assistantsRepo = new AssistantsRepository(db)
+    assistantsRepo = new AssistantsRepository(db)
+    threadsRepo = new ThreadsRepository(db)
     app = new Hono()
     registerAssistantsRoute(app, { assistantsRepo, providersRepo })
   })
@@ -88,5 +92,43 @@ describe('assistants route', () => {
     expect(patchResponse.status).toBe(200)
     const patched = await patchResponse.json()
     expect(patched.instructions).toBe('You are a helpful travel assistant.')
+  })
+
+  it('deletes assistant and its threads', async () => {
+    const provider = await providersRepo.create({
+      name: 'OpenAI',
+      type: 'openai',
+      apiKey: 'test-key',
+      selectedModel: 'gpt-5'
+    })
+    const assistant = await assistantsRepo.create({
+      name: 'Trip Planner',
+      providerId: provider.id
+    })
+    await threadsRepo.create({
+      assistantId: assistant.id,
+      resourceId: 'resource-1',
+      title: 'Thread one'
+    })
+
+    const response = await app.request(`http://localhost/v1/assistants/${assistant.id}`, {
+      method: 'DELETE'
+    })
+
+    expect(response.status).toBe(204)
+    await expect(assistantsRepo.getById(assistant.id)).resolves.toBeNull()
+    await expect(threadsRepo.listByAssistant(assistant.id)).resolves.toEqual([])
+  })
+
+  it('returns 404 when deleting a missing assistant', async () => {
+    const response = await app.request('http://localhost/v1/assistants/missing-assistant', {
+      method: 'DELETE'
+    })
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: 'Assistant not found'
+    })
   })
 })

@@ -16,7 +16,11 @@ export const appRoutes: RouteObject[] = [
     children: [
       {
         index: true,
-        loader: () => redirect('/assistants')
+        loader: () => redirect('/chat')
+      },
+      {
+        path: 'chat/:assistantId?/:threadId?',
+        element: <ThreadPage />
       },
       {
         path: 'assistants',
@@ -34,11 +38,13 @@ export const appRoutes: RouteObject[] = [
   }
 ]
 
-export function createAppRouter() {
+export function createAppRouter(): ReturnType<typeof createHashRouter> {
   return createHashRouter(appRoutes)
 }
 
-export function createAppMemoryRouter(initialEntries: string[] = ['/assistants']) {
+export function createAppMemoryRouter(
+  initialEntries: string[] = ['/chat']
+): ReturnType<typeof createMemoryRouter> {
   return createMemoryRouter(appRoutes, {
     initialEntries
   })

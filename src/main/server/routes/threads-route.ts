@@ -8,7 +8,7 @@ type RegisterThreadsRouteOptions = {
   assistantsRepo?: AssistantsRepository
 }
 
-function invalidBodyResponse() {
+function invalidBodyResponse(): { ok: false; error: string } {
   return { ok: false as const, error: 'Invalid JSON body' }
 }
 
@@ -33,7 +33,10 @@ export function registerThreadsRoute(app: Hono, options: RegisterThreadsRouteOpt
 
     const parsed = createThreadSchema.safeParse(body)
     if (!parsed.success) {
-      return context.json({ ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' }, 400)
+      return context.json(
+        { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' },
+        400
+      )
     }
 
     if (options.assistantsRepo) {
@@ -57,14 +60,29 @@ export function registerThreadsRoute(app: Hono, options: RegisterThreadsRouteOpt
 
     const parsed = updateThreadSchema.safeParse(body)
     if (!parsed.success) {
-      return context.json({ ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' }, 400)
+      return context.json(
+        { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' },
+        400
+      )
     }
 
-    const thread = await options.threadsRepo.updateTitle(context.req.param('threadId'), parsed.data.title)
+    const thread = await options.threadsRepo.updateTitle(
+      context.req.param('threadId'),
+      parsed.data.title
+    )
     if (!thread) {
       return context.json({ ok: false, error: 'Thread not found' }, 404)
     }
 
     return context.json(thread)
+  })
+
+  app.delete('/v1/threads/:threadId', async (context) => {
+    const deleted = await options.threadsRepo.delete(context.req.param('threadId'))
+    if (!deleted) {
+      return context.json({ ok: false, error: 'Thread not found' }, 404)
+    }
+
+    return context.body(null, 204)
   })
 }

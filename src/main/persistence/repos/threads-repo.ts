@@ -79,6 +79,16 @@ export class ThreadsRepository {
     return this.getById(id)
   }
 
+  async delete(id: string): Promise<boolean> {
+    const existing = await this.getById(id)
+    if (!existing) {
+      return false
+    }
+
+    await this.db.execute('DELETE FROM app_threads WHERE id = ?', [id])
+    return true
+  }
+
   async touchLastMessageAt(id: string, timestamp: string): Promise<void> {
     await this.db.execute(
       'UPDATE app_threads SET last_message_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',

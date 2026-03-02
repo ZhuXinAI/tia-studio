@@ -73,4 +73,13 @@ export function registerAssistantsRoute(
 
     return context.json(assistant)
   })
+
+  app.delete('/v1/assistants/:assistantId', async (context) => {
+    const deleted = await options.assistantsRepo.delete(context.req.param('assistantId'))
+    if (!deleted) {
+      return context.json({ ok: false, error: 'Assistant not found' }, 404)
+    }
+
+    return context.body(null, 204)
+  })
 }

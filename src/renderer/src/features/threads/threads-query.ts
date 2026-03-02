@@ -22,6 +22,10 @@ const profileIdStorageKey = 'tia.profile.id'
 const defaultProfileId = 'default-profile'
 
 export function getActiveResourceId(): string {
+  if (typeof window === 'undefined') {
+    return defaultProfileId
+  }
+
   const rawValue = window.localStorage.getItem(profileIdStorageKey)
   if (!rawValue || rawValue.trim().length === 0) {
     window.localStorage.setItem(profileIdStorageKey, defaultProfileId)
@@ -44,4 +48,8 @@ export async function createThread(input: CreateThreadInput): Promise<ThreadReco
 
 export async function updateThreadTitle(threadId: string, title: string): Promise<ThreadRecord> {
   return apiClient.patch<ThreadRecord>(`/v1/threads/${threadId}`, { title })
+}
+
+export async function deleteThread(threadId: string): Promise<void> {
+  await apiClient.delete(`/v1/threads/${threadId}`)
 }

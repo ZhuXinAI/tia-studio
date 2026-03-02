@@ -5,6 +5,7 @@ interface TiaDesktopAPI {
     baseUrl: string
     authToken: string
   }>
+  pickDirectory: () => Promise<string | null>
 }
 
 declare global {

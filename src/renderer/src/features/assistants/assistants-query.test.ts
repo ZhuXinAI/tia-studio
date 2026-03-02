@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createApiClient } from './api-client'
+import { deleteAssistant } from './assistants-query'
 
-describe('api client', () => {
+describe('assistants query api client', () => {
   beforeEach(() => {
-    vi.resetAllMocks()
+    vi.restoreAllMocks()
     window.tiaDesktop = {
       getConfig: vi.fn(async () => ({
         baseUrl: 'http://127.0.0.1:4769',
@@ -15,19 +15,20 @@ describe('api client', () => {
     }
   })
 
-  it('includes bearer auth header on requests', async () => {
-    const fetchSpy = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }))
+  it('deletes assistant through backend api', async () => {
+    const fetchSpy = vi.fn(async () =>
+      new Response(null, {
+        status: 204
+      })
+    )
     vi.stubGlobal('fetch', fetchSpy)
 
-    const client = createApiClient()
-    await client.post('/v1/providers', {
-      name: 'OpenAI'
-    })
+    await deleteAssistant('assistant-1')
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      'http://127.0.0.1:4769/v1/providers',
+      'http://127.0.0.1:4769/v1/assistants/assistant-1',
       expect.objectContaining({
-        method: 'POST',
+        method: 'DELETE',
         headers: expect.objectContaining({
           Authorization: 'Bearer test-token'
         })
