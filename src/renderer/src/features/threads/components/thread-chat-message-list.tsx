@@ -8,6 +8,10 @@ import { useAISDKRuntime } from '@assistant-ui/react-ai-sdk'
 import type { UseChatHelpers } from '@ai-sdk/react'
 import type { UIMessage } from 'ai'
 import { toErrorMessage } from '../thread-page-routing'
+import { Reasoning, ReasoningGroup } from '@renderer/components/assistant-ui/reasoning'
+import { MarkdownText } from '@renderer/components/assistant-ui/markdown-text'
+import { ToolFallback } from '@renderer/components/assistant-ui/tool-fallback'
+import { ToolGroup } from '@renderer/components/assistant-ui/tool-group'
 
 type ThreadChatMessageListProps = {
   chat: UseChatHelpers<UIMessage>
@@ -20,21 +24,6 @@ type ThreadChatMessageListProps = {
 
 function UserTextPart(): React.JSX.Element {
   return <MessagePartPrimitive.Text className="text-sm leading-relaxed whitespace-pre-wrap" />
-}
-
-function AssistantTextPart(): React.JSX.Element {
-  return <MessagePartPrimitive.Text className="text-sm leading-relaxed whitespace-pre-wrap" />
-}
-
-function AssistantReasoningPart(): React.JSX.Element {
-  return (
-    <details className="mt-3 rounded-md border border-border/70 bg-muted/35 px-3 py-2">
-      <summary className="cursor-pointer text-xs font-medium tracking-wide uppercase">
-        Reasoning
-      </summary>
-      <MessagePartPrimitive.Text className="text-muted-foreground mt-2 whitespace-pre-wrap text-xs leading-relaxed" />
-    </details>
-  )
 }
 
 function UserMessageBubble(): React.JSX.Element {
@@ -60,8 +49,13 @@ function AssistantMessageBubble({ assistantName }: { assistantName: string }): R
       </p>
       <MessagePrimitive.Parts
         components={{
-          Text: AssistantTextPart,
-          Reasoning: AssistantReasoningPart
+          Reasoning: Reasoning,
+          ReasoningGroup: ReasoningGroup,
+          Text: MarkdownText,
+          tools: {
+            Fallback: ToolFallback
+          },
+          ToolGroup: ToolGroup
         }}
       />
     </MessagePrimitive.Root>
