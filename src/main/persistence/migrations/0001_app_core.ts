@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS app_assistants (
   workspace_config TEXT NOT NULL DEFAULT '{}',
   skills_config TEXT NOT NULL DEFAULT '{}',
   mcp_config TEXT NOT NULL DEFAULT '{}',
+  max_steps INTEGER NOT NULL DEFAULT 100,
   memory_config TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

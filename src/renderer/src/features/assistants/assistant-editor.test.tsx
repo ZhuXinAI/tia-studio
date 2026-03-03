@@ -62,6 +62,7 @@ describe('assistant editor', () => {
       root.render(
         <AssistantEditor
           providers={[provider]}
+          mcpServers={{}}
           onSubmit={() => undefined}
           onSelectWorkspacePath={onSelectWorkspacePath}
         />
@@ -73,7 +74,9 @@ describe('assistant editor', () => {
       browseButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    const workspaceInput = container.querySelector('#assistant-workspace-path') as HTMLInputElement | null
+    const workspaceInput = container.querySelector(
+      '#assistant-workspace-path'
+    ) as HTMLInputElement | null
     expect(onSelectWorkspacePath).toHaveBeenCalledTimes(1)
     expect(workspaceInput?.value).toBe('/Users/windht/Dev')
   })
@@ -97,6 +100,7 @@ describe('assistant editor', () => {
       root.render(
         <AssistantEditor
           providers={[provider]}
+          mcpServers={{}}
           initialValue={{
             id: 'assistant-1',
             name: 'Planner',
@@ -105,6 +109,7 @@ describe('assistant editor', () => {
             workspaceConfig: { rootPath: '/Users/windht/Dev' },
             skillsConfig: {},
             mcpConfig: {},
+            maxSteps: 100,
             memoryConfig: null,
             createdAt: '2026-03-02T00:00:00.000Z',
             updatedAt: '2026-03-02T00:00:00.000Z'

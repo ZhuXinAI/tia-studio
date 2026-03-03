@@ -11,6 +11,19 @@ function parseStatements(sql: string): string[] {
     .filter((statement) => statement.length > 0)
 }
 
+async function ensureAssistantMaxStepsColumn(db: AppDatabase): Promise<void> {
+  const tableInfo = await db.execute("PRAGMA table_info('app_assistants')")
+  const hasMaxStepsColumn = tableInfo.rows.some((row) => {
+    return String((row as Record<string, unknown>).name) === 'max_steps'
+  })
+
+  if (hasMaxStepsColumn) {
+    return
+  }
+
+  await db.execute('ALTER TABLE app_assistants ADD COLUMN max_steps INTEGER NOT NULL DEFAULT 100')
+}
+
 export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> {
   const db = createAppDatabase(pathOrUrl)
   let migrationSql = APP_CORE_MIGRATION_SQL
@@ -27,6 +40,8 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   for (const statement of statements) {
     await db.execute(statement)
   }
+
+  await ensureAssistantMaxStepsColumn(db)
 
   return db
 }

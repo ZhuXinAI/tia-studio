@@ -49,6 +49,7 @@ describe('assistants route', () => {
     const body = await response.json()
     expect(body.name).toBe('Trip Planner')
     expect(body.providerId).toBe(provider.id)
+    expect(body.maxSteps).toBe(100)
   })
 
   it('rejects assistant create when provider is unknown', async () => {
@@ -92,6 +93,36 @@ describe('assistants route', () => {
     expect(patchResponse.status).toBe(200)
     const patched = await patchResponse.json()
     expect(patched.instructions).toBe('You are a helpful travel assistant.')
+  })
+
+  it('updates assistant max steps', async () => {
+    const provider = await providersRepo.create({
+      name: 'OpenAI',
+      type: 'openai',
+      apiKey: 'test-key',
+      selectedModel: 'gpt-5'
+    })
+    const createResponse = await app.request('http://localhost/v1/assistants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Trip Planner',
+        providerId: provider.id
+      })
+    })
+    const created = await createResponse.json()
+
+    const patchResponse = await app.request(`http://localhost/v1/assistants/${created.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        maxSteps: 7
+      })
+    })
+
+    expect(patchResponse.status).toBe(200)
+    const patched = await patchResponse.json()
+    expect(patched.maxSteps).toBe(7)
   })
 
   it('deletes assistant and its threads', async () => {

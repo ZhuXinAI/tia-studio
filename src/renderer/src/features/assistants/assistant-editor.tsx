@@ -1,27 +1,94 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { SaveAssistantInput, AssistantRecord } from './assistants-query'
 import type { ProviderRecord } from '../settings/providers/providers-query'
+import type { McpServerRecord } from '../settings/mcp-servers/mcp-servers-query'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Textarea } from '../../components/ui/textarea'
+import { cn } from '../../lib/utils'
 
 type AssistantEditorValues = {
   name: string
   instructions: string
   providerId: string
   workspacePath: string
+  maxSteps: string
+  mcpConfig: Record<string, boolean>
 }
+
+type AssistantEditorTab = 'essential' | 'tools'
 
 type AssistantEditorProps = {
   providers: ProviderRecord[]
+  mcpServers: Record<string, McpServerRecord>
   initialValue?: AssistantRecord | null
   isSubmitting?: boolean
   onSelectWorkspacePath?: () => Promise<string | null> | string | null
   onSubmit: (input: SaveAssistantInput) => Promise<void> | void
 }
 
-function toInitialValues(initialValue?: AssistantRecord | null): AssistantEditorValues {
+function toBooleanMap(value: unknown): Record<string, boolean> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+
+  const entries = Object.entries(value)
+    .map(([key, rawValue]) => {
+      const normalizedKey = key.trim()
+      if (normalizedKey.length === 0) {
+        return null
+      }
+
+      if (typeof rawValue === 'boolean') {
+        return [normalizedKey, rawValue] as const
+      }
+
+      if (typeof rawValue === 'number') {
+        return [normalizedKey, rawValue !== 0] as const
+      }
+
+      if (typeof rawValue === 'string') {
+        const normalizedValue = rawValue.trim().toLowerCase()
+        if (normalizedValue === 'true' || normalizedValue === '1') {
+          return [normalizedKey, true] as const
+        }
+
+        if (normalizedValue === 'false' || normalizedValue === '0') {
+          return [normalizedKey, false] as const
+        }
+      }
+
+      return null
+    })
+    .filter((entry): entry is readonly [string, boolean] => entry !== null)
+
+  return Object.fromEntries(entries)
+}
+
+function toInitialValues(
+  initialValue: AssistantRecord | null | undefined,
+  mcpServers: Record<string, McpServerRecord>
+): AssistantEditorValues {
+  const initialMaxSteps =
+    typeof initialValue?.maxSteps === 'number' &&
+    Number.isInteger(initialValue.maxSteps) &&
+    initialValue.maxSteps > 0
+      ? initialValue.maxSteps
+      : 100
+
+  const assistantMcpConfig = toBooleanMap(initialValue?.mcpConfig)
+  const allMcpServerConfig: Record<string, boolean> = {
+    ...assistantMcpConfig
+  }
+
+  for (const serverId of Object.keys(mcpServers)) {
+    if (allMcpServerConfig[serverId] === undefined) {
+      allMcpServerConfig[serverId] = false
+    }
+  }
+
   return {
     name: initialValue?.name ?? '',
     instructions: initialValue?.instructions ?? '',
@@ -29,8 +96,24 @@ function toInitialValues(initialValue?: AssistantRecord | null): AssistantEditor
     workspacePath:
       typeof initialValue?.workspaceConfig?.rootPath === 'string'
         ? (initialValue.workspaceConfig.rootPath as string)
-        : ''
+        : '',
+    maxSteps: String(initialMaxSteps),
+    mcpConfig: allMcpServerConfig
   }
+}
+
+function parseMaxSteps(rawValue: string): number | null {
+  const normalized = rawValue.trim()
+  if (normalized.length === 0) {
+    return null
+  }
+
+  const parsed = Number(normalized)
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return null
+  }
+
+  return parsed
 }
 
 function validate(values: AssistantEditorValues): string | null {
@@ -46,17 +129,23 @@ function validate(values: AssistantEditorValues): string | null {
     return 'Workspace path is required'
   }
 
+  if (!parseMaxSteps(values.maxSteps)) {
+    return 'Max steps must be a positive whole number'
+  }
+
   return null
 }
 
 export function AssistantEditor({
   providers,
+  mcpServers,
   initialValue,
   isSubmitting,
   onSelectWorkspacePath,
   onSubmit
 }: AssistantEditorProps): React.JSX.Element {
-  const [values, setValues] = useState<AssistantEditorValues>(() => toInitialValues(initialValue))
+  const [values, setValues] = useState<AssistantEditorValues>(() => toInitialValues(initialValue, mcpServers))
+  const [activeTab, setActiveTab] = useState<AssistantEditorTab>('essential')
   const [error, setError] = useState<string | null>(null)
   const [isSelectingWorkspacePath, setIsSelectingWorkspacePath] = useState(false)
 
@@ -64,8 +153,22 @@ export function AssistantEditor({
     return initialValue ? 'Edit Assistant' : 'Create Assistant'
   }, [initialValue])
 
+  const mcpServerEntries = useMemo(() => {
+    return Object.entries(mcpServers).sort(([left], [right]) => left.localeCompare(right))
+  }, [mcpServers])
+
   const handleInput = (key: keyof AssistantEditorValues, value: string): void => {
     setValues((current) => ({ ...current, [key]: value }))
+  }
+
+  const handleMcpToggle = (serverId: string): void => {
+    setValues((current) => ({
+      ...current,
+      mcpConfig: {
+        ...current.mcpConfig,
+        [serverId]: !current.mcpConfig[serverId]
+      }
+    }))
   }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
@@ -76,13 +179,23 @@ export function AssistantEditor({
       return
     }
 
+    const maxSteps = parseMaxSteps(values.maxSteps) ?? 100
+    const nextMcpConfig: Record<string, boolean> = {
+      ...values.mcpConfig
+    }
+    for (const [serverId] of mcpServerEntries) {
+      nextMcpConfig[serverId] = values.mcpConfig[serverId] === true
+    }
+
     await onSubmit({
       name: values.name.trim(),
       instructions: values.instructions.trim(),
       providerId: values.providerId,
       workspaceConfig: {
         rootPath: values.workspacePath.trim()
-      }
+      },
+      mcpConfig: nextMcpConfig,
+      maxSteps
     })
   }
 
@@ -109,61 +222,166 @@ export function AssistantEditor({
     <form className="space-y-4" onSubmit={handleSubmit}>
       <h3 className="text-sm font-medium">{title}</h3>
 
-      <div className="space-y-2">
-        <Label htmlFor="assistant-name">Name</Label>
-        <Input
-          id="assistant-name"
-          value={values.name}
-          onChange={(event) => handleInput('name', event.target.value)}
-          placeholder="Research Copilot"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="assistant-provider">Provider</Label>
-        <select
-          id="assistant-provider"
-          className="border-input file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-[3px] focus-visible:ring-ring/50"
-          value={values.providerId}
-          onChange={(event) => handleInput('providerId', event.target.value)}
-        >
-          <option value="">Select provider</option>
-          {providers.map((provider) => (
-            <option key={provider.id} value={provider.id}>
-              {provider.name} ({provider.selectedModel})
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="assistant-prompt">Prompt</Label>
-        <Textarea
-          id="assistant-prompt"
-          rows={4}
-          value={values.instructions}
-          onChange={(event) => handleInput('instructions', event.target.value)}
-          placeholder="You are a helpful assistant that answers with concise, practical steps."
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="assistant-workspace-path">Workspace Path</Label>
-        <div className="flex items-center gap-2">
-          <Input
-            id="assistant-workspace-path"
-            value={values.workspacePath}
-            onChange={(event) => handleInput('workspacePath', event.target.value)}
-            placeholder="/Users/name/workspace"
-          />
-          <Button
+      <div className="grid gap-4 md:grid-cols-[176px_minmax(0,1fr)]">
+        <aside className="space-y-1 rounded-lg border border-border/70 bg-card/40 p-2">
+          <button
             type="button"
-            variant="outline"
-            disabled={isSubmitting || isSelectingWorkspacePath || !onSelectWorkspacePath}
-            onClick={() => void handleSelectWorkspacePath()}
+            className={cn(
+              'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
+              activeTab === 'essential' ? 'bg-secondary text-secondary-foreground' : 'hover:bg-accent/40'
+            )}
+            onClick={() => setActiveTab('essential')}
           >
-            {isSelectingWorkspacePath ? 'Opening...' : 'Browse'}
-          </Button>
+            Essential Settings
+          </button>
+          <button
+            type="button"
+            className={cn(
+              'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
+              activeTab === 'tools' ? 'bg-secondary text-secondary-foreground' : 'hover:bg-accent/40'
+            )}
+            onClick={() => setActiveTab('tools')}
+          >
+            Tools
+          </button>
+        </aside>
+
+        <div className="space-y-4">
+          {activeTab === 'essential' ? (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="assistant-name">Name</Label>
+                <Input
+                  id="assistant-name"
+                  value={values.name}
+                  onChange={(event) => handleInput('name', event.target.value)}
+                  placeholder="Research Copilot"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="assistant-provider">Provider</Label>
+                <select
+                  id="assistant-provider"
+                  className="border-input file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  value={values.providerId}
+                  onChange={(event) => handleInput('providerId', event.target.value)}
+                >
+                  <option value="">Select provider</option>
+                  {providers.map((provider) => (
+                    <option key={provider.id} value={provider.id}>
+                      {provider.name} ({provider.selectedModel})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="assistant-prompt">Prompt</Label>
+                <Textarea
+                  id="assistant-prompt"
+                  rows={4}
+                  value={values.instructions}
+                  onChange={(event) => handleInput('instructions', event.target.value)}
+                  placeholder="You are a helpful assistant that answers with concise, practical steps."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="assistant-workspace-path">Workspace Path</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="assistant-workspace-path"
+                    value={values.workspacePath}
+                    onChange={(event) => handleInput('workspacePath', event.target.value)}
+                    placeholder="/Users/name/workspace"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isSubmitting || isSelectingWorkspacePath || !onSelectWorkspacePath}
+                    onClick={() => void handleSelectWorkspacePath()}
+                  >
+                    {isSelectingWorkspacePath ? 'Opening...' : 'Browse'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="assistant-max-steps">Max Steps</Label>
+                <Input
+                  id="assistant-max-steps"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={values.maxSteps}
+                  onChange={(event) => handleInput('maxSteps', event.target.value)}
+                  placeholder="100"
+                />
+              </div>
+            </>
+          ) : (
+            <div className="space-y-3">
+              {mcpServerEntries.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  No MCP servers configured yet. Add servers in{' '}
+                  <Link className="underline underline-offset-2" to="/settings/mcp-servers">
+                    MCP Server Settings
+                  </Link>
+                  .
+                </p>
+              ) : (
+                mcpServerEntries.map(([serverId, server]) => {
+                  const isEnabled = values.mcpConfig[serverId] ?? false
+
+                  return (
+                    <article
+                      key={serverId}
+                      className={cn(
+                        'rounded-xl border px-4 py-3',
+                        isEnabled ? 'border-primary/70 bg-primary/10' : 'border-border/70 bg-card/50'
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <h4 className="text-base font-medium">{server.name || serverId}</h4>
+                          <p className="text-muted-foreground text-xs">
+                            {server.type.toUpperCase()} {server.command ? `· ${server.command}` : ''}
+                          </p>
+                          {!server.isActive ? (
+                            <p className="text-amber-400 text-xs">
+                              Disabled globally in MCP Server Settings.
+                            </p>
+                          ) : null}
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-label={`Toggle ${serverId} for this assistant`}
+                          aria-checked={isEnabled}
+                          className={cn(
+                            'relative inline-flex h-6 w-11 items-center rounded-full border transition-colors',
+                            isEnabled
+                              ? 'border-emerald-400/80 bg-emerald-500/30'
+                              : 'border-border/80 bg-background/80'
+                          )}
+                          onClick={() => handleMcpToggle(serverId)}
+                          disabled={isSubmitting}
+                        >
+                          <span
+                            className={cn(
+                              'inline-block size-4 rounded-full bg-foreground/90 transition-transform',
+                              isEnabled ? 'translate-x-6' : 'translate-x-1'
+                            )}
+                          />
+                        </button>
+                      </div>
+                    </article>
+                  )
+                })
+              )}
+            </div>
+          )}
         </div>
       </div>
 

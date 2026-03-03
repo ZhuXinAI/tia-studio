@@ -1,13 +1,17 @@
+import os from 'node:os'
 import path from 'node:path'
 import { Agent } from '@mastra/core/agent'
+import type { ToolsInput } from '@mastra/core/agent'
 import type { MemoryConfig } from '@mastra/core/memory'
 import type { Mastra } from '@mastra/core/mastra'
 import { LocalFilesystem, Workspace } from '@mastra/core/workspace'
 import { handleChatStream } from '@mastra/ai-sdk'
 import { toAISdkV5Messages } from '@mastra/ai-sdk/ui'
 import { Memory } from '@mastra/memory'
-import type { UIMessage } from 'ai'
+import { MCPClient, type MastraMCPServerDefinition } from '@mastra/mcp'
+import type { UIMessage, UIMessageChunk } from 'ai'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
+import type { AppMcpServer, McpServersRepository } from '../persistence/repos/mcp-servers-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
@@ -21,6 +25,7 @@ type StreamChatParams = {
   threadId: string
   profileId: string
   trigger?: 'submit-message' | 'regenerate-message'
+  abortSignal?: AbortSignal
 }
 
 type ListThreadMessagesParams = {
@@ -35,7 +40,7 @@ type AssistantContext = {
 }
 
 export type AssistantRuntime = {
-  streamChat: (params: StreamChatParams) => Promise<ReadableStream<unknown>>
+  streamChat: (params: StreamChatParams) => Promise<ReadableStream<UIMessageChunk>>
   listThreadMessages: (params: ListThreadMessagesParams) => Promise<UIMessage[]>
 }
 
@@ -45,16 +50,18 @@ type AssistantRuntimeServiceOptions = {
   providersRepo: ProvidersRepository
   threadsRepo: ThreadsRepository
   webSearchSettingsRepo: WebSearchSettingsRepository
+  mcpServersRepo: McpServersRepository
 }
 
 type JsonObject = Record<string, unknown>
 
 export class AssistantRuntimeService implements AssistantRuntime {
   private readonly registeredAgentSignatures = new Map<string, string>()
+  private readonly assistantMcpClients = new Map<string, MCPClient>()
 
   constructor(private readonly options: AssistantRuntimeServiceOptions) {}
 
-  async streamChat(params: StreamChatParams): Promise<ReadableStream<unknown>> {
+  async streamChat(params: StreamChatParams): Promise<ReadableStream<UIMessageChunk>> {
     const { assistant, provider } = await this.getAssistantContext(params.assistantId)
     await this.assertThreadBelongsToAssistant({
       assistantId: params.assistantId,
@@ -69,6 +76,8 @@ export class AssistantRuntimeService implements AssistantRuntime {
       params: {
         messages: params.messages,
         trigger: params.trigger,
+        abortSignal: params.abortSignal,
+        maxSteps: assistant.maxSteps,
         memory: {
           thread: params.threadId,
           resource: params.profileId,
@@ -80,7 +89,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       sendReasoning: true
     })
 
-    return stream as ReadableStream<unknown>
+    return stream as ReadableStream<UIMessageChunk>
   }
 
   async listThreadMessages(params: ListThreadMessagesParams): Promise<UIMessage[]> {
@@ -156,6 +165,8 @@ export class AssistantRuntimeService implements AssistantRuntime {
     assistant: AssistantContext['assistant'],
     provider: AssistantContext['provider']
   ): Promise<void> {
+    const enabledMcpServers = await this.resolveEnabledMcpServers(assistant.mcpConfig ?? {})
+    const mcpServersSignature = JSON.stringify(enabledMcpServers)
     const nextSignature = [
       assistant.id,
       assistant.updatedAt,
@@ -167,24 +178,28 @@ export class AssistantRuntimeService implements AssistantRuntime {
       provider.apiHost ?? '',
       JSON.stringify(assistant.workspaceConfig ?? {}),
       JSON.stringify(assistant.skillsConfig ?? {}),
-      JSON.stringify(assistant.memoryConfig ?? {})
+      JSON.stringify(assistant.mcpConfig ?? {}),
+      assistant.maxSteps,
+      JSON.stringify(assistant.memoryConfig ?? {}),
+      mcpServersSignature
     ].join('|')
 
     if (this.registeredAgentSignatures.get(assistant.id) === nextSignature) {
       return
     }
 
-    const tools = {
-      browserSearch: createBrowserSearchTool({
-        resolveDefaultEngine: async () => this.options.webSearchSettingsRepo.getDefaultEngine(),
-        resolveKeepBrowserWindowOpen: async () =>
-          this.options.webSearchSettingsRepo.getKeepBrowserWindowOpen()
-      })
+    const browserSearchTool = createBrowserSearchTool({
+      resolveDefaultEngine: async () => this.options.webSearchSettingsRepo.getDefaultEngine(),
+      resolveKeepBrowserWindowOpen: async () =>
+        this.options.webSearchSettingsRepo.getKeepBrowserWindowOpen()
+    })
+    const mcpTools = await this.buildMcpTools(assistant.id, enabledMcpServers)
+    const tools: ToolsInput = {
+      browserSearch: browserSearchTool,
+      ...mcpTools
     }
     const baseInstructions = assistant.instructions || 'You are a helpful assistant.'
-    const agentInstructions = tools
-      ? `${baseInstructions}\n\nWhen users ask for current web information, call the browserSearch tool before answering.`
-      : baseInstructions
+    const agentInstructions = `${baseInstructions}\n\nWhen users ask for current web information, call the browserSearch tool before answering.`
 
     const storage = this.options.mastra.getStorage()
     const memory = new Memory({
@@ -211,7 +226,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       }) as never,
       memory,
       workspace,
-      ...(tools ? { tools } : {})
+      tools
     })
 
     this.options.mastra.addAgent(agent, assistant.id)
@@ -227,7 +242,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       throw new ChatRouteError(409, 'assistant_not_ready', 'Assistant workspace is not configured')
     }
 
-    const skillsPaths = this.resolveSkillsPaths(skillsConfig)
+    const skillsPaths = this.resolveSkillsPaths(rootPath, skillsConfig)
     const filesystem = new LocalFilesystem({ basePath: rootPath })
     const workspace = new Workspace({
       filesystem,
@@ -243,8 +258,11 @@ export class AssistantRuntimeService implements AssistantRuntime {
     return rootPath ? path.resolve(rootPath) : null
   }
 
-  private resolveSkillsPaths(skillsConfig: JsonObject): string[] {
+  private resolveSkillsPaths(workspaceRootPath: string, skillsConfig: JsonObject): string[] {
     const rawPaths = [
+      path.join(os.homedir(), '.claude', 'skills'),
+      path.join(os.homedir(), '.agent', 'skills'),
+      path.join(workspaceRootPath, 'skills'),
       ...this.toStringList(skillsConfig.path),
       ...this.toStringList(skillsConfig.paths),
       ...this.toStringList(skillsConfig.skillPath),
@@ -261,10 +279,129 @@ export class AssistantRuntimeService implements AssistantRuntime {
     return [...uniquePaths]
   }
 
+  private async resolveEnabledMcpServers(mcpConfig: JsonObject): Promise<Record<string, AppMcpServer>> {
+    let settings: Awaited<ReturnType<McpServersRepository['getSettings']>>
+    try {
+      settings = await this.options.mcpServersRepo.getSettings()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to read MCP settings'
+      throw new ChatRouteError(409, 'mcp_settings_invalid', message)
+    }
+
+    const assistantEnabledServers = this.toBooleanMap(mcpConfig)
+
+    const entries = Object.entries(settings.mcpServers)
+      .filter(([serverName, server]) => server.isActive && assistantEnabledServers[serverName] === true)
+      .sort(([left], [right]) => left.localeCompare(right))
+
+    return Object.fromEntries(entries)
+  }
+
+  private async buildMcpTools(
+    assistantId: string,
+    enabledMcpServers: Record<string, AppMcpServer>
+  ): Promise<ToolsInput> {
+    if (Object.keys(enabledMcpServers).length === 0) {
+      await this.disconnectMcpClient(assistantId)
+      return {}
+    }
+
+    const serverDefinitions = this.toMcpServerDefinitions(enabledMcpServers)
+    if (Object.keys(serverDefinitions).length === 0) {
+      await this.disconnectMcpClient(assistantId)
+      return {}
+    }
+
+    await this.disconnectMcpClient(assistantId)
+
+    const mcpClient = new MCPClient({
+      id: `assistant-${assistantId}`,
+      servers: serverDefinitions
+    })
+
+    try {
+      const tools = await mcpClient.listTools()
+      this.assistantMcpClients.set(assistantId, mcpClient)
+      return tools as ToolsInput
+    } catch (error) {
+      await mcpClient.disconnect().catch(() => undefined)
+      const message = error instanceof Error ? error.message : 'Unable to connect to one or more MCP servers'
+      throw new ChatRouteError(409, 'mcp_connection_failed', message)
+    }
+  }
+
+  private toMcpServerDefinitions(
+    servers: Record<string, AppMcpServer>
+  ): Record<string, MastraMCPServerDefinition> {
+    const entries = Object.entries(servers)
+      .map(([serverName, server]) => {
+        const definition = this.toMcpServerDefinition(server)
+        if (!definition) {
+          return null
+        }
+
+        return [serverName, definition] as const
+      })
+      .filter(
+        (entry): entry is readonly [string, MastraMCPServerDefinition] => entry !== null
+      )
+
+    return Object.fromEntries(entries)
+  }
+
+  private toMcpServerDefinition(server: AppMcpServer): MastraMCPServerDefinition | null {
+    const command = this.toNonEmptyString(server.command)
+    const url = this.toNonEmptyString(server.url)
+    const serverType = server.type.trim().toLowerCase()
+
+    if (serverType === 'stdio') {
+      if (!command) {
+        return null
+      }
+
+      return {
+        command,
+        ...(server.args.length > 0 ? { args: server.args } : {}),
+        ...(Object.keys(server.env).length > 0 ? { env: server.env } : {})
+      }
+    }
+
+    if (url) {
+      try {
+        return {
+          url: new URL(url)
+        }
+      } catch {
+        // ignore invalid URLs in MCP server definitions
+      }
+    }
+
+    if (command) {
+      return {
+        command,
+        ...(server.args.length > 0 ? { args: server.args } : {}),
+        ...(Object.keys(server.env).length > 0 ? { env: server.env } : {})
+      }
+    }
+
+    return null
+  }
+
+  private async disconnectMcpClient(assistantId: string): Promise<void> {
+    const existingClient = this.assistantMcpClients.get(assistantId)
+    if (!existingClient) {
+      return
+    }
+
+    this.assistantMcpClients.delete(assistantId)
+    await existingClient.disconnect().catch(() => undefined)
+  }
+
   private resolveMemoryOptions(memoryConfig: JsonObject | null): MemoryConfig {
     const memoryConfigObject = memoryConfig ?? {}
     const explicitOptions = this.toJsonObject(memoryConfigObject.options)
-    const baseOptions = Object.keys(explicitOptions).length > 0 ? explicitOptions : memoryConfigObject
+    const baseOptions =
+      Object.keys(explicitOptions).length > 0 ? explicitOptions : memoryConfigObject
 
     return {
       ...(baseOptions as MemoryConfig),
@@ -287,6 +424,44 @@ export class AssistantRuntimeService implements AssistantRuntime {
       .filter((item) => item.length > 0)
   }
 
+  private toBooleanMap(value: unknown): Record<string, boolean> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return {}
+    }
+
+    const entries = Object.entries(value)
+      .map(([key, itemValue]) => {
+        const normalizedKey = key.trim()
+        if (normalizedKey.length === 0) {
+          return null
+        }
+
+        if (typeof itemValue === 'boolean') {
+          return [normalizedKey, itemValue] as const
+        }
+
+        if (typeof itemValue === 'string') {
+          const normalizedValue = itemValue.trim().toLowerCase()
+          if (normalizedValue === 'true' || normalizedValue === '1') {
+            return [normalizedKey, true] as const
+          }
+
+          if (normalizedValue === 'false' || normalizedValue === '0') {
+            return [normalizedKey, false] as const
+          }
+        }
+
+        if (typeof itemValue === 'number') {
+          return [normalizedKey, itemValue !== 0] as const
+        }
+
+        return null
+      })
+      .filter((entry): entry is readonly [string, boolean] => entry !== null)
+
+    return Object.fromEntries(entries)
+  }
+
   private toNonEmptyString(value: unknown): string | null {
     if (typeof value !== 'string') {
       return null
@@ -303,5 +478,4 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
     return {}
   }
-
 }

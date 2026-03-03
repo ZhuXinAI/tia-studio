@@ -1,6 +1,6 @@
 import { getDesktopConfig } from './desktop-config'
 
-type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE'
+type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
 
 function joinUrl(baseUrl: string, path: string): string {
   const normalizedBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
@@ -44,6 +44,8 @@ export function createApiClient() {
       request<T>('POST', path, body),
     patch: <T>(path: string, body?: Record<string, unknown>): Promise<T> =>
       request<T>('PATCH', path, body),
+    put: <T>(path: string, body?: Record<string, unknown>): Promise<T> =>
+      request<T>('PUT', path, body),
     delete: <T = void>(path: string): Promise<T> => request<T>('DELETE', path)
   }
 }

@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AssistantsPage } from './pages/assistants-page'
 import { deleteAssistant, listAssistants } from './assistants-query'
 import { listProviders } from '../settings/providers/providers-query'
+import { getMcpServersSettings } from '../settings/mcp-servers/mcp-servers-query'
 
 vi.mock('./assistants-query', () => ({
   createAssistant: vi.fn(),
@@ -17,6 +18,10 @@ vi.mock('./assistants-query', () => ({
 
 vi.mock('../settings/providers/providers-query', () => ({
   listProviders: vi.fn()
+}))
+
+vi.mock('../settings/mcp-servers/mcp-servers-query', () => ({
+  getMcpServersSettings: vi.fn()
 }))
 
 function findButtonByText(container: HTMLElement, text: string): HTMLButtonElement {
@@ -56,6 +61,7 @@ describe('assistants page', () => {
         workspaceConfig: { rootPath: '/Users/windht/Dev/tia-studio' },
         skillsConfig: {},
         mcpConfig: {},
+        maxSteps: 100,
         memoryConfig: null,
         createdAt: '2026-03-02T00:00:00.000Z',
         updatedAt: '2026-03-02T00:00:00.000Z'
@@ -75,6 +81,9 @@ describe('assistants page', () => {
         updatedAt: '2026-03-02T00:00:00.000Z'
       }
     ])
+    vi.mocked(getMcpServersSettings).mockResolvedValue({
+      mcpServers: {}
+    })
   })
 
   afterEach(() => {
@@ -220,10 +229,14 @@ describe('assistants page', () => {
       newAssistantButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    const providerSelect = container.querySelector('#assistant-provider') as HTMLSelectElement | null
+    const providerSelect = container.querySelector(
+      '#assistant-provider'
+    ) as HTMLSelectElement | null
     expect(providerSelect).not.toBeNull()
     const optionValues = providerSelect
-      ? Array.from(providerSelect.querySelectorAll('option')).map((option) => option.textContent?.trim())
+      ? Array.from(providerSelect.querySelectorAll('option')).map((option) =>
+          option.textContent?.trim()
+        )
       : []
     expect(optionValues).toContain('Anthropic (claude-3-7-sonnet)')
   })
@@ -261,10 +274,14 @@ describe('assistants page', () => {
     })
     await flushAsyncWork()
 
-    const providerSelect = container.querySelector('#assistant-provider') as HTMLSelectElement | null
+    const providerSelect = container.querySelector(
+      '#assistant-provider'
+    ) as HTMLSelectElement | null
     expect(providerSelect).not.toBeNull()
     const optionValues = providerSelect
-      ? Array.from(providerSelect.querySelectorAll('option')).map((option) => option.textContent?.trim())
+      ? Array.from(providerSelect.querySelectorAll('option')).map((option) =>
+          option.textContent?.trim()
+        )
       : []
     expect(optionValues).toContain('Anthropic (claude-3-7-sonnet)')
   })

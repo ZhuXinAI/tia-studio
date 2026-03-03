@@ -7,6 +7,10 @@ import {
   type AssistantRecord,
   type SaveAssistantInput
 } from '../../assistants/assistants-query'
+import {
+  getMcpServersSettings,
+  type McpServerRecord
+} from '../../settings/mcp-servers/mcp-servers-query'
 import { listProviders, type ProviderRecord } from '../../settings/providers/providers-query'
 import {
   createThread,
@@ -45,6 +49,7 @@ export function useThreadPageController() {
   const navigate = useNavigate()
   const [assistants, setAssistants] = useState<AssistantRecord[]>([])
   const [providers, setProviders] = useState<ProviderRecord[]>([])
+  const [mcpServers, setMcpServers] = useState<Record<string, McpServerRecord>>({})
   const [threads, setThreads] = useState<ThreadRecord[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [isLoadingThreads, setIsLoadingThreads] = useState(false)
@@ -128,9 +133,10 @@ export function useThreadPageController() {
     }
   })
 
-  const { sendMessage, setMessages, status: chatStatus, error: chatError } = chat
+  const { sendMessage, setMessages, stop, status: chatStatus, error: chatError } = chat
 
   const isChatStreaming = chatStatus === 'submitted' || chatStatus === 'streaming'
+  const canAbortGeneration = isChatStreaming
   const canSendMessage =
     Boolean(selectedAssistant && readiness.canChat) &&
     composerValue.trim().length > 0 &&
@@ -161,9 +167,28 @@ export function useThreadPageController() {
     setIsLoadingData(true)
     setLoadError(null)
     try {
-      const [nextAssistants, nextProviders] = await Promise.all([listAssistants(), listProviders()])
-      setAssistants(nextAssistants)
-      setProviders(nextProviders)
+      const [assistantsResult, providersResult, mcpSettingsResult] = await Promise.allSettled([
+        listAssistants(),
+        listProviders(),
+        getMcpServersSettings()
+      ])
+
+      if (assistantsResult.status === 'rejected') {
+        throw assistantsResult.reason
+      }
+
+      if (providersResult.status === 'rejected') {
+        throw providersResult.reason
+      }
+
+      setAssistants(assistantsResult.value)
+      setProviders(providersResult.value)
+
+      if (mcpSettingsResult.status === 'fulfilled') {
+        setMcpServers(mcpSettingsResult.value.mcpServers)
+      } else {
+        setMcpServers({})
+      }
     } catch (error) {
       setLoadError(toErrorMessage(error))
     } finally {
@@ -498,6 +523,14 @@ export function useThreadPageController() {
     })
   }
 
+  const handleAbortGeneration = useCallback(() => {
+    if (!isChatStreaming) {
+      return
+    }
+
+    void stop()
+  }, [isChatStreaming, stop])
+
   useEffect(() => {
     if (!pendingThreadMessage) {
       return
@@ -583,7 +616,9 @@ export function useThreadPageController() {
     loadError,
     composerValue,
     canSendMessage,
+    canAbortGeneration,
     providers,
+    mcpServers,
     toast,
     isAssistantConfigDialogOpen,
     isSavingAssistantConfig,
@@ -597,6 +632,7 @@ export function useThreadPageController() {
     },
     onComposerChange: setComposerValue,
     onSubmitMessage: handleSubmitMessage,
+    onAbortGeneration: handleAbortGeneration,
     onOpenAssistantConfig: openAssistantConfigDialog,
     onCloseAssistantConfig: closeAssistantConfigDialog,
     onSelectWorkspacePath: selectWorkspacePath,

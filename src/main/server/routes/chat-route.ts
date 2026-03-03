@@ -92,11 +92,12 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
         messages: parsed.data.messages,
         threadId: parsed.data.threadId,
         profileId: parsed.data.profileId,
-        trigger: parsed.data.trigger
+        trigger: parsed.data.trigger,
+        abortSignal: context.req.raw.signal
       })
 
       return createUIMessageStreamResponse({
-        stream: stream as any
+        stream
       })
     } catch (error) {
       if (isChatRouteError(error)) {

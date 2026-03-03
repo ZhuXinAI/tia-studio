@@ -13,6 +13,7 @@ function createAssistant(overrides?: Partial<AssistantRecord>): AssistantRecord 
     workspaceConfig: { rootPath: '/workspace/a' },
     skillsConfig: {},
     mcpConfig: {},
+    maxSteps: 100,
     memoryConfig: null,
     createdAt: '2026-03-01T00:00:00.000Z',
     updatedAt: '2026-03-01T00:00:00.000Z',

@@ -38,8 +38,10 @@ export function ThreadPage(): React.JSX.Element {
             loadError={controller.loadError}
             composerValue={controller.composerValue}
             canSendMessage={controller.canSendMessage}
+            canAbortGeneration={controller.canAbortGeneration}
             onComposerChange={controller.onComposerChange}
             onSubmitMessage={controller.onSubmitMessage}
+            onAbortGeneration={controller.onAbortGeneration}
             onOpenAssistantConfig={controller.onOpenAssistantConfig}
           />
         </SidebarInset>
@@ -49,6 +51,7 @@ export function ThreadPage(): React.JSX.Element {
         isOpen={controller.isAssistantConfigDialogOpen}
         assistant={controller.selectedAssistant}
         providers={controller.providers}
+        mcpServers={controller.mcpServers}
         isSaving={controller.isSavingAssistantConfig}
         onClose={controller.onCloseAssistantConfig}
         onSelectWorkspacePath={controller.onSelectWorkspacePath}

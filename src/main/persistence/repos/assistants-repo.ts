@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import type { AppDatabase } from '../client'
 
+const DEFAULT_ASSISTANT_MAX_STEPS = 100
+
 export type AppAssistant = {
   id: string
   name: string
@@ -8,7 +10,8 @@ export type AppAssistant = {
   providerId: string
   workspaceConfig: Record<string, unknown>
   skillsConfig: Record<string, unknown>
-  mcpConfig: Record<string, unknown>
+  mcpConfig: Record<string, boolean>
+  maxSteps: number
   memoryConfig: Record<string, unknown> | null
   createdAt: string
   updatedAt: string
@@ -20,7 +23,8 @@ export type CreateAssistantInput = {
   providerId: string
   workspaceConfig?: Record<string, unknown>
   skillsConfig?: Record<string, unknown>
-  mcpConfig?: Record<string, unknown>
+  mcpConfig?: Record<string, boolean>
+  maxSteps?: number
   memoryConfig?: Record<string, unknown> | null
 }
 
@@ -39,7 +43,48 @@ function parseJsonObject(value: unknown): Record<string, unknown> {
   return {}
 }
 
+function parseJsonBooleanMap(value: unknown): Record<string, boolean> {
+  const parsedObject = parseJsonObject(value)
+  const entries = Object.entries(parsedObject)
+    .map(([key, rawValue]) => {
+      const normalizedKey = key.trim()
+      if (normalizedKey.length === 0) {
+        return null
+      }
+
+      if (typeof rawValue === 'boolean') {
+        return [normalizedKey, rawValue] as const
+      }
+
+      if (typeof rawValue === 'number') {
+        return [normalizedKey, rawValue !== 0] as const
+      }
+
+      if (typeof rawValue === 'string') {
+        const normalizedValue = rawValue.trim().toLowerCase()
+        if (normalizedValue === 'true' || normalizedValue === '1') {
+          return [normalizedKey, true] as const
+        }
+
+        if (normalizedValue === 'false' || normalizedValue === '0') {
+          return [normalizedKey, false] as const
+        }
+      }
+
+      return null
+    })
+    .filter((entry): entry is readonly [string, boolean] => entry !== null)
+
+  return Object.fromEntries(entries)
+}
+
 function parseAssistantRow(row: Record<string, unknown>): AppAssistant {
+  const parsedMaxSteps = Number(row.max_steps)
+  const maxSteps =
+    Number.isInteger(parsedMaxSteps) && parsedMaxSteps > 0
+      ? parsedMaxSteps
+      : DEFAULT_ASSISTANT_MAX_STEPS
+
   return {
     id: String(row.id),
     name: String(row.name),
@@ -47,7 +92,8 @@ function parseAssistantRow(row: Record<string, unknown>): AppAssistant {
     providerId: String(row.provider_id),
     workspaceConfig: parseJsonObject(row.workspace_config),
     skillsConfig: parseJsonObject(row.skills_config),
-    mcpConfig: parseJsonObject(row.mcp_config),
+    mcpConfig: parseJsonBooleanMap(row.mcp_config),
+    maxSteps,
     memoryConfig: row.memory_config ? parseJsonObject(row.memory_config) : null,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at)
@@ -59,7 +105,7 @@ export class AssistantsRepository {
 
   async list(): Promise<AppAssistant[]> {
     const result = await this.db.execute(
-      'SELECT id, name, instructions, provider_id, workspace_config, skills_config, mcp_config, memory_config, created_at, updated_at FROM app_assistants ORDER BY created_at DESC'
+      'SELECT id, name, instructions, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config, created_at, updated_at FROM app_assistants ORDER BY created_at DESC'
     )
 
     return result.rows.map((row) => parseAssistantRow(row as Record<string, unknown>))
@@ -67,7 +113,7 @@ export class AssistantsRepository {
 
   async getById(id: string): Promise<AppAssistant | null> {
     const result = await this.db.execute(
-      'SELECT id, name, instructions, provider_id, workspace_config, skills_config, mcp_config, memory_config, created_at, updated_at FROM app_assistants WHERE id = ? LIMIT 1',
+      'SELECT id, name, instructions, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config, created_at, updated_at FROM app_assistants WHERE id = ? LIMIT 1',
       [id]
     )
     const row = result.rows.at(0)
@@ -95,7 +141,7 @@ export class AssistantsRepository {
   async create(input: CreateAssistantInput): Promise<AppAssistant> {
     const id = randomUUID()
     await this.db.execute(
-      'INSERT INTO app_assistants (id, name, instructions, provider_id, workspace_config, skills_config, mcp_config, memory_config) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO app_assistants (id, name, instructions, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
         input.name,
@@ -104,6 +150,7 @@ export class AssistantsRepository {
         JSON.stringify(input.workspaceConfig ?? {}),
         JSON.stringify(input.skillsConfig ?? {}),
         JSON.stringify(input.mcpConfig ?? {}),
+        input.maxSteps ?? DEFAULT_ASSISTANT_MAX_STEPS,
         input.memoryConfig ? JSON.stringify(input.memoryConfig) : null
       ]
     )
@@ -123,7 +170,7 @@ export class AssistantsRepository {
     }
 
     await this.db.execute(
-      'UPDATE app_assistants SET name = ?, instructions = ?, provider_id = ?, workspace_config = ?, skills_config = ?, mcp_config = ?, memory_config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE app_assistants SET name = ?, instructions = ?, provider_id = ?, workspace_config = ?, skills_config = ?, mcp_config = ?, max_steps = ?, memory_config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [
         input.name ?? existing.name,
         input.instructions ?? existing.instructions,
@@ -131,6 +178,7 @@ export class AssistantsRepository {
         JSON.stringify(input.workspaceConfig ?? existing.workspaceConfig),
         JSON.stringify(input.skillsConfig ?? existing.skillsConfig),
         JSON.stringify(input.mcpConfig ?? existing.mcpConfig),
+        input.maxSteps ?? existing.maxSteps,
         input.memoryConfig
           ? JSON.stringify(input.memoryConfig)
           : existing.memoryConfig

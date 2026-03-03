@@ -8,6 +8,7 @@ import { AssistantRuntimeService } from './mastra/assistant-runtime'
 import { createMastraInstance } from './mastra/store'
 import { migrateAppSchema } from './persistence/migrate'
 import { AssistantsRepository } from './persistence/repos/assistants-repo'
+import { McpServersRepository } from './persistence/repos/mcp-servers-repo'
 import { ProvidersRepository } from './persistence/repos/providers-repo'
 import { ThreadsRepository } from './persistence/repos/threads-repo'
 import { WebSearchSettingsRepository } from './persistence/repos/web-search-settings-repo'
@@ -28,13 +29,15 @@ async function startLocalApiServer(): Promise<void> {
   const assistantsRepo = new AssistantsRepository(db)
   const threadsRepo = new ThreadsRepository(db)
   const webSearchSettingsRepo = new WebSearchSettingsRepository(db)
+  const mcpServersRepo = new McpServersRepository(join(app.getPath('userData'), 'mcp.json'))
   const mastra = createMastraInstance(persistenceDatabasePath)
   const assistantRuntime = new AssistantRuntimeService({
     mastra,
     assistantsRepo,
     providersRepo,
     threadsRepo,
-    webSearchSettingsRepo
+    webSearchSettingsRepo,
+    mcpServersRepo
   })
 
   const apiApp = createApp({
@@ -43,7 +46,8 @@ async function startLocalApiServer(): Promise<void> {
       providers: providersRepo,
       assistants: assistantsRepo,
       threads: threadsRepo,
-      webSearchSettings: webSearchSettingsRepo
+      webSearchSettings: webSearchSettingsRepo,
+      mcpServers: mcpServersRepo
     },
     assistantRuntime
   })

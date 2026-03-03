@@ -11,6 +11,10 @@ import {
   type SaveAssistantInput
 } from '../assistants-query'
 import { listProviders, type ProviderRecord } from '../../settings/providers/providers-query'
+import {
+  getMcpServersSettings,
+  type McpServerRecord
+} from '../../settings/mcp-servers/mcp-servers-query'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
 import { cn } from '../../../lib/utils'
@@ -22,6 +26,7 @@ type ToastState = {
 
 const assistantsLoadHint = 'Unable to load assistants yet. You can still create a new one.'
 const providersLoadHint = 'Unable to load providers right now.'
+const mcpServersLoadHint = 'Unable to load MCP servers right now.'
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -62,6 +67,8 @@ export function AssistantsPage(): React.JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingAssistants, setIsLoadingAssistants] = useState(true)
   const [isLoadingProviders, setIsLoadingProviders] = useState(true)
+  const [isLoadingMcpServers, setIsLoadingMcpServers] = useState(true)
+  const [mcpServers, setMcpServers] = useState<Record<string, McpServerRecord>>({})
   const [libraryLoadMessage, setLibraryLoadMessage] = useState<string | null>(null)
   const [createDialogError, setCreateDialogError] = useState<string | null>(null)
   const [toast, setToast] = useState<ToastState | null>(null)
@@ -78,11 +85,13 @@ export function AssistantsPage(): React.JSX.Element {
     setIsLoading(true)
     setIsLoadingAssistants(true)
     setIsLoadingProviders(true)
+    setIsLoadingMcpServers(true)
     setLibraryLoadMessage(null)
     try {
-      const [assistantsResult, providersResult] = await Promise.allSettled([
+      const [assistantsResult, providersResult, mcpServersResult] = await Promise.allSettled([
         listAssistants(),
-        listProviders()
+        listProviders(),
+        getMcpServersSettings()
       ])
 
       if (providersResult.status === 'fulfilled') {
@@ -110,6 +119,15 @@ export function AssistantsPage(): React.JSX.Element {
         setSelectedAssistantId(null)
         setLibraryLoadMessage(assistantsLoadHint)
       }
+
+      if (mcpServersResult.status === 'fulfilled') {
+        setMcpServers(mcpServersResult.value.mcpServers)
+        setIsLoadingMcpServers(false)
+      } else {
+        setMcpServers({})
+        setIsLoadingMcpServers(false)
+        setLibraryLoadMessage((current) => current ?? mcpServersLoadHint)
+      }
     } finally {
       setIsLoading(false)
     }
@@ -117,14 +135,20 @@ export function AssistantsPage(): React.JSX.Element {
 
   const refreshProvidersForCreateDialog = useCallback(async () => {
     setIsLoadingProviders(true)
+    setIsLoadingMcpServers(true)
     try {
-      const nextProviders = await listProviders()
+      const [nextProviders, mcpSettings] = await Promise.all([
+        listProviders(),
+        getMcpServersSettings()
+      ])
       setProviders(nextProviders)
+      setMcpServers(mcpSettings.mcpServers)
       setLibraryLoadMessage((current) => (current === providersLoadHint ? null : current))
     } catch {
       setLibraryLoadMessage((current) => current ?? providersLoadHint)
     } finally {
       setIsLoadingProviders(false)
+      setIsLoadingMcpServers(false)
     }
   }, [])
 
@@ -284,7 +308,7 @@ export function AssistantsPage(): React.JSX.Element {
             <CardDescription>Pick an assistant to edit.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {isLoadingAssistants || isLoadingProviders ? (
+            {isLoadingAssistants || isLoadingProviders || isLoadingMcpServers ? (
               <p className="text-muted-foreground text-sm">Loading assistants...</p>
             ) : null}
             {libraryLoadMessage ? (
@@ -359,6 +383,7 @@ export function AssistantsPage(): React.JSX.Element {
                 <AssistantEditor
                   key={selectedAssistant.id}
                   providers={providers}
+                  mcpServers={mcpServers}
                   initialValue={selectedAssistant}
                   isSubmitting={isSubmitting}
                   onSelectWorkspacePath={selectWorkspacePath}
@@ -383,7 +408,7 @@ export function AssistantsPage(): React.JSX.Element {
             role="dialog"
             aria-modal="true"
             aria-labelledby="create-assistant-title"
-            className="relative z-10 w-full max-w-xl gap-4 py-5"
+            className="relative z-10 w-full max-w-4xl gap-4 py-5"
           >
             <CardHeader className="pb-0">
               <div className="flex items-start justify-between gap-2">
@@ -421,6 +446,7 @@ export function AssistantsPage(): React.JSX.Element {
                 <AssistantEditor
                   key="new-assistant"
                   providers={providers}
+                  mcpServers={mcpServers}
                   initialValue={null}
                   isSubmitting={isSubmitting}
                   onSelectWorkspacePath={selectWorkspacePath}

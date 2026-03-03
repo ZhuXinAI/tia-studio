@@ -7,7 +7,8 @@ export type AssistantRecord = {
   providerId: string
   workspaceConfig: Record<string, unknown>
   skillsConfig: Record<string, unknown>
-  mcpConfig: Record<string, unknown>
+  mcpConfig: Record<string, boolean>
+  maxSteps: number
   memoryConfig: Record<string, unknown> | null
   createdAt: string
   updatedAt: string
@@ -19,7 +20,8 @@ export type SaveAssistantInput = {
   providerId: string
   workspaceConfig?: Record<string, unknown>
   skillsConfig?: Record<string, unknown>
-  mcpConfig?: Record<string, unknown>
+  mcpConfig?: Record<string, boolean>
+  maxSteps?: number
   memoryConfig?: Record<string, unknown> | null
 }
 

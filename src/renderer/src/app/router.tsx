@@ -9,6 +9,7 @@ import { AssistantsPage } from '../features/assistants/pages/assistants-page'
 import { ThreadPage } from '../features/threads/pages/thread-page'
 import { ProvidersSettingsPage } from '../features/settings/pages/providers-settings-page'
 import { WebSearchSettingsPage } from '../features/settings/pages/web-search-settings-page'
+import { McpServersSettingsPage } from '../features/settings/pages/mcp-servers-settings-page'
 
 export const appRoutes: RouteObject[] = [
   {
@@ -38,6 +39,10 @@ export const appRoutes: RouteObject[] = [
       {
         path: 'settings/web-search',
         element: <WebSearchSettingsPage />
+      },
+      {
+        path: 'settings/mcp-servers',
+        element: <McpServersSettingsPage />
       }
     ]
   }

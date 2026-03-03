@@ -20,8 +20,10 @@ type ThreadChatCardProps = {
   loadError: string | null
   composerValue: string
   canSendMessage: boolean
+  canAbortGeneration: boolean
   onComposerChange: (value: string) => void
   onSubmitMessage: () => Promise<void>
+  onAbortGeneration: () => void
   onOpenAssistantConfig: () => void
 }
 
@@ -36,8 +38,10 @@ export function ThreadChatCard({
   loadError,
   composerValue,
   canSendMessage,
+  canAbortGeneration,
   onComposerChange,
   onSubmitMessage,
+  onAbortGeneration,
   onOpenAssistantConfig
 }: ThreadChatCardProps): React.JSX.Element {
   const canCompose =
@@ -125,8 +129,12 @@ export function ThreadChatCard({
                   ? 'No thread selected. Press Enter to create one and send.'
                   : 'Pick an assistant to begin.'}
             </p>
-            <Button type="submit" disabled={!canSendMessage}>
-              {isChatStreaming ? 'Sending...' : 'Send'}
+            <Button
+              type={isChatStreaming ? 'button' : 'submit'}
+              disabled={isChatStreaming ? !canAbortGeneration : !canSendMessage}
+              onClick={isChatStreaming ? onAbortGeneration : undefined}
+            >
+              {isChatStreaming ? 'Stop' : 'Send'}
             </Button>
           </div>
         </form>

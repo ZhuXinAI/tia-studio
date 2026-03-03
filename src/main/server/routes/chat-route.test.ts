@@ -32,7 +32,8 @@ describe('chat route', () => {
       messages: [],
       threadId: 'thread-1',
       profileId: 'profile-1',
-      trigger: undefined
+      trigger: undefined,
+      abortSignal: expect.any(AbortSignal)
     })
     expect(listThreadMessages).not.toHaveBeenCalled()
   })

@@ -1,4 +1,4 @@
-import { Cloud, Search } from 'lucide-react'
+import { Cable, Cloud, Search } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { NavLink } from 'react-router-dom'
 import { buttonVariants } from '../../../components/ui/button'
@@ -21,6 +21,11 @@ const settingsNavItems: SettingsNavItem[] = [
     title: 'Web Search',
     icon: Search,
     to: '/settings/web-search'
+  },
+  {
+    title: 'MCP Servers',
+    icon: Cable,
+    to: '/settings/mcp-servers'
   }
 ]
 

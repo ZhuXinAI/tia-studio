@@ -1,3 +1,5 @@
+import os from 'node:os'
+import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import type { Mastra } from '@mastra/core/mastra'
 import type { AppAssistant } from '../persistence/repos/assistants-repo'
@@ -9,8 +11,13 @@ import type { WebSearchSettingsRepository } from '../persistence/repos/web-searc
 import { AssistantRuntimeService } from './assistant-runtime'
 import { createMastraInstance } from './store'
 
-const { toAISdkV5MessagesMock } = vi.hoisted(() => ({
+const { handleChatStreamMock, toAISdkV5MessagesMock } = vi.hoisted(() => ({
+  handleChatStreamMock: vi.fn(),
   toAISdkV5MessagesMock: vi.fn()
+}))
+
+vi.mock('@mastra/ai-sdk', () => ({
+  handleChatStream: (options: unknown) => handleChatStreamMock(options)
 }))
 
 vi.mock('@mastra/ai-sdk/ui', () => ({
@@ -26,6 +33,7 @@ function buildAssistant(): AppAssistant {
     workspaceConfig: { rootPath: '/tmp' },
     skillsConfig: {},
     mcpConfig: {},
+    maxSteps: 100,
     memoryConfig: null,
     createdAt: '2026-03-02T00:00:00.000Z',
     updatedAt: '2026-03-02T00:00:00.000Z'
@@ -48,6 +56,37 @@ function buildProvider(): AppProvider {
 }
 
 describe('AssistantRuntimeService', () => {
+  it('includes global and workspace skills directories by default', () => {
+    const runtime = new AssistantRuntimeService({
+      mastra: {} as Mastra,
+      assistantsRepo: {} as AssistantsRepository,
+      providersRepo: {} as ProvidersRepository,
+      threadsRepo: {} as ThreadsRepository,
+      webSearchSettingsRepo: {} as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    const workspaceRoot = '/tmp/workspace'
+    const skillsPaths = (
+      runtime as unknown as {
+        resolveSkillsPaths: (
+          workspaceRootPath: string,
+          skillsConfig: Record<string, unknown>
+        ) => string[]
+      }
+    ).resolveSkillsPaths(workspaceRoot, {})
+
+    expect(skillsPaths).toEqual(
+      expect.arrayContaining([
+        path.join(os.homedir(), '.claude', 'skills'),
+        path.join(os.homedir(), '.agent', 'skills'),
+        path.join(workspaceRoot, 'skills')
+      ])
+    )
+  })
+
   it('registers agents with memory enabled', async () => {
     const mastra = createMastraInstance(':memory:')
     const runtime = new AssistantRuntimeService({
@@ -57,7 +96,10 @@ describe('AssistantRuntimeService', () => {
       threadsRepo: { getById: vi.fn() } as unknown as ThreadsRepository,
       webSearchSettingsRepo: {
         getDefaultEngine: vi.fn(async () => 'bing')
-      } as unknown as WebSearchSettingsRepository
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
     })
 
     await (
@@ -72,6 +114,101 @@ describe('AssistantRuntimeService', () => {
 
     const memory = await agent.getMemory()
     expect(memory?.getMergedThreadConfig().generateTitle).toBe(true)
+  })
+
+  it('passes assistant max steps into chat stream execution', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(new ReadableStream())
+
+    const assistant = {
+      ...buildAssistant(),
+      maxSteps: 17
+    }
+    const runtime = new AssistantRuntimeService({
+      mastra: createMastraInstance(':memory:'),
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1'
+        }))
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    await runtime.streamChat({
+      assistantId: assistant.id,
+      threadId: 'thread-1',
+      profileId: 'profile-1',
+      messages: []
+    })
+
+    expect(handleChatStreamMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          maxSteps: 17
+        })
+      })
+    )
+  })
+
+  it('forwards request abort signal into mastra chat stream execution', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(new ReadableStream())
+
+    const assistant = buildAssistant()
+    const runtime = new AssistantRuntimeService({
+      mastra: createMastraInstance(':memory:'),
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1'
+        }))
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+    const abortController = new AbortController()
+
+    await runtime.streamChat({
+      assistantId: assistant.id,
+      threadId: 'thread-1',
+      profileId: 'profile-1',
+      messages: [],
+      abortSignal: abortController.signal
+    })
+
+    expect(handleChatStreamMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          abortSignal: abortController.signal
+        })
+      })
+    )
   })
 
   it('uses toAISdkV5Messages for chat history and excludes non-chat roles', async () => {
@@ -176,7 +313,10 @@ describe('AssistantRuntimeService', () => {
       } as unknown as ThreadsRepository,
       webSearchSettingsRepo: {
         getDefaultEngine: vi.fn(async () => 'bing')
-      } as unknown as WebSearchSettingsRepository
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
     })
 
     const messages = await runtime.listThreadMessages({

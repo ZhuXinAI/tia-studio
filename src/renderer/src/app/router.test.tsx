@@ -18,6 +18,7 @@ describe('app router', () => {
     expect(html).toContain('Model Provider Settings')
     expect(html).toContain('Model Provider')
     expect(html).toContain('Web Search')
+    expect(html).toContain('MCP Servers')
   })
 
   it('renders web search settings route', () => {
@@ -26,6 +27,14 @@ describe('app router', () => {
 
     expect(html).toContain('Web Search')
     expect(html).toContain('Default Search Engine')
+  })
+
+  it('renders mcp server settings route', () => {
+    const router = createAppMemoryRouter(['/settings/mcp-servers'])
+    const html = renderToString(<RouterProvider router={router} />)
+
+    expect(html).toContain('MCP Server Settings')
+    expect(html).toContain('MCP Servers')
   })
 
   it('renders assistants route with creation entrypoint', () => {
