@@ -35,4 +35,22 @@ describe('health route', () => {
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('http://localhost:5173')
     expect(response.headers.get('Access-Control-Allow-Headers')).toContain('Authorization')
   })
+
+  it('allows PUT in CORS preflight for settings endpoints', async () => {
+    const app = createApp({
+      token: 'test-token'
+    })
+
+    const response = await app.request('http://localhost/v1/settings/mcp-servers', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://localhost:5173',
+        'Access-Control-Request-Method': 'PUT',
+        'Access-Control-Request-Headers': 'Authorization, Content-Type'
+      }
+    })
+
+    expect(response.status).toBe(204)
+    expect(response.headers.get('Access-Control-Allow-Methods')).toContain('PUT')
+  })
 })

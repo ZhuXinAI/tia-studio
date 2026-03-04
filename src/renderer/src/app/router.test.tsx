@@ -11,6 +11,13 @@ describe('app router', () => {
     expect(router.state.location.pathname).toBe('/chat')
   })
 
+  it('redirects settings index route to /settings/about', async () => {
+    const router = createAppMemoryRouter(['/settings'])
+
+    await router.navigate('/settings')
+    expect(router.state.location.pathname).toBe('/settings/about')
+  })
+
   it('renders provider settings route', () => {
     const router = createAppMemoryRouter(['/settings/providers'])
     const html = renderToString(<RouterProvider router={router} />)
@@ -19,6 +26,7 @@ describe('app router', () => {
     expect(html).toContain('Model Provider')
     expect(html).toContain('Web Search')
     expect(html).toContain('MCP Servers')
+    expect(html).toContain('About &amp; Feedback')
   })
 
   it('renders web search settings route', () => {
@@ -37,12 +45,32 @@ describe('app router', () => {
     expect(html).toContain('MCP Servers')
   })
 
-  it('renders assistants route with creation entrypoint', () => {
-    const router = createAppMemoryRouter(['/assistants'])
+  it('renders about settings route', () => {
+    const router = createAppMemoryRouter(['/settings/about'])
+    const html = renderToString(<RouterProvider router={router} />)
+
+    expect(html).toContain('About &amp; Feedback')
+    expect(html).toContain('Tia Studio')
+    expect(html).toContain('Check Update')
+  })
+
+  it('renders display settings route with settings sidebar', () => {
+    const router = createAppMemoryRouter(['/settings/display'])
+    const html = renderToString(<RouterProvider router={router} />)
+
+    expect(html).toContain('Display Settings')
+    expect(html).toContain('Model Provider')
+    expect(html).toContain('Web Search')
+    expect(html).toContain('MCP Servers')
+    expect(html).toContain('About &amp; Feedback')
+  })
+
+  it('renders chat route with assistant creation controls', () => {
+    const router = createAppMemoryRouter(['/chat'])
     const html = renderToString(<RouterProvider router={router} />)
 
     expect(html).toContain('Assistants')
-    expect(html).toContain('New Assistant')
+    expect(html).toContain('aria-label="Create assistant"')
   })
 
   it('renders header nav with settings gear icon and no legacy control center sidebar', () => {

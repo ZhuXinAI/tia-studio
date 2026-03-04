@@ -8,7 +8,7 @@ export function AppShell(): React.JSX.Element {
   const isSettingsRoute = location.pathname.startsWith('/settings')
 
   return (
-    <div className="flex min-h-screen flex-col bg-[radial-gradient(circle_at_15%_0%,rgba(94,234,212,0.11),transparent_42%),radial-gradient(circle_at_85%_10%,rgba(147,197,253,0.12),transparent_38%),linear-gradient(180deg,var(--background),#05070b)] text-foreground">
+    <div className="flex min-h-screen flex-col bg-background text-foreground transition-colors duration-200">
       <header className="drag-region sticky top-0 z-20 border-b border-border/70 bg-background/20 pl-[80px] pr-3 py-1 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-3">
           <Button asChild variant="ghost" size="sm" className="no-drag">
@@ -25,7 +25,7 @@ export function AppShell(): React.JSX.Element {
             className="no-drag"
           >
             <NavLink
-              to="/settings/providers"
+              to="/settings/about"
               aria-label="Open settings"
               className={cn('no-drag inline-flex items-center justify-center')}
             >

@@ -24,7 +24,7 @@ const reasoningVariants = cva('aui-reasoning-root mb-4 w-full', {
     }
   },
   defaultVariants: {
-    variant: 'outline'
+    variant: 'muted'
   }
 })
 

@@ -2,11 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
+  createAssistant,
+  deleteAssistant,
   listAssistants,
   updateAssistant,
   type AssistantRecord,
   type SaveAssistantInput
 } from '../../assistants/assistants-query'
+import type { AssistantDialogMode } from '../components/assistant-config-dialog'
 import {
   getMcpServersSettings,
   type McpServerRecord
@@ -41,6 +44,8 @@ type PendingThreadMessage = {
   text: string
 }
 
+const BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__tiaBuiltInDefaultAgent'
+
 export type ThreadPageController = ReturnType<typeof useThreadPageController>
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
@@ -59,9 +64,15 @@ export function useThreadPageController() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [toast, setToast] = useState<ToastState | null>(null)
   const [isLoadingChatHistory, setIsLoadingChatHistory] = useState(false)
-  const [isAssistantConfigDialogOpen, setIsAssistantConfigDialogOpen] = useState(false)
-  const [isSavingAssistantConfig, setIsSavingAssistantConfig] = useState(false)
-  const [pendingThreadMessage, setPendingThreadMessage] = useState<PendingThreadMessage | null>(null)
+  const [assistantDialogMode, setAssistantDialogMode] = useState<AssistantDialogMode>('edit')
+  const [assistantDialogAssistantId, setAssistantDialogAssistantId] = useState<string | null>(null)
+  const [isAssistantDialogOpen, setIsAssistantDialogOpen] = useState(false)
+  const [isSubmittingAssistantDialog, setIsSubmittingAssistantDialog] = useState(false)
+  const [assistantDialogError, setAssistantDialogError] = useState<string | null>(null)
+  const [deletingAssistantId, setDeletingAssistantId] = useState<string | null>(null)
+  const [pendingThreadMessage, setPendingThreadMessage] = useState<PendingThreadMessage | null>(
+    null
+  )
   const profileId = useMemo(() => getActiveResourceId(), [])
 
   const selectedAssistant = useMemo(() => {
@@ -72,6 +83,18 @@ export function useThreadPageController() {
 
     return assistants.find((assistant) => assistant.id === assistantId) ?? null
   }, [assistants, params.assistantId])
+
+  const assistantDialogAssistant = useMemo(() => {
+    if (assistantDialogMode !== 'edit') {
+      return null
+    }
+
+    if (assistantDialogAssistantId) {
+      return assistants.find((assistant) => assistant.id === assistantDialogAssistantId) ?? null
+    }
+
+    return selectedAssistant
+  }, [assistantDialogAssistantId, assistantDialogMode, assistants, selectedAssistant])
 
   const selectedThread = useMemo(() => {
     if (!params.threadId) {
@@ -111,9 +134,11 @@ export function useThreadPageController() {
   const chat = useChat({
     id: selectedThread ? `${selectedAssistant?.id}:${selectedThread.id}` : 'default-chat',
     transport: chatTransport,
+    resume: Boolean(selectedThread && chatTransport),
     experimental_throttle: 48,
     onFinish: () => {
-      if (!selectedThread) {
+      const selectedAssistantId = selectedAssistant?.id
+      if (!selectedThread || !selectedAssistantId) {
         return
       }
 
@@ -130,6 +155,12 @@ export function useThreadPageController() {
         )
         return sortThreadsByRecentActivity(nextThreads)
       })
+
+      void listThreads(selectedAssistantId)
+        .then((latestThreads) => {
+          setThreads(sortThreadsByRecentActivity(latestThreads))
+        })
+        .catch(() => undefined)
     }
   })
 
@@ -201,13 +232,14 @@ export function useThreadPageController() {
   }, [loadAssistantsAndProviders])
 
   useEffect(() => {
-    if (!isAssistantConfigDialogOpen) {
+    if (!isAssistantDialogOpen) {
       return
     }
 
     const handleEscape = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape' && !isSavingAssistantConfig) {
-        setIsAssistantConfigDialogOpen(false)
+      if (event.key === 'Escape' && !isSubmittingAssistantDialog) {
+        setIsAssistantDialogOpen(false)
+        setAssistantDialogError(null)
       }
     }
 
@@ -215,7 +247,19 @@ export function useThreadPageController() {
     return () => {
       window.removeEventListener('keydown', handleEscape)
     }
-  }, [isAssistantConfigDialogOpen, isSavingAssistantConfig])
+  }, [isAssistantDialogOpen, isSubmittingAssistantDialog])
+
+  useEffect(() => {
+    if (!isAssistantDialogOpen || assistantDialogMode !== 'edit') {
+      return
+    }
+
+    if (!assistantDialogAssistant) {
+      setIsAssistantDialogOpen(false)
+      setAssistantDialogAssistantId(null)
+      setAssistantDialogError(null)
+    }
+  }, [assistantDialogAssistant, assistantDialogMode, isAssistantDialogOpen])
 
   useEffect(() => {
     if (isLoadingData) {
@@ -418,7 +462,7 @@ export function useThreadPageController() {
         const createdThread = await createThread({
           assistantId: selectedAssistant.id,
           resourceId: getActiveResourceId(),
-          title: createThreadTitle(threads)
+          title: createThreadTitle()
         })
         setThreads((currentThreads) =>
           sortThreadsByRecentActivity([createdThread, ...currentThreads])
@@ -435,7 +479,7 @@ export function useThreadPageController() {
         setIsCreatingThread(false)
       }
     },
-    [navigate, selectedAssistant, showToast, threads]
+    [navigate, selectedAssistant, showToast]
   )
 
   const handleDeleteThread = async (thread: ThreadRecord): Promise<void> => {
@@ -468,28 +512,118 @@ export function useThreadPageController() {
     return picker()
   }, [])
 
-  const handleUpdateAssistantConfig = async (input: SaveAssistantInput): Promise<void> => {
-    if (!selectedAssistant) {
-      return
-    }
-
-    setIsSavingAssistantConfig(true)
+  const handleSubmitAssistantDialog = async (input: SaveAssistantInput): Promise<void> => {
+    setIsSubmittingAssistantDialog(true)
+    setAssistantDialogError(null)
 
     try {
-      const updatedAssistant = await updateAssistant(selectedAssistant.id, input)
+      if (assistantDialogMode === 'create') {
+        const createdAssistant = await createAssistant(input)
+        setAssistants((currentAssistants) => [createdAssistant, ...currentAssistants])
+        setThreads([])
+        showToast('success', 'Assistant created.')
+        setIsAssistantDialogOpen(false)
+        setAssistantDialogAssistantId(null)
+        navigate(routeToAssistantThreads(createdAssistant.id))
+        return
+      }
+
+      if (!assistantDialogAssistant) {
+        setAssistantDialogError('Assistant not found.')
+        return
+      }
+
+      const updatedAssistant = await updateAssistant(assistantDialogAssistant.id, input)
       setAssistants((currentAssistants) =>
         currentAssistants.map((assistant) =>
           assistant.id === updatedAssistant.id ? updatedAssistant : assistant
         )
       )
       showToast('success', 'Assistant configuration updated.')
-      setIsAssistantConfigDialogOpen(false)
+      setIsAssistantDialogOpen(false)
+      setAssistantDialogAssistantId(null)
     } catch (error) {
-      showToast('error', toErrorMessage(error))
+      setAssistantDialogError(toErrorMessage(error))
     } finally {
-      setIsSavingAssistantConfig(false)
+      setIsSubmittingAssistantDialog(false)
     }
   }
+
+  const handleDeleteAssistant = useCallback(
+    async (assistantId: string): Promise<void> => {
+      if (deletingAssistantId) {
+        return
+      }
+
+      const assistant = assistants.find((item) => item.id === assistantId)
+      if (!assistant) {
+        return
+      }
+
+      if (assistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] === true) {
+        showToast('error', 'Built-in default assistant cannot be deleted.')
+        return
+      }
+
+      const confirmLabel = assistant.name.trim().length > 0 ? assistant.name.trim() : 'this assistant'
+      if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+        const confirmed = window.confirm(
+          `Delete "${confirmLabel}"? This will also delete all of its threads.`
+        )
+        if (!confirmed) {
+          return
+        }
+      }
+
+      setDeletingAssistantId(assistantId)
+
+      try {
+        await deleteAssistant(assistantId)
+
+        let fallbackAssistantId: string | null = null
+        setAssistants((currentAssistants) => {
+          const nextAssistants = currentAssistants.filter((assistant) => assistant.id !== assistantId)
+          fallbackAssistantId = nextAssistants.at(0)?.id ?? null
+          return nextAssistants
+        })
+
+        setThreads((currentThreads) =>
+          currentThreads.filter((thread) => thread.assistantId !== assistantId)
+        )
+
+        if (params.assistantId === assistantId) {
+          if (fallbackAssistantId) {
+            navigate(routeToAssistantThreads(fallbackAssistantId), { replace: true })
+          } else {
+            setMessages([])
+            navigate('/chat', { replace: true })
+          }
+        }
+
+        if (assistantDialogMode === 'edit' && assistantDialogAssistantId === assistantId) {
+          setIsAssistantDialogOpen(false)
+          setAssistantDialogAssistantId(null)
+          setAssistantDialogError(null)
+        }
+
+        showToast('success', 'Assistant deleted.')
+      } catch (error) {
+        showToast('error', toErrorMessage(error))
+      } finally {
+        setDeletingAssistantId(null)
+      }
+    },
+    [
+      assistantDialogAssistantId,
+      assistantDialogMode,
+      assistants,
+      deletingAssistantId,
+      navigate,
+      params.assistantId,
+      setMessages,
+      showToast
+    ]
+  )
 
   const handleSubmitMessage = async (): Promise<void> => {
     if (!canSendMessage || !selectedAssistant) {
@@ -544,28 +678,15 @@ export function useThreadPageController() {
       return
     }
 
-    let active = true
+    const messageToSend = pendingThreadMessage.text
+    setPendingThreadMessage(null)
 
     void sendMessage({
-      text: pendingThreadMessage.text
+      text: messageToSend
+    }).catch((error) => {
+      setComposerValue(messageToSend)
+      showToast('error', toErrorMessage(error))
     })
-      .then(() => {
-        if (active) {
-          setPendingThreadMessage(null)
-        }
-      })
-      .catch((error) => {
-        if (!active) {
-          return
-        }
-        setComposerValue(pendingThreadMessage.text)
-        showToast('error', toErrorMessage(error))
-        setPendingThreadMessage(null)
-      })
-
-    return () => {
-      active = false
-    }
   }, [
     isLoadingChatHistory,
     isChatStreaming,
@@ -575,15 +696,37 @@ export function useThreadPageController() {
     showToast
   ])
 
-  const closeAssistantConfigDialog = useCallback(() => {
-    if (!isSavingAssistantConfig) {
-      setIsAssistantConfigDialogOpen(false)
+  const closeAssistantDialog = useCallback(() => {
+    if (isSubmittingAssistantDialog) {
+      return
     }
-  }, [isSavingAssistantConfig])
+
+    setIsAssistantDialogOpen(false)
+    setAssistantDialogAssistantId(null)
+    setAssistantDialogError(null)
+  }, [isSubmittingAssistantDialog])
+
+  const openCreateAssistantDialog = useCallback(() => {
+    setAssistantDialogMode('create')
+    setAssistantDialogAssistantId(null)
+    setAssistantDialogError(null)
+    setIsAssistantDialogOpen(true)
+  }, [])
+
+  const openEditAssistantDialog = useCallback((assistantId: string) => {
+    setAssistantDialogMode('edit')
+    setAssistantDialogAssistantId(assistantId)
+    setAssistantDialogError(null)
+    setIsAssistantDialogOpen(true)
+  }, [])
 
   const openAssistantConfigDialog = useCallback(() => {
-    setIsAssistantConfigDialogOpen(true)
-  }, [])
+    if (!selectedAssistant) {
+      return
+    }
+
+    openEditAssistantDialog(selectedAssistant.id)
+  }, [openEditAssistantDialog, selectedAssistant])
 
   const handleSelectAssistant = useCallback(
     (assistantId: string) => {
@@ -610,6 +753,7 @@ export function useThreadPageController() {
     isLoadingThreads,
     isCreatingThread,
     deletingThreadId,
+    deletingAssistantId,
     isLoadingChatHistory,
     isChatStreaming,
     chatError,
@@ -620,13 +764,21 @@ export function useThreadPageController() {
     providers,
     mcpServers,
     toast,
-    isAssistantConfigDialogOpen,
-    isSavingAssistantConfig,
+    assistantDialogMode,
+    assistantDialogAssistant,
+    isAssistantDialogOpen,
+    isSubmittingAssistantDialog,
+    assistantDialogError,
     onCreateThread: () => {
       void createNewThread()
     },
+    onCreateAssistant: openCreateAssistantDialog,
     onSelectAssistant: handleSelectAssistant,
     onSelectThread: handleSelectThread,
+    onEditAssistant: openEditAssistantDialog,
+    onDeleteAssistant: (assistantId: string) => {
+      void handleDeleteAssistant(assistantId)
+    },
     onDeleteThread: (thread: ThreadRecord) => {
       void handleDeleteThread(thread)
     },
@@ -634,8 +786,8 @@ export function useThreadPageController() {
     onSubmitMessage: handleSubmitMessage,
     onAbortGeneration: handleAbortGeneration,
     onOpenAssistantConfig: openAssistantConfigDialog,
-    onCloseAssistantConfig: closeAssistantConfigDialog,
+    onCloseAssistantDialog: closeAssistantDialog,
     onSelectWorkspacePath: selectWorkspacePath,
-    onUpdateAssistantConfig: handleUpdateAssistantConfig
+    onSubmitAssistantDialog: handleSubmitAssistantDialog
   }
 }

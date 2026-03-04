@@ -24,6 +24,27 @@
 }
 
 :root {
+  /* System default (will be overridden by .light / .dark classes as needed, falling back to dark) */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.15 0.04 258);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.04 258);
+  --primary: oklch(0.43 0.12 234);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.96 0.01 256);
+  --secondary-foreground: oklch(0.25 0.03 258);
+  --muted: oklch(0.96 0.01 258);
+  --muted-foreground: oklch(0.46 0.02 255);
+  --accent: oklch(0.96 0.01 247);
+  --accent-foreground: oklch(0.25 0.05 255);
+  --destructive: oklch(0.64 0.19 25);
+  --border: oklch(0.92 0.02 256);
+  --input: oklch(0.92 0.02 256);
+  --ring: oklch(0.43 0.12 234 / 65%);
+  --radius: 0.72rem;
+}
+
+.dark {
   --background: oklch(0.15 0.04 258);
   --foreground: oklch(0.96 0.01 255);
   --card: oklch(0.2 0.04 258 / 85%);
@@ -40,7 +61,25 @@
   --border: oklch(0.36 0.05 256);
   --input: oklch(0.36 0.05 256);
   --ring: oklch(0.73 0.12 234 / 65%);
-  --radius: 0.72rem;
+}
+
+.light {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.15 0.04 258);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.04 258);
+  --primary: oklch(0.43 0.12 234);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.96 0.01 256);
+  --secondary-foreground: oklch(0.25 0.03 258);
+  --muted: oklch(0.96 0.01 258);
+  --muted-foreground: oklch(0.46 0.02 255);
+  --accent: oklch(0.96 0.01 247);
+  --accent-foreground: oklch(0.25 0.05 255);
+  --destructive: oklch(0.64 0.19 25);
+  --border: oklch(0.92 0.02 256);
+  --input: oklch(0.92 0.02 256);
+  --ring: oklch(0.43 0.12 234 / 65%);
 }
 
 * {
@@ -74,4 +113,31 @@ body {
 
 .no-drag {
   -webkit-app-region: no-drag;
+}
+
+@layer utilities {
+  .chat-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--muted-foreground) 42%, transparent) transparent;
+  }
+
+  .chat-scrollbar::-webkit-scrollbar {
+    width: 0.6rem;
+  }
+
+  .chat-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .chat-scrollbar::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+    background-color: color-mix(in oklch, var(--muted-foreground) 38%, transparent);
+    min-height: 2rem;
+  }
+
+  .chat-scrollbar:hover::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklch, var(--primary) 44%, transparent);
+  }
 }

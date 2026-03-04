@@ -147,4 +147,72 @@ describe('chat route', () => {
     expect(listThreadMessages).not.toHaveBeenCalled()
     expect(streamChat).not.toHaveBeenCalled()
   })
+
+  it('returns 204 when there is no active stream to resume', async () => {
+    const streamChat = vi.fn(async () => new ReadableStream())
+    const listThreadMessages = vi.fn(async () => [])
+    const app = new Hono()
+    registerChatRoute(app, {
+      assistantRuntime: {
+        streamChat,
+        listThreadMessages
+      }
+    })
+
+    const response = await app.request('http://localhost/chat/assistant-1/assistant-1:thread-1/stream')
+
+    expect(response.status).toBe(204)
+  })
+
+  it('resumes an active stream for the current chat id', async () => {
+    let streamController: any = null
+    const streamChat = vi.fn(
+      async () =>
+        new ReadableStream({
+          start(controller) {
+            streamController = controller
+          }
+        })
+    )
+    const listThreadMessages = vi.fn(async () => [])
+    const app = new Hono()
+    registerChatRoute(app, {
+      assistantRuntime: {
+        streamChat,
+        listThreadMessages
+      }
+    })
+
+    const streamResponse = await app.request('http://localhost/chat/assistant-1', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: 'assistant-1:thread-1',
+        messages: [],
+        threadId: 'thread-1',
+        profileId: 'profile-1'
+      })
+    })
+    expect(streamResponse.status).toBe(200)
+
+    streamController?.enqueue({
+      type: 'text-delta',
+      id: 'message-1',
+      delta: 'Hello'
+    })
+
+    const resumeResponse = await app.request('http://localhost/chat/assistant-1/assistant-1:thread-1/stream')
+    expect(resumeResponse.status).toBe(200)
+
+    const reader = resumeResponse.body?.getReader()
+    expect(reader).toBeDefined()
+    const firstChunk = await reader!.read()
+    expect(firstChunk.done).toBe(false)
+    const text = new TextDecoder().decode(firstChunk.value)
+    expect(text).toContain('data:')
+
+    await reader!.cancel()
+    streamController?.close()
+    await streamResponse.body?.cancel()
+  })
 })

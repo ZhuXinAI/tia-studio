@@ -1,4 +1,5 @@
 import type { Hono } from 'hono'
+import { BUILT_IN_DEFAULT_AGENT_MCP_KEY } from '../../default-agent/default-agent-bootstrap'
 import type { AssistantsRepository } from '../../persistence/repos/assistants-repo'
 import type { ProvidersRepository } from '../../persistence/repos/providers-repo'
 import { createAssistantSchema, updateAssistantSchema } from '../validators/assistants-validator'
@@ -75,7 +76,17 @@ export function registerAssistantsRoute(
   })
 
   app.delete('/v1/assistants/:assistantId', async (context) => {
-    const deleted = await options.assistantsRepo.delete(context.req.param('assistantId'))
+    const assistantId = context.req.param('assistantId')
+    const assistant = await options.assistantsRepo.getById(assistantId)
+    if (!assistant) {
+      return context.json({ ok: false, error: 'Assistant not found' }, 404)
+    }
+
+    if (assistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] === true) {
+      return context.json({ ok: false, error: 'Built-in default assistant cannot be deleted' }, 409)
+    }
+
+    const deleted = await options.assistantsRepo.delete(assistantId)
     if (!deleted) {
       return context.json({ ok: false, error: 'Assistant not found' }, 404)
     }

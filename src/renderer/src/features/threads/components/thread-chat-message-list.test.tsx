@@ -23,8 +23,16 @@ vi.mock('@assistant-ui/react', () => {
   const Root = ({ children }: { children?: React.ReactNode }): React.JSX.Element => (
     <div>{children}</div>
   )
-  const Viewport = ({ children }: { children?: React.ReactNode }): React.JSX.Element => (
-    <div>{children}</div>
+  const Viewport = ({
+    children,
+    className
+  }: {
+    children?: React.ReactNode
+    className?: string
+  }): React.JSX.Element => (
+    <div data-testid="thread-viewport" data-class-name={className}>
+      {children}
+    </div>
   )
   const Empty = ({ children }: { children?: React.ReactNode }): React.JSX.Element => (
     <div>{children}</div>
@@ -141,5 +149,29 @@ describe('thread chat message list', () => {
       | { AssistantMessage?: unknown }
       | undefined
     expect(secondComponents?.AssistantMessage).toBe(firstComponents?.AssistantMessage)
+  })
+
+  it('applies custom scrollbar styling to the thread viewport', async () => {
+    const chat = {
+      messages: [],
+      status: 'ready',
+      error: null
+    } as unknown as UseChatHelpers<UIMessage>
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          chat={chat}
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    const viewport = container.querySelector('[data-testid="thread-viewport"]')
+    expect(viewport?.getAttribute('data-class-name')).toContain('chat-scrollbar')
   })
 })

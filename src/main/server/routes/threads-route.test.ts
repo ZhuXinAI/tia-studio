@@ -59,6 +59,33 @@ describe('threads route', () => {
     expect(listBody[0].title).toBe('Plan my Sanya trip')
   })
 
+  it('accepts empty titles when creating threads', async () => {
+    const provider = await providersRepo.create({
+      name: 'OpenAI',
+      type: 'openai',
+      apiKey: 'test-key',
+      selectedModel: 'gpt-5'
+    })
+    const assistant = await assistantsRepo.create({
+      name: 'Trip Planner',
+      providerId: provider.id
+    })
+
+    const createResponse = await app.request('http://localhost/v1/threads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assistantId: assistant.id,
+        resourceId: 'profile-default',
+        title: ''
+      })
+    })
+
+    expect(createResponse.status).toBe(201)
+    const created = await createResponse.json()
+    expect(created.title).toBe('')
+  })
+
   it('updates thread title', async () => {
     const provider = await providersRepo.create({
       name: 'OpenAI',
@@ -92,6 +119,41 @@ describe('threads route', () => {
     expect(patchResponse.status).toBe(200)
     const patched = await patchResponse.json()
     expect(patched.title).toBe('New title')
+  })
+
+  it('accepts empty titles when updating threads', async () => {
+    const provider = await providersRepo.create({
+      name: 'OpenAI',
+      type: 'openai',
+      apiKey: 'test-key',
+      selectedModel: 'gpt-5'
+    })
+    const assistant = await assistantsRepo.create({
+      name: 'Trip Planner',
+      providerId: provider.id
+    })
+    const createResponse = await app.request('http://localhost/v1/threads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assistantId: assistant.id,
+        resourceId: 'profile-default',
+        title: 'Temp title'
+      })
+    })
+    const created = await createResponse.json()
+
+    const patchResponse = await app.request(`http://localhost/v1/threads/${created.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: ''
+      })
+    })
+
+    expect(patchResponse.status).toBe(200)
+    const patched = await patchResponse.json()
+    expect(patched.title).toBe('')
   })
 
   it('deletes thread by id', async () => {

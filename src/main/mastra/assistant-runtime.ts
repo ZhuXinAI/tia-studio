@@ -89,7 +89,107 @@ export class AssistantRuntimeService implements AssistantRuntime {
       sendReasoning: true
     })
 
-    return stream as ReadableStream<UIMessageChunk>
+    return this.streamWithThreadTitleSync(stream as ReadableStream<UIMessageChunk>, {
+      threadId: params.threadId,
+      profileId: params.profileId
+    })
+  }
+
+  private streamWithThreadTitleSync(
+    stream: ReadableStream<UIMessageChunk>,
+    params: {
+      threadId: string
+      profileId: string
+    }
+  ): ReadableStream<UIMessageChunk> {
+    const reader = stream.getReader()
+    let isSynced = false
+
+    return new ReadableStream<UIMessageChunk>({
+      pull: async (controller) => {
+        try {
+          const { done, value } = await reader.read()
+          if (done) {
+            if (!isSynced) {
+              isSynced = true
+              await this.syncThreadAfterStreaming(params)
+            }
+            controller.close()
+            reader.releaseLock()
+            return
+          }
+
+          controller.enqueue(value)
+        } catch (error) {
+          controller.error(error)
+          reader.releaseLock()
+        }
+      },
+      cancel: async (reason) => {
+        try {
+          await reader.cancel(reason)
+        } finally {
+          reader.releaseLock()
+        }
+
+        if (!isSynced) {
+          isSynced = true
+          await this.syncThreadAfterStreaming(params)
+        }
+      }
+    })
+  }
+
+  private async syncThreadAfterStreaming(params: {
+    threadId: string
+    profileId: string
+  }): Promise<void> {
+    const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
+    await this.options.threadsRepo.touchLastMessageAt(params.threadId, now).catch(() => undefined)
+    await this.syncGeneratedThreadTitle(params).catch(() => undefined)
+  }
+
+  private async syncGeneratedThreadTitle(params: {
+    threadId: string
+    profileId: string
+  }): Promise<void> {
+    const appThread = await this.options.threadsRepo.getById(params.threadId)
+    if (!appThread || appThread.resourceId !== params.profileId) {
+      return
+    }
+
+    if (!this.shouldReplaceThreadTitle(appThread.title)) {
+      return
+    }
+
+    const storage = this.options.mastra.getStorage()
+    if (!storage) {
+      return
+    }
+
+    const memoryStore = await storage.getStore('memory')
+    if (!memoryStore || typeof memoryStore.getThreadById !== 'function') {
+      return
+    }
+
+    const memoryThread = await memoryStore.getThreadById({
+      threadId: params.threadId
+    })
+    const generatedTitle = this.toNonEmptyString(memoryThread?.title)
+    if (!generatedTitle || appThread.title.trim() === generatedTitle) {
+      return
+    }
+
+    await this.options.threadsRepo.updateTitle(params.threadId, generatedTitle)
+  }
+
+  private shouldReplaceThreadTitle(title: string): boolean {
+    const normalizedTitle = title.trim()
+    if (normalizedTitle.length === 0) {
+      return true
+    }
+
+    return /^New Thread(?: \d+)?$/i.test(normalizedTitle)
   }
 
   async listThreadMessages(params: ListThreadMessagesParams): Promise<UIMessage[]> {
@@ -187,6 +287,8 @@ export class AssistantRuntimeService implements AssistantRuntime {
     if (this.registeredAgentSignatures.get(assistant.id) === nextSignature) {
       return
     }
+
+    this.options.mastra.removeAgent(assistant.id)
 
     const browserSearchTool = createBrowserSearchTool({
       resolveDefaultEngine: async () => this.options.webSearchSettingsRepo.getDefaultEngine(),

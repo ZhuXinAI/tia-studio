@@ -2,6 +2,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import type { Mastra } from '@mastra/core/mastra'
+import type { UIMessageChunk } from 'ai'
 import type { AppAssistant } from '../persistence/repos/assistants-repo'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { AppProvider } from '../persistence/repos/providers-repo'
@@ -52,6 +53,20 @@ function buildProvider(): AppProvider {
     enabled: true,
     createdAt: '2026-03-02T00:00:00.000Z',
     updatedAt: '2026-03-02T00:00:00.000Z'
+  }
+}
+
+async function drainStream(stream: ReadableStream<UIMessageChunk>): Promise<void> {
+  const reader = stream.getReader()
+  try {
+    while (true) {
+      const { done } = await reader.read()
+      if (done) {
+        break
+      }
+    }
+  } finally {
+    reader.releaseLock()
   }
 }
 
@@ -114,6 +129,41 @@ describe('AssistantRuntimeService', () => {
 
     const memory = await agent.getMemory()
     expect(memory?.getMergedThreadConfig().generateTitle).toBe(true)
+  })
+
+  it('re-registers an agent when provider configuration changes', async () => {
+    const assistant = buildAssistant()
+    const initialProvider = buildProvider()
+    const updatedProvider = {
+      ...initialProvider,
+      apiHost: 'https://api.alt-provider.local/v1'
+    }
+
+    const mastra = createMastraInstance(':memory:')
+    const removeAgentSpy = vi.spyOn(mastra, 'removeAgent')
+
+    const runtime = new AssistantRuntimeService({
+      mastra,
+      assistantsRepo: {} as AssistantsRepository,
+      providersRepo: {} as ProvidersRepository,
+      threadsRepo: {} as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    const ensureAgentRegistered = runtime as unknown as {
+      ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+    }
+
+    await ensureAgentRegistered.ensureAgentRegistered(assistant, initialProvider)
+    await ensureAgentRegistered.ensureAgentRegistered(assistant, updatedProvider)
+
+    expect(removeAgentSpy).toHaveBeenCalledWith(assistant.id)
   })
 
   it('passes assistant max steps into chat stream execution', async () => {
@@ -209,6 +259,221 @@ describe('AssistantRuntimeService', () => {
         })
       })
     )
+  })
+
+  it('touches thread lastMessageAt after streaming completes', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.enqueue({ type: 'start' } as UIMessageChunk)
+          controller.close()
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const touchLastMessageAt = vi.fn(async () => undefined)
+
+    const runtime = new AssistantRuntimeService({
+      mastra: {
+        getStorage: () => null
+      } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          title: 'Sprint retro',
+          lastMessageAt: null,
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        })),
+        touchLastMessageAt
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+    ;(
+      runtime as unknown as {
+        ensureAgentRegistered: () => Promise<void>
+      }
+    ).ensureAgentRegistered = vi.fn(async () => undefined)
+
+    await drainStream(
+      await runtime.streamChat({
+        assistantId: assistant.id,
+        threadId: 'thread-1',
+        profileId: 'profile-1',
+        messages: []
+      })
+    )
+
+    expect(touchLastMessageAt).toHaveBeenCalledWith('thread-1', expect.any(String))
+  })
+
+  it('syncs generated thread titles back into app threads after streaming', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.enqueue({ type: 'start' } as UIMessageChunk)
+          controller.close()
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const updateTitle = vi.fn(async () => ({
+      id: 'thread-1',
+      assistantId: assistant.id,
+      resourceId: 'profile-1',
+      title: 'Release plan checklist',
+      lastMessageAt: null,
+      createdAt: '2026-03-02T00:00:00.000Z',
+      updatedAt: '2026-03-02T00:00:00.000Z'
+    }))
+
+    const runtime = new AssistantRuntimeService({
+      mastra: {
+        getStorage: () => ({
+          getStore: async () => ({
+            getThreadById: async () => ({
+              id: 'thread-1',
+              title: 'Release plan checklist',
+              resourceId: 'profile-1',
+              createdAt: new Date('2026-03-02T00:00:00.000Z'),
+              updatedAt: new Date('2026-03-02T00:00:00.000Z')
+            })
+          })
+        })
+      } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          title: 'New Thread',
+          lastMessageAt: null,
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        })),
+        updateTitle,
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+    ;(
+      runtime as unknown as {
+        ensureAgentRegistered: () => Promise<void>
+      }
+    ).ensureAgentRegistered = vi.fn(async () => undefined)
+
+    await drainStream(
+      await runtime.streamChat({
+        assistantId: assistant.id,
+        threadId: 'thread-1',
+        profileId: 'profile-1',
+        messages: []
+      })
+    )
+
+    expect(updateTitle).toHaveBeenCalledWith('thread-1', 'Release plan checklist')
+  })
+
+  it('does not overwrite custom app thread titles when mastra generates one', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.close()
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const updateTitle = vi.fn()
+
+    const runtime = new AssistantRuntimeService({
+      mastra: {
+        getStorage: () => ({
+          getStore: async () => ({
+            getThreadById: async () => ({
+              id: 'thread-1',
+              title: 'Release plan checklist',
+              resourceId: 'profile-1',
+              createdAt: new Date('2026-03-02T00:00:00.000Z'),
+              updatedAt: new Date('2026-03-02T00:00:00.000Z')
+            })
+          })
+        })
+      } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          title: 'Sprint retro',
+          lastMessageAt: null,
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        })),
+        updateTitle,
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+    ;(
+      runtime as unknown as {
+        ensureAgentRegistered: () => Promise<void>
+      }
+    ).ensureAgentRegistered = vi.fn(async () => undefined)
+
+    await drainStream(
+      await runtime.streamChat({
+        assistantId: assistant.id,
+        threadId: 'thread-1',
+        profileId: 'profile-1',
+        messages: []
+      })
+    )
+
+    expect(updateTitle).not.toHaveBeenCalled()
   })
 
   it('uses toAISdkV5Messages for chat history and excludes non-chat roles', async () => {

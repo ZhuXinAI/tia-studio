@@ -3,6 +3,7 @@ import type { ProviderRecord } from '../settings/providers/providers-query'
 import type { ThreadRecord } from './threads-query'
 
 type ReadinessCheckId = 'workspace' | 'provider' | 'model'
+const BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__tiaBuiltInDefaultAgent'
 
 type ReadinessCheck = {
   id: ReadinessCheckId
@@ -19,8 +20,13 @@ export type AssistantReadiness = {
 export type AssistantThreadBranch = {
   assistantId: string
   assistantName: string
+  canDeleteAssistant: boolean
   isSelected: boolean
   threads: ThreadRecord[]
+}
+
+function canDeleteAssistant(assistant: AssistantRecord): boolean {
+  return assistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] !== true
 }
 
 function hasWorkspaceRootPath(assistant: AssistantRecord | null): boolean {
@@ -82,6 +88,7 @@ export function buildAssistantThreadBranches(input: {
     return {
       assistantId: assistant.id,
       assistantName: assistant.name,
+      canDeleteAssistant: canDeleteAssistant(assistant),
       isSelected,
       threads: isSelected ? input.threads : []
     }

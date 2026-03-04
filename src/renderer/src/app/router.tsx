@@ -1,15 +1,12 @@
-import {
-  createHashRouter,
-  createMemoryRouter,
-  redirect,
-  type RouteObject
-} from 'react-router-dom'
+import { createHashRouter, createMemoryRouter, redirect, type RouteObject } from 'react-router-dom'
 import { AppShell } from './layout/app-shell'
-import { AssistantsPage } from '../features/assistants/pages/assistants-page'
 import { ThreadPage } from '../features/threads/pages/thread-page'
 import { ProvidersSettingsPage } from '../features/settings/pages/providers-settings-page'
 import { WebSearchSettingsPage } from '../features/settings/pages/web-search-settings-page'
 import { McpServersSettingsPage } from '../features/settings/pages/mcp-servers-settings-page'
+import { AboutSettingsPage } from '../features/settings/pages/about-settings-page'
+import { DisplaySettingsPage } from '../features/settings/pages/display-settings-page'
+import { SettingsPageLayout } from '../features/settings/pages/settings-page-layout'
 
 export const appRoutes: RouteObject[] = [
   {
@@ -25,24 +22,34 @@ export const appRoutes: RouteObject[] = [
         element: <ThreadPage />
       },
       {
-        path: 'assistants',
-        element: <AssistantsPage />
-      },
-      {
-        path: 'assistants/:assistantId/threads/:threadId?',
-        element: <ThreadPage />
-      },
-      {
-        path: 'settings/providers',
-        element: <ProvidersSettingsPage />
-      },
-      {
-        path: 'settings/web-search',
-        element: <WebSearchSettingsPage />
-      },
-      {
-        path: 'settings/mcp-servers',
-        element: <McpServersSettingsPage />
+        path: 'settings',
+        element: <SettingsPageLayout />,
+        children: [
+          {
+            index: true,
+            loader: () => redirect('/settings/about')
+          },
+          {
+            path: 'providers',
+            element: <ProvidersSettingsPage />
+          },
+          {
+            path: 'web-search',
+            element: <WebSearchSettingsPage />
+          },
+          {
+            path: 'mcp-servers',
+            element: <McpServersSettingsPage />
+          },
+          {
+            path: 'about',
+            element: <AboutSettingsPage />
+          },
+          {
+            path: 'display',
+            element: <DisplaySettingsPage />
+          }
+        ]
       }
     ]
   }

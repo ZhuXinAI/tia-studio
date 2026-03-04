@@ -5,6 +5,7 @@ import { migrateAppSchema } from '../../persistence/migrate'
 import { AssistantsRepository } from '../../persistence/repos/assistants-repo'
 import { ProvidersRepository } from '../../persistence/repos/providers-repo'
 import { ThreadsRepository } from '../../persistence/repos/threads-repo'
+import { BUILT_IN_DEFAULT_AGENT_MCP_KEY } from '../../default-agent/default-agent-bootstrap'
 import { registerAssistantsRoute } from './assistants-route'
 
 describe('assistants route', () => {
@@ -160,6 +161,35 @@ describe('assistants route', () => {
     await expect(response.json()).resolves.toEqual({
       ok: false,
       error: 'Assistant not found'
+    })
+  })
+
+  it('rejects deleting the built-in default assistant', async () => {
+    const provider = await providersRepo.create({
+      name: 'OpenAI',
+      type: 'openai',
+      apiKey: 'test-key',
+      selectedModel: 'gpt-5'
+    })
+    const assistant = await assistantsRepo.create({
+      name: 'Default Agent',
+      providerId: provider.id,
+      mcpConfig: {
+        [BUILT_IN_DEFAULT_AGENT_MCP_KEY]: true
+      }
+    })
+
+    const response = await app.request(`http://localhost/v1/assistants/${assistant.id}`, {
+      method: 'DELETE'
+    })
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: 'Built-in default assistant cannot be deleted'
+    })
+    await expect(assistantsRepo.getById(assistant.id)).resolves.toMatchObject({
+      id: assistant.id
     })
   })
 })

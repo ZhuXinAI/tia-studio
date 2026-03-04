@@ -108,13 +108,37 @@ describe('thread sidebar nesting', () => {
     expect(branches).toHaveLength(2)
     expect(branches[0]).toMatchObject({
       assistantId: 'assistant-1',
+      canDeleteAssistant: true,
       isSelected: true
     })
     expect(branches[0].threads.map((thread) => thread.id)).toEqual(['thread-1', 'thread-2'])
     expect(branches[1]).toMatchObject({
       assistantId: 'assistant-2',
+      canDeleteAssistant: true,
       isSelected: false
     })
     expect(branches[1].threads).toHaveLength(0)
+  })
+
+  it('marks built-in default assistants as non-deletable in the sidebar model', () => {
+    const branches = buildAssistantThreadBranches({
+      assistants: [
+        createAssistant({
+          id: 'assistant-default',
+          name: 'Default Agent',
+          mcpConfig: {
+            __tiaBuiltInDefaultAgent: true
+          }
+        })
+      ],
+      selectedAssistantId: 'assistant-default',
+      threads: []
+    })
+
+    expect(branches).toHaveLength(1)
+    expect(branches[0]).toMatchObject({
+      assistantId: 'assistant-default',
+      canDeleteAssistant: false
+    })
   })
 })

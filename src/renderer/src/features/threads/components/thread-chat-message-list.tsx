@@ -2,7 +2,8 @@ import {
   AssistantRuntimeProvider,
   MessagePartPrimitive,
   MessagePrimitive,
-  ThreadPrimitive
+  ThreadPrimitive,
+  ErrorPrimitive
 } from '@assistant-ui/react'
 import { useAISDKRuntime } from '@assistant-ui/react-ai-sdk'
 import type { UseChatHelpers } from '@ai-sdk/react'
@@ -63,6 +64,11 @@ function AssistantMessageBubble(): React.JSX.Element {
           ToolGroup: ToolGroup
         }}
       />
+      <MessagePrimitive.Error>
+        <ErrorPrimitive.Root>
+          <ErrorPrimitive.Message />
+        </ErrorPrimitive.Root>
+      </MessagePrimitive.Error>
     </MessagePrimitive.Root>
   )
 }
@@ -81,7 +87,7 @@ export function ThreadChatMessageList({
     <AssistantRuntimeProvider runtime={runtime}>
       <AssistantNameContext.Provider value={assistantName}>
         <ThreadPrimitive.Root className="flex min-h-0 flex-1 flex-col">
-          <ThreadPrimitive.Viewport className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
+          <ThreadPrimitive.Viewport className="chat-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
             <ThreadPrimitive.Empty>
               <p className="text-muted-foreground text-sm">No messages yet.</p>
             </ThreadPrimitive.Empty>

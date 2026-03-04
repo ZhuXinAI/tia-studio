@@ -1,10 +1,9 @@
-import { Link } from 'react-router-dom'
-import { Bot, MessageSquarePlus, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Bot, MessageSquarePlus, MoreHorizontal, Plus, Trash2 } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarHeader,
@@ -17,20 +16,146 @@ import {
 } from '../../../components/ui/sidebar'
 import type { AssistantThreadBranch } from '../thread-page-helpers'
 import type { ThreadRecord } from '../threads-query'
-import { formatThreadTimestamp } from '../thread-page-routing'
+import { formatThreadTimestamp, getThreadDisplayTitle } from '../thread-page-routing'
+
+type AssistantActionsMenuProps = {
+  assistantId: string
+  assistantName: string
+  canDeleteAssistant: boolean
+  isDeleting: boolean
+  isDisabled: boolean
+  onEdit: (assistantId: string) => void
+  onDelete: (assistantId: string) => void
+}
+
+function AssistantActionsMenu({
+  assistantId,
+  assistantName,
+  canDeleteAssistant,
+  isDeleting,
+  isDisabled,
+  onEdit,
+  onDelete
+}: AssistantActionsMenuProps): React.JSX.Element {
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    const handlePointerDown = (event: MouseEvent): void => {
+      if (!containerRef.current || !(event.target instanceof Node)) {
+        return
+      }
+
+      if (!containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+
+    const handleEscape = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+      }
+    }
+
+    window.addEventListener('mousedown', handlePointerDown)
+    window.addEventListener('keydown', handleEscape)
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown)
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (isDeleting) {
+      setIsOpen(false)
+    }
+  }, [isDeleting])
+
+  const closeAndEdit = (): void => {
+    setIsOpen(false)
+    onEdit(assistantId)
+  }
+
+  const closeAndDelete = (): void => {
+    if (!canDeleteAssistant) {
+      return
+    }
+
+    setIsOpen(false)
+    onDelete(assistantId)
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <Button
+        type="button"
+        size="icon"
+        variant="ghost"
+        className="size-7"
+        aria-label={`Assistant actions for ${assistantName}`}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        disabled={isDisabled}
+        onClick={() => {
+          setIsOpen((currentState) => !currentState)
+        }}
+      >
+        <MoreHorizontal className="size-4" />
+      </Button>
+      {isOpen ? (
+        <div
+          role="menu"
+          className="bg-card text-card-foreground border-border absolute right-0 top-8 z-10 min-w-28 rounded-md border p-1 shadow-lg"
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 w-full justify-start rounded-sm px-2 text-xs font-normal"
+            role="menuitem"
+            onClick={closeAndEdit}
+          >
+            Edit
+          </Button>
+          {canDeleteAssistant ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label={`Delete assistant ${assistantName}`}
+              className="text-destructive h-8 w-full justify-start rounded-sm px-2 text-xs font-normal hover:text-destructive"
+              role="menuitem"
+              onClick={closeAndDelete}
+            >
+              Delete
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 type ThreadSidebarProps = {
   branches: AssistantThreadBranch[]
   selectedThreadId: string | null
   deletingThreadId: string | null
+  deletingAssistantId: string | null
   isLoadingData: boolean
   assistantsCount: number
   isLoadingThreads: boolean
   isCreatingThread: boolean
   canCreateThread: boolean
   onCreateThread: () => void
+  onCreateAssistant: () => void
   onSelectAssistant: (assistantId: string) => void
   onSelectThread: (assistantId: string, threadId: string) => void
+  onEditAssistant: (assistantId: string) => void
+  onDeleteAssistant: (assistantId: string) => void
   onDeleteThread: (thread: ThreadRecord) => void
 }
 
@@ -38,14 +163,18 @@ export function ThreadSidebar({
   branches,
   selectedThreadId,
   deletingThreadId,
+  deletingAssistantId,
   isLoadingData,
   assistantsCount,
   isLoadingThreads,
   isCreatingThread,
   canCreateThread,
   onCreateThread,
+  onCreateAssistant,
   onSelectAssistant,
   onSelectThread,
+  onEditAssistant,
+  onDeleteAssistant,
   onDeleteThread
 }: ThreadSidebarProps): React.JSX.Element {
   return (
@@ -67,28 +196,50 @@ export function ThreadSidebar({
         </Button>
       </SidebarHeader>
 
-      <SidebarContent className="space-y-4">
+      <SidebarContent className="py-4">
         <SidebarGroup>
-          <SidebarGroupLabel>Assistants</SidebarGroupLabel>
+          <div className="flex items-center justify-between px-2">
+            <SidebarGroupLabel className="px-0">Assistants</SidebarGroupLabel>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              aria-label="Create assistant"
+              onClick={onCreateAssistant}
+            >
+              <Plus className="size-4" />
+            </Button>
+          </div>
           {isLoadingData ? <p className="text-muted-foreground px-2 text-xs">Loading assistants...</p> : null}
           {!isLoadingData && assistantsCount === 0 ? (
-            <p className="text-muted-foreground px-2 text-xs">
-              No assistants yet. Create one in Assistants.
-            </p>
+            <p className="text-muted-foreground px-2 text-xs">No assistants yet. Create one.</p>
           ) : null}
           <SidebarMenu>
             {branches.map((branch) => (
               <SidebarMenuItem key={branch.assistantId}>
-                <SidebarMenuButton
-                  type="button"
-                  variant={branch.isSelected ? 'active' : 'default'}
-                  onClick={() => {
-                    onSelectAssistant(branch.assistantId)
-                  }}
-                >
-                  <Bot className="size-4 shrink-0" />
-                  <span className="truncate">{branch.assistantName}</span>
-                </SidebarMenuButton>
+                <div className="flex items-center gap-1">
+                  <SidebarMenuButton
+                    type="button"
+                    variant={branch.isSelected ? 'active' : 'default'}
+                    className="min-w-0 flex-1"
+                    onClick={() => {
+                      onSelectAssistant(branch.assistantId)
+                    }}
+                  >
+                    <Bot className="size-4 shrink-0" />
+                    <span className="truncate">{branch.assistantName}</span>
+                  </SidebarMenuButton>
+                  <AssistantActionsMenu
+                    assistantId={branch.assistantId}
+                    assistantName={branch.assistantName}
+                    canDeleteAssistant={branch.canDeleteAssistant}
+                    isDeleting={deletingAssistantId === branch.assistantId}
+                    isDisabled={Boolean(deletingAssistantId)}
+                    onEdit={onEditAssistant}
+                    onDelete={onDeleteAssistant}
+                  />
+                </div>
 
                 {branch.isSelected ? (
                   <SidebarMenuSub>
@@ -107,6 +258,8 @@ export function ThreadSidebar({
                     {branch.threads.map((thread) => {
                       const isActiveThread = selectedThreadId === thread.id
                       const isDeleting = deletingThreadId === thread.id
+                      const displayTitle = getThreadDisplayTitle(thread.title)
+                      const timestampLabel = formatThreadTimestamp(thread.lastMessageAt)
                       return (
                         <SidebarMenuSubItem key={thread.id}>
                           <div className="flex items-center gap-1">
@@ -118,17 +271,17 @@ export function ThreadSidebar({
                                 onSelectThread(branch.assistantId, thread.id)
                               }}
                             >
-                              <span className="truncate">{thread.title}</span>
-                              <span className="text-[11px] opacity-80">
-                                {formatThreadTimestamp(thread.lastMessageAt)}
-                              </span>
+                              <span className="truncate">{displayTitle}</span>
+                              {timestampLabel ? (
+                                <span className="text-[11px] opacity-80">{timestampLabel}</span>
+                              ) : null}
                             </SidebarMenuSubButton>
                             <Button
                               type="button"
                               size="icon"
                               variant="ghost"
                               className="text-muted-foreground hover:text-destructive size-7"
-                              aria-label={`Delete thread ${thread.title}`}
+                              aria-label={`Delete thread ${displayTitle}`}
                               disabled={isDeleting}
                               onClick={() => onDeleteThread(thread)}
                             >
@@ -145,15 +298,6 @@ export function ThreadSidebar({
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-
-      <SidebarFooter className="grid gap-1">
-        <Button asChild variant="ghost" size="sm" className="w-full justify-start">
-          <Link to="/assistants">Manage Assistants</Link>
-        </Button>
-        <Button asChild variant="ghost" size="sm" className="w-full justify-start">
-          <Link to="/settings/providers">Provider Settings</Link>
-        </Button>
-      </SidebarFooter>
     </Sidebar>
   )
 }

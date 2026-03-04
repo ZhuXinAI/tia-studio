@@ -118,8 +118,8 @@ export function ProvidersForm({
   }
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
-      <div className="space-y-2">
+    <form className="py-4" onSubmit={handleSubmit}>
+      <div className="my-2">
         <Label htmlFor="provider-name">Provider Name</Label>
         <Input
           id="provider-name"
@@ -129,7 +129,7 @@ export function ProvidersForm({
         />
       </div>
 
-      <div className="space-y-2">
+      <div className="my-2">
         <Label htmlFor="provider-type">Type</Label>
         <select
           id="provider-type"
@@ -145,7 +145,7 @@ export function ProvidersForm({
         </select>
       </div>
 
-      <div className="space-y-2">
+      <div className="my-2">
         <Label htmlFor="provider-api-key">API Key</Label>
         <Input
           id="provider-api-key"
@@ -155,7 +155,7 @@ export function ProvidersForm({
         />
       </div>
 
-      <div className="space-y-2">
+      <div className="my-2">
         <Label htmlFor="provider-api-host">API Host</Label>
         <Input
           id="provider-api-host"
@@ -165,7 +165,7 @@ export function ProvidersForm({
         />
       </div>
 
-      <div className="space-y-2">
+      <div className="my-2">
         <Label htmlFor="provider-selected-model">Selected Model</Label>
         <Input
           id="provider-selected-model"
@@ -188,7 +188,7 @@ export function ProvidersForm({
       </label>
 
       {showProviderModels ? (
-        <div className="space-y-2">
+        <div className="my-2">
           <Label htmlFor="provider-models-list">Provider Models (optional)</Label>
           <Textarea
             id="provider-models-list"

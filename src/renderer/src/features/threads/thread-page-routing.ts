@@ -16,13 +16,22 @@ export function routeToAssistantThreads(assistantId: string, threadId?: string):
   return `/chat/${assistantId}`
 }
 
-export function createThreadTitle(existingThreads: ThreadRecord[]): string {
-  return existingThreads.length === 0 ? 'New Thread' : `New Thread ${existingThreads.length + 1}`
+export function createThreadTitle(): string {
+  return ''
+}
+
+export function getThreadDisplayTitle(title: string | null | undefined): string {
+  if (typeof title !== 'string') {
+    return 'Untitled Thread'
+  }
+
+  const normalizedTitle = title.trim()
+  return normalizedTitle.length > 0 ? normalizedTitle : 'Untitled Thread'
 }
 
 export function formatThreadTimestamp(value: string | null): string {
   if (!value) {
-    return 'No messages yet'
+    return ''
   }
 
   const parsedDate = new Date(value)

@@ -84,8 +84,6 @@ describe('providers settings page', () => {
 
     expect(deleteProvider).toHaveBeenCalledWith('provider-1')
     expect(container.textContent).toContain('No providers yet. Create one to get started.')
-    expect(container.textContent).toContain('Model Provider')
-    expect(container.textContent).toContain('Web Search')
     expect(container.textContent).not.toContain('General Settings')
   })
 })

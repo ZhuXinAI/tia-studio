@@ -27,6 +27,14 @@ describe('web search settings page', () => {
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
+    window.tiaDesktop = {
+      getConfig: vi.fn(async () => ({
+        baseUrl: 'http://127.0.0.1:3456',
+        authToken: 'token'
+      })),
+      pickDirectory: vi.fn(async () => null),
+      openWebSearchSettings: vi.fn(async () => true)
+    }
 
     vi.mocked(getWebSearchSettings).mockResolvedValue({
       defaultEngine: 'bing',
@@ -90,7 +98,9 @@ describe('web search settings page', () => {
     await flushAsyncWork()
 
     const buttons = Array.from(container.querySelectorAll('button'))
-    const disableBackgroundButton = buttons.find((button) => button.textContent?.includes('Disable'))
+    const disableBackgroundButton = buttons.find((button) =>
+      button.textContent?.includes('Disable')
+    )
 
     expect(disableBackgroundButton).toBeDefined()
 
@@ -101,5 +111,32 @@ describe('web search settings page', () => {
 
     expect(updateWebSearchSettings).toHaveBeenCalledWith({ keepBrowserWindowOpen: false })
     expect(container.textContent).toContain('Background browser window is now disabled.')
+  })
+
+  it('opens search engine settings in desktop BrowserWindow context', async () => {
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <WebSearchSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const buttons = Array.from(container.querySelectorAll('button'))
+    const bingSettingsButton = buttons.find((button) =>
+      button.textContent?.includes('Open Bing Settings')
+    )
+
+    expect(bingSettingsButton).toBeDefined()
+
+    await act(async () => {
+      bingSettingsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(window.tiaDesktop.openWebSearchSettings).toHaveBeenCalledWith(
+      'https://www.bing.com/account/general'
+    )
   })
 })

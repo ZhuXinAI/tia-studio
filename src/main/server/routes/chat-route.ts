@@ -1,10 +1,12 @@
-import { createUIMessageStreamResponse } from 'ai'
+import { createUIMessageStreamResponse, UI_MESSAGE_STREAM_HEADERS } from 'ai'
 import type { Hono } from 'hono'
 import { z } from 'zod'
 import type { AssistantRuntime } from '../../mastra/assistant-runtime'
 import { isChatRouteError } from '../chat/chat-errors'
+import { ResumableChatStreams } from '../chat/resumable-chat-streams'
 
 const chatRequestSchema = z.object({
+  id: z.string().min(1).optional(),
   messages: z.array(z.any()),
   threadId: z.string().min(1),
   profileId: z.string().min(1),
@@ -21,6 +23,8 @@ type RegisterChatRouteOptions = {
 }
 
 export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions): void {
+  const resumableStreams = new ResumableChatStreams()
+
   app.get('/chat/:assistantId/history', async (context) => {
     const parsed = chatHistoryQuerySchema.safeParse({
       threadId: context.req.query('threadId'),
@@ -70,6 +74,18 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
     }
   })
 
+  app.get('/chat/:assistantId/:chatId/stream', async (context) => {
+    const chatId = context.req.param('chatId')
+    const stream = resumableStreams.resume(chatId)
+    if (!stream) {
+      return new Response(null, { status: 204 })
+    }
+
+    return new Response(stream.pipeThrough(new TextEncoderStream()), {
+      headers: UI_MESSAGE_STREAM_HEADERS
+    })
+  })
+
   app.post('/chat/:assistantId', async (context) => {
     let body: unknown
     try {
@@ -87,8 +103,9 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
     }
 
     try {
+      const assistantId = context.req.param('assistantId')
       const stream = await options.assistantRuntime.streamChat({
-        assistantId: context.req.param('assistantId'),
+        assistantId,
         messages: parsed.data.messages,
         threadId: parsed.data.threadId,
         profileId: parsed.data.profileId,
@@ -96,8 +113,12 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
         abortSignal: context.req.raw.signal
       })
 
+      const chatId = parsed.data.id ?? `${assistantId}:${parsed.data.threadId}`
       return createUIMessageStreamResponse({
-        stream
+        stream,
+        consumeSseStream: ({ stream: sseStream }) => {
+          resumableStreams.register(chatId, sseStream)
+        }
       })
     } catch (error) {
       if (isChatRouteError(error)) {

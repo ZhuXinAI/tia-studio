@@ -13,8 +13,8 @@ type SidebarItem = {
 
 const workspaceItems: SidebarItem[] = [
   {
-    title: 'Assistants',
-    to: '/assistants',
+    title: 'Chat',
+    to: '/chat',
     icon: Bot
   }
 ]
@@ -29,9 +29,9 @@ const settingItems: SidebarItem[] = [
 
 function SidebarNavGroup({ label, items }: { label: string; items: SidebarItem[] }) {
   return (
-    <section className="space-y-2">
+    <section className="my-2">
       <h3 className="px-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{label}</h3>
-      <div className="space-y-1">
+      <div className="flex flex-col gap-1">
         {items.map((item) => (
           <NavLink
             key={item.to}
@@ -58,13 +58,13 @@ function SidebarNavGroup({ label, items }: { label: string; items: SidebarItem[]
 export function StudioSidebar(): React.JSX.Element {
   return (
     <aside className="hidden w-72 shrink-0 border-r border-border/80 bg-background/95 p-4 md:block">
-      <div className="space-y-4">
+      <div className="py-4">
         <Card className="border-border/70 bg-card/90 py-0">
           <CardHeader className="px-4 py-4">
             <CardDescription className="text-xs tracking-[0.18em] uppercase">Tia Studio</CardDescription>
             <CardTitle className="text-base">Control Center</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 px-3 pb-3">
+          <CardContent className="py-4 px-3 pb-3">
             <SidebarNavGroup label="Workspace" items={workspaceItems} />
             <SidebarNavGroup label="Settings" items={settingItems} />
           </CardContent>

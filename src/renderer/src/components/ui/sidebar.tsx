@@ -47,7 +47,7 @@ function SidebarFooter({ className, ...props }: React.ComponentProps<'div'>): Re
 }
 
 function SidebarGroup({ className, ...props }: React.ComponentProps<'section'>): React.JSX.Element {
-  return <section data-slot="sidebar-group" className={cn('space-y-2', className)} {...props} />
+  return <section data-slot="sidebar-group" className={cn('my-2', className)} {...props} />
 }
 
 function SidebarGroupLabel({ className, ...props }: React.ComponentProps<'h2'>): React.JSX.Element {

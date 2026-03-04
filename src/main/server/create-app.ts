@@ -34,7 +34,7 @@ export function createApp(options: CreateAppOptions): Hono {
     '/v1/*',
     cors({
       origin: (origin) => origin ?? '*',
-      allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowHeaders: ['Authorization', 'Content-Type']
     })
   )

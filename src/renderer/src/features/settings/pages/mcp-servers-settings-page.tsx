@@ -1,12 +1,18 @@
-import { Cable, ExternalLink, Plus, Save, Trash2 } from 'lucide-react'
+import { Cable, Plus, Save, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { z } from 'zod'
 import { Button } from '../../../components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { cn } from '../../../lib/utils'
-import { SettingsSidebarNav } from '../components/settings-sidebar-nav'
 import {
   getMcpServersSettings,
   updateMcpServersSettings,
@@ -19,7 +25,40 @@ type ToastState = {
   message: string
 }
 
-const cherryMcpInstallGuideUrl = 'https://docs.cherry-ai.com/advanced-basic/mcp/install'
+const nonEmptyString = z.string().trim().min(1)
+
+const mcpServerSchema = z
+  .object({
+    isActive: z.boolean(),
+    name: nonEmptyString,
+    type: nonEmptyString,
+    command: nonEmptyString.optional(),
+    args: z.array(nonEmptyString).default([]),
+    env: z.record(z.string()).default({}),
+    installSource: nonEmptyString.default('unknown'),
+    url: z.string().url().optional()
+  })
+  .superRefine((value, context) => {
+    const transportType = value.type.toLowerCase()
+
+    if (transportType === 'stdio' && !value.command) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'command is required when type is stdio'
+      })
+    }
+
+    if (transportType !== 'stdio' && !value.url && !value.command) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'url is required for non-stdio MCP servers unless command is provided'
+      })
+    }
+  })
+
+const mcpServersSettingsSchema = z.object({
+  mcpServers: z.record(mcpServerSchema)
+})
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -64,7 +103,7 @@ function parseEnvInput(value: string): Record<string, string> {
     .filter((line) => line.length > 0)
     .map((line) => {
       const [rawKey, ...rawValueParts] = line.split('=')
-      if (!rawKey || rawValueParts.length === 0) {
+      if (!rawKey) {
         return null
       }
 
@@ -99,9 +138,58 @@ function createDefaultServer(serverId: string): McpServerRecord {
   }
 }
 
+function formatSchemaError(error: z.ZodError): string {
+  const issue = error.issues[0]
+  if (!issue) {
+    return 'Invalid MCP settings payload.'
+  }
+
+  const path = issue.path.length > 0 ? issue.path.join('.') : 'mcpServers'
+  return `${path}: ${issue.message}`
+}
+
+function parseRawJsonInput(value: string): McpServersSettings {
+  let parsedValue: unknown
+
+  try {
+    parsedValue = JSON.parse(value) as unknown
+  } catch {
+    throw new Error('Raw JSON is invalid.')
+  }
+
+  const parsed = mcpServersSettingsSchema.safeParse(parsedValue)
+  if (!parsed.success) {
+    throw new Error(formatSchemaError(parsed.error))
+  }
+
+  return parsed.data
+}
+
+function validateSettings(
+  value: McpServersSettings
+): { ok: true; data: McpServersSettings } | { ok: false; message: string } {
+  const parsed = mcpServersSettingsSchema.safeParse(value)
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: formatSchemaError(parsed.error)
+    }
+  }
+
+  return { ok: true, data: parsed.data }
+}
+
+function formatRawJsonInput(value: McpServersSettings): string {
+  return JSON.stringify(value, null, 2)
+}
+
 export function McpServersSettingsPage(): React.JSX.Element {
   const [settings, setSettings] = useState<McpServersSettings | null>(null)
   const [draft, setDraft] = useState<McpServersSettings | null>(null)
+  const [isJsonDialogOpen, setIsJsonDialogOpen] = useState(false)
+  const [jsonDialogInput, setJsonDialogInput] = useState('')
+  const [jsonDialogError, setJsonDialogError] = useState<string | null>(null)
+  const [envInputByServerId, setEnvInputByServerId] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [toast, setToast] = useState<ToastState | null>(null)
@@ -114,6 +202,10 @@ export function McpServersSettingsPage(): React.JSX.Element {
       const nextSettings = await getMcpServersSettings()
       setSettings(nextSettings)
       setDraft(nextSettings)
+      setJsonDialogInput(formatRawJsonInput(nextSettings))
+      setJsonDialogError(null)
+      setIsJsonDialogOpen(false)
+      setEnvInputByServerId({})
     } catch (error) {
       setToast({
         kind: 'error',
@@ -127,6 +219,35 @@ export function McpServersSettingsPage(): React.JSX.Element {
   useEffect(() => {
     void loadSettings()
   }, [loadSettings])
+
+  useEffect(() => {
+    if (!isJsonDialogOpen) {
+      setJsonDialogError(null)
+    }
+  }, [isJsonDialogOpen])
+
+  const openJsonDialog = (): void => {
+    setJsonDialogInput(formatRawJsonInput(draft ?? { mcpServers: {} }))
+    setJsonDialogError(null)
+    setIsJsonDialogOpen(true)
+  }
+
+  const closeJsonDialog = (): void => {
+    setIsJsonDialogOpen(false)
+    setJsonDialogError(null)
+  }
+
+  const applyJsonDialog = (): void => {
+    try {
+      const parsed = parseRawJsonInput(jsonDialogInput)
+      setDraft(parsed)
+      setEnvInputByServerId({})
+      setJsonDialogError(null)
+      setIsJsonDialogOpen(false)
+    } catch (error) {
+      setJsonDialogError(toErrorMessage(error))
+    }
+  }
 
   const serverEntries = useMemo(() => {
     if (!draft) {
@@ -148,7 +269,10 @@ export function McpServersSettingsPage(): React.JSX.Element {
     return JSON.stringify(settings) !== JSON.stringify(draft)
   }, [settings, draft])
 
-  const updateServer = (serverId: string, updater: (current: McpServerRecord) => McpServerRecord): void => {
+  const updateServer = (
+    serverId: string,
+    updater: (current: McpServerRecord) => McpServerRecord
+  ): void => {
     setDraft((current) => {
       if (!current) {
         return current
@@ -198,6 +322,15 @@ export function McpServersSettingsPage(): React.JSX.Element {
         mcpServers: nextServers
       }
     })
+    setEnvInputByServerId((current) => {
+      if (!(serverId in current)) {
+        return current
+      }
+
+      const nextInputs = { ...current }
+      delete nextInputs[serverId]
+      return nextInputs
+    })
   }
 
   const saveSettings = async (): Promise<void> => {
@@ -205,13 +338,23 @@ export function McpServersSettingsPage(): React.JSX.Element {
       return
     }
 
+    const validation = validateSettings(draft)
+    if (!validation.ok) {
+      setToast({
+        kind: 'error',
+        message: validation.message
+      })
+      return
+    }
+
     setIsSaving(true)
     setToast(null)
 
     try {
-      const saved = await updateMcpServersSettings(draft)
+      const saved = await updateMcpServersSettings(validation.data)
       setSettings(saved)
       setDraft(saved)
+      setEnvInputByServerId({})
       setToast({
         kind: 'success',
         message: 'MCP server settings saved.'
@@ -227,25 +370,39 @@ export function McpServersSettingsPage(): React.JSX.Element {
   }
 
   return (
-    <section className="grid gap-4 grid-cols-[260px_minmax(0,1fr)]">
-      <aside className="sticky top-18 self-start">
-        <SettingsSidebarNav />
-      </aside>
-
-      <div className="space-y-4">
+    <>
+      <div className="py-4">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight">MCP Server Settings</h1>
             <p className="text-muted-foreground text-sm">
-              Manage your local <code>mcp.json</code> source-of-truth and control global MCP activation.
+              Manage your local <code>mcp.json</code> source-of-truth and control global MCP
+              activation.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="outline" onClick={addServer} disabled={isLoading || isSaving}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addServer}
+              disabled={isLoading || isSaving}
+            >
               <Plus className="size-4" />
               Add MCP Server
             </Button>
-            <Button type="button" onClick={() => void saveSettings()} disabled={!isDirty || isSaving || isLoading}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={openJsonDialog}
+              disabled={isLoading || isSaving}
+            >
+              Edit JSON
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void saveSettings()}
+              disabled={!isDirty || isSaving || isLoading}
+            >
               <Save className="size-4" />
               {isSaving ? 'Saving...' : 'Save'}
             </Button>
@@ -268,26 +425,10 @@ export function McpServersSettingsPage(): React.JSX.Element {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle>Install Guidance</CardTitle>
-            <CardDescription>
-              Cherry-style MCP installers commonly use runtime executables like <code>uvx</code>, <code>bunx</code>, and <code>npx</code>.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild type="button" variant="ghost" size="sm">
-              <a href={cherryMcpInstallGuideUrl} target="_blank" rel="noreferrer">
-                <ExternalLink className="size-4" />
-                Open Cherry MCP Install Docs
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
             <CardTitle>MCP Servers</CardTitle>
             <CardDescription>
-              These servers are shared globally and can be toggled per assistant later in the Tools tab.
+              These servers are shared globally and can be toggled per assistant later in the Tools
+              tab.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -302,7 +443,10 @@ export function McpServersSettingsPage(): React.JSX.Element {
             ) : null}
 
             {serverEntries.map(([serverId, server]) => (
-              <article key={serverId} className="space-y-3 rounded-xl border border-border/70 bg-card/60 px-4 py-3">
+              <article
+                key={serverId}
+                className="space-y-3 rounded-xl border border-border/70 bg-card/60 px-4 py-3"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
                     <h2 className="flex items-center gap-2 text-base font-medium">
@@ -326,7 +470,12 @@ export function McpServersSettingsPage(): React.JSX.Element {
                           ? 'border-emerald-400/80 bg-emerald-500/30'
                           : 'border-border/80 bg-background/80'
                       )}
-                      onClick={() => updateServer(serverId, (current) => ({ ...current, isActive: !current.isActive }))}
+                      onClick={() =>
+                        updateServer(serverId, (current) => ({
+                          ...current,
+                          isActive: !current.isActive
+                        }))
+                      }
                       disabled={isSaving}
                     >
                       <span
@@ -350,24 +499,30 @@ export function McpServersSettingsPage(): React.JSX.Element {
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-2">
+                  <div className="my-2">
                     <Label htmlFor={`mcp-name-${serverId}`}>Display Name</Label>
                     <Input
                       id={`mcp-name-${serverId}`}
                       value={server.name}
                       onChange={(event) =>
-                        updateServer(serverId, (current) => ({ ...current, name: event.target.value }))
+                        updateServer(serverId, (current) => ({
+                          ...current,
+                          name: event.target.value
+                        }))
                       }
                       placeholder="amap-maps"
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="my-2">
                     <Label htmlFor={`mcp-type-${serverId}`}>Transport Type</Label>
                     <Input
                       id={`mcp-type-${serverId}`}
                       value={server.type}
                       onChange={(event) =>
-                        updateServer(serverId, (current) => ({ ...current, type: event.target.value }))
+                        updateServer(serverId, (current) => ({
+                          ...current,
+                          type: event.target.value
+                        }))
                       }
                       placeholder="stdio"
                     />
@@ -375,7 +530,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-2">
+                  <div className="my-2">
                     <Label htmlFor={`mcp-command-${serverId}`}>Command</Label>
                     <Input
                       id={`mcp-command-${serverId}`}
@@ -391,7 +546,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
                       placeholder="npx"
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="my-2">
                     <Label htmlFor={`mcp-install-source-${serverId}`}>Install Source</Label>
                     <Input
                       id={`mcp-install-source-${serverId}`}
@@ -407,7 +562,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="my-2">
                   <Label htmlFor={`mcp-url-${serverId}`}>URL (for HTTP/SSE servers)</Label>
                   <Input
                     id={`mcp-url-${serverId}`}
@@ -425,7 +580,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-2">
+                  <div className="my-2">
                     <Label htmlFor={`mcp-args-${serverId}`}>Arguments (one per line)</Label>
                     <Textarea
                       id={`mcp-args-${serverId}`}
@@ -440,18 +595,23 @@ export function McpServersSettingsPage(): React.JSX.Element {
                       placeholder={'-y\n@amap/amap-maps-mcp-server'}
                     />
                   </div>
-                  <div className="space-y-2">
+                  <div className="my-2">
                     <Label htmlFor={`mcp-env-${serverId}`}>Environment Variables (KEY=VALUE)</Label>
                     <Textarea
                       id={`mcp-env-${serverId}`}
                       rows={4}
-                      value={formatEnvInput(server.env)}
-                      onChange={(event) =>
+                      value={envInputByServerId[serverId] ?? formatEnvInput(server.env)}
+                      onChange={(event) => {
+                        const nextValue = event.target.value
+                        setEnvInputByServerId((current) => ({
+                          ...current,
+                          [serverId]: nextValue
+                        }))
                         updateServer(serverId, (current) => ({
                           ...current,
-                          env: parseEnvInput(event.target.value)
+                          env: parseEnvInput(nextValue)
                         }))
-                      }
+                      }}
                       placeholder={'AMAP_MAPS_API_KEY=your-api-key'}
                     />
                   </div>
@@ -461,6 +621,54 @@ export function McpServersSettingsPage(): React.JSX.Element {
           </CardContent>
         </Card>
       </div>
-    </section>
+
+      {isJsonDialogOpen ? (
+        <div className="bg-background/70 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mcp-json-dialog-title"
+            className="w-full max-w-4xl rounded-xl border border-border/80 bg-card shadow-2xl"
+          >
+            <div className="border-border/70 border-b px-5 py-4">
+              <h2 id="mcp-json-dialog-title" className="text-lg font-semibold">
+                Edit MCP JSON
+              </h2>
+              <p className="text-muted-foreground mt-1 text-sm">
+                This is a snapshot of your local MCP settings. Changes apply only after validation.
+              </p>
+            </div>
+            <div className="space-y-3 p-5">
+              <Label htmlFor="mcp-json-dialog-textarea">MCP Settings JSON</Label>
+              <Textarea
+                id="mcp-json-dialog-textarea"
+                rows={16}
+                value={jsonDialogInput}
+                onChange={(event) => setJsonDialogInput(event.target.value)}
+                className="font-mono text-xs"
+                spellCheck={false}
+              />
+              {jsonDialogError ? (
+                <p role="alert" className="text-destructive text-xs">
+                  {jsonDialogError}
+                </p>
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  JSON parsing and MCP field rules are checked when you apply changes.
+                </p>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={closeJsonDialog}>
+                  Cancel
+                </Button>
+                <Button type="button" onClick={applyJsonDialog}>
+                  Apply JSON
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   )
 }

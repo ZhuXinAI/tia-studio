@@ -1,4 +1,4 @@
-import { Sparkles, Settings2 } from 'lucide-react'
+import { Mic, Paperclip, Plus, Settings2, Sparkles } from 'lucide-react'
 import type { UIMessage } from 'ai'
 import type { UseChatHelpers } from '@ai-sdk/react'
 import type { AssistantRecord } from '../../assistants/assistants-query'
@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { Textarea } from '../../../components/ui/textarea'
 import type { AssistantReadiness } from '../thread-page-helpers'
 import type { ThreadRecord } from '../threads-query'
+import { getThreadDisplayTitle } from '../thread-page-routing'
 import { ThreadChatMessageList } from './thread-chat-message-list'
 
 type ThreadChatCardProps = {
@@ -25,6 +26,7 @@ type ThreadChatCardProps = {
   onSubmitMessage: () => Promise<void>
   onAbortGeneration: () => void
   onOpenAssistantConfig: () => void
+  onCreateThread: () => void
 }
 
 export function ThreadChatCard({
@@ -42,22 +44,26 @@ export function ThreadChatCard({
   onComposerChange,
   onSubmitMessage,
   onAbortGeneration,
-  onOpenAssistantConfig
+  onOpenAssistantConfig,
+  onCreateThread
 }: ThreadChatCardProps): React.JSX.Element {
   const canCompose =
     Boolean(selectedAssistant && readiness.canChat) && !isChatStreaming && !isLoadingChatHistory
+  const statusChipLabel = selectedAssistant ? `${selectedAssistant.name} chat` : 'Assistant chat'
 
   return (
     <Card className="flex min-h-0 flex-1 flex-col gap-0 border-border/80 bg-card/78 py-0 rounded-none border-t-0">
       <CardHeader className="border-b border-border/70 py-2">
         <div className="flex h-full flex-nowrap items-center justify-between gap-3 overflow-hidden">
           <CardTitle className="min-w-0 flex-1 truncate text-base">
-            {selectedThread?.title ?? `Chat with ${selectedAssistant?.name ?? 'Assistant'}`}
+            {selectedThread
+              ? getThreadDisplayTitle(selectedThread.title)
+              : `Chat with ${selectedAssistant?.name ?? 'Assistant'}`}
           </CardTitle>
           <div className="flex shrink-0 items-center gap-2">
             <div className="bg-muted/50 text-muted-foreground inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs">
               <Sparkles className="size-3.5" />
-              Default assistant chat
+              {statusChipLabel}
             </div>
             <Button
               type="button"
@@ -121,14 +127,46 @@ export function ThreadChatCard({
             }
             aria-label="Message composer"
           />
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-muted-foreground text-xs">
-              {selectedThread
-                ? 'Messages stream from the selected assistant thread.'
-                : selectedAssistant
-                  ? 'No thread selected. Press Enter to create one and send.'
-                  : 'Pick an assistant to begin.'}
-            </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            {selectedAssistant ? (
+              <div className="flex flex-wrap items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  aria-label="New thread"
+                  onClick={onCreateThread}
+                >
+                  <Plus className="size-3.5" />
+                  New thread
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  aria-label="Voice input"
+                  disabled
+                >
+                  <Mic className="size-3.5" />
+                  Voice input
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  aria-label="Attachments"
+                  disabled
+                >
+                  <Paperclip className="size-3.5" />
+                  Attachments
+                </Button>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-xs">Pick an assistant to begin.</p>
+            )}
             <Button
               type={isChatStreaming ? 'button' : 'submit'}
               disabled={isChatStreaming ? !canAbortGeneration : !canSendMessage}
