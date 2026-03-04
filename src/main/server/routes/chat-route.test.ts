@@ -167,12 +167,12 @@ describe('chat route', () => {
   })
 
   it('resumes an active stream for the current chat id', async () => {
-    let streamController: ReadableStreamDefaultController | null = null
+    let streamController: ReadableStreamDefaultController<unknown> | null = null
     const streamChat = vi.fn(
       async () =>
         new ReadableStream({
           start(controller) {
-            streamController = controller
+            streamController = controller as ReadableStreamDefaultController<unknown>
           }
         })
     )
@@ -197,7 +197,7 @@ describe('chat route', () => {
     })
     expect(streamResponse.status).toBe(200)
 
-    streamController?.enqueue({
+    streamController!.enqueue({
       type: 'text-delta',
       id: 'message-1',
       delta: 'Hello'
@@ -216,7 +216,7 @@ describe('chat route', () => {
     expect(text).toContain('data:')
 
     await reader!.cancel()
-    streamController?.close()
+    streamController!.close()
     await streamResponse.body?.cancel()
   })
 })
