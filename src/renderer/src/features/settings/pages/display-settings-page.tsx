@@ -54,7 +54,7 @@ export function DisplaySettingsPage(): React.JSX.Element {
   }
 
   return (
-    <div className="py-4 space-y-6">
+    <div className="py-4 flex flex-col gap-4 space-y-6">
       <Card className="border-border/70 bg-card/80 backdrop-blur-sm">
         <CardHeader>
           <CardTitle>Display Settings</CardTitle>

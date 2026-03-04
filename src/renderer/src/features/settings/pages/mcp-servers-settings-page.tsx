@@ -371,7 +371,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
 
   return (
     <>
-      <div className="py-4">
+      <div className="py-4 flex flex-col gap-4">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight">MCP Server Settings</h1>

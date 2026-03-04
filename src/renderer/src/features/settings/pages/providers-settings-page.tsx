@@ -184,7 +184,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
   }
 
   return (
-    <div className="py-4">
+    <div className="py-4 flex flex-col gap-4">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Model Provider Settings</h1>
         <p className="text-muted-foreground text-sm">

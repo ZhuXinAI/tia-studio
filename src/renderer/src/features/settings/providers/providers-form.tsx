@@ -123,7 +123,7 @@ export function ProvidersForm({
   }
 
   return (
-    <form className="py-4" onSubmit={handleSubmit}>
+    <form className="py-4 flex flex-col gap-4" onSubmit={handleSubmit}>
       <div className="my-2">
         <Label htmlFor="provider-name">Provider Name</Label>
         <Input
