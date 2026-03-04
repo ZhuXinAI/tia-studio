@@ -137,7 +137,12 @@ function ThreadChatComposer({
           <div className="flex items-center gap-2">
             {isDictating ? (
               <ComposerPrimitive.StopDictation asChild>
-                <Button variant="outline" size="icon" aria-label="Stop dictation" disabled={!canCompose}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="Stop dictation"
+                  disabled={!canCompose}
+                >
                   <Square className="size-4" />
                 </Button>
               </ComposerPrimitive.StopDictation>

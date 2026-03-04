@@ -246,7 +246,9 @@ export function ThreadSidebar({
               <Plus className="size-4" />
             </Button>
           </div>
-          {isLoadingData ? <p className="text-muted-foreground px-2 text-xs">Loading assistants...</p> : null}
+          {isLoadingData ? (
+            <p className="text-muted-foreground px-2 text-xs">Loading assistants...</p>
+          ) : null}
           {!isLoadingData && assistantsCount === 0 ? (
             <p className="text-muted-foreground px-2 text-xs">
               No assistants yet. Create one in Assistants.
@@ -282,7 +284,9 @@ export function ThreadSidebar({
                   <SidebarMenuSub>
                     {isLoadingThreads ? (
                       <SidebarMenuSubItem>
-                        <p className="text-muted-foreground px-2 py-1 text-xs">Loading threads...</p>
+                        <p className="text-muted-foreground px-2 py-1 text-xs">
+                          Loading threads...
+                        </p>
                       </SidebarMenuSubItem>
                     ) : null}
 

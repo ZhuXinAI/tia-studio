@@ -108,7 +108,10 @@ description: Shared skill available via symlink.
 
     const claudeSkillsRoot = path.join(homeDirectory, '.claude', 'skills')
     await mkdir(claudeSkillsRoot, { recursive: true })
-    await symlink(path.join(externalSkillRoot, 'linked-research'), path.join(claudeSkillsRoot, 'linked'))
+    await symlink(
+      path.join(externalSkillRoot, 'linked-research'),
+      path.join(claudeSkillsRoot, 'linked')
+    )
 
     const skills = await listAssistantSkills(workspaceDirectory)
 

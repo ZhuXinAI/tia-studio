@@ -347,7 +347,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
     const skillsPaths = this.resolveSkillsPaths(rootPath, skillsConfig)
     const filesystem = new LocalFilesystem({ basePath: rootPath })
     const sandbox = new LocalSandbox({
-      workingDirectory: rootPath,
+      workingDirectory: rootPath
     })
     const workspace = new Workspace({
       filesystem,

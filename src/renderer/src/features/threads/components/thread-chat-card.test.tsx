@@ -3,7 +3,7 @@ import { renderToString } from 'react-dom/server'
 import type { UIMessage } from 'ai'
 import type { UseChatHelpers } from '@ai-sdk/react'
 
-const useAISDKRuntimeMock = vi.fn((_chat: unknown, _options?: unknown) => ({ id: 'runtime' }))
+const useAISDKRuntimeMock = vi.fn(() => ({ id: 'runtime' }))
 
 vi.mock('./thread-chat-message-list', () => ({
   ThreadChatMessageList: () => <div data-slot="thread-chat-message-list" />
@@ -21,13 +21,15 @@ vi.mock('@assistant-ui/react', () => {
   }
 
   return {
-    AssistantRuntimeProvider: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+    AssistantRuntimeProvider: ({ children }: { children?: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
     WebSpeechDictationAdapter: WebSpeechDictationAdapterMock,
     ThreadPrimitive: {
       Root: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>
     },
     ComposerPrimitive: {
-      Input: ({ minRows: _minRows, ...props }: Record<string, unknown>) => <textarea {...props} />,
+      Input: (props: Record<string, unknown>) => <textarea {...props} />,
       DictationTranscript: () => <span data-slot="dictation-transcript" />,
       Dictate: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
       StopDictation: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>
