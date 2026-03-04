@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Bot, MessageSquarePlus, MoreHorizontal, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../../components/ui/button'
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarHeader,
@@ -177,6 +179,39 @@ export function ThreadSidebar({
   onDeleteAssistant,
   onDeleteThread
 }: ThreadSidebarProps): React.JSX.Element {
+  const [confirmDeleteThreadId, setConfirmDeleteThreadId] = useState<string | null>(null)
+  const confirmDeleteContainerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!confirmDeleteThreadId) {
+      return
+    }
+
+    const handlePointerDown = (event: MouseEvent): void => {
+      const container = confirmDeleteContainerRef.current
+      if (!container) {
+        return
+      }
+
+      if (event.target instanceof Node && !container.contains(event.target)) {
+        setConfirmDeleteThreadId(null)
+      }
+    }
+
+    const handleEscape = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setConfirmDeleteThreadId(null)
+      }
+    }
+
+    window.addEventListener('mousedown', handlePointerDown)
+    window.addEventListener('keydown', handleEscape)
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown)
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [confirmDeleteThreadId])
+
   return (
     <Sidebar className="h-full w-80 border-r border-b-0">
       <SidebarHeader className="space-y-3">
@@ -196,7 +231,7 @@ export function ThreadSidebar({
         </Button>
       </SidebarHeader>
 
-      <SidebarContent className="py-4">
+      <SidebarContent className="space-y-4">
         <SidebarGroup>
           <div className="flex items-center justify-between px-2">
             <SidebarGroupLabel className="px-0">Assistants</SidebarGroupLabel>
@@ -211,11 +246,11 @@ export function ThreadSidebar({
               <Plus className="size-4" />
             </Button>
           </div>
-          {isLoadingData ? (
-            <p className="text-muted-foreground px-2 text-xs">Loading assistants...</p>
-          ) : null}
+          {isLoadingData ? <p className="text-muted-foreground px-2 text-xs">Loading assistants...</p> : null}
           {!isLoadingData && assistantsCount === 0 ? (
-            <p className="text-muted-foreground px-2 text-xs">No assistants yet. Create one.</p>
+            <p className="text-muted-foreground px-2 text-xs">
+              No assistants yet. Create one in Assistants.
+            </p>
           ) : null}
           <SidebarMenu>
             {branches.map((branch) => (
@@ -247,9 +282,7 @@ export function ThreadSidebar({
                   <SidebarMenuSub>
                     {isLoadingThreads ? (
                       <SidebarMenuSubItem>
-                        <p className="text-muted-foreground px-2 py-1 text-xs">
-                          Loading threads...
-                        </p>
+                        <p className="text-muted-foreground px-2 py-1 text-xs">Loading threads...</p>
                       </SidebarMenuSubItem>
                     ) : null}
 
@@ -262,6 +295,7 @@ export function ThreadSidebar({
                     {branch.threads.map((thread) => {
                       const isActiveThread = selectedThreadId === thread.id
                       const isDeleting = deletingThreadId === thread.id
+                      const isConfirmingDelete = confirmDeleteThreadId === thread.id
                       const displayTitle = getThreadDisplayTitle(thread.title)
                       const timestampLabel = formatThreadTimestamp(thread.lastMessageAt)
                       return (
@@ -280,17 +314,61 @@ export function ThreadSidebar({
                                 <span className="text-[11px] opacity-80">{timestampLabel}</span>
                               ) : null}
                             </SidebarMenuSubButton>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              className="text-muted-foreground hover:text-destructive size-7"
-                              aria-label={`Delete thread ${displayTitle}`}
-                              disabled={isDeleting}
-                              onClick={() => onDeleteThread(thread)}
+                            <div
+                              className="relative"
+                              ref={isConfirmingDelete ? confirmDeleteContainerRef : undefined}
                             >
-                              <Trash2 className="size-3.5" />
-                            </Button>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="text-muted-foreground hover:text-destructive size-7"
+                                aria-label={`Delete thread ${displayTitle}`}
+                                disabled={isDeleting}
+                                onClick={() => {
+                                  setConfirmDeleteThreadId((current) =>
+                                    current === thread.id ? null : thread.id
+                                  )
+                                }}
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+
+                              {isConfirmingDelete ? (
+                                <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-md border border-border/70 bg-card p-2 shadow-lg">
+                                  <p className="text-muted-foreground mb-2 text-xs">
+                                    Delete thread?
+                                  </p>
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      aria-label={`Cancel delete thread ${displayTitle}`}
+                                      disabled={isDeleting}
+                                      onClick={() => {
+                                        setConfirmDeleteThreadId(null)
+                                      }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="destructive"
+                                      aria-label={`Confirm delete thread ${displayTitle}`}
+                                      disabled={isDeleting}
+                                      onClick={() => {
+                                        setConfirmDeleteThreadId(null)
+                                        onDeleteThread(thread)
+                                      }}
+                                    >
+                                      Delete
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
                         </SidebarMenuSubItem>
                       )
@@ -302,6 +380,15 @@ export function ThreadSidebar({
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="grid gap-1">
+        <Button asChild variant="ghost" size="sm" className="w-full justify-start">
+          <Link to="/assistants">Manage Assistants</Link>
+        </Button>
+        <Button asChild variant="ghost" size="sm" className="w-full justify-start">
+          <Link to="/settings/providers">Provider Settings</Link>
+        </Button>
+      </SidebarFooter>
     </Sidebar>
   )
 }

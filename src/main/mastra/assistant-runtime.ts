@@ -4,7 +4,7 @@ import { Agent } from '@mastra/core/agent'
 import type { ToolsInput } from '@mastra/core/agent'
 import type { MemoryConfig } from '@mastra/core/memory'
 import type { Mastra } from '@mastra/core/mastra'
-import { LocalFilesystem, Workspace } from '@mastra/core/workspace'
+import { LocalFilesystem, LocalSandbox, Workspace } from '@mastra/core/workspace'
 import { handleChatStream } from '@mastra/ai-sdk'
 import { toAISdkV5Messages } from '@mastra/ai-sdk/ui'
 import { Memory } from '@mastra/memory'
@@ -346,8 +346,12 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
     const skillsPaths = this.resolveSkillsPaths(rootPath, skillsConfig)
     const filesystem = new LocalFilesystem({ basePath: rootPath })
+    const sandbox = new LocalSandbox({
+      workingDirectory: rootPath,
+    })
     const workspace = new Workspace({
       filesystem,
+      sandbox,
       ...(skillsPaths.length > 0 ? { skills: skillsPaths } : {})
     })
 

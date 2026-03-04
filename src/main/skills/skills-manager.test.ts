@@ -1,6 +1,6 @@
 import os from 'node:os'
 import path from 'node:path'
-import { access, mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { access, mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { listAssistantSkills, removeWorkspaceSkill } from './skills-manager'
 
@@ -89,6 +89,36 @@ description: Keeps workspace linting rules.
           description: 'Keeps workspace linting rules.',
           canDelete: true,
           relativePath: 'workspace-lint'
+        })
+      ])
+    )
+  })
+
+  it('lists symlinked skill directories', async () => {
+    const externalSkillRoot = path.join(tempRoot, 'shared-skills')
+    await createSkill(
+      externalSkillRoot,
+      'linked-research',
+      `---
+name: Linked Research
+description: Shared skill available via symlink.
+---
+`
+    )
+
+    const claudeSkillsRoot = path.join(homeDirectory, '.claude', 'skills')
+    await mkdir(claudeSkillsRoot, { recursive: true })
+    await symlink(path.join(externalSkillRoot, 'linked-research'), path.join(claudeSkillsRoot, 'linked'))
+
+    const skills = await listAssistantSkills(workspaceDirectory)
+
+    expect(skills).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: 'global-claude',
+          name: 'Linked Research',
+          relativePath: 'linked',
+          canDelete: false
         })
       ])
     )

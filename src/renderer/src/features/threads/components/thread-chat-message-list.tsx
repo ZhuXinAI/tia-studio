@@ -1,22 +1,20 @@
 import {
-  AssistantRuntimeProvider,
+  ActionBarMorePrimitive,
+  ActionBarPrimitive,
   MessagePartPrimitive,
   MessagePrimitive,
-  ThreadPrimitive,
-  ErrorPrimitive
+  ThreadPrimitive
 } from '@assistant-ui/react'
-import { useAISDKRuntime } from '@assistant-ui/react-ai-sdk'
-import type { UseChatHelpers } from '@ai-sdk/react'
-import type { UIMessage } from 'ai'
+import { MoreHorizontal } from 'lucide-react'
 import { createContext, useContext } from 'react'
 import { toErrorMessage } from '../thread-page-routing'
 import { Reasoning, ReasoningGroup } from '../../../components/assistant-ui/reasoning'
 import { MarkdownText } from '../../../components/assistant-ui/markdown-text'
 import { ToolFallback } from '../../../components/assistant-ui/tool-fallback'
 import { ToolGroup } from '../../../components/assistant-ui/tool-group'
+import { Button } from '../../../components/ui/button'
 
 type ThreadChatMessageListProps = {
-  chat: UseChatHelpers<UIMessage>
   assistantName: string
   isLoadingChatHistory: boolean
   isChatStreaming: boolean
@@ -64,70 +62,86 @@ function AssistantMessageBubble(): React.JSX.Element {
           ToolGroup: ToolGroup
         }}
       />
-      <MessagePrimitive.Error>
-        <ErrorPrimitive.Root>
-          <ErrorPrimitive.Message />
-        </ErrorPrimitive.Root>
-      </MessagePrimitive.Error>
+
+      <ActionBarPrimitive.Root autohide="always" className="mt-2 flex justify-end">
+        <ActionBarMorePrimitive.Root>
+          <ActionBarMorePrimitive.Trigger asChild>
+            <Button type="button" variant="ghost" size="icon" aria-label="Message actions">
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </ActionBarMorePrimitive.Trigger>
+
+          <ActionBarMorePrimitive.Content className="bg-card text-card-foreground border-border z-50 min-w-44 rounded-md border p-1 shadow-lg">
+            <ActionBarPrimitive.Copy asChild>
+              <ActionBarMorePrimitive.Item className="data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:opacity-50">
+                Copy
+              </ActionBarMorePrimitive.Item>
+            </ActionBarPrimitive.Copy>
+            <ActionBarPrimitive.Reload asChild>
+              <ActionBarMorePrimitive.Item className="data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:opacity-50">
+                Reload
+              </ActionBarMorePrimitive.Item>
+            </ActionBarPrimitive.Reload>
+            <ActionBarPrimitive.ExportMarkdown asChild>
+              <ActionBarMorePrimitive.Item className="data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:opacity-50">
+                Export Markdown
+              </ActionBarMorePrimitive.Item>
+            </ActionBarPrimitive.ExportMarkdown>
+          </ActionBarMorePrimitive.Content>
+        </ActionBarMorePrimitive.Root>
+      </ActionBarPrimitive.Root>
     </MessagePrimitive.Root>
   )
 }
 
 export function ThreadChatMessageList({
-  chat,
   assistantName,
   isLoadingChatHistory,
   isChatStreaming,
   loadError,
   chatError
 }: ThreadChatMessageListProps): React.JSX.Element {
-  const runtime = useAISDKRuntime(chat)
-
   return (
-    <AssistantRuntimeProvider runtime={runtime}>
-      <AssistantNameContext.Provider value={assistantName}>
-        <ThreadPrimitive.Root className="flex min-h-0 flex-1 flex-col">
-          <ThreadPrimitive.Viewport className="chat-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
-            <ThreadPrimitive.Empty>
-              <p className="text-muted-foreground text-sm">No messages yet.</p>
-            </ThreadPrimitive.Empty>
+    <AssistantNameContext.Provider value={assistantName}>
+      <ThreadPrimitive.Viewport className="chat-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
+        <ThreadPrimitive.Empty>
+          <p className="text-muted-foreground text-sm">No messages yet.</p>
+        </ThreadPrimitive.Empty>
 
-            <ThreadPrimitive.Messages
-              components={{
-                UserMessage: UserMessageBubble,
-                AssistantMessage: AssistantMessageBubble
-              }}
-            />
+        <ThreadPrimitive.Messages
+          components={{
+            UserMessage: UserMessageBubble,
+            AssistantMessage: AssistantMessageBubble
+          }}
+        />
 
-            {isLoadingChatHistory ? (
-              <p role="status" className="text-muted-foreground text-xs">
-                Loading thread history...
-              </p>
-            ) : null}
+        {isLoadingChatHistory ? (
+          <p role="status" className="text-muted-foreground text-xs">
+            Loading thread history...
+          </p>
+        ) : null}
 
-            {isChatStreaming ? (
-              <p role="status" className="text-muted-foreground text-xs">
-                Assistant is responding...
-              </p>
-            ) : null}
+        {isChatStreaming ? (
+          <p role="status" className="text-muted-foreground text-xs">
+            Assistant is responding...
+          </p>
+        ) : null}
 
-            {chatError ? (
-              <p role="alert" className="text-destructive text-sm">
-                {toErrorMessage(chatError)}
-              </p>
-            ) : null}
+        {chatError ? (
+          <p role="alert" className="text-destructive text-sm">
+            {toErrorMessage(chatError)}
+          </p>
+        ) : null}
 
-            {loadError ? (
-              <p
-                role="alert"
-                className="text-destructive rounded-md border border-destructive/60 px-3 py-2 text-sm"
-              >
-                {loadError}
-              </p>
-            ) : null}
-          </ThreadPrimitive.Viewport>
-        </ThreadPrimitive.Root>
-      </AssistantNameContext.Provider>
-    </AssistantRuntimeProvider>
+        {loadError ? (
+          <p
+            role="alert"
+            className="text-destructive rounded-md border border-destructive/60 px-3 py-2 text-sm"
+          >
+            {loadError}
+          </p>
+        ) : null}
+      </ThreadPrimitive.Viewport>
+    </AssistantNameContext.Provider>
   )
 }

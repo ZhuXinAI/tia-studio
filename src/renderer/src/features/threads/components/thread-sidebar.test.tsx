@@ -2,6 +2,7 @@
 
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ThreadSidebar } from './thread-sidebar'
 
@@ -42,32 +43,34 @@ describe('thread sidebar assistant management', () => {
   }): void {
     act(() => {
       root.render(
-        <ThreadSidebar
-          branches={[
-            {
-              assistantId: 'assistant-1',
-              assistantName: 'Planner',
-              canDeleteAssistant: callbacks?.canDeleteAssistant ?? true,
-              isSelected: true,
-              threads: callbacks?.threads ?? []
-            }
-          ]}
-          selectedThreadId={null}
-          deletingThreadId={null}
-          deletingAssistantId={null}
-          isLoadingData={false}
-          assistantsCount={1}
-          isLoadingThreads={false}
-          isCreatingThread={false}
-          canCreateThread={false}
-          onCreateThread={() => undefined}
-          onCreateAssistant={callbacks?.onCreateAssistant ?? (() => undefined)}
-          onSelectAssistant={() => undefined}
-          onSelectThread={() => undefined}
-          onEditAssistant={callbacks?.onEditAssistant ?? (() => undefined)}
-          onDeleteAssistant={callbacks?.onDeleteAssistant ?? (() => undefined)}
-          onDeleteThread={() => undefined}
-        />
+        <MemoryRouter>
+          <ThreadSidebar
+            branches={[
+              {
+                assistantId: 'assistant-1',
+                assistantName: 'Planner',
+                canDeleteAssistant: callbacks?.canDeleteAssistant ?? true,
+                isSelected: true,
+                threads: callbacks?.threads ?? []
+              }
+            ]}
+            selectedThreadId={null}
+            deletingThreadId={null}
+            deletingAssistantId={null}
+            isLoadingData={false}
+            assistantsCount={1}
+            isLoadingThreads={false}
+            isCreatingThread={false}
+            canCreateThread={false}
+            onCreateThread={() => undefined}
+            onCreateAssistant={callbacks?.onCreateAssistant ?? (() => undefined)}
+            onSelectAssistant={() => undefined}
+            onSelectThread={() => undefined}
+            onEditAssistant={callbacks?.onEditAssistant ?? (() => undefined)}
+            onDeleteAssistant={callbacks?.onDeleteAssistant ?? (() => undefined)}
+            onDeleteThread={() => undefined}
+          />
+        </MemoryRouter>
       )
     })
   }

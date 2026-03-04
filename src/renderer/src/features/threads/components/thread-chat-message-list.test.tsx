@@ -2,22 +2,12 @@
 
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import type { UseChatHelpers } from '@ai-sdk/react'
-import type { UIMessage } from 'ai'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ThreadChatMessageList } from './thread-chat-message-list'
 
-const useAISDKRuntimeMock = vi.fn((chat: unknown) => {
-  void chat
-  return { id: 'runtime' }
-})
 const threadMessagesComponentsMock = vi.fn((components: unknown) => {
   void components
 })
-
-vi.mock('@assistant-ui/react-ai-sdk', () => ({
-  useAISDKRuntime: (chat: unknown) => useAISDKRuntimeMock(chat)
-}))
 
 vi.mock('@assistant-ui/react', () => {
   const Root = ({ children }: { children?: React.ReactNode }): React.JSX.Element => (
@@ -39,9 +29,19 @@ vi.mock('@assistant-ui/react', () => {
   )
 
   return {
-    AssistantRuntimeProvider: ({ children }: { children?: React.ReactNode }): React.JSX.Element => (
-      <div>{children}</div>
-    ),
+    ActionBarPrimitive: {
+      Root: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+      Copy: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+      Reload: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+      ExportMarkdown: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>
+    },
+    ActionBarMorePrimitive: {
+      Root: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+      Trigger: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+      Content: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+      Item: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+      Separator: () => <div />
+    },
     MessagePartPrimitive: {
       Text: ({ className }: { className?: string }) => <div data-class-name={className} />
     },
@@ -53,9 +53,10 @@ vi.mock('@assistant-ui/react', () => {
       Root,
       Viewport,
       Empty,
-      Messages: ({ components }: { components: unknown }) => {
+      Messages: ({ components }: { components: { AssistantMessage?: React.FC } }) => {
         threadMessagesComponentsMock(components)
-        return null
+        const AssistantMessage = components.AssistantMessage
+        return <div>{AssistantMessage ? <AssistantMessage /> : null}</div>
       }
     }
   }
@@ -70,7 +71,6 @@ describe('thread chat message list', () => {
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
-    useAISDKRuntimeMock.mockClear()
     threadMessagesComponentsMock.mockClear()
   })
 
@@ -83,17 +83,10 @@ describe('thread chat message list', () => {
     vi.clearAllMocks()
   })
 
-  it('creates assistant-ui runtime from ai sdk chat helpers', async () => {
-    const chat = {
-      messages: [],
-      status: 'ready',
-      error: null
-    } as unknown as UseChatHelpers<UIMessage>
-
+  it('renders overflow actions trigger for assistant messages', async () => {
     await act(async () => {
       root.render(
         <ThreadChatMessageList
-          chat={chat}
           assistantName="Planner"
           isLoadingChatHistory={false}
           isChatStreaming={false}
@@ -103,21 +96,13 @@ describe('thread chat message list', () => {
       )
     })
 
-    expect(useAISDKRuntimeMock).toHaveBeenCalledTimes(1)
-    expect(useAISDKRuntimeMock).toHaveBeenCalledWith(chat)
+    expect(container.querySelector('[aria-label="Message actions"]')).not.toBeNull()
   })
 
   it('keeps assistant message component stable between rerenders', async () => {
-    const chat = {
-      messages: [],
-      status: 'ready',
-      error: null
-    } as unknown as UseChatHelpers<UIMessage>
-
     await act(async () => {
       root.render(
         <ThreadChatMessageList
-          chat={chat}
           assistantName="Planner"
           isLoadingChatHistory={false}
           isChatStreaming={false}
@@ -135,7 +120,6 @@ describe('thread chat message list', () => {
     await act(async () => {
       root.render(
         <ThreadChatMessageList
-          chat={chat}
           assistantName="Planner"
           isLoadingChatHistory={false}
           isChatStreaming={true}
@@ -152,16 +136,9 @@ describe('thread chat message list', () => {
   })
 
   it('applies custom scrollbar styling to the thread viewport', async () => {
-    const chat = {
-      messages: [],
-      status: 'ready',
-      error: null
-    } as unknown as UseChatHelpers<UIMessage>
-
     await act(async () => {
       root.render(
         <ThreadChatMessageList
-          chat={chat}
           assistantName="Planner"
           isLoadingChatHistory={false}
           isChatStreaming={false}

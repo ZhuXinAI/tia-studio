@@ -4,10 +4,14 @@ import { resolveModel } from './model-resolver'
 describe('resolveModel', () => {
   it('resolves openai chat models', () => {
     const chatModel = { id: 'chat-model' }
+    const chatResolver = vi.fn(() => chatModel)
+    const completionResolver = vi.fn(() => ({ id: 'completion-model' }))
     const openaiProvider = Object.assign(
-      vi.fn(() => chatModel),
+      vi.fn(() => ({ id: 'base-model' })),
       {
-        responses: vi.fn(() => ({ id: 'responses-model' }))
+        responses: vi.fn(() => ({ id: 'responses-model' })),
+        chat: chatResolver,
+        completion: completionResolver
       }
     )
     const factories = {
@@ -28,15 +32,19 @@ describe('resolveModel', () => {
     )
 
     expect(result).toBe(chatModel)
-    expect(openaiProvider).toHaveBeenCalledWith('gpt-5')
+    expect(chatResolver).toHaveBeenCalledWith('gpt-5')
   })
 
   it('resolves openai responses models', () => {
     const responsesModel = { id: 'responses-model' }
+    const chatResolver = vi.fn(() => ({ id: 'chat-model' }))
+    const completionResolver = vi.fn(() => ({ id: 'completion-model' }))
     const openaiProvider = Object.assign(
-      vi.fn(() => ({ id: 'chat-model' })),
+      vi.fn(() => ({ id: 'base-model' })),
       {
-        responses: vi.fn(() => responsesModel)
+        responses: vi.fn(() => responsesModel),
+        chat: chatResolver,
+        completion: completionResolver
       }
     )
     const factories = {

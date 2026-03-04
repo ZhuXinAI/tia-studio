@@ -1,6 +1,6 @@
 import os from 'node:os'
 import path from 'node:path'
-import { readdir, readFile, rm, stat } from 'node:fs/promises'
+import { readdir, readFile, realpath, rm, stat } from 'node:fs/promises'
 import type { Dirent } from 'node:fs'
 
 type SkillSource = 'global-claude' | 'global-agent' | 'workspace'
@@ -14,6 +14,12 @@ type SkillSourceDefinition = {
 type WalkDirectory = {
   absolutePath: string
   relativePath: string
+}
+
+type ResolvedDirectoryEntry = {
+  entry: Dirent
+  isDirectory: boolean
+  isFile: boolean
 }
 
 export type AssistantSkillRecord = {
@@ -113,11 +119,23 @@ function isFileMissingError(error: unknown): boolean {
 async function collectSkillDirectories(rootPath: string): Promise<WalkDirectory[]> {
   const queue: WalkDirectory[] = [{ absolutePath: rootPath, relativePath: '' }]
   const skillDirectories: WalkDirectory[] = []
+  const traversedRealPaths = new Set<string>()
 
   while (queue.length > 0) {
     const currentDirectory = queue.shift()
     if (!currentDirectory) {
       continue
+    }
+
+    let currentRealPath: string
+    try {
+      currentRealPath = await realpath(currentDirectory.absolutePath)
+    } catch (error) {
+      if (isFileMissingError(error)) {
+        continue
+      }
+
+      throw error
     }
 
     let entries: Dirent[]
@@ -131,21 +149,33 @@ async function collectSkillDirectories(rootPath: string): Promise<WalkDirectory[
       throw error
     }
 
-    const hasSkillFile = entries.some((entry) => entry.isFile() && entry.name === 'SKILL.md')
+    const resolvedEntries = await Promise.all(
+      entries.map((entry) => resolveEntryType(currentDirectory.absolutePath, entry))
+    )
+
+    const hasSkillFile = resolvedEntries.some(
+      (resolvedEntry) => resolvedEntry.isFile && resolvedEntry.entry.name === 'SKILL.md'
+    )
     if (hasSkillFile) {
       skillDirectories.push(currentDirectory)
     }
 
-    const nextDirectories = entries
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => {
+    if (traversedRealPaths.has(currentRealPath)) {
+      continue
+    }
+
+    traversedRealPaths.add(currentRealPath)
+
+    const nextDirectories = resolvedEntries
+      .filter((resolvedEntry) => resolvedEntry.isDirectory)
+      .map((resolvedEntry) => {
         const relativePath =
           currentDirectory.relativePath.length > 0
-            ? path.join(currentDirectory.relativePath, entry.name)
-            : entry.name
+            ? path.join(currentDirectory.relativePath, resolvedEntry.entry.name)
+            : resolvedEntry.entry.name
 
         return {
-          absolutePath: path.join(currentDirectory.absolutePath, entry.name),
+          absolutePath: path.join(currentDirectory.absolutePath, resolvedEntry.entry.name),
           relativePath
         }
       })
@@ -155,6 +185,54 @@ async function collectSkillDirectories(rootPath: string): Promise<WalkDirectory[
   }
 
   return skillDirectories
+}
+
+async function resolveEntryType(
+  parentDirectoryPath: string,
+  entry: Dirent
+): Promise<ResolvedDirectoryEntry> {
+  if (entry.isDirectory()) {
+    return {
+      entry,
+      isDirectory: true,
+      isFile: false
+    }
+  }
+
+  if (entry.isFile()) {
+    return {
+      entry,
+      isDirectory: false,
+      isFile: true
+    }
+  }
+
+  if (!entry.isSymbolicLink()) {
+    return {
+      entry,
+      isDirectory: false,
+      isFile: false
+    }
+  }
+
+  try {
+    const targetStats = await stat(path.join(parentDirectoryPath, entry.name))
+    return {
+      entry,
+      isDirectory: targetStats.isDirectory(),
+      isFile: targetStats.isFile()
+    }
+  } catch (error) {
+    if (isFileMissingError(error)) {
+      return {
+        entry,
+        isDirectory: false,
+        isFile: false
+      }
+    }
+
+    throw error
+  }
 }
 
 async function readSkillMetadata(skillFilePath: string): Promise<{

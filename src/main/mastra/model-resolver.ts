@@ -14,6 +14,8 @@ export type ModelResolverFactories = {
   openaiFactory: (options?: { apiKey?: string; baseURL?: string }) => {
     (modelId: string): unknown
     responses: (modelId: string) => unknown
+    chat: (modelId: string) => unknown
+    completion: (modelId: string) => unknown
   }
   anthropicFactory: (options?: {
     apiKey?: string
@@ -45,7 +47,7 @@ export function resolveModel(
       baseURL: provider.apiHost ?? undefined
     })
 
-    return openaiProvider(provider.selectedModel)
+    return openaiProvider.chat(provider.selectedModel)
   }
 
   if (provider.type === 'openai-response') {
