@@ -21,6 +21,7 @@
 ### Task 1: Dark theme background uses Tailwind `neutral-800`
 
 **Files:**
+
 - Modify: `src/renderer/src/assets/main.css`
 - Create: `src/renderer/src/assets/main.css.test.ts`
 
@@ -73,6 +74,7 @@ git commit -m "feat: dark theme background uses neutral-800"
 ### Task 2: Thread delete requires inline confirmation
 
 **Files:**
+
 - Modify: `src/renderer/src/features/threads/components/thread-sidebar.tsx`
 - Create: `src/renderer/src/features/threads/components/thread-delete-confirm.test.tsx` (small focused test)
 
@@ -242,6 +244,7 @@ git commit -m "feat: confirm before deleting thread"
 ### Task 3: Lift assistant-ui runtime to `ThreadChatCard` (shared provider)
 
 **Files:**
+
 - Modify: `src/renderer/src/features/threads/components/thread-chat-card.tsx`
 - Modify: `src/renderer/src/features/threads/components/thread-chat-message-list.tsx`
 - Modify: `src/renderer/src/features/threads/components/thread-chat-message-list.test.tsx`
@@ -285,9 +288,7 @@ In `src/renderer/src/features/threads/components/thread-chat-card.tsx`:
 - Wrap the message list + composer UI with:
 
 ```tsx
-<AssistantRuntimeProvider runtime={runtime}>
-  {/* existing content */}
-</AssistantRuntimeProvider>
+<AssistantRuntimeProvider runtime={runtime}>{/* existing content */}</AssistantRuntimeProvider>
 ```
 
 In `src/renderer/src/features/threads/components/thread-chat-message-list.tsx`:
@@ -325,6 +326,7 @@ git commit -m "refactor: share assistant-ui runtime across chat card"
 ### Task 4: Add dictation adapter + composer primitives in `ThreadChatCard`
 
 **Files:**
+
 - Modify: `src/renderer/src/features/threads/components/thread-chat-card.tsx`
 - Modify: `src/renderer/src/features/threads/components/thread-chat-card.test.tsx`
 
@@ -373,7 +375,13 @@ In `src/renderer/src/features/threads/components/thread-chat-card.tsx`:
 - Import:
 
 ```ts
-import { AssistantRuntimeProvider, ComposerPrimitive, WebSpeechDictationAdapter, useAui, useAuiState } from '@assistant-ui/react'
+import {
+  AssistantRuntimeProvider,
+  ComposerPrimitive,
+  WebSpeechDictationAdapter,
+  useAui,
+  useAuiState
+} from '@assistant-ui/react'
 import { useAISDKRuntime } from '@assistant-ui/react-ai-sdk'
 import { useEffect, useMemo, useRef } from 'react'
 ```
@@ -452,6 +460,7 @@ git commit -m "feat: dictation-enabled composer primitives"
 ### Task 5: Add `ActionBarMorePrimitive` overflow menu to assistant messages
 
 **Files:**
+
 - Modify: `src/renderer/src/features/threads/components/thread-chat-message-list.tsx`
 - Modify: `src/renderer/src/features/threads/components/thread-chat-message-list.test.tsx`
 
@@ -572,4 +581,3 @@ Expected: PASS
 
 Run: `pnpm typecheck`  
 Expected: Exit 0
-

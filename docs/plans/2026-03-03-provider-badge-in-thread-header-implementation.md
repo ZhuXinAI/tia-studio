@@ -21,6 +21,7 @@
 ### Task 1: Render provider badge in `ThreadChatCard`
 
 **Files:**
+
 - Modify: `src/renderer/src/features/threads/components/thread-chat-card.tsx`
 - Test: `src/renderer/src/features/threads/components/thread-chat-card.test.tsx`
 
@@ -30,7 +31,7 @@ Update the existing “keeps the header compact…” test to pass a provider la
 
 ```ts
 // inside the first test’s <ThreadChatCard ... />
-providerBadgeLabel="OpenAI (gpt-5)"
+providerBadgeLabel = 'OpenAI (gpt-5)'
 ```
 
 Then add:
@@ -97,6 +98,7 @@ git commit -m "feat: show provider badge in thread header"
 ### Task 2: Derive `providerBadgeLabel` in controller and pass it to `ThreadChatCard`
 
 **Files:**
+
 - Modify: `src/renderer/src/features/threads/hooks/use-thread-page-controller.ts`
 - Modify: `src/renderer/src/features/threads/pages/thread-page.tsx`
 - Test: `src/renderer/src/features/threads/hooks/use-thread-page-controller.test.tsx`
@@ -167,7 +169,7 @@ Return it from the hook:
 ```ts
 return {
   // ...
-  providerBadgeLabel,
+  providerBadgeLabel
   // ...
 }
 ```
@@ -201,4 +203,3 @@ Expected: Exit 0
 git add src/renderer/src/features/threads/hooks/use-thread-page-controller.ts src/renderer/src/features/threads/pages/thread-page.tsx src/renderer/src/features/threads/hooks/use-thread-page-controller.test.tsx
 git commit -m "feat: wire provider badge label into thread header"
 ```
-

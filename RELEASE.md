@@ -20,6 +20,7 @@ pnpm run version:major
 ```
 
 These commands will:
+
 1. Update version in package.json
 2. Create a git commit
 3. Create a git tag (v0.1.1, v0.2.0, etc.)
@@ -29,6 +30,7 @@ These commands will:
 ### Release Workflow
 
 When a tag is pushed (e.g., `v0.1.0`), GitHub Actions will:
+
 1. Build the app for macOS, Windows, and Linux
 2. Create installers for each platform
 3. Create a GitHub Release with all artifacts
@@ -61,6 +63,7 @@ pnpm run version:patch  # This will create v0.1.0 from current 0.1.0
 ```
 
 Or manually:
+
 ```bash
 git tag v0.1.0
 git push origin v0.1.0

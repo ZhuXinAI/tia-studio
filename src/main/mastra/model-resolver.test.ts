@@ -4,9 +4,12 @@ import { resolveModel } from './model-resolver'
 describe('resolveModel', () => {
   it('resolves openai chat models', () => {
     const chatModel = { id: 'chat-model' }
-    const openaiProvider = Object.assign(vi.fn(() => chatModel), {
-      responses: vi.fn(() => ({ id: 'responses-model' }))
-    })
+    const openaiProvider = Object.assign(
+      vi.fn(() => chatModel),
+      {
+        responses: vi.fn(() => ({ id: 'responses-model' }))
+      }
+    )
     const factories = {
       openaiFactory: vi.fn(() => openaiProvider),
       anthropicFactory: vi.fn(),
@@ -30,9 +33,12 @@ describe('resolveModel', () => {
 
   it('resolves openai responses models', () => {
     const responsesModel = { id: 'responses-model' }
-    const openaiProvider = Object.assign(vi.fn(() => ({ id: 'chat-model' })), {
-      responses: vi.fn(() => responsesModel)
-    })
+    const openaiProvider = Object.assign(
+      vi.fn(() => ({ id: 'chat-model' })),
+      {
+        responses: vi.fn(() => responsesModel)
+      }
+    )
     const factories = {
       openaiFactory: vi.fn(() => openaiProvider),
       anthropicFactory: vi.fn(),

@@ -59,7 +59,8 @@ vi.mock('../threads-query', () => ({
 }))
 
 vi.mock('../chat-query', () => ({
-  createThreadChatTransport: (...args: unknown[]) => mockState.createThreadChatTransportMock(...args),
+  createThreadChatTransport: (...args: unknown[]) =>
+    mockState.createThreadChatTransportMock(...args),
   listThreadChatMessages: (...args: unknown[]) => mockState.listThreadChatMessagesMock(...args)
 }))
 

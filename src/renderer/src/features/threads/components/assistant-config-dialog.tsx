@@ -49,7 +49,9 @@ export function AssistantConfigDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
-        aria-label={isCreateMode ? 'Close create assistant dialog' : 'Close assistant config dialog'}
+        aria-label={
+          isCreateMode ? 'Close create assistant dialog' : 'Close assistant config dialog'
+        }
         className="absolute inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
         disabled={isSaving}
@@ -99,7 +101,9 @@ export function AssistantConfigDialog({
             ) : null}
             <AssistantEditor
               key={
-                isCreateMode ? 'assistant-config-create' : `assistant-config-${assistant?.id ?? 'unknown'}`
+                isCreateMode
+                  ? 'assistant-config-create'
+                  : `assistant-config-${assistant?.id ?? 'unknown'}`
               }
               providers={providers}
               mcpServers={mcpServers}

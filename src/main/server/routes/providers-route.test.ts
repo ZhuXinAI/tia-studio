@@ -76,16 +76,17 @@ describe('providers route', () => {
   })
 
   it('returns successful provider connection check', async () => {
-    const fetchSpy = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          data: [{ id: 'gpt-5' }]
-        }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      )
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: [{ id: 'gpt-5' }]
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
     )
     vi.stubGlobal('fetch', fetchSpy)
 
@@ -104,16 +105,17 @@ describe('providers route', () => {
   })
 
   it('returns failed provider connection check with message', async () => {
-    const fetchSpy = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          error: { message: 'Invalid API key' }
-        }),
-        {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      )
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            error: { message: 'Invalid API key' }
+          }),
+          {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
     )
     vi.stubGlobal('fetch', fetchSpy)
 

@@ -171,7 +171,9 @@ export function AssistantEditor({
   onSelectWorkspacePath,
   onSubmit
 }: AssistantEditorProps): React.JSX.Element {
-  const [values, setValues] = useState<AssistantEditorValues>(() => toInitialValues(initialValue, mcpServers))
+  const [values, setValues] = useState<AssistantEditorValues>(() =>
+    toInitialValues(initialValue, mcpServers)
+  )
   const [activeTab, setActiveTab] = useState<AssistantEditorTab>('essential')
   const [error, setError] = useState<string | null>(null)
   const [isSelectingWorkspacePath, setIsSelectingWorkspacePath] = useState(false)
@@ -283,7 +285,9 @@ export function AssistantEditor({
         handleInput('workspacePath', selectedPath.trim())
       }
     } catch (selectError) {
-      setError(selectError instanceof Error ? selectError.message : 'Unable to pick workspace folder')
+      setError(
+        selectError instanceof Error ? selectError.message : 'Unable to pick workspace folder'
+      )
     } finally {
       setIsSelectingWorkspacePath(false)
     }
@@ -326,7 +330,9 @@ export function AssistantEditor({
             type="button"
             className={cn(
               'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
-              activeTab === 'essential' ? 'bg-secondary text-secondary-foreground' : 'hover:bg-accent/40'
+              activeTab === 'essential'
+                ? 'bg-secondary text-secondary-foreground'
+                : 'hover:bg-accent/40'
             )}
             onClick={() => setActiveTab('essential')}
           >
@@ -336,7 +342,9 @@ export function AssistantEditor({
             type="button"
             className={cn(
               'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
-              activeTab === 'tools' ? 'bg-secondary text-secondary-foreground' : 'hover:bg-accent/40'
+              activeTab === 'tools'
+                ? 'bg-secondary text-secondary-foreground'
+                : 'hover:bg-accent/40'
             )}
             onClick={() => setActiveTab('tools')}
           >
@@ -346,7 +354,9 @@ export function AssistantEditor({
             type="button"
             className={cn(
               'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
-              activeTab === 'skills' ? 'bg-secondary text-secondary-foreground' : 'hover:bg-accent/40'
+              activeTab === 'skills'
+                ? 'bg-secondary text-secondary-foreground'
+                : 'hover:bg-accent/40'
             )}
             onClick={() => setActiveTab('skills')}
           >
@@ -354,10 +364,7 @@ export function AssistantEditor({
           </button>
         </aside>
 
-        <div
-          data-testid="assistant-editor-panel"
-          className="h-[32rem] overflow-y-auto py-4 pr-1"
-        >
+        <div data-testid="assistant-editor-panel" className="h-[32rem] overflow-y-auto py-4 pr-1">
           {activeTab === 'essential' ? (
             <>
               <div className="my-2">
@@ -452,14 +459,17 @@ export function AssistantEditor({
                       key={serverId}
                       className={cn(
                         'rounded-xl border px-4 py-3',
-                        isEnabled ? 'border-primary/70 bg-primary/10' : 'border-border/70 bg-card/50'
+                        isEnabled
+                          ? 'border-primary/70 bg-primary/10'
+                          : 'border-border/70 bg-card/50'
                       )}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
                           <h4 className="text-base font-medium">{server.name || serverId}</h4>
                           <p className="text-muted-foreground text-xs">
-                            {server.type.toUpperCase()} {server.command ? `· ${server.command}` : ''}
+                            {server.type.toUpperCase()}{' '}
+                            {server.command ? `· ${server.command}` : ''}
                           </p>
                           {!server.isActive ? (
                             <p className="text-amber-400 text-xs">
@@ -512,7 +522,11 @@ export function AssistantEditor({
                 <p className="text-muted-foreground text-sm">Loading skills...</p>
               ) : null}
 
-              {skillsError ? <p role="alert" className="text-destructive text-sm">{skillsError}</p> : null}
+              {skillsError ? (
+                <p role="alert" className="text-destructive text-sm">
+                  {skillsError}
+                </p>
+              ) : null}
 
               {!isSkillsLoading && values.workspacePath.trim().length > 0 && skills.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
@@ -567,7 +581,11 @@ export function AssistantEditor({
         </div>
       </div>
 
-      {error ? <p role="alert" className="text-destructive text-sm">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="text-destructive text-sm">
+          {error}
+        </p>
+      ) : null}
 
       <div className="mt-3 flex justify-end">
         <Button type="submit" disabled={isSubmitting}>

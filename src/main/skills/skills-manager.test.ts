@@ -4,7 +4,11 @@ import { access, mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { listAssistantSkills, removeWorkspaceSkill } from './skills-manager'
 
-async function createSkill(baseDirectory: string, relativeDirectory: string, content: string): Promise<void> {
+async function createSkill(
+  baseDirectory: string,
+  relativeDirectory: string,
+  content: string
+): Promise<void> {
   const skillDirectory = path.join(baseDirectory, relativeDirectory)
   await mkdir(skillDirectory, { recursive: true })
   await writeFile(path.join(skillDirectory, 'SKILL.md'), content, 'utf8')

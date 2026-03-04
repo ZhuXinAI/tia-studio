@@ -40,11 +40,12 @@ describe('providers query api client', () => {
 
   it('lists providers from backend api', async () => {
     const responseBody = [createProviderRecord('provider-1')]
-    const fetchSpy = vi.fn(async () =>
-      new Response(JSON.stringify(responseBody), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      })
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(JSON.stringify(responseBody), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
     )
     vi.stubGlobal('fetch', fetchSpy)
 
@@ -205,11 +206,12 @@ describe('providers query api client', () => {
   })
 
   it('tests connection via backend api and dispatches local event', async () => {
-    const fetchSpy = vi.fn(async () =>
-      new Response(JSON.stringify({ ok: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      })
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
     )
     vi.stubGlobal('fetch', fetchSpy)
     const listener = vi.fn()
@@ -234,11 +236,12 @@ describe('providers query api client', () => {
   })
 
   it('throws provider error when connection check fails', async () => {
-    const fetchSpy = vi.fn(async () =>
-      new Response(JSON.stringify({ ok: false, error: 'Invalid API key' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      })
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ ok: false, error: 'Invalid API key' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
     )
     vi.stubGlobal('fetch', fetchSpy)
 

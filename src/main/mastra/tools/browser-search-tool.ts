@@ -43,20 +43,14 @@ const searchToolOutputSchema = z.object({
 type BrowserSearchToolOptions = {
   resolveDefaultEngine?: () => WebSearchEngine | Promise<WebSearchEngine>
   resolveKeepBrowserWindowOpen?: () => boolean | Promise<boolean>
-  loadHtmlFromUrl?: (input: {
-    url: string
-    keepBrowserWindowOpen: boolean
-  }) => Promise<string>
+  loadHtmlFromUrl?: (input: { url: string; keepBrowserWindowOpen: boolean }) => Promise<string>
 }
 
 let sharedSearchWindow: BrowserWindow | null = null
 
 export type BrowserSearchInput = z.infer<typeof searchToolInputSchema>
 
-export function buildSearchUrl(input: {
-  query: string
-  engine: WebSearchEngine
-}): string {
+export function buildSearchUrl(input: { query: string; engine: WebSearchEngine }): string {
   const query = input.query.trim()
   const encodedQuery = encodeURIComponent(query)
 

@@ -48,14 +48,19 @@ type ProvidersFormProps = {
   onTestConnection?: (values: SaveProviderInput) => Promise<void> | void
 }
 
-function toProviderPayload(values: ProviderFormValues, showProviderModels: boolean): SaveProviderInput {
+function toProviderPayload(
+  values: ProviderFormValues,
+  showProviderModels: boolean
+): SaveProviderInput {
   return {
     name: values.name.trim(),
     type: values.type,
     apiKey: values.apiKey.trim(),
     apiHost: values.apiHost.trim() || undefined,
     selectedModel: values.selectedModel.trim(),
-    providerModels: showProviderModels ? parseProviderModelsInput(values.providerModelsText) : undefined
+    providerModels: showProviderModels
+      ? parseProviderModelsInput(values.providerModelsText)
+      : undefined
   }
 }
 
@@ -175,7 +180,9 @@ export function ProvidersForm({
         />
       </div>
 
-      {errors.selectedModel ? <p className="text-destructive text-sm">{errors.selectedModel}</p> : null}
+      {errors.selectedModel ? (
+        <p className="text-destructive text-sm">{errors.selectedModel}</p>
+      ) : null}
 
       <label className="flex items-center gap-2 text-sm text-muted-foreground">
         <input

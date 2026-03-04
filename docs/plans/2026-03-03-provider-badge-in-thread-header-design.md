@@ -50,4 +50,3 @@ Add provider information to the thread header as a small badge so users can quic
 
 - Provider deleted or disabled while an assistant still references it: badge is hidden.
 - Provider name/model very long: truncated in UI, full string available via `title`.
-

@@ -159,13 +159,15 @@ describe('chat route', () => {
       }
     })
 
-    const response = await app.request('http://localhost/chat/assistant-1/assistant-1:thread-1/stream')
+    const response = await app.request(
+      'http://localhost/chat/assistant-1/assistant-1:thread-1/stream'
+    )
 
     expect(response.status).toBe(204)
   })
 
   it('resumes an active stream for the current chat id', async () => {
-    let streamController: any = null
+    let streamController: ReadableStreamDefaultController | null = null
     const streamChat = vi.fn(
       async () =>
         new ReadableStream({
@@ -201,7 +203,9 @@ describe('chat route', () => {
       delta: 'Hello'
     })
 
-    const resumeResponse = await app.request('http://localhost/chat/assistant-1/assistant-1:thread-1/stream')
+    const resumeResponse = await app.request(
+      'http://localhost/chat/assistant-1/assistant-1:thread-1/stream'
+    )
     expect(resumeResponse.status).toBe(200)
 
     const reader = resumeResponse.body?.getReader()

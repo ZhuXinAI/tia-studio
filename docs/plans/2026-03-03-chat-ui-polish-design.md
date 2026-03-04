@@ -105,4 +105,3 @@ The chat page already uses assistant-ui primitives for rendering thread messages
 - Dictation unsupported in the current environment: voice UI stays disabled.
 - Deleting the currently selected thread: confirmation should still work and navigation fallback remains unchanged.
 - Long thread titles or narrow sidebar: confirmation bubble should not break layout (allow wrapping within a max width).
-

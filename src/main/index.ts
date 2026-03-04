@@ -44,9 +44,11 @@ const searchBrowserPartition = 'persist:tia-browser-search'
 
 let isTransparentWindow = false
 try {
-  const uiConfig = JSON.parse(readFileSync(join(app.getPath('userData'), 'ui-config.json'), 'utf-8'))
+  const uiConfig = JSON.parse(
+    readFileSync(join(app.getPath('userData'), 'ui-config.json'), 'utf-8')
+  )
   isTransparentWindow = Boolean(uiConfig.transparent)
-} catch (e) {
+} catch {
   // Ignore
 }
 
@@ -179,7 +181,14 @@ function createMainWindow(): BrowserWindow {
     ...(isMac
       ? {
           titleBarStyle: 'hidden' as const,
-          ...(isTransparentWindow ? { vibrancy: 'sidebar', transparent: true, visualEffectState: 'active', backgroundColor: '#00000000' } : { backgroundColor: '#ffffff' })
+          ...(isTransparentWindow
+            ? {
+                vibrancy: 'sidebar',
+                transparent: true,
+                visualEffectState: 'active',
+                backgroundColor: '#00000000'
+              }
+            : { backgroundColor: '#ffffff' })
         }
       : { backgroundColor: '#ffffff' }),
     ...(process.platform === 'linux' ? { icon, backgroundColor: '#ffffff' } : {}),
@@ -298,7 +307,10 @@ app.whenReady().then(async () => {
     try {
       const existingStr = readFileSync(join(app.getPath('userData'), 'ui-config.json'), 'utf-8')
       const existing = JSON.parse(existingStr)
-      writeFileSync(join(app.getPath('userData'), 'ui-config.json'), JSON.stringify({ ...existing, ...config }))
+      writeFileSync(
+        join(app.getPath('userData'), 'ui-config.json'),
+        JSON.stringify({ ...existing, ...config })
+      )
     } catch {
       writeFileSync(join(app.getPath('userData'), 'ui-config.json'), JSON.stringify(config))
     }

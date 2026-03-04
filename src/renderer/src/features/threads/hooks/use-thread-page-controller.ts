@@ -48,7 +48,6 @@ const BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__tiaBuiltInDefaultAgent'
 
 export type ThreadPageController = ReturnType<typeof useThreadPageController>
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function useThreadPageController() {
   const params = useParams()
   const navigate = useNavigate()
@@ -565,7 +564,8 @@ export function useThreadPageController() {
         return
       }
 
-      const confirmLabel = assistant.name.trim().length > 0 ? assistant.name.trim() : 'this assistant'
+      const confirmLabel =
+        assistant.name.trim().length > 0 ? assistant.name.trim() : 'this assistant'
       if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
         const confirmed = window.confirm(
           `Delete "${confirmLabel}"? This will also delete all of its threads.`
@@ -582,7 +582,9 @@ export function useThreadPageController() {
 
         let fallbackAssistantId: string | null = null
         setAssistants((currentAssistants) => {
-          const nextAssistants = currentAssistants.filter((assistant) => assistant.id !== assistantId)
+          const nextAssistants = currentAssistants.filter(
+            (assistant) => assistant.id !== assistantId
+          )
           fallbackAssistantId = nextAssistants.at(0)?.id ?? null
           return nextAssistants
         })

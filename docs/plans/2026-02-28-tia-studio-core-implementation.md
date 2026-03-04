@@ -22,6 +22,7 @@
 ### Task 1: Foundation and test harness
 
 **Files:**
+
 - Modify: `package.json`
 - Create: `vitest.config.ts`
 - Create: `src/test/setup.ts`
@@ -50,16 +51,16 @@ Then add scripts:
 **Step 2: Write failing test for server config parser**
 
 ```ts
-import { describe, expect, it } from 'vitest';
-import { resolveServerConfig } from './server-config';
+import { describe, expect, it } from 'vitest'
+import { resolveServerConfig } from './server-config'
 
 describe('resolveServerConfig', () => {
   it('forces localhost and generates token when missing', () => {
-    const config = resolveServerConfig({});
-    expect(config.host).toBe('127.0.0.1');
-    expect(config.token.length).toBeGreaterThan(20);
-  });
-});
+    const config = resolveServerConfig({})
+    expect(config.host).toBe('127.0.0.1')
+    expect(config.token.length).toBeGreaterThan(20)
+  })
+})
 ```
 
 **Step 3: Run test to verify failure**
@@ -70,14 +71,14 @@ Expected: FAIL with module/function not found.
 **Step 4: Implement minimal config module**
 
 ```ts
-import { randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto'
 
 export function resolveServerConfig(input: { port?: number; token?: string }) {
   return {
     host: '127.0.0.1',
     port: input.port ?? 4769,
-    token: input.token ?? `tia_${randomUUID().replaceAll('-', '')}`,
-  };
+    token: input.token ?? `tia_${randomUUID().replaceAll('-', '')}`
+  }
 }
 ```
 
@@ -96,6 +97,7 @@ git commit -m "chore: add mastra stack and test harness"
 ### Task 2: SQLite/libsql schema + repositories
 
 **Files:**
+
 - Create: `src/main/persistence/migrations/0001_app_core.sql`
 - Create: `src/main/persistence/client.ts`
 - Create: `src/main/persistence/migrate.ts`
@@ -108,14 +110,14 @@ git commit -m "chore: add mastra stack and test harness"
 **Step 1: Write failing migration test**
 
 ```ts
-import { expect, it } from 'vitest';
-import { migrateAppSchema } from './migrate';
+import { expect, it } from 'vitest'
+import { migrateAppSchema } from './migrate'
 
 it('creates core app tables', async () => {
-  const db = await migrateAppSchema(':memory:');
-  const tables = await db.execute("SELECT name FROM sqlite_master WHERE type='table'");
-  expect(tables.rows.some(r => r.name === 'app_profiles')).toBe(true);
-});
+  const db = await migrateAppSchema(':memory:')
+  const tables = await db.execute("SELECT name FROM sqlite_master WHERE type='table'")
+  expect(tables.rows.some((r) => r.name === 'app_profiles')).toBe(true)
+})
 ```
 
 **Step 2: Run test to verify failure**
@@ -156,6 +158,7 @@ git commit -m "feat: add libsql schema and repositories"
 ### Task 3: Main HTTP server bootstrap + token auth
 
 **Files:**
+
 - Create: `src/main/server/create-app.ts`
 - Create: `src/main/server/auth-middleware.ts`
 - Create: `src/main/server/routes/health-route.ts`
@@ -178,21 +181,21 @@ Expected: FAIL.
 **Step 3: Implement Hono app factory and middleware**
 
 ```ts
-app.use('/v1/*', authMiddleware(token));
-app.get('/v1/health', c => c.json({ ok: true }));
+app.use('/v1/*', authMiddleware(token))
+app.get('/v1/health', (c) => c.json({ ok: true }))
 ```
 
 Bind in main startup:
 
 ```ts
-serve({ fetch: app.fetch, hostname: '127.0.0.1', port });
+serve({ fetch: app.fetch, hostname: '127.0.0.1', port })
 ```
 
 **Step 4: Add health route test**
 
 ```ts
-expect(res.status).toBe(200);
-expect(body.ok).toBe(true);
+expect(res.status).toBe(200)
+expect(body.ok).toBe(true)
 ```
 
 **Step 5: Run tests and commit**
@@ -215,6 +218,7 @@ git commit -m "feat: bootstrap localhost http server with bearer auth"
 ### Task 4: Provider + assistant + thread REST routes
 
 **Files:**
+
 - Create: `src/main/server/routes/providers-route.ts`
 - Create: `src/main/server/routes/assistants-route.ts`
 - Create: `src/main/server/routes/threads-route.ts`
@@ -226,6 +230,7 @@ git commit -m "feat: bootstrap localhost http server with bearer auth"
 **Step 1: Write failing providers route tests**
 
 Cover:
+
 - create provider with `type`, `apiKey`, `apiHost`, `selectedModel`
 - reject missing `selectedModel`
 - support optional `providerModels`
@@ -243,18 +248,20 @@ const ProviderSchema = z.object({
   apiKey: z.string().min(1),
   apiHost: z.string().optional(),
   selectedModel: z.string().min(1),
-  providerModels: z.array(z.string()).optional(),
-});
+  providerModels: z.array(z.string()).optional()
+})
 ```
 
 **Step 4: Repeat TDD for assistants and threads routes**
 
 Assistants:
+
 - create/update assistant
 - enforce `providerId` reference
 - store workspace/skills/mcp JSON config
 
 Threads:
+
 - list by assistant
 - create thread with `resourceId`
 - update title
@@ -279,6 +286,7 @@ git commit -m "feat: add providers assistants and threads APIs"
 ### Task 5: Mastra runtime + model resolver + chat stream route
 
 **Files:**
+
 - Create: `src/main/mastra/store.ts`
 - Create: `src/main/mastra/model-resolver.ts`
 - Create: `src/main/mastra/assistant-runtime.ts`
@@ -290,6 +298,7 @@ git commit -m "feat: add providers assistants and threads APIs"
 **Step 1: Write failing model resolver test**
 
 Cover mappings:
+
 - `openai` -> `openai(model)`
 - `openai-response` -> `openai.responses(model)`
 - `gemini` -> `google(model)`
@@ -312,6 +321,7 @@ Expected: FAIL.
 Route: `POST /chat/:assistantId`
 
 Required behavior:
+
 - validate assistant readiness (workspace/provider/model)
 - accept `threadId` and `profileId`
 - call:
@@ -319,8 +329,8 @@ Required behavior:
 ```ts
 agent.stream(messages, {
   format: 'aisdk',
-  memory: { thread: threadId, resource: profileId },
-});
+  memory: { thread: threadId, resource: profileId }
+})
 ```
 
 - return AI SDK stream response
@@ -345,6 +355,7 @@ git commit -m "feat: add mastra runtime and chat streaming route"
 ### Task 6: Preload bridge + renderer API client
 
 **Files:**
+
 - Modify: `src/preload/index.ts`
 - Modify: `src/preload/index.d.ts`
 - Create: `src/renderer/src/lib/desktop-config.ts`
@@ -357,9 +368,9 @@ git commit -m "feat: add mastra runtime and chat streaming route"
 expect(fetchSpy).toHaveBeenCalledWith(
   expect.any(String),
   expect.objectContaining({
-    headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
-  }),
-);
+    headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+  })
+)
 ```
 
 **Step 2: Run test to verify failure**
@@ -370,6 +381,7 @@ Expected: FAIL.
 **Step 3: Expose desktop config through preload**
 
 Expose:
+
 - `baseUrl`
 - `authToken`
 
@@ -398,6 +410,7 @@ git commit -m "feat: add preload desktop config and typed renderer api client"
 ### Task 7: Router shell + app state scaffolding
 
 **Files:**
+
 - Modify: `src/renderer/src/main.tsx`
 - Create: `src/renderer/src/app/router.tsx`
 - Create: `src/renderer/src/app/layout/app-shell.tsx`
@@ -409,6 +422,7 @@ git commit -m "feat: add preload desktop config and typed renderer api client"
 **Step 1: Write failing router test**
 
 Assertions:
+
 - `/` redirects to assistants/thread view
 - `/settings/providers` renders providers settings page
 
@@ -443,6 +457,7 @@ git commit -m "feat: add router shell and core app pages"
 ### Task 8: Provider settings UI (single selected model rule)
 
 **Files:**
+
 - Create: `src/renderer/src/features/settings/providers/providers-query.ts`
 - Create: `src/renderer/src/features/settings/providers/providers-form.tsx`
 - Modify: `src/renderer/src/features/settings/pages/providers-settings-page.tsx`
@@ -451,6 +466,7 @@ git commit -m "feat: add router shell and core app pages"
 **Step 1: Write failing provider form validation test**
 
 Cover:
+
 - submit blocked when `selectedModel` empty
 - optional `providerModels` list shown for prebuilt providers
 
@@ -462,6 +478,7 @@ Expected: FAIL.
 **Step 3: Implement providers list + edit panel**
 
 Form fields:
+
 - provider type
 - API key
 - API host
@@ -488,6 +505,7 @@ git commit -m "feat: implement providers settings with selected model rule"
 ### Task 9: Assistant + thread management UI with readiness gate
 
 **Files:**
+
 - Create: `src/renderer/src/features/assistants/assistants-query.ts`
 - Create: `src/renderer/src/features/assistants/assistant-editor.tsx`
 - Create: `src/renderer/src/features/threads/threads-query.ts`
@@ -512,6 +530,7 @@ Expected: FAIL.
 **Step 4: Implement readiness checker + CTA links**
 
 Checklist:
+
 - workspace configured
 - provider assigned
 - provider selected model set
@@ -531,6 +550,7 @@ git commit -m "feat: add assistant and thread management with setup gating"
 ### Task 10: Chat UI streaming with assistant-ui + AI SDK useChat
 
 **Files:**
+
 - Create: `src/renderer/src/features/chat/use-thread-chat.ts`
 - Create: `src/renderer/src/features/chat/thread-chat.tsx`
 - Create: `src/renderer/src/features/chat/message-part-renderer.tsx`
@@ -541,6 +561,7 @@ git commit -m "feat: add assistant and thread management with setup gating"
 **Step 1: Write failing part-renderer tests**
 
 Assertions:
+
 - text part renders bubble
 - reasoning part renders collapsible block
 - tool parts render expandable card
@@ -557,9 +578,9 @@ useChat({
   transport: new DefaultChatTransport({
     api: `${baseUrl}/chat/${assistantId}`,
     headers: { Authorization: `Bearer ${token}` },
-    body: { threadId, profileId },
-  }),
-});
+    body: { threadId, profileId }
+  })
+})
 ```
 
 **Step 4: Implement assistant-ui based thread chat components**
@@ -589,6 +610,7 @@ git commit -m "feat: add chat streaming UI with reasoning and tool call renderin
 ### Task 11: Verification, lint/typecheck, and app smoke run
 
 **Files:**
+
 - Modify: `README.md`
 - Create: `docs/plans/verification/2026-02-28-tia-core-verification.md`
 
@@ -608,6 +630,7 @@ Expected: all PASS.
 
 Run: `pnpm dev`  
 Manual checks:
+
 - providers page CRUD
 - assistant create/edit
 - thread auto-create
@@ -622,6 +645,7 @@ Document command outputs and manual checks in:
 **Step 4: Update README quickstart**
 
 Add:
+
 - env/setup notes
 - localhost server auth model
 - where DB file lives
@@ -632,4 +656,3 @@ Add:
 git add README.md docs/plans/verification/2026-02-28-tia-core-verification.md
 git commit -m "docs: add verification evidence and local runbook"
 ```
-

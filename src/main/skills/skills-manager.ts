@@ -170,7 +170,9 @@ async function readSkillMetadata(skillFilePath: string): Promise<{
   }
 }
 
-export async function listAssistantSkills(workspaceRootPath: string): Promise<AssistantSkillRecord[]> {
+export async function listAssistantSkills(
+  workspaceRootPath: string
+): Promise<AssistantSkillRecord[]> {
   const normalizedWorkspaceRoot = toNonEmptyString(workspaceRootPath)
   if (!normalizedWorkspaceRoot) {
     return []

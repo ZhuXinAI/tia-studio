@@ -16,10 +16,11 @@ describe('assistants query api client', () => {
   })
 
   it('deletes assistant through backend api', async () => {
-    const fetchSpy = vi.fn(async () =>
-      new Response(null, {
-        status: 204
-      })
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(null, {
+          status: 204
+        })
     )
     vi.stubGlobal('fetch', fetchSpy)
 

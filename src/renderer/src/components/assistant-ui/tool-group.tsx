@@ -4,11 +4,7 @@ import { memo, useCallback, useRef, useState, type FC, type PropsWithChildren } 
 import { ChevronDownIcon, LoaderIcon } from 'lucide-react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { useScrollLock } from '@assistant-ui/react'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger
-} from '../ui/collapsible'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
 import { cn } from '../../lib/utils'
 
 const ANIMATION_DURATION = 200

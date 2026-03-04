@@ -1,13 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { AppDatabase } from '../client'
 
-export type ProviderType =
-  | 'openai'
-  | 'openai-response'
-  | 'gemini'
-  | 'anthropic'
-  | 'ollama'
-  | string
+export type ProviderType = 'openai' | 'openai-response' | 'gemini' | 'anthropic' | 'ollama' | string
 
 export type AppProvider = {
   id: string

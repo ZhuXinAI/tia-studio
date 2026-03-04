@@ -30,7 +30,9 @@ const settingItems: SidebarItem[] = [
 function SidebarNavGroup({ label, items }: { label: string; items: SidebarItem[] }) {
   return (
     <section className="my-2">
-      <h3 className="px-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{label}</h3>
+      <h3 className="px-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+        {label}
+      </h3>
       <div className="flex flex-col gap-1">
         {items.map((item) => (
           <NavLink
@@ -61,7 +63,9 @@ export function StudioSidebar(): React.JSX.Element {
       <div className="py-4">
         <Card className="border-border/70 bg-card/90 py-0">
           <CardHeader className="px-4 py-4">
-            <CardDescription className="text-xs tracking-[0.18em] uppercase">Tia Studio</CardDescription>
+            <CardDescription className="text-xs tracking-[0.18em] uppercase">
+              Tia Studio
+            </CardDescription>
             <CardTitle className="text-base">Control Center</CardTitle>
           </CardHeader>
           <CardContent className="py-4 px-3 pb-3">

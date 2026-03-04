@@ -74,7 +74,9 @@ function clearLegacyProviders(): void {
   window.localStorage.removeItem(legacyProvidersStorageKey)
 }
 
-async function migrateLegacyProvidersIfNeeded(existingProviders: ProviderRecord[]): Promise<boolean> {
+async function migrateLegacyProvidersIfNeeded(
+  existingProviders: ProviderRecord[]
+): Promise<boolean> {
   if (existingProviders.length > 0) {
     return false
   }
@@ -126,7 +128,7 @@ export async function updateProvider(
     providerModels:
       input.providerModels === undefined
         ? undefined
-        : normalizeProviderModels(input.providerModels) ?? undefined
+        : (normalizeProviderModels(input.providerModels) ?? undefined)
   }
 
   return apiClient.patch<ProviderRecord>(`/v1/providers/${providerId}`, normalizedInput)
@@ -148,12 +150,15 @@ export async function testProviderConnection(input: SaveProviderInput): Promise<
     })
   )
 
-  const result = await apiClient.post<ProviderConnectionTestResult>('/v1/providers/test-connection', {
-    type: input.type,
-    apiKey: input.apiKey,
-    apiHost: input.apiHost?.trim() || undefined,
-    selectedModel: input.selectedModel.trim()
-  })
+  const result = await apiClient.post<ProviderConnectionTestResult>(
+    '/v1/providers/test-connection',
+    {
+      type: input.type,
+      apiKey: input.apiKey,
+      apiHost: input.apiHost?.trim() || undefined,
+      selectedModel: input.selectedModel.trim()
+    }
+  )
 
   if (!result.ok) {
     throw new Error(result.error ?? 'Connection check failed')

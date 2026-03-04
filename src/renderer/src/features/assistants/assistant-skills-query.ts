@@ -12,7 +12,9 @@ export type AssistantSkillRecord = {
   canDelete: boolean
 }
 
-export async function listAssistantSkills(workspaceRootPath: string): Promise<AssistantSkillRecord[]> {
+export async function listAssistantSkills(
+  workspaceRootPath: string
+): Promise<AssistantSkillRecord[]> {
   const listSkills = window.tiaDesktop?.listAssistantSkills
   if (typeof listSkills !== 'function') {
     return []

@@ -1,11 +1,7 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  createDesktopChatFetch,
-  listThreadChatMessages,
-  resolveDesktopChatUrl
-} from './chat-query'
+import { createDesktopChatFetch, listThreadChatMessages, resolveDesktopChatUrl } from './chat-query'
 
 describe('chat query', () => {
   beforeEach(() => {
@@ -60,13 +56,12 @@ describe('chat query', () => {
         parts: [{ type: 'text', text: 'Hello' }]
       }
     ]
-    const fetchSpy = vi.fn<
-      (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
-    >(async () =>
-      new Response(JSON.stringify(responseBody), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      })
+    const fetchSpy = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(
+      async () =>
+        new Response(JSON.stringify(responseBody), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
     )
     vi.stubGlobal('fetch', fetchSpy)
 

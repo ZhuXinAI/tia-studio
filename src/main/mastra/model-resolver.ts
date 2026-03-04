@@ -11,10 +11,7 @@ export type ProviderModelConfig = {
 }
 
 export type ModelResolverFactories = {
-  openaiFactory: (options?: {
-    apiKey?: string
-    baseURL?: string
-  }) => {
+  openaiFactory: (options?: { apiKey?: string; baseURL?: string }) => {
     (modelId: string): unknown
     responses: (modelId: string) => unknown
   }
@@ -22,13 +19,8 @@ export type ModelResolverFactories = {
     apiKey?: string
     baseURL?: string
   }) => (modelId: string) => unknown
-  googleFactory: (options?: {
-    apiKey?: string
-    baseURL?: string
-  }) => (modelId: string) => unknown
-  ollamaFactory: (options?: {
-    baseURL?: string
-  }) => (modelId: string) => unknown
+  googleFactory: (options?: { apiKey?: string; baseURL?: string }) => (modelId: string) => unknown
+  ollamaFactory: (options?: { baseURL?: string }) => (modelId: string) => unknown
 }
 
 const defaultFactories: ModelResolverFactories = {

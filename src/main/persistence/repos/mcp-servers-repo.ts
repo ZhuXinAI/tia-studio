@@ -91,7 +91,8 @@ function toBoolean(value: unknown, fallback: boolean): boolean {
 }
 
 function normalizeServer(serverId: string, rawValue: unknown): AppMcpServer {
-  const candidate = rawValue && typeof rawValue === 'object' && !Array.isArray(rawValue) ? rawValue : {}
+  const candidate =
+    rawValue && typeof rawValue === 'object' && !Array.isArray(rawValue) ? rawValue : {}
 
   const type = toNonEmptyString((candidate as { type?: unknown }).type) ?? 'stdio'
 

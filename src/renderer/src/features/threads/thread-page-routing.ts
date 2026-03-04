@@ -88,7 +88,10 @@ export function readStoredChatSelection(): ChatRouteSelection | null {
 
     return {
       assistantId: parsed.assistantId,
-      threadId: typeof parsed.threadId === 'string' && parsed.threadId.trim().length > 0 ? parsed.threadId : null
+      threadId:
+        typeof parsed.threadId === 'string' && parsed.threadId.trim().length > 0
+          ? parsed.threadId
+          : null
     }
   } catch {
     return null
@@ -122,7 +125,9 @@ export function findLatestThreadAcrossAssistants(
       }))
   )
 
-  const orderedTalkedCandidates = [...talkedCandidates].sort((left, right) => right.timestamp - left.timestamp)
+  const orderedTalkedCandidates = [...talkedCandidates].sort(
+    (left, right) => right.timestamp - left.timestamp
+  )
   const latestTalked = orderedTalkedCandidates.at(0)
   if (latestTalked) {
     return {

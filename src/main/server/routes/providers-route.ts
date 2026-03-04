@@ -36,7 +36,10 @@ export function registerProvidersRoute(app: Hono, options: RegisterProvidersRout
 
     const parsed = createProviderSchema.safeParse(body)
     if (!parsed.success) {
-      return context.json({ ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' }, 400)
+      return context.json(
+        { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' },
+        400
+      )
     }
 
     const provider = await options.providersRepo.create(parsed.data)
@@ -53,10 +56,16 @@ export function registerProvidersRoute(app: Hono, options: RegisterProvidersRout
 
     const parsed = updateProviderSchema.safeParse(body)
     if (!parsed.success) {
-      return context.json({ ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' }, 400)
+      return context.json(
+        { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' },
+        400
+      )
     }
 
-    const provider = await options.providersRepo.update(context.req.param('providerId'), parsed.data)
+    const provider = await options.providersRepo.update(
+      context.req.param('providerId'),
+      parsed.data
+    )
     if (!provider) {
       return context.json({ ok: false, error: 'Provider not found' }, 404)
     }
@@ -73,7 +82,10 @@ export function registerProvidersRoute(app: Hono, options: RegisterProvidersRout
 
     const linkedAssistants = await options.assistantsRepo.countByProviderId(providerId)
     if (linkedAssistants > 0) {
-      return context.json({ ok: false, error: 'Provider is assigned to one or more assistants' }, 409)
+      return context.json(
+        { ok: false, error: 'Provider is assigned to one or more assistants' },
+        409
+      )
     }
 
     await options.providersRepo.delete(providerId)
@@ -90,7 +102,10 @@ export function registerProvidersRoute(app: Hono, options: RegisterProvidersRout
 
     const parsed = testProviderConnectionSchema.safeParse(body)
     if (!parsed.success) {
-      return context.json({ ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' }, 400)
+      return context.json(
+        { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' },
+        400
+      )
     }
 
     try {

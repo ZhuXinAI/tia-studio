@@ -279,9 +279,9 @@ describe('assistant editor', () => {
       )
     })
 
-    const panel = container.querySelector('[data-testid="assistant-editor-panel"]') as
-      | HTMLDivElement
-      | null
+    const panel = container.querySelector(
+      '[data-testid="assistant-editor-panel"]'
+    ) as HTMLDivElement | null
     expect(panel).not.toBeNull()
     expect(panel?.className).toContain('h-[32rem]')
     expect(panel?.className).toContain('overflow-y-auto')

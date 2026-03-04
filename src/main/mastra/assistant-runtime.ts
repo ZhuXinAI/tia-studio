@@ -381,7 +381,9 @@ export class AssistantRuntimeService implements AssistantRuntime {
     return [...uniquePaths]
   }
 
-  private async resolveEnabledMcpServers(mcpConfig: JsonObject): Promise<Record<string, AppMcpServer>> {
+  private async resolveEnabledMcpServers(
+    mcpConfig: JsonObject
+  ): Promise<Record<string, AppMcpServer>> {
     let settings: Awaited<ReturnType<McpServersRepository['getSettings']>>
     try {
       settings = await this.options.mcpServersRepo.getSettings()
@@ -393,7 +395,9 @@ export class AssistantRuntimeService implements AssistantRuntime {
     const assistantEnabledServers = this.toBooleanMap(mcpConfig)
 
     const entries = Object.entries(settings.mcpServers)
-      .filter(([serverName, server]) => server.isActive && assistantEnabledServers[serverName] === true)
+      .filter(
+        ([serverName, server]) => server.isActive && assistantEnabledServers[serverName] === true
+      )
       .sort(([left], [right]) => left.localeCompare(right))
 
     return Object.fromEntries(entries)
@@ -427,7 +431,8 @@ export class AssistantRuntimeService implements AssistantRuntime {
       return tools as ToolsInput
     } catch (error) {
       await mcpClient.disconnect().catch(() => undefined)
-      const message = error instanceof Error ? error.message : 'Unable to connect to one or more MCP servers'
+      const message =
+        error instanceof Error ? error.message : 'Unable to connect to one or more MCP servers'
       throw new ChatRouteError(409, 'mcp_connection_failed', message)
     }
   }
@@ -444,9 +449,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
         return [serverName, definition] as const
       })
-      .filter(
-        (entry): entry is readonly [string, MastraMCPServerDefinition] => entry !== null
-      )
+      .filter((entry): entry is readonly [string, MastraMCPServerDefinition] => entry !== null)
 
     return Object.fromEntries(entries)
   }

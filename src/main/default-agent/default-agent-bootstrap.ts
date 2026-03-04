@@ -9,7 +9,7 @@ export const BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__tiaBuiltInDefaultAgent'
 
 export const DEFAULT_AGENT_NAME = 'Default Agent'
 export const DEFAULT_AGENT_PROMPT =
-  'You are Tia\'s built-in default agent. Use workspace tools, available global skills, and workspace skills to help with local development tasks.'
+  "You are Tia's built-in default agent. Use workspace tools, available global skills, and workspace skills to help with local development tasks."
 
 type EnsureBuiltInDefaultAgentOptions = {
   assistantsRepo: AssistantsRepository
@@ -21,7 +21,9 @@ export function resolveDefaultAgentWorkspacePath(userDataPath: string): string {
   return path.join(userDataPath, DEFAULT_AGENT_DIRECTORY)
 }
 
-function readWorkspaceRootPath(workspaceConfig: Record<string, unknown> | null | undefined): string | null {
+function readWorkspaceRootPath(
+  workspaceConfig: Record<string, unknown> | null | undefined
+): string | null {
   if (!workspaceConfig) {
     return null
   }

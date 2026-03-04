@@ -4,8 +4,6 @@ export default defineConfig({
   test: {
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
-    environmentMatchGlobs: [
-      ['src/renderer/**', 'jsdom']
-    ]
+    environmentMatchGlobs: [['src/renderer/**', 'jsdom']]
   }
 })

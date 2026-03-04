@@ -16,10 +16,7 @@ function parseJsonBodyErrorResponse(): {
   }
 }
 
-export function registerMcpServersRoute(
-  app: Hono,
-  options: RegisterMcpServersRouteOptions
-): void {
+export function registerMcpServersRoute(app: Hono, options: RegisterMcpServersRouteOptions): void {
   app.get('/v1/settings/mcp-servers', async (context) => {
     try {
       const settings = await options.mcpServersRepo.getSettings()
@@ -40,7 +37,10 @@ export function registerMcpServersRoute(
 
     const parsed = updateMcpServersSettingsSchema.safeParse(body)
     if (!parsed.success) {
-      return context.json({ ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' }, 400)
+      return context.json(
+        { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' },
+        400
+      )
     }
 
     try {

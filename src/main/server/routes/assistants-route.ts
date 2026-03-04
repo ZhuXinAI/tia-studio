@@ -13,10 +13,7 @@ function jsonBodyError() {
   return { ok: false as const, error: 'Invalid JSON body' }
 }
 
-export function registerAssistantsRoute(
-  app: Hono,
-  options: RegisterAssistantsRouteOptions
-): void {
+export function registerAssistantsRoute(app: Hono, options: RegisterAssistantsRouteOptions): void {
   app.get('/v1/assistants', async (context) => {
     const assistants = await options.assistantsRepo.list()
     return context.json(assistants)
@@ -32,7 +29,10 @@ export function registerAssistantsRoute(
 
     const parsed = createAssistantSchema.safeParse(body)
     if (!parsed.success) {
-      return context.json({ ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' }, 400)
+      return context.json(
+        { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' },
+        400
+      )
     }
 
     const provider = await options.providersRepo.getById(parsed.data.providerId)
@@ -54,7 +54,10 @@ export function registerAssistantsRoute(
 
     const parsed = updateAssistantSchema.safeParse(body)
     if (!parsed.success) {
-      return context.json({ ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' }, 400)
+      return context.json(
+        { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' },
+        400
+      )
     }
 
     if (parsed.data.providerId) {

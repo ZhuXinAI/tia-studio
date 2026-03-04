@@ -290,4 +290,3 @@ If not ready, thread page shows setup checklist CTA instead of active composer.
   https://mastra.ai/guides/getting-started/electron
 - Mastra custom API routes (for additional local endpoints):  
   https://mastra.ai/en/docs/server-db/custom-api-routes
-

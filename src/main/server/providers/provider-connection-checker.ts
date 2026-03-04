@@ -135,7 +135,9 @@ function buildConnectionRequest(input: ProviderConnectionInput): ConnectionReque
   }
 
   if (input.type === 'gemini') {
-    const requestUrl = new URL(joinUrl(input.apiHost ?? 'https://generativelanguage.googleapis.com/v1beta', '/models'))
+    const requestUrl = new URL(
+      joinUrl(input.apiHost ?? 'https://generativelanguage.googleapis.com/v1beta', '/models')
+    )
     requestUrl.searchParams.set('key', input.apiKey)
 
     return {

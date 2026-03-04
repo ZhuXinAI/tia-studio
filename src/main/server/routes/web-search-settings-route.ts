@@ -59,7 +59,10 @@ export function registerWebSearchSettingsRoute(
 
     const parsed = updateWebSearchSettingsSchema.safeParse(body)
     if (!parsed.success) {
-      return context.json({ ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' }, 400)
+      return context.json(
+        { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' },
+        400
+      )
     }
 
     const [defaultEngine, keepBrowserWindowOpen] = await Promise.all([

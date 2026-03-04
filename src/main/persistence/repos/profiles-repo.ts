@@ -43,10 +43,10 @@ export class ProfilesRepository {
     }
 
     const id = randomUUID()
-    await this.db.execute(
-      'INSERT INTO app_profiles (id, name, is_active) VALUES (?, ?, 1)',
-      [id, name]
-    )
+    await this.db.execute('INSERT INTO app_profiles (id, name, is_active) VALUES (?, ?, 1)', [
+      id,
+      name
+    ])
 
     const createdProfile = await this.getActiveProfile()
     if (!createdProfile) {
