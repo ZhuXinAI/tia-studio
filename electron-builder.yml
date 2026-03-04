@@ -1,5 +1,5 @@
 appId: com.electron.app
-productName: tia-studio
+productName: TIA Studio
 directories:
   buildResources: build
 files:
@@ -20,6 +20,8 @@ nsis:
   createDesktopShortcut: always
 mac:
   entitlementsInherit: build/entitlements.mac.plist
+  hardenedRuntime: true
+  gatekeeperAssess: false
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
@@ -40,5 +42,3 @@ npmRebuild: false
 publish:
   provider: github
   releaseType: release
-electronDownload:
-  mirror: https://npmmirror.com/mirrors/electron/
