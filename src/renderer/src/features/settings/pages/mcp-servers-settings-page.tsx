@@ -1,6 +1,7 @@
 import { Cable, Plus, Save, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import { Button } from '../../../components/ui/button'
 import {
   Card,
@@ -10,8 +11,8 @@ import {
   CardTitle
 } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
-import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
+import { Field, FieldLabel } from '../../../components/ui/field'
 import { cn } from '../../../lib/utils'
 import {
   getMcpServersSettings,
@@ -19,11 +20,6 @@ import {
   type McpServerRecord,
   type McpServersSettings
 } from '../mcp-servers/mcp-servers-query'
-
-type ToastState = {
-  kind: 'success' | 'error'
-  message: string
-}
 
 const nonEmptyString = z.string().trim().min(1)
 
@@ -192,11 +188,9 @@ export function McpServersSettingsPage(): React.JSX.Element {
   const [envInputByServerId, setEnvInputByServerId] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [toast, setToast] = useState<ToastState | null>(null)
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true)
-    setToast(null)
 
     try {
       const nextSettings = await getMcpServersSettings()
@@ -207,10 +201,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
       setIsJsonDialogOpen(false)
       setEnvInputByServerId({})
     } catch (error) {
-      setToast({
-        kind: 'error',
-        message: toErrorMessage(error)
-      })
+      toast.error(toErrorMessage(error))
     } finally {
       setIsLoading(false)
     }
@@ -340,30 +331,20 @@ export function McpServersSettingsPage(): React.JSX.Element {
 
     const validation = validateSettings(draft)
     if (!validation.ok) {
-      setToast({
-        kind: 'error',
-        message: validation.message
-      })
+      toast.error(validation.message)
       return
     }
 
     setIsSaving(true)
-    setToast(null)
 
     try {
       const saved = await updateMcpServersSettings(validation.data)
       setSettings(saved)
       setDraft(saved)
       setEnvInputByServerId({})
-      setToast({
-        kind: 'success',
-        message: 'MCP server settings saved.'
-      })
+      toast.success('MCP server settings saved.')
     } catch (error) {
-      setToast({
-        kind: 'error',
-        message: toErrorMessage(error)
-      })
+      toast.error(toErrorMessage(error))
     } finally {
       setIsSaving(false)
     }
@@ -408,20 +389,6 @@ export function McpServersSettingsPage(): React.JSX.Element {
             </Button>
           </div>
         </header>
-
-        {toast ? (
-          <p
-            role={toast.kind === 'error' ? 'alert' : 'status'}
-            className={cn(
-              'rounded-md border px-3 py-2 text-sm',
-              toast.kind === 'error'
-                ? 'border-destructive/70 text-destructive'
-                : 'border-emerald-400/70 text-emerald-300'
-            )}
-          >
-            {toast.message}
-          </p>
-        ) : null}
 
         <Card>
           <CardHeader className="pb-3">
@@ -499,8 +466,8 @@ export function McpServersSettingsPage(): React.JSX.Element {
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="my-2">
-                    <Label htmlFor={`mcp-name-${serverId}`}>Display Name</Label>
+                  <Field>
+                    <FieldLabel htmlFor={`mcp-name-${serverId}`}>Display Name</FieldLabel>
                     <Input
                       id={`mcp-name-${serverId}`}
                       value={server.name}
@@ -512,9 +479,9 @@ export function McpServersSettingsPage(): React.JSX.Element {
                       }
                       placeholder="amap-maps"
                     />
-                  </div>
-                  <div className="my-2">
-                    <Label htmlFor={`mcp-type-${serverId}`}>Transport Type</Label>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor={`mcp-type-${serverId}`}>Transport Type</FieldLabel>
                     <Input
                       id={`mcp-type-${serverId}`}
                       value={server.type}
@@ -526,12 +493,12 @@ export function McpServersSettingsPage(): React.JSX.Element {
                       }
                       placeholder="stdio"
                     />
-                  </div>
+                  </Field>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="my-2">
-                    <Label htmlFor={`mcp-command-${serverId}`}>Command</Label>
+                  <Field>
+                    <FieldLabel htmlFor={`mcp-command-${serverId}`}>Command</FieldLabel>
                     <Input
                       id={`mcp-command-${serverId}`}
                       value={server.command ?? ''}
@@ -545,9 +512,11 @@ export function McpServersSettingsPage(): React.JSX.Element {
                       }
                       placeholder="npx"
                     />
-                  </div>
-                  <div className="my-2">
-                    <Label htmlFor={`mcp-install-source-${serverId}`}>Install Source</Label>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor={`mcp-install-source-${serverId}`}>
+                      Install Source
+                    </FieldLabel>
                     <Input
                       id={`mcp-install-source-${serverId}`}
                       value={server.installSource}
@@ -559,11 +528,13 @@ export function McpServersSettingsPage(): React.JSX.Element {
                       }
                       placeholder="unknown"
                     />
-                  </div>
+                  </Field>
                 </div>
 
-                <div className="my-2">
-                  <Label htmlFor={`mcp-url-${serverId}`}>URL (for HTTP/SSE servers)</Label>
+                <Field>
+                  <FieldLabel htmlFor={`mcp-url-${serverId}`}>
+                    URL (for HTTP/SSE servers)
+                  </FieldLabel>
                   <Input
                     id={`mcp-url-${serverId}`}
                     value={server.url ?? ''}
@@ -577,11 +548,13 @@ export function McpServersSettingsPage(): React.JSX.Element {
                     }
                     placeholder="https://your-server.example.com/mcp"
                   />
-                </div>
+                </Field>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="my-2">
-                    <Label htmlFor={`mcp-args-${serverId}`}>Arguments (one per line)</Label>
+                  <Field>
+                    <FieldLabel htmlFor={`mcp-args-${serverId}`}>
+                      Arguments (one per line)
+                    </FieldLabel>
                     <Textarea
                       id={`mcp-args-${serverId}`}
                       rows={4}
@@ -594,9 +567,11 @@ export function McpServersSettingsPage(): React.JSX.Element {
                       }
                       placeholder={'-y\n@amap/amap-maps-mcp-server'}
                     />
-                  </div>
-                  <div className="my-2">
-                    <Label htmlFor={`mcp-env-${serverId}`}>Environment Variables (KEY=VALUE)</Label>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor={`mcp-env-${serverId}`}>
+                      Environment Variables (KEY=VALUE)
+                    </FieldLabel>
                     <Textarea
                       id={`mcp-env-${serverId}`}
                       rows={4}
@@ -614,7 +589,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
                       }}
                       placeholder={'AMAP_MAPS_API_KEY=your-api-key'}
                     />
-                  </div>
+                  </Field>
                 </div>
               </article>
             ))}
@@ -639,15 +614,17 @@ export function McpServersSettingsPage(): React.JSX.Element {
               </p>
             </div>
             <div className="space-y-3 p-5">
-              <Label htmlFor="mcp-json-dialog-textarea">MCP Settings JSON</Label>
-              <Textarea
-                id="mcp-json-dialog-textarea"
-                rows={16}
-                value={jsonDialogInput}
-                onChange={(event) => setJsonDialogInput(event.target.value)}
-                className="font-mono text-xs"
-                spellCheck={false}
-              />
+              <Field>
+                <FieldLabel htmlFor="mcp-json-dialog-textarea">MCP Settings JSON</FieldLabel>
+                <Textarea
+                  id="mcp-json-dialog-textarea"
+                  rows={16}
+                  value={jsonDialogInput}
+                  onChange={(event) => setJsonDialogInput(event.target.value)}
+                  className="font-mono text-xs"
+                  spellCheck={false}
+                />
+              </Field>
               {jsonDialogError ? (
                 <p role="alert" className="text-destructive text-xs">
                   {jsonDialogError}

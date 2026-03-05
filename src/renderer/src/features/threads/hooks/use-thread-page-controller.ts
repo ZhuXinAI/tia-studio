@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import {
   createAssistant,
   deleteAssistant,
@@ -34,11 +35,6 @@ import {
   toErrorMessage
 } from '../thread-page-routing'
 
-type ToastState = {
-  kind: 'success' | 'error'
-  message: string
-}
-
 type PendingThreadMessage = {
   threadId: string
   text: string
@@ -61,7 +57,6 @@ export function useThreadPageController() {
   const [deletingThreadId, setDeletingThreadId] = useState<string | null>(null)
   const [composerValue, setComposerValue] = useState('')
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [toast, setToast] = useState<ToastState | null>(null)
   const [isLoadingChatHistory, setIsLoadingChatHistory] = useState(false)
   const [assistantDialogMode, setAssistantDialogMode] = useState<AssistantDialogMode>('edit')
   const [assistantDialogAssistantId, setAssistantDialogAssistantId] = useState<string | null>(null)
@@ -72,6 +67,11 @@ export function useThreadPageController() {
   const [pendingThreadMessage, setPendingThreadMessage] = useState<PendingThreadMessage | null>(
     null
   )
+  const [tokenUsage, setTokenUsage] = useState<{
+    inputTokens: number
+    outputTokens: number
+    totalTokens: number
+  } | null>(null)
   const profileId = useMemo(() => getActiveResourceId(), [])
 
   const selectedAssistant = useMemo(() => {
@@ -135,10 +135,20 @@ export function useThreadPageController() {
     transport: chatTransport,
     resume: Boolean(selectedThread && chatTransport),
     experimental_throttle: 48,
-    onFinish: () => {
+    onFinish: ({ message }) => {
       const selectedAssistantId = selectedAssistant?.id
       if (!selectedThread || !selectedAssistantId) {
         return
+      }
+
+      // Extract usage from message metadata
+      if (message.metadata && typeof message.metadata === 'object' && 'usage' in message.metadata) {
+        const usage = message.metadata.usage as {
+          inputTokens: number
+          outputTokens: number
+          totalTokens: number
+        }
+        setTokenUsage(usage)
       }
 
       const now = new Date().toISOString()
@@ -174,24 +184,6 @@ export function useThreadPageController() {
     !isLoadingChatHistory &&
     !isCreatingThread &&
     !pendingThreadMessage
-
-  const showToast = useCallback((kind: ToastState['kind'], message: string): void => {
-    setToast({ kind, message })
-  }, [])
-
-  useEffect(() => {
-    if (!toast) {
-      return
-    }
-
-    const timeout = window.setTimeout(() => {
-      setToast(null)
-    }, 3200)
-
-    return () => {
-      window.clearTimeout(timeout)
-    }
-  }, [toast])
 
   const loadAssistantsAndProviders = useCallback(async () => {
     setIsLoadingData(true)
@@ -395,6 +387,7 @@ export function useThreadPageController() {
 
   useEffect(() => {
     setComposerValue('')
+    setTokenUsage(null)
   }, [selectedAssistant?.id, selectedThread?.id])
 
   useEffect(() => {
@@ -437,7 +430,7 @@ export function useThreadPageController() {
           return
         }
         setMessages([])
-        showToast('error', toErrorMessage(error))
+        toast.error(toErrorMessage(error))
       })
       .finally(() => {
         if (active) {
@@ -448,7 +441,7 @@ export function useThreadPageController() {
     return () => {
       active = false
     }
-  }, [profileId, selectedAssistant?.id, selectedThread?.id, setMessages, showToast])
+  }, [profileId, selectedAssistant?.id, selectedThread?.id, setMessages])
 
   const createNewThread = useCallback(
     async (options?: { notify?: boolean }): Promise<ThreadRecord | null> => {
@@ -468,17 +461,17 @@ export function useThreadPageController() {
         )
         navigate(routeToAssistantThreads(selectedAssistant.id, createdThread.id))
         if (options?.notify ?? true) {
-          showToast('success', 'Thread created.')
+          toast.success('Thread created.')
         }
         return createdThread
       } catch (error) {
-        showToast('error', toErrorMessage(error))
+        toast.error(toErrorMessage(error))
         return null
       } finally {
         setIsCreatingThread(false)
       }
     },
-    [navigate, selectedAssistant, showToast]
+    [navigate, selectedAssistant]
   )
 
   const handleDeleteThread = async (thread: ThreadRecord): Promise<void> => {
@@ -490,9 +483,9 @@ export function useThreadPageController() {
       if (selectedThread?.id === thread.id) {
         navigate(routeToAssistantThreads(thread.assistantId), { replace: true })
       }
-      showToast('success', 'Thread removed.')
+      toast.success('Thread removed.')
     } catch (error) {
-      showToast('error', toErrorMessage(error))
+      toast.error(toErrorMessage(error))
     } finally {
       setDeletingThreadId(null)
     }
@@ -520,7 +513,7 @@ export function useThreadPageController() {
         const createdAssistant = await createAssistant(input)
         setAssistants((currentAssistants) => [createdAssistant, ...currentAssistants])
         setThreads([])
-        showToast('success', 'Assistant created.')
+        toast.success('Assistant created.')
         setIsAssistantDialogOpen(false)
         setAssistantDialogAssistantId(null)
         navigate(routeToAssistantThreads(createdAssistant.id))
@@ -538,7 +531,7 @@ export function useThreadPageController() {
           assistant.id === updatedAssistant.id ? updatedAssistant : assistant
         )
       )
-      showToast('success', 'Assistant configuration updated.')
+      toast.success('Assistant configuration updated.')
       setIsAssistantDialogOpen(false)
       setAssistantDialogAssistantId(null)
     } catch (error) {
@@ -560,7 +553,7 @@ export function useThreadPageController() {
       }
 
       if (assistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] === true) {
-        showToast('error', 'Built-in default assistant cannot be deleted.')
+        toast.error('Built-in default assistant cannot be deleted.')
         return
       }
 
@@ -608,9 +601,9 @@ export function useThreadPageController() {
           setAssistantDialogError(null)
         }
 
-        showToast('success', 'Assistant deleted.')
+        toast.success('Assistant deleted.')
       } catch (error) {
-        showToast('error', toErrorMessage(error))
+        toast.error(toErrorMessage(error))
       } finally {
         setDeletingAssistantId(null)
       }
@@ -622,8 +615,7 @@ export function useThreadPageController() {
       deletingAssistantId,
       navigate,
       params.assistantId,
-      setMessages,
-      showToast
+      setMessages
     ]
   )
 
@@ -642,7 +634,7 @@ export function useThreadPageController() {
         })
       } catch (error) {
         setComposerValue(nextMessage)
-        showToast('error', toErrorMessage(error))
+        toast.error(toErrorMessage(error))
       }
       return
     }
@@ -687,16 +679,9 @@ export function useThreadPageController() {
       text: messageToSend
     }).catch((error) => {
       setComposerValue(messageToSend)
-      showToast('error', toErrorMessage(error))
+      toast.error(toErrorMessage(error))
     })
-  }, [
-    isLoadingChatHistory,
-    isChatStreaming,
-    pendingThreadMessage,
-    selectedThread,
-    sendMessage,
-    showToast
-  ])
+  }, [isLoadingChatHistory, isChatStreaming, pendingThreadMessage, selectedThread, sendMessage])
 
   const closeAssistantDialog = useCallback(() => {
     if (isSubmittingAssistantDialog) {
@@ -765,12 +750,12 @@ export function useThreadPageController() {
     canAbortGeneration,
     providers,
     mcpServers,
-    toast,
     assistantDialogMode,
     assistantDialogAssistant,
     isAssistantDialogOpen,
     isSubmittingAssistantDialog,
     assistantDialogError,
+    tokenUsage,
     onCreateThread: () => {
       void createNewThread()
     },

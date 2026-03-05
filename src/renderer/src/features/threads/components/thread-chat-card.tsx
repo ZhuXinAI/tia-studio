@@ -30,6 +30,11 @@ type ThreadChatCardProps = {
   composerValue: string
   canSendMessage: boolean
   canAbortGeneration: boolean
+  tokenUsage: {
+    inputTokens: number
+    outputTokens: number
+    totalTokens: number
+  } | null
   onComposerChange: (value: string) => void
   onSubmitMessage: () => Promise<void>
   onAbortGeneration: () => void
@@ -185,6 +190,7 @@ export function ThreadChatCard({
   composerValue,
   canSendMessage,
   canAbortGeneration,
+  tokenUsage,
   onComposerChange,
   onSubmitMessage,
   onAbortGeneration,
@@ -214,6 +220,16 @@ export function ThreadChatCard({
               {selectedThread?.title ?? `Chat with ${selectedAssistant?.name ?? 'Assistant'}`}
             </CardTitle>
             <div className="flex shrink-0 items-center gap-2">
+              {tokenUsage && (
+                <div className="bg-muted/50 text-muted-foreground inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs">
+                  <span className="font-medium">{tokenUsage.totalTokens.toLocaleString()}</span>
+                  <span className="text-muted-foreground/70">tokens</span>
+                  <span className="text-muted-foreground/50">•</span>
+                  <span className="text-muted-foreground/70">{tokenUsage.inputTokens.toLocaleString()} in</span>
+                  <span className="text-muted-foreground/50">•</span>
+                  <span className="text-muted-foreground/70">{tokenUsage.outputTokens.toLocaleString()} out</span>
+                </div>
+              )}
               <div className="bg-muted/50 text-muted-foreground inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs">
                 <Sparkles className="size-3.5" />
                 Default assistant chat

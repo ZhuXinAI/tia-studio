@@ -2,7 +2,6 @@ import { SidebarInset } from '../../../components/ui/sidebar'
 import { AssistantConfigDialog } from '../components/assistant-config-dialog'
 import { ThreadChatCard } from '../components/thread-chat-card'
 import { ThreadSidebar } from '../components/thread-sidebar'
-import { ThreadToast } from '../components/thread-toast'
 import { useThreadPageController } from '../hooks/use-thread-page-controller'
 
 export function ThreadPage(): React.JSX.Element {
@@ -43,6 +42,7 @@ export function ThreadPage(): React.JSX.Element {
             composerValue={controller.composerValue}
             canSendMessage={controller.canSendMessage}
             canAbortGeneration={controller.canAbortGeneration}
+            tokenUsage={controller.tokenUsage}
             onComposerChange={controller.onComposerChange}
             onSubmitMessage={controller.onSubmitMessage}
             onAbortGeneration={controller.onAbortGeneration}
@@ -64,8 +64,6 @@ export function ThreadPage(): React.JSX.Element {
         onSelectWorkspacePath={controller.onSelectWorkspacePath}
         onSubmit={controller.onSubmitAssistantDialog}
       />
-
-      <ThreadToast toast={controller.toast} />
     </>
   )
 }

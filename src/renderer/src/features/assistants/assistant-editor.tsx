@@ -11,8 +11,8 @@ import type { ProviderRecord } from '../settings/providers/providers-query'
 import type { McpServerRecord } from '../settings/mcp-servers/mcp-servers-query'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
-import { Label } from '../../components/ui/label'
 import { Textarea } from '../../components/ui/textarea'
+import { Field, FieldLabel } from '../../components/ui/field'
 import { cn } from '../../lib/utils'
 
 type AssistantEditorValues = {
@@ -367,18 +367,18 @@ export function AssistantEditor({
         <div data-testid="assistant-editor-panel" className="h-[32rem] overflow-y-auto py-4 pr-1">
           {activeTab === 'essential' ? (
             <>
-              <div className="my-2">
-                <Label htmlFor="assistant-name">Name</Label>
+              <Field>
+                <FieldLabel htmlFor="assistant-name">Name</FieldLabel>
                 <Input
                   id="assistant-name"
                   value={values.name}
                   onChange={(event) => handleInput('name', event.target.value)}
                   placeholder="Research Copilot"
                 />
-              </div>
+              </Field>
 
-              <div className="my-2">
-                <Label htmlFor="assistant-provider">Provider</Label>
+              <Field>
+                <FieldLabel htmlFor="assistant-provider">Provider</FieldLabel>
                 <select
                   id="assistant-provider"
                   className="border-input file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-[3px] focus-visible:ring-ring/50"
@@ -392,10 +392,10 @@ export function AssistantEditor({
                     </option>
                   ))}
                 </select>
-              </div>
+              </Field>
 
-              <div className="space-y-2">
-                <Label htmlFor="assistant-prompt">Prompt</Label>
+              <Field>
+                <FieldLabel htmlFor="assistant-prompt">Prompt</FieldLabel>
                 <Textarea
                   id="assistant-prompt"
                   rows={4}
@@ -403,10 +403,10 @@ export function AssistantEditor({
                   onChange={(event) => handleInput('instructions', event.target.value)}
                   placeholder="You are a helpful assistant that answers with concise, practical steps."
                 />
-              </div>
+              </Field>
 
-              <div className="my-2">
-                <Label htmlFor="assistant-workspace-path">Workspace Path</Label>
+              <Field>
+                <FieldLabel htmlFor="assistant-workspace-path">Workspace Path</FieldLabel>
                 <div className="flex items-center gap-2">
                   <Input
                     id="assistant-workspace-path"
@@ -423,10 +423,10 @@ export function AssistantEditor({
                     {isSelectingWorkspacePath ? 'Opening...' : 'Browse'}
                   </Button>
                 </div>
-              </div>
+              </Field>
 
-              <div className="my-2">
-                <Label htmlFor="assistant-max-steps">Max Steps</Label>
+              <Field>
+                <FieldLabel htmlFor="assistant-max-steps">Max Steps</FieldLabel>
                 <Input
                   id="assistant-max-steps"
                   type="number"
@@ -436,7 +436,7 @@ export function AssistantEditor({
                   onChange={(event) => handleInput('maxSteps', event.target.value)}
                   placeholder="100"
                 />
-              </div>
+              </Field>
             </>
           ) : null}
 

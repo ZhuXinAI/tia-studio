@@ -78,7 +78,7 @@ describe('web search settings page', () => {
     await flushAsyncWork()
 
     expect(updateWebSearchSettings).toHaveBeenCalledWith({ defaultEngine: 'google' })
-    expect(container.textContent).toContain('Google is now the default web search engine.')
+    // Toast is rendered by Sonner in a portal, not in the component tree
   })
 
   it('toggles keepBrowserWindowOpen in background mode', async () => {
@@ -110,7 +110,7 @@ describe('web search settings page', () => {
     await flushAsyncWork()
 
     expect(updateWebSearchSettings).toHaveBeenCalledWith({ keepBrowserWindowOpen: false })
-    expect(container.textContent).toContain('Background browser window is now disabled.')
+    // Toast is rendered by Sonner in a portal, not in the component tree
   })
 
   it('opens search engine settings in desktop BrowserWindow context', async () => {

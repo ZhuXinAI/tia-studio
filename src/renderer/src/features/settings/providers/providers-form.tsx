@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
-import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
+import { Field, FieldLabel, FieldDescription, FieldError } from '../../../components/ui/field'
 import type { ProviderType, SaveProviderInput } from './providers-query'
 
 export type ProviderFormValues = {
@@ -124,18 +124,18 @@ export function ProvidersForm({
 
   return (
     <form className="py-4 flex flex-col gap-4" onSubmit={handleSubmit}>
-      <div className="my-2">
-        <Label htmlFor="provider-name">Provider Name</Label>
+      <Field>
+        <FieldLabel htmlFor="provider-name">Provider Name</FieldLabel>
         <Input
           id="provider-name"
           value={values.name}
           onChange={(event) => updateValue('name', event.target.value)}
           placeholder="OpenAI"
         />
-      </div>
+      </Field>
 
-      <div className="my-2">
-        <Label htmlFor="provider-type">Type</Label>
+      <Field>
+        <FieldLabel htmlFor="provider-type">Type</FieldLabel>
         <select
           id="provider-type"
           className="border-input file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-[3px] focus-visible:ring-ring/50"
@@ -148,41 +148,38 @@ export function ProvidersForm({
           <option value="anthropic">Anthropic</option>
           <option value="ollama">Ollama</option>
         </select>
-      </div>
+      </Field>
 
-      <div className="my-2">
-        <Label htmlFor="provider-api-key">API Key</Label>
+      <Field>
+        <FieldLabel htmlFor="provider-api-key">API Key</FieldLabel>
         <Input
           id="provider-api-key"
           value={values.apiKey}
           onChange={(event) => updateValue('apiKey', event.target.value)}
           placeholder="sk-..."
         />
-      </div>
+      </Field>
 
-      <div className="my-2">
-        <Label htmlFor="provider-api-host">API Host</Label>
+      <Field>
+        <FieldLabel htmlFor="provider-api-host">API Host</FieldLabel>
         <Input
           id="provider-api-host"
           value={values.apiHost}
           onChange={(event) => updateValue('apiHost', event.target.value)}
           placeholder="https://api.openai.com/v1"
         />
-      </div>
+      </Field>
 
-      <div className="my-2">
-        <Label htmlFor="provider-selected-model">Selected Model</Label>
+      <Field>
+        <FieldLabel htmlFor="provider-selected-model">Selected Model</FieldLabel>
         <Input
           id="provider-selected-model"
           value={values.selectedModel}
           onChange={(event) => updateValue('selectedModel', event.target.value)}
           placeholder="gpt-5"
         />
-      </div>
-
-      {errors.selectedModel ? (
-        <p className="text-destructive text-sm">{errors.selectedModel}</p>
-      ) : null}
+        <FieldError>{errors.selectedModel}</FieldError>
+      </Field>
 
       <label className="flex items-center gap-2 text-sm text-muted-foreground">
         <input
@@ -195,15 +192,16 @@ export function ProvidersForm({
       </label>
 
       {showProviderModels ? (
-        <div className="my-2">
-          <Label htmlFor="provider-models-list">Provider Models (optional)</Label>
+        <Field>
+          <FieldLabel htmlFor="provider-models-list">Provider Models (optional)</FieldLabel>
+          <FieldDescription>Enter model names separated by commas or new lines</FieldDescription>
           <Textarea
             id="provider-models-list"
             value={values.providerModelsText}
             onChange={(event) => updateValue('providerModelsText', event.target.value)}
             placeholder="MiniMax-M2.5, MiniMax-M2.5-lightning"
           />
-        </div>
+        </Field>
       ) : null}
 
       <div className="flex flex-wrap justify-end gap-2">

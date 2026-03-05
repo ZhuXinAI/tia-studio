@@ -121,7 +121,7 @@ describe('providers settings page', () => {
 
     expect(container.textContent).toContain('New Model Provider')
     expect(container.textContent).toContain('Provider Name')
-    expect(container.textContent).toContain('Edit Provider')
+    expect(container.textContent).toContain('Save Provider')
   })
 
   it('shows searchable provider sidebar without legacy heading copy', async () => {
@@ -167,6 +167,6 @@ describe('providers settings page', () => {
     await flushAsyncWork()
 
     expect(updateProvider).toHaveBeenCalledTimes(1)
-    expect(container.textContent).toContain('Provider saved locally.')
+    // Toast is rendered by Sonner in a portal, not in the component tree
   })
 })

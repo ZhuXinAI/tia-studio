@@ -1,5 +1,6 @@
 import { ExternalLink, Search } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '../../../components/ui/button'
 import {
   Card,
@@ -20,11 +21,6 @@ type EnginePresentation = {
   label: string
   description: string
   settingsUrl: string
-}
-
-type ToastState = {
-  kind: 'success' | 'error'
-  message: string
 }
 
 const enginePresentation: Record<WebSearchEngine, EnginePresentation> = {
@@ -61,19 +57,14 @@ export function WebSearchSettingsPage(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(true)
   const [savingEngine, setSavingEngine] = useState<WebSearchEngine | null>(null)
   const [isSavingWindowBehavior, setIsSavingWindowBehavior] = useState(false)
-  const [toast, setToast] = useState<ToastState | null>(null)
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true)
-    setToast(null)
     try {
       const nextSettings = await getWebSearchSettings()
       setSettings(nextSettings)
     } catch (error) {
-      setToast({
-        kind: 'error',
-        message: toErrorMessage(error)
-      })
+      toast.error(toErrorMessage(error))
     } finally {
       setIsLoading(false)
     }
@@ -91,22 +82,15 @@ export function WebSearchSettingsPage(): React.JSX.Element {
     }
 
     setSavingEngine(engine)
-    setToast(null)
 
     try {
       const nextSettings = await updateWebSearchSettings({
         defaultEngine: engine
       })
       setSettings(nextSettings)
-      setToast({
-        kind: 'success',
-        message: `${enginePresentation[engine].label} is now the default web search engine.`
-      })
+      toast.success(`${enginePresentation[engine].label} is now the default web search engine.`)
     } catch (error) {
-      setToast({
-        kind: 'error',
-        message: toErrorMessage(error)
-      })
+      toast.error(toErrorMessage(error))
     } finally {
       setSavingEngine(null)
     }
@@ -118,22 +102,17 @@ export function WebSearchSettingsPage(): React.JSX.Element {
     }
 
     setIsSavingWindowBehavior(true)
-    setToast(null)
 
     try {
       const nextSettings = await updateWebSearchSettings({
         keepBrowserWindowOpen
       })
       setSettings(nextSettings)
-      setToast({
-        kind: 'success',
-        message: `Background browser window is now ${keepBrowserWindowOpen ? 'enabled' : 'disabled'}.`
-      })
+      toast.success(
+        `Background browser window is now ${keepBrowserWindowOpen ? 'enabled' : 'disabled'}.`
+      )
     } catch (error) {
-      setToast({
-        kind: 'error',
-        message: toErrorMessage(error)
-      })
+      toast.error(toErrorMessage(error))
     } finally {
       setIsSavingWindowBehavior(false)
     }
@@ -151,10 +130,7 @@ export function WebSearchSettingsPage(): React.JSX.Element {
     try {
       await openInSearchContext(details.settingsUrl)
     } catch (error) {
-      setToast({
-        kind: 'error',
-        message: `Failed to open ${details.label} settings: ${toErrorMessage(error)}`
-      })
+      toast.error(`Failed to open ${details.label} settings: ${toErrorMessage(error)}`)
     }
   }
 
@@ -166,20 +142,6 @@ export function WebSearchSettingsPage(): React.JSX.Element {
           Choose one default engine and every browser search tool call will use it.
         </p>
       </header>
-
-      {toast ? (
-        <p
-          role={toast.kind === 'error' ? 'alert' : 'status'}
-          className={cn(
-            'rounded-md border px-3 py-2 text-sm',
-            toast.kind === 'error'
-              ? 'border-destructive/70 text-destructive'
-              : 'border-emerald-400/70 text-emerald-300'
-          )}
-        >
-          {toast.message}
-        </p>
-      ) : null}
 
       <Card>
         <CardHeader className="pb-3">

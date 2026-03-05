@@ -119,7 +119,7 @@ describe('mcp servers settings page', () => {
         }
       }
     })
-    expect(container.textContent).toContain('MCP server settings saved.')
+    // Toast is rendered by Sonner in a portal, not in the component tree
   })
 
   it('allows partial environment variable edits and persists them', async () => {

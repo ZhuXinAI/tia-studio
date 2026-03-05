@@ -93,6 +93,7 @@ describe('ThreadChatCard', () => {
         composerValue=""
         canSendMessage
         canAbortGeneration={false}
+        tokenUsage={null}
         onComposerChange={() => undefined}
         onSubmitMessage={async () => undefined}
         onAbortGeneration={() => undefined}
@@ -152,6 +153,7 @@ describe('ThreadChatCard', () => {
         composerValue=""
         canSendMessage={false}
         canAbortGeneration
+        tokenUsage={null}
         onComposerChange={() => undefined}
         onSubmitMessage={async () => undefined}
         onAbortGeneration={() => undefined}

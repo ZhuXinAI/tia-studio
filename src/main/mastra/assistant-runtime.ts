@@ -119,7 +119,25 @@ export class AssistantRuntimeService implements AssistantRuntime {
             return
           }
 
-          controller.enqueue(value)
+          // Capture usage from finish chunk and add to message metadata
+          if (value.type === 'finish' && 'totalUsage' in value) {
+            const usage = value.totalUsage as {
+              inputTokens: number
+              outputTokens: number
+              totalTokens: number
+            }
+
+            // Add usage to message metadata
+            controller.enqueue({
+              ...value,
+              messageMetadata: {
+                ...(value.messageMetadata || {}),
+                usage
+              }
+            } as UIMessageChunk)
+          } else {
+            controller.enqueue(value)
+          }
         } catch (error) {
           controller.error(error)
           reader.releaseLock()

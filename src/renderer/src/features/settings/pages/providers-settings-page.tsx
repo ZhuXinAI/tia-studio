@@ -1,5 +1,6 @@
-import { ChevronRight, PencilLine, Search, Trash2, X } from 'lucide-react'
+import { ChevronRight, Search, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import {
   createProvider,
   deleteProvider,
@@ -11,20 +12,9 @@ import {
 } from '../providers/providers-query'
 import { ProvidersForm } from '../providers/providers-form'
 import { Button } from '../../../components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '../../../components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
 import { cn } from '../../../lib/utils'
-
-type ToastState = {
-  kind: 'success' | 'error'
-  message: string
-}
 
 type ProviderFormInitialValue = {
   name: string
@@ -98,7 +88,6 @@ export function ProvidersSettingsPage(): React.JSX.Element {
   const [isTestingConnection, setIsTestingConnection] = useState(false)
   const [isDeletingProviderId, setIsDeletingProviderId] = useState<string | null>(null)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [toast, setToast] = useState<ToastState | null>(null)
 
   const selectedProvider = useMemo(() => {
     if (!selectedProviderId) {
@@ -145,20 +134,6 @@ export function ProvidersSettingsPage(): React.JSX.Element {
     void refreshProviders()
   }, [refreshProviders])
 
-  useEffect(() => {
-    if (!toast || toast.kind !== 'success') {
-      return
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setToast((currentToast) => (currentToast?.kind === 'success' ? null : currentToast))
-    }, 2500)
-
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
-  }, [toast])
-
   const closeCreateDialog = (): void => {
     if (isSubmitting || isTestingConnection) {
       return
@@ -169,12 +144,11 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
   const handleSaveEditedProvider = async (values: SaveProviderInput): Promise<void> => {
     if (!selectedProvider) {
-      setToast({ kind: 'error', message: 'Provider not found.' })
+      toast.error('Provider not found.')
       return
     }
 
     setIsSubmitting(true)
-    setToast(null)
 
     try {
       const updatedProvider = await updateProvider(selectedProvider.id, values)
@@ -184,9 +158,9 @@ export function ProvidersSettingsPage(): React.JSX.Element {
         )
       )
       setSelectedProviderId(updatedProvider.id)
-      setToast({ kind: 'success', message: 'Provider saved locally.' })
+      toast.success('Provider saved locally.')
     } catch (error) {
-      setToast({ kind: 'error', message: toErrorMessage(error) })
+      toast.error(toErrorMessage(error))
     } finally {
       setIsSubmitting(false)
     }
@@ -194,16 +168,15 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
   const handleCreateProvider = async (values: SaveProviderInput): Promise<void> => {
     setIsSubmitting(true)
-    setToast(null)
 
     try {
       const createdProvider = await createProvider(values)
       setProviders((currentProviders) => [createdProvider, ...currentProviders])
       setSelectedProviderId(createdProvider.id)
       setIsCreateDialogOpen(false)
-      setToast({ kind: 'success', message: 'Provider created locally.' })
+      toast.success('Provider created locally.')
     } catch (error) {
-      setToast({ kind: 'error', message: toErrorMessage(error) })
+      toast.error(toErrorMessage(error))
     } finally {
       setIsSubmitting(false)
     }
@@ -211,15 +184,11 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
   const handleTestConnection = async (values: SaveProviderInput): Promise<void> => {
     setIsTestingConnection(true)
-    setToast(null)
     try {
       await testProviderConnection(values)
-      setToast({
-        kind: 'success',
-        message: `Connection successful for ${values.type} (${values.selectedModel}).`
-      })
+      toast.success(`Connection successful for ${values.type} (${values.selectedModel}).`)
     } catch (error) {
-      setToast({ kind: 'error', message: toErrorMessage(error) })
+      toast.error(toErrorMessage(error))
     } finally {
       setIsTestingConnection(false)
     }
@@ -227,12 +196,11 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
   const handleDeleteSelectedProvider = async (): Promise<void> => {
     if (!selectedProvider) {
-      setToast({ kind: 'error', message: 'Provider not found.' })
+      toast.error('Provider not found.')
       return
     }
 
     setIsDeletingProviderId(selectedProvider.id)
-    setToast(null)
 
     try {
       await deleteProvider(selectedProvider.id)
@@ -248,9 +216,9 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
         return nextProviders
       })
-      setToast({ kind: 'success', message: 'Provider deleted.' })
+      toast.success('Provider deleted.')
     } catch (error) {
-      setToast({ kind: 'error', message: toErrorMessage(error) })
+      toast.error(toErrorMessage(error))
     } finally {
       setIsDeletingProviderId(null)
     }
@@ -259,16 +227,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
   return (
     <>
       <div className="flex h-full min-h-0 flex-col" style={{ marginLeft: -32, marginRight: -32 }}>
-        {toast?.kind === 'error' ? (
-          <p
-            role="alert"
-            className="border-destructive/70 text-destructive rounded-md border px-3 py-2 text-sm"
-          >
-            {toast.message}
-          </p>
-        ) : null}
-
-        <div className={cn('min-h-0 flex flex-1', toast ? 'mt-4' : '')}>
+        <div className="min-h-0 flex flex-1">
           <aside className="flex h-full min-h-0 w-[360px] flex-col overflow-hidden border-r border-r-border/70 bg-card shadow-xs">
             <div className="border-r-border/70 flex items-center justify-between px-4 py-3">
               <h2 className="text-muted-foreground text-xs font-semibold tracking-[0.2em] uppercase">
@@ -281,7 +240,6 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                 className="h-auto px-0 text-base font-medium text-primary hover:bg-transparent hover:text-primary/80"
                 onClick={() => {
                   setIsCreateDialogOpen(true)
-                  setToast(null)
                 }}
               >
                 + New
@@ -330,7 +288,6 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                     )}
                     onClick={() => {
                       setSelectedProviderId(provider.id)
-                      setToast(null)
                     }}
                     disabled={isSubmitting || isTestingConnection || Boolean(isDeletingProviderId)}
                   >
@@ -436,17 +393,6 @@ export function ProvidersSettingsPage(): React.JSX.Element {
               />
             </CardContent>
           </Card>
-        </div>
-      ) : null}
-
-      {toast?.kind === 'success' ? (
-        <div className="pointer-events-none fixed right-4 bottom-4 z-40 max-w-sm">
-          <p
-            role="status"
-            className="border-emerald-500/60 text-emerald-300 rounded-md border bg-background px-3 py-2 text-sm shadow-lg"
-          >
-            {toast.message}
-          </p>
         </div>
       ) : null}
     </>

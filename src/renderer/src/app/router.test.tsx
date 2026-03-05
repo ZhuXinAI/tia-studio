@@ -22,7 +22,7 @@ describe('app router', () => {
     const router = createAppMemoryRouter(['/settings/providers'])
     const html = renderToString(<RouterProvider router={router} />)
 
-    expect(html).toContain('Edit Provider')
+    expect(html).toContain('PROVIDERS')
     expect(html).toContain('Search providers...')
     expect(html).toContain('Model Provider')
     expect(html).toContain('Web Search')
