@@ -43,6 +43,25 @@
   --radius: 0.72rem;
 }
 
+.light {
+  --background: #f7f7f8;
+  --foreground: #111827;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --primary: oklch(0.73 0.12 234);
+  --primary-foreground: #f8fbff;
+  --secondary: #e8ecf3;
+  --secondary-foreground: #1f2937;
+  --muted: #eceff4;
+  --muted-foreground: #5f6673;
+  --accent: #edf0f4;
+  --accent-foreground: #111827;
+  --destructive: oklch(0.64 0.19 25);
+  --border: #d4dae3;
+  --input: #d4dae3;
+  --ring: oklch(0.73 0.12 234 / 45%);
+}
+
 * {
   border-color: var(--border);
 }

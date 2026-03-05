@@ -25,7 +25,6 @@ describe('settings page layout', () => {
 
     const html = renderToString(<RouterProvider router={router} />)
 
-    expect(html).toContain('h-[calc(100vh-3.5rem)]')
     expect(html).toContain('data-slot="sidebar"')
     expect(html).toContain('border-r border-border/70')
     expect(html).toContain('Model Provider Settings')

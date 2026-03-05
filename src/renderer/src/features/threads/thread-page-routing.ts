@@ -29,24 +29,6 @@ export function getThreadDisplayTitle(title: string | null | undefined): string 
   return normalizedTitle.length > 0 ? normalizedTitle : 'Untitled Thread'
 }
 
-export function formatThreadTimestamp(value: string | null): string {
-  if (!value) {
-    return ''
-  }
-
-  const parsedDate = new Date(value)
-  if (Number.isNaN(parsedDate.valueOf())) {
-    return 'Updated recently'
-  }
-
-  return parsedDate.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  })
-}
-
 export function sortThreadsByRecentActivity(threads: ThreadRecord[]): ThreadRecord[] {
   return [...threads].sort((left, right) => {
     const leftDate = Date.parse(left.lastMessageAt ?? left.createdAt)

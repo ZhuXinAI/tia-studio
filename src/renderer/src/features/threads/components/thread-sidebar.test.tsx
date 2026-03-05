@@ -158,21 +158,25 @@ describe('thread sidebar assistant management', () => {
     expect(onDeleteAssistant).not.toHaveBeenCalled()
   })
 
-  it('does not show "No messages yet" in the thread list timestamp slot', () => {
+  it('shows only the thread title without an inline timestamp', () => {
+    const threadTitle = 'Help creating a coding skill'
     renderSidebar({
       threads: [
         {
           id: 'thread-1',
           assistantId: 'assistant-1',
           resourceId: 'default-profile',
-          title: 'Help creating a coding skill',
-          lastMessageAt: null,
+          title: threadTitle,
+          lastMessageAt: '2026-03-03T15:24:00.000Z',
           createdAt: '2026-03-01T00:00:00.000Z',
           updatedAt: '2026-03-01T00:00:00.000Z'
         }
       ]
     })
 
-    expect(container.textContent).not.toContain('No messages yet')
+    const threadButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes(threadTitle)
+    )
+    expect(threadButton?.textContent?.trim()).toBe(threadTitle)
   })
 })

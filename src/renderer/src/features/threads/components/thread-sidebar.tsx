@@ -1,11 +1,9 @@
-import { Link } from 'react-router-dom'
 import { Bot, MessageSquarePlus, MoreHorizontal, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../../components/ui/button'
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarHeader,
@@ -18,7 +16,7 @@ import {
 } from '../../../components/ui/sidebar'
 import type { AssistantThreadBranch } from '../thread-page-helpers'
 import type { ThreadRecord } from '../threads-query'
-import { formatThreadTimestamp, getThreadDisplayTitle } from '../thread-page-routing'
+import { getThreadDisplayTitle } from '../thread-page-routing'
 
 type AssistantActionsMenuProps = {
   assistantId: string
@@ -301,7 +299,6 @@ export function ThreadSidebar({
                       const isDeleting = deletingThreadId === thread.id
                       const isConfirmingDelete = confirmDeleteThreadId === thread.id
                       const displayTitle = getThreadDisplayTitle(thread.title)
-                      const timestampLabel = formatThreadTimestamp(thread.lastMessageAt)
                       return (
                         <SidebarMenuSubItem key={thread.id}>
                           <div className="flex items-center gap-1">
@@ -314,9 +311,6 @@ export function ThreadSidebar({
                               }}
                             >
                               <span className="truncate">{displayTitle}</span>
-                              {timestampLabel ? (
-                                <span className="text-[11px] opacity-80">{timestampLabel}</span>
-                              ) : null}
                             </SidebarMenuSubButton>
                             <div
                               className="relative"
@@ -384,15 +378,6 @@ export function ThreadSidebar({
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-
-      <SidebarFooter className="grid gap-1">
-        <Button asChild variant="ghost" size="sm" className="w-full justify-start">
-          <Link to="/assistants">Manage Assistants</Link>
-        </Button>
-        <Button asChild variant="ghost" size="sm" className="w-full justify-start">
-          <Link to="/settings/providers">Provider Settings</Link>
-        </Button>
-      </SidebarFooter>
     </Sidebar>
   )
 }

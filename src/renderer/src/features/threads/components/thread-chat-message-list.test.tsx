@@ -8,6 +8,18 @@ import { ThreadChatMessageList } from './thread-chat-message-list'
 const threadMessagesComponentsMock = vi.fn((components: unknown) => {
   void components
 })
+const actionBarRootPropsMock = vi.fn((props: unknown) => {
+  void props
+})
+const actionBarMoreRootPropsMock = vi.fn((props: unknown) => {
+  void props
+})
+const messageState = {
+  message: {
+    createdAt: new Date('2026-03-01T12:34:00.000Z'),
+    isHovering: true
+  }
+}
 
 vi.mock('@assistant-ui/react', () => {
   const Root = ({ children }: { children?: React.ReactNode }): React.JSX.Element => (
@@ -29,14 +41,32 @@ vi.mock('@assistant-ui/react', () => {
   )
 
   return {
+    AuiIf: ({
+      children,
+      condition
+    }: {
+      children?: React.ReactNode
+      condition: (state: typeof messageState) => boolean
+    }) => (condition(messageState) ? <>{children}</> : null),
+    useAuiState: <T,>(selector: (state: typeof messageState) => T): T => selector(messageState),
     ActionBarPrimitive: {
-      Root: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+      Root: (props: { children?: React.ReactNode; autohide?: string }) => {
+        actionBarRootPropsMock(props)
+        return <div>{props.children}</div>
+      },
       Copy: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
       Reload: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
       ExportMarkdown: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>
     },
     ActionBarMorePrimitive: {
-      Root: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+      Root: (props: {
+        children?: React.ReactNode
+        open?: boolean
+        onOpenChange?: (open: boolean) => void
+      }) => {
+        actionBarMoreRootPropsMock(props)
+        return <div>{props.children}</div>
+      },
       Trigger: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
       Content: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
       Item: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
@@ -53,10 +83,20 @@ vi.mock('@assistant-ui/react', () => {
       Root,
       Viewport,
       Empty,
-      Messages: ({ components }: { components: { AssistantMessage?: React.FC } }) => {
+      Messages: ({
+        components
+      }: {
+        components: { AssistantMessage?: React.FC; UserMessage?: React.FC }
+      }) => {
         threadMessagesComponentsMock(components)
         const AssistantMessage = components.AssistantMessage
-        return <div>{AssistantMessage ? <AssistantMessage /> : null}</div>
+        const UserMessage = components.UserMessage
+        return (
+          <div>
+            {UserMessage ? <UserMessage /> : null}
+            {AssistantMessage ? <AssistantMessage /> : null}
+          </div>
+        )
       }
     }
   }
@@ -72,6 +112,10 @@ describe('thread chat message list', () => {
     document.body.appendChild(container)
     root = createRoot(container)
     threadMessagesComponentsMock.mockClear()
+    actionBarRootPropsMock.mockClear()
+    actionBarMoreRootPropsMock.mockClear()
+    messageState.message.createdAt = new Date('2026-03-01T12:34:00.000Z')
+    messageState.message.isHovering = true
   })
 
   afterEach(() => {
@@ -150,5 +194,80 @@ describe('thread chat message list', () => {
 
     const viewport = container.querySelector('[data-testid="thread-viewport"]')
     expect(viewport?.getAttribute('data-class-name')).toContain('chat-scrollbar')
+  })
+
+  it('keeps message actions mounted while overflow menu is open', async () => {
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    const initialActionBarProps = actionBarRootPropsMock.mock.lastCall?.[0] as
+      | { autohide?: string }
+      | undefined
+    expect(initialActionBarProps?.autohide).toBe('always')
+
+    const moreRootProps = actionBarMoreRootPropsMock.mock.lastCall?.[0] as
+      | { onOpenChange?: (open: boolean) => void }
+      | undefined
+    expect(typeof moreRootProps?.onOpenChange).toBe('function')
+
+    act(() => {
+      moreRootProps?.onOpenChange?.(true)
+    })
+
+    const openActionBarProps = actionBarRootPropsMock.mock.lastCall?.[0] as
+      | { autohide?: string }
+      | undefined
+    expect(openActionBarProps?.autohide).toBe('never')
+  })
+
+  it('shows message timestamp when message is hovered', async () => {
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    const timestamps = Array.from(container.querySelectorAll('[data-testid="message-timestamp"]'))
+    expect(timestamps.length).toBeGreaterThan(0)
+    for (const timestamp of timestamps) {
+      expect(timestamp.className).not.toContain('invisible')
+    }
+  })
+
+  it('keeps timestamp slot rendered but hidden when message is not hovered', async () => {
+    messageState.message.isHovering = false
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    const timestamps = Array.from(container.querySelectorAll('[data-testid="message-timestamp"]'))
+    expect(timestamps.length).toBeGreaterThan(0)
+    for (const timestamp of timestamps) {
+      expect(timestamp.className).toContain('invisible')
+    }
   })
 })
