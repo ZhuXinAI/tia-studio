@@ -3,7 +3,11 @@ import { renderToString } from 'react-dom/server'
 import type { UIMessage } from 'ai'
 import type { UseChatHelpers } from '@ai-sdk/react'
 
-const useAISDKRuntimeMock = vi.fn(() => ({ id: 'runtime' }))
+const useAISDKRuntimeMock = vi.fn((chat: unknown, options?: unknown) => {
+  void chat
+  void options
+  return { id: 'runtime' }
+})
 
 vi.mock('./thread-chat-message-list', () => ({
   ThreadChatMessageList: () => <div data-slot="thread-chat-message-list" />
