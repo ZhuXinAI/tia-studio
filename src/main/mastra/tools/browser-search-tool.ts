@@ -12,6 +12,7 @@ import {
 
 const maxMarkdownLength = 16_000
 const defaultKeepBrowserWindowOpen = true
+const defaultShowBrowser = false
 const defaultRequestHeaders = {
   'User-Agent':
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
@@ -27,10 +28,24 @@ const extractDocumentHtmlScript = `
   })()
 `
 
-const searchToolInputSchema = z.object({
-  query: z.string().min(1, 'Query is required'),
-  engine: z.enum(webSearchEngines).optional()
-})
+const searchToolInputSchema = z
+  .object({
+    action: z.enum(['search', 'visit']).default('search'),
+    query: z.string().min(1, 'Query is required'),
+    url: z.string().url().optional()
+  })
+  .refine(
+    (data) => {
+      if (data.action === 'visit') {
+        return !!data.url
+      }
+      return true
+    },
+    {
+      message: 'URL is required when action is "visit"',
+      path: ['url']
+    }
+  )
 
 const searchToolOutputSchema = z.object({
   engine: z.enum(webSearchEngines),
@@ -43,6 +58,7 @@ const searchToolOutputSchema = z.object({
 type BrowserSearchToolOptions = {
   resolveDefaultEngine?: () => WebSearchEngine | Promise<WebSearchEngine>
   resolveKeepBrowserWindowOpen?: () => boolean | Promise<boolean>
+  resolveShowBrowser?: () => boolean | Promise<boolean>
   loadHtmlFromUrl?: (input: { url: string; keepBrowserWindowOpen: boolean }) => Promise<string>
 }
 
@@ -127,11 +143,29 @@ async function resolveKeepBrowserWindowOpen(
   }
 }
 
-function createSearchWindow(): BrowserWindow {
+function normalizeShowBrowser(value: unknown): boolean {
+  return typeof value === 'boolean' ? value : defaultShowBrowser
+}
+
+async function resolveShowBrowser(
+  resolver?: BrowserSearchToolOptions['resolveShowBrowser']
+): Promise<boolean> {
+  if (!resolver) {
+    return defaultShowBrowser
+  }
+
+  try {
+    return normalizeShowBrowser(await resolver())
+  } catch {
+    return defaultShowBrowser
+  }
+}
+
+function createSearchWindow(showBrowser: boolean): BrowserWindow {
   const window = new BrowserWindow({
     width: 1200,
     height: 800,
-    show: false,
+    show: showBrowser,
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
@@ -145,12 +179,12 @@ function createSearchWindow(): BrowserWindow {
   return window
 }
 
-function resolveSearchWindow(keepBrowserWindowOpen: boolean): BrowserWindow {
+function resolveSearchWindow(keepBrowserWindowOpen: boolean, showBrowser: boolean): BrowserWindow {
   if (keepBrowserWindowOpen && sharedSearchWindow && !sharedSearchWindow.isDestroyed()) {
     return sharedSearchWindow
   }
 
-  const window = createSearchWindow()
+  const window = createSearchWindow(showBrowser)
   if (keepBrowserWindowOpen) {
     sharedSearchWindow = window
     window.once('closed', () => {
@@ -185,8 +219,9 @@ async function loadHtmlViaFetch(url: string): Promise<string> {
 async function loadHtmlWithBrowserWindow(input: {
   url: string
   keepBrowserWindowOpen: boolean
+  showBrowser: boolean
 }): Promise<string> {
-  const window = resolveSearchWindow(input.keepBrowserWindowOpen)
+  const window = resolveSearchWindow(input.keepBrowserWindowOpen, input.showBrowser)
   const shouldCloseWindowAfterUse = !input.keepBrowserWindowOpen
 
   try {
@@ -213,6 +248,7 @@ async function loadHtmlWithBrowserWindow(input: {
 async function loadHtmlFromUrl(input: {
   url: string
   keepBrowserWindowOpen: boolean
+  showBrowser: boolean
 }): Promise<string> {
   if (typeof BrowserWindow !== 'function') {
     return loadHtmlViaFetch(input.url)
@@ -227,7 +263,7 @@ export function createBrowserSearchTool(
   return createTool({
     id: 'browser-search',
     description:
-      'Search the web with Google, Bing, or Baidu and return markdown converted from the search result HTML. Use this for current web information.',
+      'Search the web or visit a specific URL and return markdown converted from the HTML. Use action="search" to search with the configured engine, or action="visit" to directly visit a URL.',
     inputSchema: searchToolInputSchema,
     outputSchema: searchToolOutputSchema,
     execute: async (input) => {
@@ -236,13 +272,20 @@ export function createBrowserSearchTool(
       const keepBrowserWindowOpen = await resolveKeepBrowserWindowOpen(
         options?.resolveKeepBrowserWindowOpen
       )
-      const url = buildSearchUrl({
-        query: parsedInput.query,
-        engine
-      })
+      const showBrowser = await resolveShowBrowser(options?.resolveShowBrowser)
+
+      const url =
+        parsedInput.action === 'visit'
+          ? parsedInput.url!
+          : buildSearchUrl({
+              query: parsedInput.query,
+              engine
+            })
+
       const html = await (options?.loadHtmlFromUrl ?? loadHtmlFromUrl)({
         url,
-        keepBrowserWindowOpen
+        keepBrowserWindowOpen,
+        showBrowser
       })
       const sanitizedHtml = sanitizeHtmlForModel(html)
       const markdown = htmlToMarkdown(

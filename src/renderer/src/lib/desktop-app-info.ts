@@ -4,7 +4,7 @@ export type DesktopAppInfo = {
 }
 
 const fallbackDesktopAppInfo: DesktopAppInfo = {
-  name: 'Tia Studio',
+  name: 'TIA Studio',
   version: '0.0.0'
 }
 

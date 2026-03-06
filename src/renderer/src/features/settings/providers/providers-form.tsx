@@ -3,6 +3,7 @@ import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Textarea } from '../../../components/ui/textarea'
 import { Field, FieldLabel, FieldDescription, FieldError } from '../../../components/ui/field'
+import { Switch } from '../../../components/ui/switch'
 import type { ProviderType, SaveProviderInput } from './providers-query'
 
 export type ProviderFormValues = {
@@ -12,6 +13,7 @@ export type ProviderFormValues = {
   apiHost: string
   selectedModel: string
   providerModelsText: string
+  supportsVision: boolean
 }
 
 export type ProviderFormErrors = {
@@ -60,7 +62,8 @@ function toProviderPayload(
     selectedModel: values.selectedModel.trim(),
     providerModels: showProviderModels
       ? parseProviderModelsInput(values.providerModelsText)
-      : undefined
+      : undefined,
+    supportsVision: values.supportsVision
   }
 }
 
@@ -78,7 +81,8 @@ export function ProvidersForm({
     apiKey: initialValue?.apiKey ?? '',
     apiHost: initialValue?.apiHost ?? '',
     selectedModel: initialValue?.selectedModel ?? '',
-    providerModelsText: initialValue?.providerModelsText ?? ''
+    providerModelsText: initialValue?.providerModelsText ?? '',
+    supportsVision: initialValue?.supportsVision ?? false
   })
   const [errors, setErrors] = useState<ProviderFormErrors>({})
   const [hasProviderModels, setHasProviderModels] = useState<boolean>(() => {
@@ -203,6 +207,22 @@ export function ProvidersForm({
           />
         </Field>
       ) : null}
+
+      <Field>
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <FieldLabel htmlFor="supports-vision">Supports Vision</FieldLabel>
+            <FieldDescription>Enable image attachments for this provider</FieldDescription>
+          </div>
+          <Switch
+            id="supports-vision"
+            checked={values.supportsVision}
+            onCheckedChange={(checked) =>
+              setValues((prev) => ({ ...prev, supportsVision: checked }))
+            }
+          />
+        </div>
+      </Field>
 
       <div className="flex flex-wrap justify-end gap-2">
         {onTestConnection ? (

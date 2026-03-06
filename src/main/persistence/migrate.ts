@@ -24,6 +24,21 @@ async function ensureAssistantMaxStepsColumn(db: AppDatabase): Promise<void> {
   await db.execute('ALTER TABLE app_assistants ADD COLUMN max_steps INTEGER NOT NULL DEFAULT 100')
 }
 
+async function ensureProviderSupportsVisionColumn(db: AppDatabase): Promise<void> {
+  const tableInfo = await db.execute("PRAGMA table_info('app_providers')")
+  const hasSupportsVisionColumn = tableInfo.rows.some((row) => {
+    return String((row as Record<string, unknown>).name) === 'supports_vision'
+  })
+
+  if (hasSupportsVisionColumn) {
+    return
+  }
+
+  await db.execute(
+    'ALTER TABLE app_providers ADD COLUMN supports_vision INTEGER NOT NULL DEFAULT 0'
+  )
+}
+
 export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> {
   const db = createAppDatabase(pathOrUrl)
   let migrationSql = APP_CORE_MIGRATION_SQL
@@ -42,6 +57,7 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   }
 
   await ensureAssistantMaxStepsColumn(db)
+  await ensureProviderSupportsVisionColumn(db)
 
   return db
 }

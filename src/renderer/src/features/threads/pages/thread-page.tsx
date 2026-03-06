@@ -42,6 +42,7 @@ export function ThreadPage(): React.JSX.Element {
             composerValue={controller.composerValue}
             canSendMessage={controller.canSendMessage}
             canAbortGeneration={controller.canAbortGeneration}
+            supportsVision={controller.supportsVision}
             tokenUsage={controller.tokenUsage}
             onComposerChange={controller.onComposerChange}
             onSubmitMessage={controller.onSubmitMessage}

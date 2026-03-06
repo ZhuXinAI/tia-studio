@@ -1,4 +1,4 @@
-import { Mic, Plus, Sparkles, Square, Settings2 } from 'lucide-react'
+import { Mic, Plus, Sparkles, Square, Settings2, Paperclip, X } from 'lucide-react'
 import type { UIMessage } from 'ai'
 import type { UseChatHelpers } from '@ai-sdk/react'
 import {
@@ -10,7 +10,7 @@ import {
   WebSpeechDictationAdapter
 } from '@assistant-ui/react'
 import { useAISDKRuntime } from '@assistant-ui/react-ai-sdk'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AssistantRecord } from '../../assistants/assistants-query'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -30,6 +30,7 @@ type ThreadChatCardProps = {
   composerValue: string
   canSendMessage: boolean
   canAbortGeneration: boolean
+  supportsVision: boolean
   tokenUsage: {
     inputTokens: number
     outputTokens: number
@@ -42,6 +43,38 @@ type ThreadChatCardProps = {
   onCreateThread: () => void
 }
 
+function AttachmentPreview({ file }: { file: File }): React.JSX.Element {
+  const [preview, setPreview] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!file || !file.type.startsWith('image/')) {
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setPreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  }, [file])
+
+  if (!preview) {
+    return (
+      <div className="flex h-20 w-20 items-center justify-center rounded-md border border-border/70 bg-muted">
+        <span className="text-muted-foreground text-xs">Loading...</span>
+      </div>
+    )
+  }
+
+  return (
+    <img
+      src={preview}
+      alt={file.name}
+      className="h-20 w-20 rounded-md border border-border/70 object-cover"
+    />
+  )
+}
+
 type ThreadChatComposerProps = Pick<
   ThreadChatCardProps,
   | 'selectedAssistant'
@@ -51,6 +84,7 @@ type ThreadChatComposerProps = Pick<
   | 'composerValue'
   | 'canSendMessage'
   | 'canAbortGeneration'
+  | 'supportsVision'
   | 'onComposerChange'
   | 'onSubmitMessage'
   | 'onAbortGeneration'
@@ -65,6 +99,7 @@ function ThreadChatComposer({
   canSendMessage,
   canAbortGeneration,
   canCompose,
+  supportsVision,
   onComposerChange,
   onSubmitMessage,
   onAbortGeneration
@@ -74,6 +109,7 @@ function ThreadChatComposer({
   const lastSyncedTextRef = useRef(composerText)
   const dictationTranscript = useAuiState((state) => state.composer.dictation?.transcript)
   const isDictating = useAuiState((state) => state.composer.dictation != null)
+  const attachments = useAuiState((state) => state.composer.attachments)
 
   useEffect(() => {
     const lastSynced = lastSyncedTextRef.current
@@ -113,11 +149,17 @@ function ThreadChatComposer({
 
   return (
     <div className="border-t border-border/70 p-4">
-      <form
+      <ComposerPrimitive.Root
         className="space-y-3"
         onSubmit={(event) => {
-          event.preventDefault()
-          void onSubmitMessage()
+          console.log('[Form submit] Attachments:', attachments)
+          // Let the runtime handle the submission with attachments
+          // But we still need custom logic for thread creation
+          if (!selectedThread) {
+            event.preventDefault()
+            void onSubmitMessage()
+          }
+          // If thread exists, let runtime handle it naturally
         }}
       >
         {dictationTranscript ? (
@@ -125,6 +167,29 @@ function ThreadChatComposer({
             <ComposerPrimitive.DictationTranscript />
           </div>
         ) : null}
+
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 p-2 bg-muted/20 rounded-md border border-border">
+            {attachments.map((attachment, index) => {
+              console.log('[Manual render] Attachment:', attachment, 'Index:', index)
+              return (
+                <div key={attachment.id} className="relative inline-block">
+                  {attachment.file && <AttachmentPreview file={attachment.file} />}
+                  <button
+                    type="button"
+                    className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90"
+                    aria-label="Remove attachment"
+                    onClick={() => {
+                      aui.composer().attachment({ index }).remove()
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         <ComposerPrimitive.Input
           minRows={3}
@@ -140,6 +205,19 @@ function ThreadChatComposer({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-muted-foreground text-xs">{helperText}</p>
           <div className="flex items-center gap-2">
+            {supportsVision && (
+              <ComposerPrimitive.AddAttachment asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="Add attachment"
+                  disabled={!canCompose}
+                >
+                  <Paperclip className="size-4" />
+                </Button>
+              </ComposerPrimitive.AddAttachment>
+            )}
+
             {isDictating ? (
               <ComposerPrimitive.StopDictation asChild>
                 <Button
@@ -164,16 +242,20 @@ function ThreadChatComposer({
               </ComposerPrimitive.Dictate>
             )}
 
-            <Button
-              type={isChatStreaming ? 'button' : 'submit'}
-              disabled={isChatStreaming ? !canAbortGeneration : !canSendMessage}
-              onClick={isChatStreaming ? onAbortGeneration : undefined}
-            >
-              {isChatStreaming ? 'Stop' : 'Send'}
-            </Button>
+            {isChatStreaming ? (
+              <Button type="button" disabled={!canAbortGeneration} onClick={onAbortGeneration}>
+                Stop
+              </Button>
+            ) : (
+              <ComposerPrimitive.Send asChild>
+                <Button type="submit" disabled={!canSendMessage}>
+                  Send
+                </Button>
+              </ComposerPrimitive.Send>
+            )}
           </div>
         </div>
-      </form>
+      </ComposerPrimitive.Root>
     </div>
   )
 }
@@ -190,6 +272,7 @@ export function ThreadChatCard({
   composerValue,
   canSendMessage,
   canAbortGeneration,
+  supportsVision,
   tokenUsage,
   onComposerChange,
   onSubmitMessage,
@@ -225,9 +308,13 @@ export function ThreadChatCard({
                   <span className="font-medium">{tokenUsage.totalTokens.toLocaleString()}</span>
                   <span className="text-muted-foreground/70">tokens</span>
                   <span className="text-muted-foreground/50">•</span>
-                  <span className="text-muted-foreground/70">{tokenUsage.inputTokens.toLocaleString()} in</span>
+                  <span className="text-muted-foreground/70">
+                    {tokenUsage.inputTokens.toLocaleString()} in
+                  </span>
                   <span className="text-muted-foreground/50">•</span>
-                  <span className="text-muted-foreground/70">{tokenUsage.outputTokens.toLocaleString()} out</span>
+                  <span className="text-muted-foreground/70">
+                    {tokenUsage.outputTokens.toLocaleString()} out
+                  </span>
                 </div>
               )}
               <div className="bg-muted/50 text-muted-foreground inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs">
@@ -285,6 +372,7 @@ export function ThreadChatCard({
             canSendMessage={canSendMessage}
             canAbortGeneration={canAbortGeneration}
             canCompose={canCompose}
+            supportsVision={supportsVision}
             onComposerChange={onComposerChange}
             onSubmitMessage={onSubmitMessage}
             onAbortGeneration={onAbortGeneration}

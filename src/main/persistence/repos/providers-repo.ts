@@ -12,6 +12,7 @@ export type AppProvider = {
   selectedModel: string
   providerModels: string[] | null
   enabled: boolean
+  supportsVision: boolean
   createdAt: string
   updatedAt: string
 }
@@ -24,6 +25,7 @@ export type CreateProviderInput = {
   selectedModel: string
   providerModels?: string[] | null
   enabled?: boolean
+  supportsVision?: boolean
 }
 
 export type UpdateProviderInput = Partial<CreateProviderInput>
@@ -41,6 +43,7 @@ function parseProviderRow(row: Record<string, unknown>): AppProvider {
         ? (JSON.parse(row.provider_models) as string[])
         : null,
     enabled: Number(row.enabled) === 1,
+    supportsVision: Number(row.supports_vision) === 1,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at)
   }
@@ -51,7 +54,7 @@ export class ProvidersRepository {
 
   async list(): Promise<AppProvider[]> {
     const result = await this.db.execute(
-      'SELECT id, name, type, api_key, api_host, selected_model, provider_models, enabled, created_at, updated_at FROM app_providers ORDER BY created_at DESC'
+      'SELECT id, name, type, api_key, api_host, selected_model, provider_models, enabled, supports_vision, created_at, updated_at FROM app_providers ORDER BY created_at DESC'
     )
 
     return result.rows.map((row) => parseProviderRow(row as Record<string, unknown>))
@@ -59,7 +62,7 @@ export class ProvidersRepository {
 
   async getById(id: string): Promise<AppProvider | null> {
     const result = await this.db.execute(
-      'SELECT id, name, type, api_key, api_host, selected_model, provider_models, enabled, created_at, updated_at FROM app_providers WHERE id = ? LIMIT 1',
+      'SELECT id, name, type, api_key, api_host, selected_model, provider_models, enabled, supports_vision, created_at, updated_at FROM app_providers WHERE id = ? LIMIT 1',
       [id]
     )
     const row = result.rows.at(0)
@@ -74,7 +77,7 @@ export class ProvidersRepository {
   async create(input: CreateProviderInput): Promise<AppProvider> {
     const id = randomUUID()
     await this.db.execute(
-      'INSERT INTO app_providers (id, name, type, api_key, api_host, selected_model, provider_models, enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO app_providers (id, name, type, api_key, api_host, selected_model, provider_models, enabled, supports_vision) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
         input.name,
@@ -83,7 +86,8 @@ export class ProvidersRepository {
         input.apiHost ?? null,
         input.selectedModel,
         input.providerModels ? JSON.stringify(input.providerModels) : null,
-        input.enabled === false ? 0 : 1
+        input.enabled === false ? 0 : 1,
+        input.supportsVision === true ? 1 : 0
       ]
     )
 
@@ -102,7 +106,7 @@ export class ProvidersRepository {
     }
 
     await this.db.execute(
-      'UPDATE app_providers SET name = ?, type = ?, api_key = ?, api_host = ?, selected_model = ?, provider_models = ?, enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE app_providers SET name = ?, type = ?, api_key = ?, api_host = ?, selected_model = ?, provider_models = ?, enabled = ?, supports_vision = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [
         input.name ?? existing.name,
         input.type ?? existing.type,
@@ -115,6 +119,13 @@ export class ProvidersRepository {
             ? JSON.stringify(existing.providerModels)
             : null,
         input.enabled === undefined ? (existing.enabled ? 1 : 0) : input.enabled ? 1 : 0,
+        input.supportsVision === undefined
+          ? existing.supportsVision
+            ? 1
+            : 0
+          : input.supportsVision
+            ? 1
+            : 0,
         id
       ]
     )

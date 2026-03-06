@@ -18,6 +18,7 @@ import type { WebSearchSettingsRepository } from '../persistence/repos/web-searc
 import { ChatRouteError } from '../server/chat/chat-errors'
 import { resolveModel } from './model-resolver'
 import { createBrowserSearchTool } from './tools/browser-search-tool'
+import { AttachmentUploader } from './processors/attachment-uploader'
 
 type StreamChatParams = {
   assistantId: string
@@ -311,15 +312,27 @@ export class AssistantRuntimeService implements AssistantRuntime {
     const browserSearchTool = createBrowserSearchTool({
       resolveDefaultEngine: async () => this.options.webSearchSettingsRepo.getDefaultEngine(),
       resolveKeepBrowserWindowOpen: async () =>
-        this.options.webSearchSettingsRepo.getKeepBrowserWindowOpen()
+        this.options.webSearchSettingsRepo.getKeepBrowserWindowOpen(),
+      resolveShowBrowser: async () => this.options.webSearchSettingsRepo.getShowBrowser()
     })
     const mcpTools = await this.buildMcpTools(assistant.id, enabledMcpServers)
     const tools: ToolsInput = {
       browserSearch: browserSearchTool,
       ...mcpTools
     }
+    const now = new Date()
+    const currentDateTime = now.toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZoneName: 'short'
+    })
     const baseInstructions = assistant.instructions || 'You are a helpful assistant.'
-    const agentInstructions = `${baseInstructions}\n\nWhen users ask for current web information, call the browserSearch tool before answering.`
+    const agentInstructions = `${baseInstructions}\n\nCurrent date and time: ${currentDateTime}\n\nWhen users ask for current web information, call the browserSearch tool before answering.`
 
     const storage = this.options.mastra.getStorage()
     const memory = new Memory({
@@ -346,7 +359,8 @@ export class AssistantRuntimeService implements AssistantRuntime {
       }) as never,
       memory,
       workspace,
-      tools
+      tools,
+      inputProcessors: [new AttachmentUploader()]
     })
 
     this.options.mastra.addAgent(agent, assistant.id)

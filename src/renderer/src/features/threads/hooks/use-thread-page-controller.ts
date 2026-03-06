@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useChat } from '@ai-sdk/react'
+import { useChat, type UIMessage } from '@ai-sdk/react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
@@ -110,6 +110,15 @@ export function useThreadPageController() {
     })
   }, [providers, selectedAssistant])
 
+  const supportsVision = useMemo(() => {
+    if (!selectedAssistant) {
+      return false
+    }
+
+    const provider = providers.find((p) => p.id === selectedAssistant.providerId)
+    return provider?.supportsVision ?? false
+  }, [providers, selectedAssistant])
+
   const sidebarBranches = useMemo(() => {
     return buildAssistantThreadBranches({
       assistants,
@@ -173,7 +182,7 @@ export function useThreadPageController() {
     }
   })
 
-  const { sendMessage, setMessages, stop, status: chatStatus, error: chatError } = chat
+  const { sendMessage, setMessages, stop, status: chatStatus, error: chatError, messages } = chat
 
   const isChatStreaming = chatStatus === 'submitted' || chatStatus === 'streaming'
   const canAbortGeneration = isChatStreaming
@@ -184,6 +193,15 @@ export function useThreadPageController() {
     !isLoadingChatHistory &&
     !isCreatingThread &&
     !pendingThreadMessage
+
+  // Stop any ongoing chat operations when assistant or thread changes
+  useEffect(() => {
+    return () => {
+      if (isChatStreaming) {
+        stop()
+      }
+    }
+  }, [selectedAssistant?.id, selectedThread?.id])
 
   const loadAssistantsAndProviders = useCallback(async () => {
     setIsLoadingData(true)
@@ -675,13 +693,33 @@ export function useThreadPageController() {
     const messageToSend = pendingThreadMessage.text
     setPendingThreadMessage(null)
 
+    // Manually add the user message to ensure it appears immediately
+    const userMessage: UIMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: messageToSend,
+      createdAt: new Date()
+    }
+
+    setMessages([...messages, userMessage])
+
     void sendMessage({
       text: messageToSend
     }).catch((error) => {
+      // Remove the optimistically added message on error
+      setMessages(messages)
       setComposerValue(messageToSend)
       toast.error(toErrorMessage(error))
     })
-  }, [isLoadingChatHistory, isChatStreaming, pendingThreadMessage, selectedThread, sendMessage])
+  }, [
+    isLoadingChatHistory,
+    isChatStreaming,
+    pendingThreadMessage,
+    selectedThread,
+    sendMessage,
+    messages,
+    setMessages
+  ])
 
   const closeAssistantDialog = useCallback(() => {
     if (isSubmittingAssistantDialog) {
@@ -735,6 +773,7 @@ export function useThreadPageController() {
     selectedAssistant,
     selectedThread,
     readiness,
+    supportsVision,
     chat,
     isLoadingData,
     isLoadingThreads,

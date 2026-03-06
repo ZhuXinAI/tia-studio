@@ -51,7 +51,7 @@ describe('app router', () => {
     const html = renderToString(<RouterProvider router={router} />)
 
     expect(html).toContain('About &amp; Feedback')
-    expect(html).toContain('Tia Studio')
+    expect(html).toContain('TIA Studio')
     expect(html).toContain('Check Update')
   })
 

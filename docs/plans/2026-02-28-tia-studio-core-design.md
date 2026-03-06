@@ -1,4 +1,4 @@
-# Tia Studio Core Design
+# TIA Studio Core Design
 
 **Date:** February 28, 2026  
 **Status:** Approved (design phase)  

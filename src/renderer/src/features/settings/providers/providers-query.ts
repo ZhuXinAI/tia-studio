@@ -11,6 +11,7 @@ export type ProviderRecord = {
   selectedModel: string
   providerModels: string[] | null
   enabled: boolean
+  supportsVision: boolean
   createdAt: string
   updatedAt: string
 }
@@ -23,6 +24,7 @@ export type SaveProviderInput = {
   selectedModel: string
   providerModels?: string[]
   enabled?: boolean
+  supportsVision?: boolean
 }
 
 type ProviderConnectionTestResult = {

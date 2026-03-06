@@ -64,7 +64,7 @@ export function StudioSidebar(): React.JSX.Element {
         <Card className="border-border/70 bg-card/90 py-0">
           <CardHeader className="px-4 py-4">
             <CardDescription className="text-xs tracking-[0.18em] uppercase">
-              Tia Studio
+              TIA Studio
             </CardDescription>
             <CardTitle className="text-base">Control Center</CardTitle>
           </CardHeader>

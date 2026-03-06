@@ -31,7 +31,7 @@ type AutoUpdateState = {
 }
 
 const fallbackAppInfo: DesktopAppInfo = {
-  name: 'Tia Studio',
+  name: 'TIA Studio',
   version: '0.0.0'
 }
 
@@ -258,7 +258,7 @@ export function AboutSettingsPage(): React.JSX.Element {
       <header className="py-1">
         <h1 className="text-2xl font-semibold tracking-tight">About &amp; Feedback</h1>
         <p className="text-muted-foreground text-sm">
-          App metadata, update controls, and helpful links for Tia Studio.
+          App metadata, update controls, and helpful links for TIA Studio.
         </p>
       </header>
 

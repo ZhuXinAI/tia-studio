@@ -15,7 +15,8 @@ export const createProviderSchema = z.object({
   apiHost: z.string().url().optional(),
   selectedModel: z.string().min(1),
   providerModels: z.array(z.string().min(1)).optional(),
-  enabled: z.boolean().optional()
+  enabled: z.boolean().optional(),
+  supportsVision: z.boolean().optional()
 })
 
 export const updateProviderSchema = createProviderSchema.partial()

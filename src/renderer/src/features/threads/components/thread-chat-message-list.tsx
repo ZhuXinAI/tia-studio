@@ -69,6 +69,17 @@ function UserTextPart(): React.JSX.Element {
   return <MessagePartPrimitive.Text className="text-sm leading-relaxed whitespace-pre-wrap" />
 }
 
+function UserImageAttachment(): React.JSX.Element {
+  return (
+    <MessagePartPrimitive.Image
+      className="max-w-sm rounded-lg border border-border/70"
+      onError={(e) => {
+        console.error('Failed to load image:', e)
+      }}
+    />
+  )
+}
+
 function UserMessageBubble(): React.JSX.Element {
   return (
     <MessagePrimitive.Root className="ml-auto max-w-2xl px-4 py-3">
@@ -77,7 +88,8 @@ function UserMessageBubble(): React.JSX.Element {
       </p>
       <MessagePrimitive.Parts
         components={{
-          Text: UserTextPart
+          Text: UserTextPart,
+          Image: UserImageAttachment
         }}
       />
       <MessageTimestamp className="mt-2 text-right" />
@@ -108,10 +120,7 @@ function AssistantMessageBubble(): React.JSX.Element {
       <div className="mt-2 flex items-center justify-between gap-2">
         <MessageTimestamp />
 
-        <ActionBarPrimitive.Root
-          autohide="never"
-          className="ml-auto flex items-center gap-1"
-        >
+        <ActionBarPrimitive.Root autohide="never" className="ml-auto flex items-center gap-1">
           <ActionBarPrimitive.Copy asChild>
             <Button
               type="button"

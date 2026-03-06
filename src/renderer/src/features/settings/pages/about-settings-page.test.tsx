@@ -94,7 +94,7 @@ describe('about settings page', () => {
     await flushAsyncWork()
 
     expect(window.tiaDesktop.getAppInfo).toHaveBeenCalledTimes(1)
-    expect(container.textContent).toContain('Tia Studio')
+    expect(container.textContent).toContain('TIA Studio')
     expect(container.textContent).toContain('v1.7.22')
   })
 

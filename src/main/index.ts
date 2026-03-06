@@ -266,7 +266,7 @@ function createTray(): void {
 
   const image = nativeImage.createFromPath(icon)
   const tray = new Tray(image.resize({ width: 16, height: 16 }))
-  tray.setToolTip('Tia Studio')
+  tray.setToolTip('TIA Studio')
   tray.on('click', () => {
     openMainWindow()
   })

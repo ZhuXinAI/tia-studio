@@ -23,6 +23,7 @@ type ProviderFormInitialValue = {
   apiHost: string
   selectedModel: string
   providerModelsText: string
+  supportsVision: boolean
 }
 
 function toProviderTypeLabel(type: ProviderRecord['type']): string {
@@ -75,7 +76,8 @@ function toInitialFormValue(provider: ProviderRecord | null): ProviderFormInitia
     apiKey: provider.apiKey,
     apiHost: provider.apiHost ?? '',
     selectedModel: provider.selectedModel,
-    providerModelsText: provider.providerModels?.join('\n') ?? ''
+    providerModelsText: provider.providerModels?.join('\n') ?? '',
+    supportsVision: provider.supportsVision
   }
 }
 

@@ -7,11 +7,13 @@ import { McpServersSettingsPage } from '../features/settings/pages/mcp-servers-s
 import { AboutSettingsPage } from '../features/settings/pages/about-settings-page'
 import { DisplaySettingsPage } from '../features/settings/pages/display-settings-page'
 import { SettingsPageLayout } from '../features/settings/pages/settings-page-layout'
+import { RouteError } from '../components/route-error'
 
 export const appRoutes: RouteObject[] = [
   {
     path: '/',
     element: <AppShell />,
+    errorElement: <RouteError />,
     children: [
       {
         index: true,

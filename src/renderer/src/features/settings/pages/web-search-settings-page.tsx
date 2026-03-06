@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle
 } from '../../../components/ui/card'
+import { Switch } from '../../../components/ui/switch'
 import { cn } from '../../../lib/utils'
 import {
   getWebSearchSettings,
@@ -57,6 +58,7 @@ export function WebSearchSettingsPage(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(true)
   const [savingEngine, setSavingEngine] = useState<WebSearchEngine | null>(null)
   const [isSavingWindowBehavior, setIsSavingWindowBehavior] = useState(false)
+  const [isSavingShowBrowser, setIsSavingShowBrowser] = useState(false)
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true)
@@ -115,6 +117,26 @@ export function WebSearchSettingsPage(): React.JSX.Element {
       toast.error(toErrorMessage(error))
     } finally {
       setIsSavingWindowBehavior(false)
+    }
+  }
+
+  const setShowBrowser = async (showBrowser: boolean): Promise<void> => {
+    if (!settings || settings.showBrowser === showBrowser) {
+      return
+    }
+
+    setIsSavingShowBrowser(true)
+
+    try {
+      const nextSettings = await updateWebSearchSettings({
+        showBrowser
+      })
+      setSettings(nextSettings)
+      toast.success(`Browser window is now ${showBrowser ? 'visible' : 'hidden'}.`)
+    } catch (error) {
+      toast.error(toErrorMessage(error))
+    } finally {
+      setIsSavingShowBrowser(false)
     }
   }
 
@@ -179,7 +201,12 @@ export function WebSearchSettingsPage(): React.JSX.Element {
                     type="button"
                     variant={isDefault ? 'secondary' : 'outline'}
                     size="sm"
-                    disabled={isDefault || Boolean(savingEngine) || isSavingWindowBehavior}
+                    disabled={
+                      isDefault ||
+                      Boolean(savingEngine) ||
+                      isSavingWindowBehavior ||
+                      isSavingShowBrowser
+                    }
                     onClick={() => {
                       void setDefaultEngine(engine)
                     }}
@@ -193,7 +220,12 @@ export function WebSearchSettingsPage(): React.JSX.Element {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    disabled={isSaving || Boolean(savingEngine) || isSavingWindowBehavior}
+                    disabled={
+                      isSaving ||
+                      Boolean(savingEngine) ||
+                      isSavingWindowBehavior ||
+                      isSavingShowBrowser
+                    }
                     onClick={() => {
                       void openEngineSettings(engine)
                     }}
@@ -216,35 +248,57 @@ export function WebSearchSettingsPage(): React.JSX.Element {
             Keep an isolated browser window in the background for future search tasks.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           {isLoading ? (
             <p className="text-muted-foreground text-sm">Loading browser window behavior...</p>
           ) : (
-            <div className="flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-card/60 px-4 py-3">
-              <div className="space-y-1">
-                <h2 className="text-base font-medium">Background Browser Window</h2>
-                <p className="text-muted-foreground text-sm">
-                  {settings?.keepBrowserWindowOpen
-                    ? 'Reuses one hidden BrowserWindow for web search.'
-                    : 'Creates and closes a BrowserWindow per search request.'}
-                </p>
+            <>
+              <div className="flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-card/60 px-4 py-3">
+                <div className="space-y-1 flex-1">
+                  <h2 className="text-base font-medium">Background Browser Window</h2>
+                  <p className="text-muted-foreground text-sm">
+                    {settings?.keepBrowserWindowOpen
+                      ? 'Reuses one hidden BrowserWindow for web search.'
+                      : 'Creates and closes a BrowserWindow per search request.'}
+                  </p>
+                </div>
+                <Switch
+                  checked={settings?.keepBrowserWindowOpen ?? true}
+                  disabled={
+                    Boolean(savingEngine) ||
+                    isSavingWindowBehavior ||
+                    isSavingShowBrowser ||
+                    !settings
+                  }
+                  onCheckedChange={(checked) => {
+                    void setKeepBrowserWindowOpen(checked)
+                  }}
+                />
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={Boolean(savingEngine) || isSavingWindowBehavior || !settings}
-                onClick={() => {
-                  void setKeepBrowserWindowOpen(!(settings?.keepBrowserWindowOpen ?? true))
-                }}
-              >
-                {isSavingWindowBehavior
-                  ? 'Saving...'
-                  : settings?.keepBrowserWindowOpen
-                    ? 'Disable'
-                    : 'Enable'}
-              </Button>
-            </div>
+
+              <div className="flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-card/60 px-4 py-3">
+                <div className="space-y-1 flex-1">
+                  <h2 className="text-base font-medium">Show Browser</h2>
+                  <p className="text-muted-foreground text-sm">
+                    {settings?.showBrowser
+                      ? 'Browser window is visible during search.'
+                      : 'Browser window is hidden during search.'}
+                  </p>
+                </div>
+                <Switch
+                  checked={settings?.showBrowser ?? false}
+                  disabled={
+                    Boolean(savingEngine) ||
+                    isSavingWindowBehavior ||
+                    isSavingShowBrowser ||
+                    !settings
+                  }
+                  onCheckedChange={(checked) => {
+                    void setShowBrowser(checked)
+                  }}
+                />
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
