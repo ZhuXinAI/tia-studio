@@ -3,7 +3,7 @@
 import { ComponentPropsWithRef, forwardRef } from 'react'
 import { Slot } from 'radix-ui'
 
-import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip'
 import { Button } from '../../components/ui/button'
 import { cn } from '../../lib/utils'
 

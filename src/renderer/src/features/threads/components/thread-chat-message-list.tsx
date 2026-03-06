@@ -4,9 +4,10 @@ import {
   MessagePartPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
-  useAuiState
+  useAuiState,
+  useMessagePartFile
 } from '@assistant-ui/react'
-import { Copy, MoreHorizontal, RotateCw } from 'lucide-react'
+import { Copy, File, MoreHorizontal, RotateCw } from 'lucide-react'
 import { createContext, useContext } from 'react'
 import { toErrorMessage } from '../thread-page-routing'
 import { Reasoning, ReasoningGroup } from '../../../components/assistant-ui/reasoning'
@@ -14,6 +15,8 @@ import { MarkdownText } from '../../../components/assistant-ui/markdown-text'
 import { ToolFallback } from '../../../components/assistant-ui/tool-fallback'
 import { ToolGroup } from '../../../components/assistant-ui/tool-group'
 import { Button } from '../../../components/ui/button'
+import { Image } from '@renderer/components/assistant-ui/image'
+import { UserMessageAttachments } from '@renderer/components/assistant-ui/attachment'
 
 type ThreadChatMessageListProps = {
   assistantName: string
@@ -69,14 +72,15 @@ function UserTextPart(): React.JSX.Element {
   return <MessagePartPrimitive.Text className="text-sm leading-relaxed whitespace-pre-wrap" />
 }
 
-function UserImageAttachment(): React.JSX.Element {
+function UserFileAttachment(): React.JSX.Element {
+  const file = useMessagePartFile()
+
   return (
-    <MessagePartPrimitive.Image
-      className="max-w-sm rounded-lg border border-border/70"
-      onError={(e) => {
-        console.error('Failed to load image:', e)
-      }}
-    />
+    <div className="mb-2 inline-flex items-center gap-2 rounded-md border border-border/70 bg-muted/30 px-3 py-2">
+      <File className="size-4 text-muted-foreground" />
+      <span className="text-sm">{file.filename || 'Untitled file'}</span>
+      {file.mimeType && <span className="text-muted-foreground text-xs">({file.mimeType})</span>}
+    </div>
   )
 }
 
@@ -86,10 +90,14 @@ function UserMessageBubble(): React.JSX.Element {
       <p className="text-muted-foreground mb-1 text-[11px] font-medium uppercase tracking-wide">
         You
       </p>
+
+      <UserMessageAttachments />
+
       <MessagePrimitive.Parts
         components={{
           Text: UserTextPart,
-          Image: UserImageAttachment
+          Image: Image,
+          File: UserFileAttachment
         }}
       />
       <MessageTimestamp className="mt-2 text-right" />

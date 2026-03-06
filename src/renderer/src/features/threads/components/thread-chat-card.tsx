@@ -1,4 +1,4 @@
-import { Mic, Plus, Sparkles, Square, Settings2, Paperclip, X } from 'lucide-react'
+import { Mic, Plus, Sparkles, Square, Settings2 } from 'lucide-react'
 import type { UIMessage } from 'ai'
 import type { UseChatHelpers } from '@ai-sdk/react'
 import {
@@ -10,13 +10,17 @@ import {
   WebSpeechDictationAdapter
 } from '@assistant-ui/react'
 import { useAISDKRuntime } from '@assistant-ui/react-ai-sdk'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import type { AssistantRecord } from '../../assistants/assistants-query'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import type { AssistantReadiness } from '../thread-page-helpers'
 import type { ThreadRecord } from '../threads-query'
 import { ThreadChatMessageList } from './thread-chat-message-list'
+import {
+  ComposerAddAttachment,
+  ComposerAttachments
+} from '@renderer/components/assistant-ui/attachment'
 
 type ThreadChatCardProps = {
   selectedAssistant: AssistantRecord | null
@@ -41,38 +45,6 @@ type ThreadChatCardProps = {
   onAbortGeneration: () => void
   onOpenAssistantConfig: () => void
   onCreateThread: () => void
-}
-
-function AttachmentPreview({ file }: { file: File }): React.JSX.Element {
-  const [preview, setPreview] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!file || !file.type.startsWith('image/')) {
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setPreview(reader.result as string)
-    }
-    reader.readAsDataURL(file)
-  }, [file])
-
-  if (!preview) {
-    return (
-      <div className="flex h-20 w-20 items-center justify-center rounded-md border border-border/70 bg-muted">
-        <span className="text-muted-foreground text-xs">Loading...</span>
-      </div>
-    )
-  }
-
-  return (
-    <img
-      src={preview}
-      alt={file.name}
-      className="h-20 w-20 rounded-md border border-border/70 object-cover"
-    />
-  )
 }
 
 type ThreadChatComposerProps = Pick<
@@ -109,7 +81,6 @@ function ThreadChatComposer({
   const lastSyncedTextRef = useRef(composerText)
   const dictationTranscript = useAuiState((state) => state.composer.dictation?.transcript)
   const isDictating = useAuiState((state) => state.composer.dictation != null)
-  const attachments = useAuiState((state) => state.composer.attachments)
 
   useEffect(() => {
     const lastSynced = lastSyncedTextRef.current
@@ -152,7 +123,6 @@ function ThreadChatComposer({
       <ComposerPrimitive.Root
         className="space-y-3"
         onSubmit={(event) => {
-          console.log('[Form submit] Attachments:', attachments)
           // Let the runtime handle the submission with attachments
           // But we still need custom logic for thread creation
           if (!selectedThread) {
@@ -168,28 +138,7 @@ function ThreadChatComposer({
           </div>
         ) : null}
 
-        {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 p-2 bg-muted/20 rounded-md border border-border">
-            {attachments.map((attachment, index) => {
-              console.log('[Manual render] Attachment:', attachment, 'Index:', index)
-              return (
-                <div key={attachment.id} className="relative inline-block">
-                  {attachment.file && <AttachmentPreview file={attachment.file} />}
-                  <button
-                    type="button"
-                    className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md hover:bg-destructive/90"
-                    aria-label="Remove attachment"
-                    onClick={() => {
-                      aui.composer().attachment({ index }).remove()
-                    }}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <ComposerAttachments />
 
         <ComposerPrimitive.Input
           minRows={3}
@@ -205,18 +154,7 @@ function ThreadChatComposer({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-muted-foreground text-xs">{helperText}</p>
           <div className="flex items-center gap-2">
-            {supportsVision && (
-              <ComposerPrimitive.AddAttachment asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label="Add attachment"
-                  disabled={!canCompose}
-                >
-                  <Paperclip className="size-4" />
-                </Button>
-              </ComposerPrimitive.AddAttachment>
-            )}
+            {supportsVision && <ComposerAddAttachment />}
 
             {isDictating ? (
               <ComposerPrimitive.StopDictation asChild>
