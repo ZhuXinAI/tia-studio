@@ -11,9 +11,13 @@ const fallbackConfig: DesktopConfig = {
 let cachedConfig: Promise<DesktopConfig> | null = null
 
 export async function getDesktopConfig(): Promise<DesktopConfig> {
+  const getConfig = window.tiaDesktop?.getConfig
+  if (!getConfig) {
+    return fallbackConfig
+  }
+
   if (!cachedConfig) {
-    cachedConfig = window.tiaDesktop
-      .getConfig()
+    cachedConfig = getConfig()
       .then((config) => {
         return {
           baseUrl: config.baseUrl,
