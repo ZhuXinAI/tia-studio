@@ -43,7 +43,6 @@ export function evaluateAssistantReadiness(input: {
   assistant: AssistantRecord | null
   providers: ProviderRecord[]
 }): AssistantReadiness {
-  const workspaceReady = hasWorkspaceRootPath(input.assistant)
   const provider =
     input.assistant && input.assistant.providerId.trim().length > 0
       ? (input.providers.find((item) => item.id === input.assistant?.providerId) ?? null)
@@ -52,12 +51,6 @@ export function evaluateAssistantReadiness(input: {
   const modelReady = Boolean(provider?.selectedModel.trim().length)
 
   const checks: ReadinessCheck[] = [
-    {
-      id: 'workspace',
-      label: 'Workspace path configured',
-      ready: workspaceReady,
-      ctaPath: '/chat'
-    },
     {
       id: 'provider',
       label: 'Provider is assigned to this assistant',

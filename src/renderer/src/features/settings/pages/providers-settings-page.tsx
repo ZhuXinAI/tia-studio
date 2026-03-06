@@ -1,4 +1,4 @@
-import { ChevronRight, Search, Trash2, X } from 'lucide-react'
+import { Check, Search, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -139,14 +139,22 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
   const filteredProviders = useMemo(() => {
     const query = providerSearchQuery.trim().toLowerCase()
-    if (query.length === 0) {
-      return providers
+    let filtered = providers
+
+    if (query.length > 0) {
+      filtered = providers.filter((provider) => {
+        return [provider.name, provider.selectedModel, toProviderTypeLabel(provider.type)].some(
+          (value) => value.toLowerCase().includes(query)
+        )
+      })
     }
 
-    return providers.filter((provider) => {
-      return [provider.name, provider.selectedModel, toProviderTypeLabel(provider.type)].some(
-        (value) => value.toLowerCase().includes(query)
-      )
+    // Sort: enabled first, then alphabetically by name
+    return filtered.sort((a, b) => {
+      if (a.enabled !== b.enabled) {
+        return a.enabled ? -1 : 1
+      }
+      return a.name.localeCompare(b.name)
     })
   }, [providerSearchQuery, providers])
 
@@ -353,7 +361,9 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="text-muted-foreground mt-1 size-4 shrink-0" />
+                    {provider.enabled ? (
+                      <Check className="text-primary mt-1 size-4 shrink-0" />
+                    ) : null}
                   </button>
                 )
               })}

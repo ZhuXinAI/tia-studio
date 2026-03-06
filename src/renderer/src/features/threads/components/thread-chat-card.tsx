@@ -234,8 +234,8 @@ export function ThreadChatCard({
           <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden py-5">
             {!readiness.canChat && selectedAssistant ? (
               <p className="text-muted-foreground mb-4 rounded-md border border-amber-300/40 bg-amber-400/10 px-3 py-2 text-xs">
-                Assistant setup is incomplete. Open Configure to set workspace path, provider, and
-                prompt before sending messages.
+                Assistant setup is incomplete. Open Configure to set provider and model before
+                sending messages.
               </p>
             ) : null}
 

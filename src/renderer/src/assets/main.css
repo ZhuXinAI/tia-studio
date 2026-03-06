@@ -94,3 +94,20 @@ body {
 .no-drag {
   -webkit-app-region: no-drag;
 }
+
+.chat-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb {
+  background: oklch(0.35 0.03 258 / 0.3);
+  border-radius: 4px;
+}
+
+.chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.45 0.03 258 / 0.5);
+}
