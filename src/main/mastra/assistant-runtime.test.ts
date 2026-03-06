@@ -103,7 +103,7 @@ describe('AssistantRuntimeService', () => {
   })
 
   it('registers agents with memory enabled', async () => {
-    const mastra = createMastraInstance(':memory:')
+    const mastra = await createMastraInstance(':memory:')
     const runtime = new AssistantRuntimeService({
       mastra,
       assistantsRepo: { getById: vi.fn() } as unknown as AssistantsRepository,
@@ -139,7 +139,7 @@ describe('AssistantRuntimeService', () => {
       apiHost: 'https://api.alt-provider.local/v1'
     }
 
-    const mastra = createMastraInstance(':memory:')
+    const mastra = await createMastraInstance(':memory:')
     const removeAgentSpy = vi.spyOn(mastra, 'removeAgent')
 
     const runtime = new AssistantRuntimeService({
@@ -175,7 +175,7 @@ describe('AssistantRuntimeService', () => {
       maxSteps: 17
     }
     const runtime = new AssistantRuntimeService({
-      mastra: createMastraInstance(':memory:'),
+      mastra: await createMastraInstance(':memory:'),
       assistantsRepo: {
         getById: vi.fn(async () => assistant)
       } as unknown as AssistantsRepository,
@@ -220,7 +220,7 @@ describe('AssistantRuntimeService', () => {
 
     const assistant = buildAssistant()
     const runtime = new AssistantRuntimeService({
-      mastra: createMastraInstance(':memory:'),
+      mastra: await createMastraInstance(':memory:'),
       assistantsRepo: {
         getById: vi.fn(async () => assistant)
       } as unknown as AssistantsRepository,

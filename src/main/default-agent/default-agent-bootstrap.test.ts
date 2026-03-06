@@ -46,7 +46,7 @@ describe('default agent bootstrap', () => {
       expect.objectContaining({
         name: DEFAULT_AGENT_NAME,
         instructions: DEFAULT_AGENT_PROMPT,
-        providerId: '',
+        providerId: null,
         workspaceConfig: {
           rootPath: workspacePath
         },

@@ -7,7 +7,7 @@ export type AppAssistant = {
   id: string
   name: string
   instructions: string
-  providerId: string
+  providerId: string | null
   workspaceConfig: Record<string, unknown>
   skillsConfig: Record<string, unknown>
   mcpConfig: Record<string, boolean>
@@ -20,7 +20,7 @@ export type AppAssistant = {
 export type CreateAssistantInput = {
   name: string
   instructions?: string
-  providerId: string
+  providerId: string | null
   workspaceConfig?: Record<string, unknown>
   skillsConfig?: Record<string, unknown>
   mcpConfig?: Record<string, boolean>

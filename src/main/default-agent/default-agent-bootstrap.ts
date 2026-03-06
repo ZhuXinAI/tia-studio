@@ -73,7 +73,7 @@ function pickDefaultProviderId(
     enabled: boolean
     selectedModel: string
   }>
-): string {
+): string | null {
   for (const provider of providers) {
     if (!provider.enabled) {
       continue
@@ -86,7 +86,7 @@ function pickDefaultProviderId(
     return provider.id
   }
 
-  return ''
+  return null
 }
 
 export async function ensureBuiltInDefaultAgent(

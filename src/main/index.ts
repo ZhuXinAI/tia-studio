@@ -120,7 +120,7 @@ async function startLocalApiServer(): Promise<void> {
     providersRepo,
     userDataPath: app.getPath('userData')
   })
-  const mastra = createMastraInstance(persistenceDatabasePath)
+  const mastra = await createMastraInstance(join(app.getPath('userData'), 'mastra.db'))
   const assistantRuntime = new AssistantRuntimeService({
     mastra,
     assistantsRepo,
