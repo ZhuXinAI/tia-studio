@@ -1,4 +1,4 @@
-import { Mic, Plus, Sparkles, Square, Settings2 } from 'lucide-react'
+import { Plus, Sparkles, Settings2 } from 'lucide-react'
 import type { UIMessage } from 'ai'
 import type { UseChatHelpers } from '@ai-sdk/react'
 import {
@@ -6,11 +6,10 @@ import {
   ComposerPrimitive,
   ThreadPrimitive,
   useAui,
-  useAuiState,
-  WebSpeechDictationAdapter
+  useAuiState
 } from '@assistant-ui/react'
 import { useAISDKRuntime } from '@assistant-ui/react-ai-sdk'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect } from 'react'
 import type { AssistantRecord } from '../../assistants/assistants-query'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -31,8 +30,6 @@ type ThreadChatCardProps = {
   isChatStreaming: boolean
   chatError: unknown
   loadError: string | null
-  composerValue: string
-  canSendMessage: boolean
   canAbortGeneration: boolean
   supportsVision: boolean
   tokenUsage: {
@@ -40,11 +37,26 @@ type ThreadChatCardProps = {
     outputTokens: number
     totalTokens: number
   } | null
-  onComposerChange: (value: string) => void
-  onSubmitMessage: () => Promise<void>
+  onSubmitMessage: (messageText: string) => Promise<void>
   onAbortGeneration: () => void
   onOpenAssistantConfig: () => void
   onCreateThread: () => void
+}
+
+function ComposerClearer({
+  selectedAssistantId,
+  selectedThreadId
+}: {
+  selectedAssistantId: string | undefined
+  selectedThreadId: string | undefined
+}): null {
+  const aui = useAui()
+
+  useEffect(() => {
+    aui.composer().setText('')
+  }, [aui, selectedAssistantId, selectedThreadId])
+
+  return null
 }
 
 type ThreadChatComposerProps = Pick<
@@ -53,11 +65,8 @@ type ThreadChatComposerProps = Pick<
   | 'selectedThread'
   | 'readiness'
   | 'isChatStreaming'
-  | 'composerValue'
-  | 'canSendMessage'
   | 'canAbortGeneration'
   | 'supportsVision'
-  | 'onComposerChange'
   | 'onSubmitMessage'
   | 'onAbortGeneration'
 > & { canCompose: boolean }
@@ -67,44 +76,20 @@ function ThreadChatComposer({
   selectedThread,
   readiness,
   isChatStreaming,
-  composerValue,
-  canSendMessage,
   canAbortGeneration,
   canCompose,
   supportsVision,
-  onComposerChange,
   onSubmitMessage,
   onAbortGeneration
 }: ThreadChatComposerProps): React.JSX.Element {
   const aui = useAui()
   const composerText = useAuiState((state) => (state.composer.isEditing ? state.composer.text : ''))
-  const lastSyncedTextRef = useRef(composerText)
-  const dictationTranscript = useAuiState((state) => state.composer.dictation?.transcript)
-  const isDictating = useAuiState((state) => state.composer.dictation != null)
 
-  useEffect(() => {
-    const lastSynced = lastSyncedTextRef.current
-
-    if (composerText === composerValue) {
-      lastSyncedTextRef.current = composerText
-      return
-    }
-
-    if (composerValue === lastSynced && composerText !== lastSynced) {
-      onComposerChange(composerText)
-      lastSyncedTextRef.current = composerText
-      return
-    }
-
-    if (composerText === lastSynced && composerValue !== lastSynced) {
-      aui.composer().setText(composerValue)
-      lastSyncedTextRef.current = composerValue
-      return
-    }
-
-    onComposerChange(composerText)
-    lastSyncedTextRef.current = composerText
-  }, [aui, composerText, composerValue, onComposerChange])
+  const canSendMessage =
+    Boolean(selectedAssistant && readiness.canChat) &&
+    composerText.trim().length > 0 &&
+    !isChatStreaming &&
+    canCompose
 
   const placeholder = selectedThread
     ? 'Type a message for this thread...'
@@ -122,22 +107,19 @@ function ThreadChatComposer({
     <div className="border-t border-border/70 p-4">
       <ComposerPrimitive.Root
         className="space-y-3"
-        onSubmit={(event) => {
-          // Let the runtime handle the submission with attachments
-          // But we still need custom logic for thread creation
-          if (!selectedThread) {
-            event.preventDefault()
-            void onSubmitMessage()
+        onSubmit={async (event) => {
+          event.preventDefault()
+          const text = composerText.trim()
+          if (text.length === 0) {
+            return
           }
-          // If thread exists, let runtime handle it naturally
+
+          // Clear the composer before submitting
+          aui.composer().setText('')
+
+          await onSubmitMessage(text)
         }}
       >
-        {dictationTranscript ? (
-          <div className="bg-muted/30 text-muted-foreground rounded-md border border-border/70 px-3 py-2 text-xs">
-            <ComposerPrimitive.DictationTranscript />
-          </div>
-        ) : null}
-
         <ComposerAttachments />
 
         <ComposerPrimitive.Input
@@ -146,39 +128,12 @@ function ThreadChatComposer({
           placeholder={placeholder}
           aria-label="Message composer"
           className="border-input placeholder:text-muted-foreground focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive flex w-full rounded-md border bg-transparent px-3 py-2 text-base shadow-xs outline-none transition-[color,box-shadow] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:ring-[3px]"
-          onChange={(event) => {
-            onComposerChange(event.target.value)
-          }}
         />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-muted-foreground text-xs">{helperText}</p>
           <div className="flex items-center gap-2">
             {supportsVision && <ComposerAddAttachment />}
-
-            {isDictating ? (
-              <ComposerPrimitive.StopDictation asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label="Stop dictation"
-                  disabled={!canCompose}
-                >
-                  <Square className="size-4" />
-                </Button>
-              </ComposerPrimitive.StopDictation>
-            ) : (
-              <ComposerPrimitive.Dictate asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label="Start dictation"
-                  disabled={!canCompose}
-                >
-                  <Mic className="size-4" />
-                </Button>
-              </ComposerPrimitive.Dictate>
-            )}
 
             {isChatStreaming ? (
               <Button type="button" disabled={!canAbortGeneration} onClick={onAbortGeneration}>
@@ -207,33 +162,25 @@ export function ThreadChatCard({
   isChatStreaming,
   chatError,
   loadError,
-  composerValue,
-  canSendMessage,
   canAbortGeneration,
   supportsVision,
   tokenUsage,
-  onComposerChange,
   onSubmitMessage,
   onAbortGeneration,
   onOpenAssistantConfig,
   onCreateThread
 }: ThreadChatCardProps): React.JSX.Element {
-  const dictationAdapter = useMemo(() => {
-    if (!WebSpeechDictationAdapter.isSupported()) {
-      return null
-    }
+  const runtime = useAISDKRuntime(chat)
 
-    return new WebSpeechDictationAdapter()
-  }, [])
-
-  const runtime = useAISDKRuntime(chat, {
-    adapters: dictationAdapter ? { dictation: dictationAdapter } : undefined
-  })
   const canCompose =
     Boolean(selectedAssistant && readiness.canChat) && !isChatStreaming && !isLoadingChatHistory
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
+      <ComposerClearer
+        selectedAssistantId={selectedAssistant?.id}
+        selectedThreadId={selectedThread?.id}
+      />
       <Card className="flex min-h-0 flex-1 flex-col gap-0 border-border/80 bg-card/78 py-0 rounded-none border-t-0">
         <CardHeader className="border-b border-border/70 py-2">
           <div className="flex h-full flex-nowrap items-center justify-between gap-3 overflow-hidden">
@@ -306,12 +253,9 @@ export function ThreadChatCard({
             selectedThread={selectedThread}
             readiness={readiness}
             isChatStreaming={isChatStreaming}
-            composerValue={composerValue}
-            canSendMessage={canSendMessage}
             canAbortGeneration={canAbortGeneration}
             canCompose={canCompose}
             supportsVision={supportsVision}
-            onComposerChange={onComposerChange}
             onSubmitMessage={onSubmitMessage}
             onAbortGeneration={onAbortGeneration}
           />

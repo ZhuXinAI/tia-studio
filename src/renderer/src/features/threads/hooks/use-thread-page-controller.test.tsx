@@ -282,12 +282,7 @@ describe('useThreadPageController', () => {
     await waitForCondition(() => controller?.selectedAssistant?.id === 'assistant-1', 'assistant')
 
     await act(async () => {
-      controller?.onComposerChange('Draft an agenda for planning')
-    })
-    await waitForCondition(() => Boolean(controller?.canSendMessage), 'composer readiness')
-
-    await act(async () => {
-      await controller?.onSubmitMessage()
+      await controller?.onSubmitMessage('Draft an agenda for planning')
     })
 
     expect(mockState.createThreadMock).toHaveBeenCalledWith(

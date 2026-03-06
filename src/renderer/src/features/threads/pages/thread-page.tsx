@@ -39,12 +39,9 @@ export function ThreadPage(): React.JSX.Element {
             isChatStreaming={controller.isChatStreaming}
             chatError={controller.chatError}
             loadError={controller.loadError}
-            composerValue={controller.composerValue}
-            canSendMessage={controller.canSendMessage}
             canAbortGeneration={controller.canAbortGeneration}
             supportsVision={controller.supportsVision}
             tokenUsage={controller.tokenUsage}
-            onComposerChange={controller.onComposerChange}
             onSubmitMessage={controller.onSubmitMessage}
             onAbortGeneration={controller.onAbortGeneration}
             onOpenAssistantConfig={controller.onOpenAssistantConfig}

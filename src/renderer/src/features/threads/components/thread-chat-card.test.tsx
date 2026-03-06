@@ -13,30 +13,28 @@ vi.mock('./thread-chat-message-list', () => ({
   ThreadChatMessageList: () => <div data-slot="thread-chat-message-list" />
 }))
 
+vi.mock('@renderer/components/assistant-ui/attachment', () => ({
+  ComposerAddAttachment: () => <button data-slot="composer-add-attachment">Add</button>,
+  ComposerAttachments: () => <div data-slot="composer-attachments" />
+}))
+
 vi.mock('@assistant-ui/react-ai-sdk', () => ({
   useAISDKRuntime: (chat: unknown, options?: unknown) => useAISDKRuntimeMock(chat, options)
 }))
 
 vi.mock('@assistant-ui/react', () => {
-  class WebSpeechDictationAdapterMock {
-    static isSupported() {
-      return true
-    }
-  }
-
   return {
     AssistantRuntimeProvider: ({ children }: { children?: React.ReactNode }) => (
       <div>{children}</div>
     ),
-    WebSpeechDictationAdapter: WebSpeechDictationAdapterMock,
     ThreadPrimitive: {
       Root: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>
     },
     ComposerPrimitive: {
+      Root: ({ children }: { children?: React.ReactNode }) => <form>{children}</form>,
       Input: (props: Record<string, unknown>) => <textarea {...props} />,
-      DictationTranscript: () => <span data-slot="dictation-transcript" />,
-      Dictate: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-      StopDictation: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>
+      Send: ({ children, asChild }: { children?: React.ReactNode; asChild?: boolean }) =>
+        asChild ? <>{children}</> : <button type="submit">{children}</button>
     },
     useAui: () => ({
       composer: () => ({
@@ -47,8 +45,7 @@ vi.mock('@assistant-ui/react', () => {
       selector({
         composer: {
           isEditing: true,
-          text: '',
-          dictation: undefined
+          text: ''
         }
       })
   }
@@ -90,11 +87,9 @@ describe('ThreadChatCard', () => {
         isChatStreaming={false}
         chatError={null}
         loadError={null}
-        composerValue=""
-        canSendMessage
         canAbortGeneration={false}
+        supportsVision
         tokenUsage={null}
-        onComposerChange={() => undefined}
         onSubmitMessage={async () => undefined}
         onAbortGeneration={() => undefined}
         onOpenAssistantConfig={() => undefined}
@@ -103,13 +98,6 @@ describe('ThreadChatCard', () => {
     )
 
     expect(useAISDKRuntimeMock).toHaveBeenCalledTimes(1)
-    expect(useAISDKRuntimeMock.mock.calls[0]?.[1]).toEqual(
-      expect.objectContaining({
-        adapters: expect.objectContaining({
-          dictation: expect.any(Object)
-        })
-      })
-    )
     expect(html).toContain('rounded-none border-t-0')
     expect(html).toContain('flex-nowrap items-center')
     expect(html).toContain('border-b border-border/70 py-2')
@@ -150,11 +138,9 @@ describe('ThreadChatCard', () => {
         isChatStreaming={true}
         chatError={null}
         loadError={null}
-        composerValue=""
-        canSendMessage={false}
         canAbortGeneration
+        supportsVision
         tokenUsage={null}
-        onComposerChange={() => undefined}
         onSubmitMessage={async () => undefined}
         onAbortGeneration={() => undefined}
         onOpenAssistantConfig={() => undefined}
@@ -163,13 +149,6 @@ describe('ThreadChatCard', () => {
     )
 
     expect(useAISDKRuntimeMock).toHaveBeenCalledTimes(1)
-    expect(useAISDKRuntimeMock.mock.calls[0]?.[1]).toEqual(
-      expect.objectContaining({
-        adapters: expect.objectContaining({
-          dictation: expect.any(Object)
-        })
-      })
-    )
     expect(html).toContain('Stop')
     expect(html).not.toContain('Sending...')
   })

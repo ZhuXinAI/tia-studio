@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useChat, type UIMessage } from '@ai-sdk/react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useChat } from '@ai-sdk/react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
@@ -55,7 +55,6 @@ export function useThreadPageController() {
   const [isLoadingThreads, setIsLoadingThreads] = useState(false)
   const [isCreatingThread, setIsCreatingThread] = useState(false)
   const [deletingThreadId, setDeletingThreadId] = useState<string | null>(null)
-  const [composerValue, setComposerValue] = useState('')
   const [loadError, setLoadError] = useState<string | null>(null)
   const [isLoadingChatHistory, setIsLoadingChatHistory] = useState(false)
   const [assistantDialogMode, setAssistantDialogMode] = useState<AssistantDialogMode>('edit')
@@ -64,9 +63,8 @@ export function useThreadPageController() {
   const [isSubmittingAssistantDialog, setIsSubmittingAssistantDialog] = useState(false)
   const [assistantDialogError, setAssistantDialogError] = useState<string | null>(null)
   const [deletingAssistantId, setDeletingAssistantId] = useState<string | null>(null)
-  const [pendingThreadMessage, setPendingThreadMessage] = useState<PendingThreadMessage | null>(
-    null
-  )
+  const pendingThreadMessageRef = useRef<PendingThreadMessage | null>(null)
+  const [hasPendingMessage, setHasPendingMessage] = useState(false)
   const [tokenUsage, setTokenUsage] = useState<{
     inputTokens: number
     outputTokens: number
@@ -182,17 +180,10 @@ export function useThreadPageController() {
     }
   })
 
-  const { sendMessage, setMessages, stop, status: chatStatus, error: chatError, messages } = chat
+  const { sendMessage, setMessages, stop, status: chatStatus, error: chatError } = chat
 
   const isChatStreaming = chatStatus === 'submitted' || chatStatus === 'streaming'
   const canAbortGeneration = isChatStreaming
-  const canSendMessage =
-    Boolean(selectedAssistant && readiness.canChat) &&
-    composerValue.trim().length > 0 &&
-    !isChatStreaming &&
-    !isLoadingChatHistory &&
-    !isCreatingThread &&
-    !pendingThreadMessage
 
   // Stop any ongoing chat operations when assistant or thread changes
   useEffect(() => {
@@ -404,7 +395,6 @@ export function useThreadPageController() {
   }, [selectedAssistant])
 
   useEffect(() => {
-    setComposerValue('')
     setTokenUsage(null)
   }, [selectedAssistant?.id, selectedThread?.id])
 
@@ -637,13 +627,15 @@ export function useThreadPageController() {
     ]
   )
 
-  const handleSubmitMessage = async (): Promise<void> => {
-    if (!canSendMessage || !selectedAssistant) {
+  const handleSubmitMessage = async (messageText: string): Promise<void> => {
+    if (!selectedAssistant) {
       return
     }
 
-    const nextMessage = composerValue.trim()
-    setComposerValue('')
+    const nextMessage = messageText.trim()
+    if (nextMessage.length === 0) {
+      return
+    }
 
     if (selectedThread) {
       try {
@@ -651,7 +643,6 @@ export function useThreadPageController() {
           text: nextMessage
         })
       } catch (error) {
-        setComposerValue(nextMessage)
         toast.error(toErrorMessage(error))
       }
       return
@@ -659,14 +650,14 @@ export function useThreadPageController() {
 
     const createdThread = await createNewThread({ notify: false })
     if (!createdThread) {
-      setComposerValue(nextMessage)
       return
     }
 
-    setPendingThreadMessage({
+    pendingThreadMessageRef.current = {
       threadId: createdThread.id,
       text: nextMessage
-    })
+    }
+    setHasPendingMessage(true)
   }
 
   const handleAbortGeneration = useCallback(() => {
@@ -678,11 +669,16 @@ export function useThreadPageController() {
   }, [isChatStreaming, stop])
 
   useEffect(() => {
-    if (!pendingThreadMessage) {
+    if (!hasPendingMessage) {
       return
     }
 
-    if (!selectedThread || selectedThread.id !== pendingThreadMessage.threadId) {
+    const pendingMessage = pendingThreadMessageRef.current
+    if (!pendingMessage) {
+      return
+    }
+
+    if (!selectedThread || selectedThread.id !== pendingMessage.threadId) {
       return
     }
 
@@ -690,35 +686,21 @@ export function useThreadPageController() {
       return
     }
 
-    const messageToSend = pendingThreadMessage.text
-    setPendingThreadMessage(null)
-
-    // Manually add the user message to ensure it appears immediately
-    const userMessage: UIMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: messageToSend,
-      createdAt: new Date()
-    }
-
-    setMessages([...messages, userMessage])
+    const messageToSend = pendingMessage.text
+    pendingThreadMessageRef.current = null
+    setHasPendingMessage(false)
 
     void sendMessage({
       text: messageToSend
     }).catch((error) => {
-      // Remove the optimistically added message on error
-      setMessages(messages)
-      setComposerValue(messageToSend)
       toast.error(toErrorMessage(error))
     })
   }, [
+    hasPendingMessage,
     isLoadingChatHistory,
     isChatStreaming,
-    pendingThreadMessage,
     selectedThread,
-    sendMessage,
-    messages,
-    setMessages
+    sendMessage
   ])
 
   const closeAssistantDialog = useCallback(() => {
@@ -784,8 +766,6 @@ export function useThreadPageController() {
     isChatStreaming,
     chatError,
     loadError,
-    composerValue,
-    canSendMessage,
     canAbortGeneration,
     providers,
     mcpServers,
@@ -808,7 +788,6 @@ export function useThreadPageController() {
     onDeleteThread: (thread: ThreadRecord) => {
       void handleDeleteThread(thread)
     },
-    onComposerChange: setComposerValue,
     onSubmitMessage: handleSubmitMessage,
     onAbortGeneration: handleAbortGeneration,
     onOpenAssistantConfig: openAssistantConfigDialog,

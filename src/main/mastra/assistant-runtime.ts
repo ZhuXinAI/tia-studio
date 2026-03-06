@@ -315,6 +315,14 @@ export class AssistantRuntimeService implements AssistantRuntime {
         this.options.webSearchSettingsRepo.getKeepBrowserWindowOpen(),
       resolveShowBrowser: async () => this.options.webSearchSettingsRepo.getShowBrowser()
     })
+
+    const model = resolveModel({
+      type: provider.type,
+      apiKey: provider.apiKey,
+      apiHost: provider.apiHost,
+      selectedModel: provider.selectedModel
+    })
+
     const mcpTools = await this.buildMcpTools(assistant.id, enabledMcpServers)
     const tools: ToolsInput = {
       browserSearch: browserSearchTool,
@@ -351,12 +359,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       id: assistant.id,
       name: assistant.name,
       instructions: agentInstructions,
-      model: resolveModel({
-        type: provider.type,
-        apiKey: provider.apiKey,
-        apiHost: provider.apiHost,
-        selectedModel: provider.selectedModel
-      }) as never,
+      model: model as never,
       memory,
       workspace,
       tools,
