@@ -12,6 +12,9 @@ export type ProviderRecord = {
   providerModels: string[] | null
   enabled: boolean
   supportsVision: boolean
+  isBuiltIn: boolean
+  icon: string | null
+  officialSite: string | null
   createdAt: string
   updatedAt: string
 }

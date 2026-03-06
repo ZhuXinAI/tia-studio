@@ -13,11 +13,15 @@ export type AppProvider = {
   providerModels: string[] | null
   enabled: boolean
   supportsVision: boolean
+  isBuiltIn: boolean
+  icon: string | null
+  officialSite: string | null
   createdAt: string
   updatedAt: string
 }
 
 export type CreateProviderInput = {
+  id?: string
   name: string
   type: ProviderType
   apiKey: string
@@ -26,6 +30,9 @@ export type CreateProviderInput = {
   providerModels?: string[] | null
   enabled?: boolean
   supportsVision?: boolean
+  isBuiltIn?: boolean
+  icon?: string | null
+  officialSite?: string | null
 }
 
 export type UpdateProviderInput = Partial<CreateProviderInput>
@@ -44,6 +51,9 @@ function parseProviderRow(row: Record<string, unknown>): AppProvider {
         : null,
     enabled: Number(row.enabled) === 1,
     supportsVision: Number(row.supports_vision) === 1,
+    isBuiltIn: Number(row.is_built_in) === 1,
+    icon: row.icon ? String(row.icon) : null,
+    officialSite: row.official_site ? String(row.official_site) : null,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at)
   }
@@ -54,7 +64,7 @@ export class ProvidersRepository {
 
   async list(): Promise<AppProvider[]> {
     const result = await this.db.execute(
-      'SELECT id, name, type, api_key, api_host, selected_model, provider_models, enabled, supports_vision, created_at, updated_at FROM app_providers ORDER BY created_at DESC'
+      'SELECT id, name, type, api_key, api_host, selected_model, provider_models, enabled, supports_vision, is_built_in, icon, official_site, created_at, updated_at FROM app_providers ORDER BY is_built_in DESC, created_at DESC'
     )
 
     return result.rows.map((row) => parseProviderRow(row as Record<string, unknown>))
@@ -62,7 +72,7 @@ export class ProvidersRepository {
 
   async getById(id: string): Promise<AppProvider | null> {
     const result = await this.db.execute(
-      'SELECT id, name, type, api_key, api_host, selected_model, provider_models, enabled, supports_vision, created_at, updated_at FROM app_providers WHERE id = ? LIMIT 1',
+      'SELECT id, name, type, api_key, api_host, selected_model, provider_models, enabled, supports_vision, is_built_in, icon, official_site, created_at, updated_at FROM app_providers WHERE id = ? LIMIT 1',
       [id]
     )
     const row = result.rows.at(0)
@@ -75,9 +85,9 @@ export class ProvidersRepository {
   }
 
   async create(input: CreateProviderInput): Promise<AppProvider> {
-    const id = randomUUID()
+    const id = input.id ?? randomUUID()
     await this.db.execute(
-      'INSERT INTO app_providers (id, name, type, api_key, api_host, selected_model, provider_models, enabled, supports_vision) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO app_providers (id, name, type, api_key, api_host, selected_model, provider_models, enabled, supports_vision, is_built_in, icon, official_site) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
         input.name,
@@ -87,7 +97,10 @@ export class ProvidersRepository {
         input.selectedModel,
         input.providerModels ? JSON.stringify(input.providerModels) : null,
         input.enabled === false ? 0 : 1,
-        input.supportsVision === true ? 1 : 0
+        input.supportsVision === true ? 1 : 0,
+        input.isBuiltIn === true ? 1 : 0,
+        input.icon ?? null,
+        input.officialSite ?? null
       ]
     )
 
@@ -137,6 +150,10 @@ export class ProvidersRepository {
     const existing = await this.getById(id)
     if (!existing) {
       return false
+    }
+
+    if (existing.isBuiltIn) {
+      throw new Error('Cannot delete built-in provider')
     }
 
     await this.db.execute('DELETE FROM app_providers WHERE id = ?', [id])

@@ -14,7 +14,15 @@ import { ProvidersForm } from '../providers/providers-form'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
+import { Avatar, AvatarFallback, AvatarImage } from '../../../components/ui/avatar'
 import { cn } from '../../../lib/utils'
+import minimaxLogo from '../../../assets/providers/minimax.png'
+import glmLogo from '../../../assets/providers/glm.png'
+import ollamaLogo from '../../../assets/providers/ollama.png'
+import openaiLogo from '../../../assets/providers/openai.png'
+import anthropicLogo from '../../../assets/providers/anthropic.png'
+import geminiLogo from '../../../assets/providers/gemini.png'
+import kimiLogo from '../../../assets/providers/kimi.png'
 
 type ProviderFormInitialValue = {
   name: string
@@ -24,6 +32,7 @@ type ProviderFormInitialValue = {
   selectedModel: string
   providerModelsText: string
   supportsVision: boolean
+  enabled: boolean
 }
 
 function toProviderTypeLabel(type: ProviderRecord['type']): string {
@@ -41,6 +50,34 @@ function toProviderTypeLabel(type: ProviderRecord['type']): string {
     default:
       return type
   }
+}
+
+function getProviderAvatarPath(icon: string | null): string | null {
+  if (!icon) {
+    return null
+  }
+
+  // Map icon names to imported image modules
+  const iconMap: Record<string, string> = {
+    minimax: minimaxLogo,
+    glm: glmLogo,
+    ollama: ollamaLogo,
+    openai: openaiLogo,
+    anthropic: anthropicLogo,
+    gemini: geminiLogo,
+    kimi: kimiLogo
+  }
+
+  return iconMap[icon] || null
+}
+
+function getProviderInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
 }
 
 function toErrorMessage(error: unknown): string {
@@ -77,7 +114,8 @@ function toInitialFormValue(provider: ProviderRecord | null): ProviderFormInitia
     apiHost: provider.apiHost ?? '',
     selectedModel: provider.selectedModel,
     providerModelsText: provider.providerModels?.join('\n') ?? '',
-    supportsVision: provider.supportsVision
+    supportsVision: provider.supportsVision,
+    enabled: provider.enabled
   }
 }
 
@@ -202,6 +240,11 @@ export function ProvidersSettingsPage(): React.JSX.Element {
       return
     }
 
+    if (selectedProvider.isBuiltIn) {
+      toast.error('Cannot delete built-in provider.')
+      return
+    }
+
     setIsDeletingProviderId(selectedProvider.id)
 
     try {
@@ -278,6 +321,9 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
               {filteredProviders.map((provider, index) => {
                 const isActive = provider.id === selectedProviderId
+                const avatarPath = getProviderAvatarPath(provider.icon)
+                const initials = getProviderInitials(provider.name)
+
                 return (
                   <button
                     key={provider.id}
@@ -293,11 +339,19 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                     }}
                     disabled={isSubmitting || isTestingConnection || Boolean(isDeletingProviderId)}
                   >
-                    <div>
-                      <p className="text-base font-semibold">{provider.name}</p>
-                      <p className="text-muted-foreground text-sm">
-                        {toProviderTypeLabel(provider.type)} / {provider.selectedModel}
-                      </p>
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-10 w-10 shrink-0">
+                        {avatarPath ? <AvatarImage src={avatarPath} alt={provider.name} /> : null}
+                        <AvatarFallback className="text-xs font-semibold">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-base font-semibold">{provider.name}</p>
+                        <p className="text-muted-foreground text-sm">
+                          {toProviderTypeLabel(provider.type)} / {provider.selectedModel}
+                        </p>
+                      </div>
                     </div>
                     <ChevronRight className="text-muted-foreground mt-1 size-4 shrink-0" />
                   </button>
@@ -310,35 +364,53 @@ export function ProvidersSettingsPage(): React.JSX.Element {
             <CardContent className="min-h-0 flex-1 overflow-y-auto space-y-4 pt-1">
               {selectedProvider ? (
                 <div className="space-y-4">
+                  {selectedProvider.isBuiltIn && selectedProvider.officialSite ? (
+                    <div className="border-border/70 rounded-md border bg-muted/30 p-3">
+                      <p className="text-sm text-muted-foreground">
+                        Built-in provider.{' '}
+                        <a
+                          href={selectedProvider.officialSite}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          Visit official site
+                        </a>
+                      </p>
+                    </div>
+                  ) : null}
                   <ProvidersForm
                     key={selectedProvider.id}
                     initialValue={toInitialFormValue(selectedProvider)}
                     isPrebuilt={Boolean(selectedProvider.providerModels?.length)}
+                    isBuiltIn={selectedProvider.isBuiltIn}
                     isSubmitting={isSubmitting}
                     isTestingConnection={isTestingConnection}
                     onSubmit={handleSaveEditedProvider}
                     onTestConnection={handleTestConnection}
                   />
-                  <div className="border-border/70 flex justify-end border-t pt-4">
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      aria-label={`Delete provider ${selectedProvider.name}`}
-                      onClick={() => {
-                        void handleDeleteSelectedProvider()
-                      }}
-                      disabled={
-                        isSubmitting ||
-                        isTestingConnection ||
-                        isDeletingProviderId === selectedProvider.id
-                      }
-                    >
-                      <Trash2 className="size-4" />
-                      {isDeletingProviderId === selectedProvider.id
-                        ? 'Deleting...'
-                        : 'Delete Provider'}
-                    </Button>
-                  </div>
+                  {!selectedProvider.isBuiltIn ? (
+                    <div className="border-border/70 flex justify-end border-t pt-4">
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        aria-label={`Delete provider ${selectedProvider.name}`}
+                        onClick={() => {
+                          void handleDeleteSelectedProvider()
+                        }}
+                        disabled={
+                          isSubmitting ||
+                          isTestingConnection ||
+                          isDeletingProviderId === selectedProvider.id
+                        }
+                      >
+                        <Trash2 className="size-4" />
+                        {isDeletingProviderId === selectedProvider.id
+                          ? 'Deleting...'
+                          : 'Delete Provider'}
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <p className="text-muted-foreground text-sm">

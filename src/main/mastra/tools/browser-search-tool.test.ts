@@ -50,8 +50,8 @@ describe('browser search tool', () => {
 
     const result = await searchTool.execute(
       {
-        query: 'AI news',
-        engine: 'google'
+        action: 'search',
+        query: 'AI news'
       },
       {} as never
     )
@@ -92,6 +92,7 @@ describe('browser search tool', () => {
 
     const result = await searchTool.execute(
       {
+        action: 'search',
         query: 'AI news'
       },
       {} as never

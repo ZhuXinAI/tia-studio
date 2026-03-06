@@ -14,6 +14,7 @@ export type ProviderFormValues = {
   selectedModel: string
   providerModelsText: string
   supportsVision: boolean
+  enabled: boolean
 }
 
 export type ProviderFormErrors = {
@@ -46,6 +47,7 @@ type ProvidersFormProps = {
   isSubmitting?: boolean
   isTestingConnection?: boolean
   isPrebuilt?: boolean
+  isBuiltIn?: boolean
   onSubmit: (values: SaveProviderInput) => Promise<void> | void
   onTestConnection?: (values: SaveProviderInput) => Promise<void> | void
 }
@@ -63,7 +65,8 @@ function toProviderPayload(
     providerModels: showProviderModels
       ? parseProviderModelsInput(values.providerModelsText)
       : undefined,
-    supportsVision: values.supportsVision
+    supportsVision: values.supportsVision,
+    enabled: values.enabled
   }
 }
 
@@ -72,6 +75,7 @@ export function ProvidersForm({
   isSubmitting,
   isTestingConnection,
   isPrebuilt = false,
+  isBuiltIn = false,
   onSubmit,
   onTestConnection
 }: ProvidersFormProps): React.JSX.Element {
@@ -82,7 +86,8 @@ export function ProvidersForm({
     apiHost: initialValue?.apiHost ?? '',
     selectedModel: initialValue?.selectedModel ?? '',
     providerModelsText: initialValue?.providerModelsText ?? '',
-    supportsVision: initialValue?.supportsVision ?? false
+    supportsVision: initialValue?.supportsVision ?? false,
+    enabled: initialValue?.enabled ?? true
   })
   const [errors, setErrors] = useState<ProviderFormErrors>({})
   const [hasProviderModels, setHasProviderModels] = useState<boolean>(() => {
@@ -128,6 +133,24 @@ export function ProvidersForm({
 
   return (
     <form className="py-4 flex flex-col gap-4" onSubmit={handleSubmit}>
+      {isBuiltIn ? (
+        <Field>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <FieldLabel htmlFor="provider-enabled">Enable Provider</FieldLabel>
+              <FieldDescription>Show this provider in model selection</FieldDescription>
+            </div>
+            <Switch
+              id="provider-enabled"
+              checked={values.enabled}
+              onCheckedChange={(checked) =>
+                setValues((prev) => ({ ...prev, enabled: checked }))
+              }
+            />
+          </div>
+        </Field>
+      ) : null}
+
       <Field>
         <FieldLabel htmlFor="provider-name">Provider Name</FieldLabel>
         <Input
@@ -135,6 +158,7 @@ export function ProvidersForm({
           value={values.name}
           onChange={(event) => updateValue('name', event.target.value)}
           placeholder="OpenAI"
+          disabled={isBuiltIn}
         />
       </Field>
 
@@ -145,6 +169,7 @@ export function ProvidersForm({
           className="border-input file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-[3px] focus-visible:ring-ring/50"
           value={values.type}
           onChange={(event) => updateValue('type', event.target.value as ProviderType)}
+          disabled={isBuiltIn}
         >
           <option value="openai">OpenAI</option>
           <option value="openai-response">OpenAI-Response</option>

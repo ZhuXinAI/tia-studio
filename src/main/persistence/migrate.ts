@@ -39,6 +39,23 @@ async function ensureProviderSupportsVisionColumn(db: AppDatabase): Promise<void
   )
 }
 
+async function ensureBuiltInProviderColumns(db: AppDatabase): Promise<void> {
+  const tableInfo = await db.execute("PRAGMA table_info('app_providers')")
+  const columns = tableInfo.rows.map((row) => String((row as Record<string, unknown>).name))
+
+  if (!columns.includes('is_built_in')) {
+    await db.execute('ALTER TABLE app_providers ADD COLUMN is_built_in INTEGER NOT NULL DEFAULT 0')
+  }
+
+  if (!columns.includes('icon')) {
+    await db.execute('ALTER TABLE app_providers ADD COLUMN icon TEXT')
+  }
+
+  if (!columns.includes('official_site')) {
+    await db.execute('ALTER TABLE app_providers ADD COLUMN official_site TEXT')
+  }
+}
+
 export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> {
   const db = createAppDatabase(pathOrUrl)
 
@@ -62,6 +79,7 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
 
   await ensureAssistantMaxStepsColumn(db)
   await ensureProviderSupportsVisionColumn(db)
+  await ensureBuiltInProviderColumns(db)
 
   return db
 }

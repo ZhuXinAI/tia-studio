@@ -42,6 +42,10 @@ describe('providers settings page', () => {
         selectedModel: 'gpt-5',
         providerModels: null,
         enabled: true,
+        supportsVision: false,
+        isBuiltIn: false,
+        icon: null,
+        officialSite: null,
         createdAt: '2026-03-02T00:00:00.000Z',
         updatedAt: '2026-03-02T00:00:00.000Z'
       }
@@ -55,7 +59,11 @@ describe('providers settings page', () => {
       apiHost: payload.apiHost ?? 'https://api.openai.com/v1',
       selectedModel: payload.selectedModel ?? 'gpt-5',
       providerModels: payload.providerModels ?? null,
-      enabled: true,
+      enabled: payload.enabled ?? true,
+      supportsVision: payload.supportsVision ?? false,
+      isBuiltIn: false,
+      icon: null,
+      officialSite: null,
       createdAt: '2026-03-02T00:00:00.000Z',
       updatedAt: '2026-03-03T00:00:00.000Z'
     }))

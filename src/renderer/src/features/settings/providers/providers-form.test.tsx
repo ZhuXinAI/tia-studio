@@ -13,7 +13,9 @@ describe('providers form helpers', () => {
       apiKey: 'test-key',
       apiHost: '',
       selectedModel: '',
-      providerModelsText: ''
+      providerModelsText: '',
+      supportsVision: false,
+      enabled: true
     })
 
     expect(errors.selectedModel).toBe('Selected model is required')

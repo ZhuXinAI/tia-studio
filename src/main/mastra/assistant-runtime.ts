@@ -260,6 +260,10 @@ export class AssistantRuntimeService implements AssistantRuntime {
       throw new ChatRouteError(404, 'assistant_not_found', 'Assistant not found')
     }
 
+    if (!assistant.providerId) {
+      throw new ChatRouteError(409, 'provider_not_found', 'Assistant provider is not configured')
+    }
+
     const provider = await this.options.providersRepo.getById(assistant.providerId)
     if (!provider) {
       throw new ChatRouteError(409, 'provider_not_found', 'Assistant provider is not configured')

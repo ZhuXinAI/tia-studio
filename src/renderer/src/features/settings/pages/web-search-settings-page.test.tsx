@@ -39,11 +39,13 @@ describe('web search settings page', () => {
     vi.mocked(getWebSearchSettings).mockResolvedValue({
       defaultEngine: 'bing',
       keepBrowserWindowOpen: true,
+      showBrowser: false,
       availableEngines: ['google', 'bing', 'baidu']
     })
     vi.mocked(updateWebSearchSettings).mockResolvedValue({
       defaultEngine: 'google',
       keepBrowserWindowOpen: true,
+      showBrowser: false,
       availableEngines: ['google', 'bing', 'baidu']
     })
   })
@@ -85,6 +87,7 @@ describe('web search settings page', () => {
     vi.mocked(updateWebSearchSettings).mockResolvedValue({
       defaultEngine: 'bing',
       keepBrowserWindowOpen: false,
+      showBrowser: false,
       availableEngines: ['google', 'bing', 'baidu']
     })
 

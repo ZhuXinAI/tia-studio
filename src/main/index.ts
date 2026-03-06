@@ -18,6 +18,7 @@ import icon from '../../resources/icon.png?asset'
 import { AutoUpdateService } from './auto-updater'
 import { resolveServerConfig } from './config/server-config'
 import { ensureBuiltInDefaultAgent } from './default-agent/default-agent-bootstrap'
+import { ensureBuiltInProviders } from './default-agent/built-in-providers-bootstrap'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
 import { createMastraInstance } from './mastra/store'
 import { migrateAppSchema } from './persistence/migrate'
@@ -115,6 +116,7 @@ async function startLocalApiServer(): Promise<void> {
   const threadsRepo = new ThreadsRepository(db)
   const webSearchSettingsRepo = new WebSearchSettingsRepository(db)
   const mcpServersRepo = new McpServersRepository(join(app.getPath('userData'), 'mcp.json'))
+  await ensureBuiltInProviders(providersRepo)
   await ensureBuiltInDefaultAgent({
     assistantsRepo,
     providersRepo,

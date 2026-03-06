@@ -31,6 +31,10 @@ function createProvider(overrides?: Partial<ProviderRecord>): ProviderRecord {
     selectedModel: 'gpt-5',
     providerModels: null,
     enabled: true,
+    supportsVision: false,
+    isBuiltIn: false,
+    icon: null,
+    officialSite: null,
     createdAt: '2026-03-01T00:00:00.000Z',
     updatedAt: '2026-03-01T00:00:00.000Z'
   }
