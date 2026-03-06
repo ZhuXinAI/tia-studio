@@ -41,6 +41,10 @@ async function ensureProviderSupportsVisionColumn(db: AppDatabase): Promise<void
 
 export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> {
   const db = createAppDatabase(pathOrUrl)
+
+  // Enable foreign key constraints
+  await db.execute('PRAGMA foreign_keys = ON')
+
   let migrationSql = APP_CORE_MIGRATION_SQL
   try {
     migrationSql = await readFile(MIGRATION_FILE, 'utf8')

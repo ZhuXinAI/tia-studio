@@ -42,32 +42,32 @@ We intentionally kept the architecture simple:
 
 ### Prerequisites
 
-- Node.js 18+
-- npm or yarn
+- Node.js 20+
+- pnpm
 
 ### Installation
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### Development
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ### Building
 
 ```bash
 # For macOS
-npm run build:mac
+pnpm run build:mac
 
 # For Windows
-npm run build:win
+pnpm run build:win
 
 # For Linux
-npm run build:linux
+pnpm run build:linux
 ```
 
 ## Project Structure
@@ -98,11 +98,11 @@ tia-studio/
 
 ### Scripts
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run lint` - Run ESLint
-- `npm run format` - Format code with Prettier
-- `npm test` - Run tests
+- `pnpm run dev` - Start development server
+- `pnpm run build` - Build for production
+- `pnpm run lint` - Run ESLint
+- `pnpm run format` - Format code with Prettier
+- `pnpm test` - Run tests
 
 ## License
 
