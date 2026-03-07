@@ -128,10 +128,12 @@ describe('chat query', () => {
       id: 'chat-1',
       threadId: 'thread-1',
       profileId: 'profile-1',
-      message: {
-        id: 'msg-2'
-      }
+      messages: [
+        {
+          id: 'msg-2'
+        }
+      ]
     })
-    expect(requestBody.messages).toBeUndefined()
+    expect(requestBody.message).toBeUndefined()
   })
 })
