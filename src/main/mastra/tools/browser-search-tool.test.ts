@@ -5,6 +5,10 @@ import {
   sanitizeHtmlForModel
 } from './browser-search-tool'
 
+vi.mock('electron', () => ({
+  BrowserWindow: undefined
+}))
+
 describe('browser search tool', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
@@ -68,7 +72,8 @@ describe('browser search tool', () => {
     })
     expect(loadHtmlFromUrl).toHaveBeenCalledWith({
       url: 'https://www.bing.com/search?q=AI%20news',
-      keepBrowserWindowOpen: false
+      keepBrowserWindowOpen: false,
+      showBrowser: false
     })
     expect(result.markdown).toContain('AI News')
     expect(result.markdown).toContain('Latest update.')
@@ -105,7 +110,8 @@ describe('browser search tool', () => {
     expect(result.url).toContain('https://www.bing.com/search?q=AI%20news')
     expect(loadHtmlFromUrl).toHaveBeenCalledWith({
       url: 'https://www.bing.com/search?q=AI%20news',
-      keepBrowserWindowOpen: true
+      keepBrowserWindowOpen: true,
+      showBrowser: false
     })
   })
 })

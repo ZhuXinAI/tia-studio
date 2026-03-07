@@ -72,7 +72,6 @@ describe('thread page readiness gate', () => {
 
     expect(readiness.canChat).toBe(false)
     expect(readiness.checks.filter((check) => !check.ready).map((check) => check.id)).toEqual([
-      'workspace',
       'provider',
       'model'
     ])
@@ -81,7 +80,7 @@ describe('thread page readiness gate', () => {
     ).toBe(true)
   })
 
-  it('allows composer when workspace provider and model are configured', () => {
+  it('allows composer when provider and model are configured', () => {
     const readiness = evaluateAssistantReadiness({
       assistant: createAssistant(),
       providers: [createProvider()]

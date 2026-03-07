@@ -25,6 +25,13 @@ vi.mock('@mastra/ai-sdk/ui', () => ({
   toAISdkV5Messages: (messages: unknown) => toAISdkV5MessagesMock(messages)
 }))
 
+vi.mock('electron', () => ({
+  app: {
+    getPath: () => '/tmp/tia-studio-test'
+  },
+  BrowserWindow: undefined
+}))
+
 function buildAssistant(): AppAssistant {
   return {
     id: 'assistant-1',

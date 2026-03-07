@@ -21,6 +21,10 @@ const messageState = {
   }
 }
 
+vi.mock('@renderer/components/assistant-ui/attachment', () => ({
+  UserMessageAttachments: () => <div data-testid="user-message-attachments" />
+}))
+
 vi.mock('@assistant-ui/react', () => {
   const Root = ({ children }: { children?: React.ReactNode }): React.JSX.Element => (
     <div>{children}</div>
@@ -140,7 +144,7 @@ describe('thread chat message list', () => {
       )
     })
 
-    expect(container.querySelector('[aria-label="Message actions"]')).not.toBeNull()
+    expect(container.querySelector('[aria-label="More actions"]')).not.toBeNull()
   })
 
   it('keeps assistant message component stable between rerenders', async () => {
@@ -196,7 +200,7 @@ describe('thread chat message list', () => {
     expect(viewport?.getAttribute('data-class-name')).toContain('chat-scrollbar')
   })
 
-  it('keeps message actions mounted while overflow menu is open', async () => {
+  it('pins message actions so they stay visible', async () => {
     await act(async () => {
       root.render(
         <ThreadChatMessageList
@@ -212,21 +216,8 @@ describe('thread chat message list', () => {
     const initialActionBarProps = actionBarRootPropsMock.mock.lastCall?.[0] as
       | { autohide?: string }
       | undefined
-    expect(initialActionBarProps?.autohide).toBe('always')
-
-    const moreRootProps = actionBarMoreRootPropsMock.mock.lastCall?.[0] as
-      | { onOpenChange?: (open: boolean) => void }
-      | undefined
-    expect(typeof moreRootProps?.onOpenChange).toBe('function')
-
-    act(() => {
-      moreRootProps?.onOpenChange?.(true)
-    })
-
-    const openActionBarProps = actionBarRootPropsMock.mock.lastCall?.[0] as
-      | { autohide?: string }
-      | undefined
-    expect(openActionBarProps?.autohide).toBe('never')
+    expect(initialActionBarProps?.autohide).toBe('never')
+    expect(actionBarMoreRootPropsMock).toHaveBeenCalled()
   })
 
   it('shows message timestamp when message is hovered', async () => {
@@ -246,10 +237,11 @@ describe('thread chat message list', () => {
     expect(timestamps.length).toBeGreaterThan(0)
     for (const timestamp of timestamps) {
       expect(timestamp.className).not.toContain('invisible')
+      expect(timestamp.textContent).toBeTruthy()
     }
   })
 
-  it('keeps timestamp slot rendered but hidden when message is not hovered', async () => {
+  it('keeps timestamp visible when message is not hovered', async () => {
     messageState.message.isHovering = false
 
     await act(async () => {
@@ -267,7 +259,7 @@ describe('thread chat message list', () => {
     const timestamps = Array.from(container.querySelectorAll('[data-testid="message-timestamp"]'))
     expect(timestamps.length).toBeGreaterThan(0)
     for (const timestamp of timestamps) {
-      expect(timestamp.className).toContain('invisible')
+      expect(timestamp.className).not.toContain('invisible')
     }
   })
 })

@@ -5,12 +5,6 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AssistantEditor } from './assistant-editor'
 import type { ProviderRecord } from '../settings/providers/providers-query'
-import { listAssistantSkills, removeAssistantWorkspaceSkill } from './assistant-skills-query'
-
-vi.mock('./assistant-skills-query', () => ({
-  listAssistantSkills: vi.fn(),
-  removeAssistantWorkspaceSkill: vi.fn()
-}))
 
 function findButtonByText(container: HTMLElement, text: string): HTMLButtonElement {
   const button = Array.from(container.querySelectorAll('button')).find((candidate) =>
@@ -63,6 +57,26 @@ describe('assistant editor', () => {
     officialSite: null,
     createdAt: '2026-03-02T00:00:00.000Z',
     updatedAt: '2026-03-02T00:00:00.000Z'
+  }
+  const mcpServers = {
+    docs: {
+      isActive: true,
+      name: 'Docs Server',
+      type: 'stdio',
+      command: 'npx',
+      args: ['docs-server'],
+      env: {},
+      installSource: 'local'
+    },
+    github: {
+      isActive: false,
+      name: 'GitHub Server',
+      type: 'stdio',
+      command: 'npx',
+      args: ['github-mcp'],
+      env: {},
+      installSource: 'local'
+    }
   }
 
   it('fills workspace path from system folder picker', async () => {
@@ -146,37 +160,12 @@ describe('assistant editor', () => {
     )
   })
 
-  it('loads skills from configured directories when skills tab opens', async () => {
-    vi.mocked(listAssistantSkills).mockResolvedValue([
-      {
-        id: 'global-claude:research-helper',
-        name: 'Research Helper',
-        description: 'Search docs and summarize findings.',
-        source: 'global-claude',
-        sourceRootPath: '/Users/windht/.claude/skills',
-        directoryPath: '/Users/windht/.claude/skills/research-helper',
-        relativePath: 'research-helper',
-        skillFilePath: '/Users/windht/.claude/skills/research-helper/SKILL.md',
-        canDelete: false
-      },
-      {
-        id: 'workspace:lint-rules',
-        name: 'Lint Rules',
-        description: 'Enforces linting patterns.',
-        source: 'workspace',
-        sourceRootPath: '/Users/windht/Dev/tia-studio/skills',
-        directoryPath: '/Users/windht/Dev/tia-studio/skills/lint-rules',
-        relativePath: 'lint-rules',
-        skillFilePath: '/Users/windht/Dev/tia-studio/skills/lint-rules/SKILL.md',
-        canDelete: true
-      }
-    ])
-
+  it('shows configured MCP servers when the tools tab opens', async () => {
     await act(async () => {
       root.render(
         <AssistantEditor
           providers={[provider]}
-          mcpServers={{}}
+          mcpServers={mcpServers}
           initialValue={{
             id: 'assistant-1',
             name: 'Planner',
@@ -195,42 +184,24 @@ describe('assistant editor', () => {
       )
     })
 
-    const skillsButton = findButtonByText(container, 'Skills')
+    const toolsButton = findButtonByText(container, 'Tools')
     await act(async () => {
-      skillsButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-    await act(async () => {
-      await Promise.resolve()
+      toolsButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    expect(listAssistantSkills).toHaveBeenCalledWith('/Users/windht/Dev/tia-studio')
-    expect(container.textContent).toContain('Research Helper')
-    expect(container.textContent).toContain('Lint Rules')
+    expect(container.textContent).toContain('Docs Server')
+    expect(container.textContent).toContain('GitHub Server')
+    expect(container.textContent).toContain('Disabled globally in MCP Server Settings.')
   })
 
-  it('removes workspace skill folders from the skills tab', async () => {
-    vi.mocked(listAssistantSkills)
-      .mockResolvedValueOnce([
-        {
-          id: 'workspace:lint-rules',
-          name: 'Lint Rules',
-          description: 'Enforces linting patterns.',
-          source: 'workspace',
-          sourceRootPath: '/Users/windht/Dev/tia-studio/skills',
-          directoryPath: '/Users/windht/Dev/tia-studio/skills/lint-rules',
-          relativePath: 'lint-rules',
-          skillFilePath: '/Users/windht/Dev/tia-studio/skills/lint-rules/SKILL.md',
-          canDelete: true
-        }
-      ])
-      .mockResolvedValueOnce([])
-    vi.mocked(removeAssistantWorkspaceSkill).mockResolvedValue(undefined)
+  it('includes tool toggles in the submit payload', async () => {
+    const onSubmit = vi.fn(async () => undefined)
 
     await act(async () => {
       root.render(
         <AssistantEditor
           providers={[provider]}
-          mcpServers={{}}
+          mcpServers={mcpServers}
           initialValue={{
             id: 'assistant-1',
             name: 'Planner',
@@ -244,36 +215,38 @@ describe('assistant editor', () => {
             createdAt: '2026-03-02T00:00:00.000Z',
             updatedAt: '2026-03-02T00:00:00.000Z'
           }}
-          onSubmit={() => undefined}
+          onSubmit={onSubmit}
         />
       )
     })
 
-    const skillsButton = findButtonByText(container, 'Skills')
+    const toolsButton = findButtonByText(container, 'Tools')
     await act(async () => {
-      skillsButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-    await act(async () => {
-      await Promise.resolve()
+      toolsButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    const removeButton = container.querySelector(
-      '[aria-label="Remove skill Lint Rules"]'
+    const docsToggle = container.querySelector(
+      '[aria-label="Toggle docs for this assistant"]'
     ) as HTMLButtonElement | null
-    expect(removeButton).not.toBeNull()
+    expect(docsToggle).not.toBeNull()
 
     await act(async () => {
-      removeButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-    await act(async () => {
-      await Promise.resolve()
+      docsToggle?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    expect(removeAssistantWorkspaceSkill).toHaveBeenCalledWith({
-      workspaceRootPath: '/Users/windht/Dev/tia-studio',
-      relativePath: 'lint-rules'
+    const submitButton = findButtonByText(container, 'Update Assistant')
+    await act(async () => {
+      submitButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
-    expect(listAssistantSkills).toHaveBeenCalledTimes(2)
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mcpConfig: {
+          docs: true,
+          github: false
+        }
+      })
+    )
   })
 
   it('keeps the tab panel at a fixed height while switching sections', async () => {

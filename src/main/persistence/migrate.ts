@@ -56,6 +56,62 @@ async function ensureBuiltInProviderColumns(db: AppDatabase): Promise<void> {
   }
 }
 
+async function ensureTeamTables(db: AppDatabase): Promise<void> {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_team_workspaces (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      root_path TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_team_threads (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      resource_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      team_description TEXT NOT NULL DEFAULT '',
+      supervisor_provider_id TEXT,
+      supervisor_model TEXT NOT NULL DEFAULT '',
+      last_message_at TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (workspace_id) REFERENCES app_team_workspaces(id) ON DELETE CASCADE,
+      FOREIGN KEY (supervisor_provider_id) REFERENCES app_providers(id)
+    )
+  `)
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_team_thread_members (
+      team_thread_id TEXT NOT NULL,
+      assistant_id TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (team_thread_id, assistant_id),
+      FOREIGN KEY (team_thread_id) REFERENCES app_team_threads(id) ON DELETE CASCADE
+    )
+  `)
+
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_team_threads_workspace_id ON app_team_threads(workspace_id)'
+  )
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_team_threads_resource_id ON app_team_threads(resource_id)'
+  )
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_team_threads_supervisor_provider_id ON app_team_threads(supervisor_provider_id)'
+  )
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_team_thread_members_team_thread_id ON app_team_thread_members(team_thread_id)'
+  )
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_team_thread_members_assistant_id ON app_team_thread_members(assistant_id)'
+  )
+}
+
 export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> {
   const db = createAppDatabase(pathOrUrl)
 
@@ -80,6 +136,7 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   await ensureAssistantMaxStepsColumn(db)
   await ensureProviderSupportsVisionColumn(db)
   await ensureBuiltInProviderColumns(db)
+  await ensureTeamTables(db)
 
   return db
 }
