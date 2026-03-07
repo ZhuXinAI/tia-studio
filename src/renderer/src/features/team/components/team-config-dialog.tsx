@@ -4,10 +4,9 @@ import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import type { AssistantRecord } from '../../assistants/assistants-query'
 import type { ProviderRecord } from '../../settings/providers/providers-query'
-import type { TeamThreadRecord } from '../team-threads-query'
+import type { TeamWorkspaceRecord } from '../team-workspaces-query'
 
 export type TeamConfigDialogValues = {
-  title: string
   teamDescription: string
   supervisorProviderId: string
   supervisorModel: string
@@ -16,7 +15,7 @@ export type TeamConfigDialogValues = {
 
 type TeamConfigDialogProps = {
   isOpen: boolean
-  thread: TeamThreadRecord | null
+  workspace: TeamWorkspaceRecord | null
   providers: ProviderRecord[]
   assistants: AssistantRecord[]
   selectedAssistantIds: string[]
@@ -36,7 +35,7 @@ function toggleAssistantId(current: string[], assistantId: string): string[] {
 
 export function TeamConfigDialog({
   isOpen,
-  thread,
+  workspace,
   providers,
   assistants,
   selectedAssistantIds,
@@ -45,7 +44,6 @@ export function TeamConfigDialog({
   onClose,
   onSubmit
 }: TeamConfigDialogProps): React.JSX.Element | null {
-  const [title, setTitle] = useState('')
   const [teamDescription, setTeamDescription] = useState('')
   const [supervisorProviderId, setSupervisorProviderId] = useState('')
   const [supervisorModel, setSupervisorModel] = useState('')
@@ -53,23 +51,22 @@ export function TeamConfigDialog({
   const [validationErrors, setValidationErrors] = useState<string[]>([])
 
   useEffect(() => {
-    if (!isOpen || !thread) {
+    if (!isOpen || !workspace) {
       return
     }
 
-    setTitle(thread.title)
-    setTeamDescription(thread.teamDescription)
-    setSupervisorProviderId(thread.supervisorProviderId ?? '')
-    setSupervisorModel(thread.supervisorModel)
+    setTeamDescription(workspace.teamDescription)
+    setSupervisorProviderId(workspace.supervisorProviderId ?? '')
+    setSupervisorModel(workspace.supervisorModel)
     setAssistantIds(selectedAssistantIds)
     setValidationErrors([])
-  }, [isOpen, thread, selectedAssistantIds])
+  }, [isOpen, workspace, selectedAssistantIds])
 
   const sortedAssistants = useMemo(() => {
     return [...assistants].sort((left, right) => left.name.localeCompare(right.name))
   }, [assistants])
 
-  if (!isOpen || !thread) {
+  if (!isOpen || !workspace) {
     return null
   }
 
@@ -93,7 +90,6 @@ export function TeamConfigDialog({
     }
 
     await onSubmit({
-      title: title.trim(),
       teamDescription: teamDescription.trim(),
       supervisorProviderId: supervisorProviderId.trim(),
       supervisorModel: supervisorModel.trim(),
@@ -117,11 +113,11 @@ export function TeamConfigDialog({
         className="relative z-10 w-full max-w-3xl"
       >
         <CardHeader>
-          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
               <CardTitle id="team-config-dialog-title">Configure Team</CardTitle>
               <p className="text-muted-foreground text-sm">
-                Select a supervisor model and choose which assistants join this Team thread.
+                Select a supervisor model and choose which assistants join this team.
               </p>
             </div>
             <Button
@@ -155,16 +151,6 @@ export function TeamConfigDialog({
             ) : null}
 
             <div className="grid gap-4 md:grid-cols-2">
-              <label className="space-y-2 text-sm">
-                <span className="font-medium">Thread Title</span>
-                <input
-                  id="team-thread-title"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  className="border-input w-full rounded-md border bg-transparent px-3 py-2"
-                />
-              </label>
-
               <label className="space-y-2 text-sm">
                 <span className="font-medium">Supervisor Provider</span>
                 <select

@@ -14,16 +14,16 @@ import {
 } from '../team-chat-query'
 import {
   createTeamThread,
-  listTeamThreadMembers,
   listTeamThreads,
-  replaceTeamThreadMembers,
-  updateTeamThread,
   type TeamThreadRecord
 } from '../team-threads-query'
 import { openTeamStatusStream, type TeamStatusEvent, type TeamStatusStreamHandle } from '../team-status-stream'
 import {
   createTeamWorkspace,
+  listTeamWorkspaceMembers,
   listTeamWorkspaces,
+  replaceTeamWorkspaceMembers,
+  updateTeamWorkspace,
   type TeamWorkspaceRecord
 } from '../team-workspaces-query'
 import type { TeamConfigDialogValues } from '../components/team-config-dialog'
@@ -68,6 +68,10 @@ function sortTeamThreadsByRecentActivity(threads: TeamThreadRecord[]): TeamThrea
   })
 }
 
+function hasNonEmptyText(value: string | null | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
 function evaluateTeamReadiness(input: {
   selectedWorkspace: TeamWorkspaceRecord | null
   selectedThread: TeamThreadRecord | null
@@ -76,8 +80,9 @@ function evaluateTeamReadiness(input: {
   selectedMembers: AssistantRecord[]
 }): TeamReadiness {
   const selectedProvider =
-    input.selectedThread?.supervisorProviderId && input.selectedThread.supervisorProviderId.length > 0
-      ? (input.providers.find((provider) => provider.id === input.selectedThread?.supervisorProviderId) ??
+    input.selectedWorkspace?.supervisorProviderId &&
+    input.selectedWorkspace.supervisorProviderId.length > 0
+      ? (input.providers.find((provider) => provider.id === input.selectedWorkspace?.supervisorProviderId) ??
         null)
       : null
 
@@ -90,7 +95,7 @@ function evaluateTeamReadiness(input: {
     {
       id: 'workspace',
       label: 'Workspace path is configured',
-      ready: Boolean(input.selectedWorkspace?.rootPath.trim())
+      ready: hasNonEmptyText(input.selectedWorkspace?.rootPath)
     },
     {
       id: 'provider',
@@ -100,7 +105,7 @@ function evaluateTeamReadiness(input: {
     {
       id: 'model',
       label: 'Supervisor model is configured',
-      ready: Boolean(input.selectedThread?.supervisorModel.trim())
+      ready: hasNonEmptyText(input.selectedWorkspace?.supervisorModel)
     },
     {
       id: 'members',
@@ -336,8 +341,36 @@ export function useTeamPageController() {
   }, [isLoadingThreads, navigate, params.threadId, selectedThread, selectedWorkspace])
 
   useEffect(() => {
-    if (!selectedThread) {
+    if (!selectedWorkspace) {
       setSelectedMemberIds([])
+      return
+    }
+
+    let active = true
+    void listTeamWorkspaceMembers(selectedWorkspace.id)
+      .then((members) => {
+        if (!active) {
+          return
+        }
+
+        setSelectedMemberIds(members.map((member) => member.assistantId))
+      })
+      .catch((error) => {
+        if (!active) {
+          return
+        }
+
+        setSelectedMemberIds([])
+        setLoadError(toErrorMessage(error))
+      })
+
+    return () => {
+      active = false
+    }
+  }, [selectedWorkspace])
+
+  useEffect(() => {
+    if (!selectedThread) {
       setIsLoadingChatHistory(false)
       setMessages([])
       setStatusEvents([])
@@ -354,19 +387,15 @@ export function useTeamPageController() {
     statusStreamRef.current?.close()
     statusStreamRef.current = null
 
-    void Promise.all([
-      listTeamThreadMembers(selectedThread.id),
-      listTeamThreadMessages({
-        threadId: selectedThread.id,
-        profileId
-      })
-    ])
-      .then(([members, messages]) => {
+    void listTeamThreadMessages({
+      threadId: selectedThread.id,
+      profileId
+    })
+      .then((messages) => {
         if (!active) {
           return
         }
 
-        setSelectedMemberIds(members.map((member) => member.assistantId))
         setMessages(messages)
       })
       .catch((error) => {
@@ -374,7 +403,6 @@ export function useTeamPageController() {
           return
         }
 
-        setSelectedMemberIds([])
         setMessages([])
         setLoadError(toErrorMessage(error))
       })
@@ -429,6 +457,8 @@ export function useTeamPageController() {
 
       setWorkspaces((current) => [workspace, ...current])
       navigate(routeToTeam(workspace.id))
+      setConfigError(null)
+      setIsConfigDialogOpen(true)
     } catch (error) {
       setLoadError(toErrorMessage(error))
     } finally {
@@ -447,8 +477,7 @@ export function useTeamPageController() {
     try {
       const thread = await createTeamThread({
         workspaceId: selectedWorkspace.id,
-        resourceId: profileId,
-        title: 'New Team Thread'
+        resourceId: profileId
       })
 
       setThreads((currentThreads) => sortTeamThreadsByRecentActivity([thread, ...currentThreads]))
@@ -462,7 +491,7 @@ export function useTeamPageController() {
 
   const handleSubmitConfig = useCallback(
     async (input: TeamConfigDialogValues): Promise<void> => {
-      if (!selectedThread) {
+      if (!selectedWorkspace) {
         return
       }
 
@@ -470,25 +499,26 @@ export function useTeamPageController() {
       setConfigError(null)
 
       try {
-        const updatedThread = await updateTeamThread(selectedThread.id, {
-          title: input.title,
+        const updatedWorkspace = await updateTeamWorkspace(selectedWorkspace.id, {
           teamDescription: input.teamDescription,
           supervisorProviderId: input.supervisorProviderId,
           supervisorModel: input.supervisorModel
         })
-        await replaceTeamThreadMembers(selectedThread.id, input.assistantIds)
-        setThreads((currentThreads) =>
-          currentThreads.map((thread) => (thread.id === updatedThread.id ? updatedThread : thread))
+        await replaceTeamWorkspaceMembers(selectedWorkspace.id, input.assistantIds)
+        setWorkspaces((currentWorkspaces) =>
+          currentWorkspaces.map((workspace) =>
+            workspace.id === updatedWorkspace.id ? updatedWorkspace : workspace
+          )
         )
         setSelectedMemberIds(input.assistantIds)
         setIsConfigDialogOpen(false)
       } catch (error) {
         setConfigError(toErrorMessage(error))
       } finally {
-        setIsSavingConfig(false)
+      setIsSavingConfig(false)
       }
     },
-    [selectedThread]
+    [selectedWorkspace]
   )
 
   const handleSubmitMessage = useCallback(
@@ -550,6 +580,10 @@ export function useTeamPageController() {
     handleSubmitMessage,
     handleAbortGeneration,
     openConfigDialog: () => {
+      if (!selectedWorkspace) {
+        return
+      }
+
       setConfigError(null)
       setIsConfigDialogOpen(true)
     },

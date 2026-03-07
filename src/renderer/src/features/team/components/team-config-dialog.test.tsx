@@ -30,15 +30,13 @@ describe('TeamConfigDialog', () => {
       root.render(
         <TeamConfigDialog
           isOpen
-          thread={{
-            id: 'thread-1',
-            workspaceId: 'workspace-1',
-            resourceId: 'default-profile',
-            title: 'Release Team',
+          workspace={{
+            id: 'workspace-1',
+            name: 'Docs Workspace',
+            rootPath: '/Users/demo/project',
             teamDescription: '',
             supervisorProviderId: null,
             supervisorModel: '',
-            lastMessageAt: null,
             createdAt: '2026-03-07T00:00:00.000Z',
             updatedAt: '2026-03-07T00:00:00.000Z'
           }}
@@ -95,6 +93,7 @@ describe('TeamConfigDialog', () => {
     expect(container.textContent).toContain('Select a supervisor provider.')
     expect(container.textContent).toContain('Enter a supervisor model.')
     expect(container.textContent).toContain('Select at least one team member.')
+    expect(container.textContent).not.toContain('Thread Title')
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
@@ -105,15 +104,13 @@ describe('TeamConfigDialog', () => {
       root.render(
         <TeamConfigDialog
           isOpen
-          thread={{
-            id: 'thread-1',
-            workspaceId: 'workspace-1',
-            resourceId: 'default-profile',
-            title: 'Release Team',
+          workspace={{
+            id: 'workspace-1',
+            name: 'Docs Workspace',
+            rootPath: '/Users/demo/project',
             teamDescription: '',
             supervisorProviderId: 'provider-1',
             supervisorModel: 'gpt-5',
-            lastMessageAt: null,
             createdAt: '2026-03-07T00:00:00.000Z',
             updatedAt: '2026-03-07T00:00:00.000Z'
           }}
@@ -168,11 +165,12 @@ describe('TeamConfigDialog', () => {
     })
 
     expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({
+      {
+        teamDescription: '',
         supervisorProviderId: 'provider-1',
         supervisorModel: 'gpt-5',
         assistantIds: ['assistant-1']
-      })
+      }
     )
   })
 })

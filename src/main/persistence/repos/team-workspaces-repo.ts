@@ -5,8 +5,18 @@ export type AppTeamWorkspace = {
   id: string
   name: string
   rootPath: string
+  teamDescription: string
+  supervisorProviderId: string | null
+  supervisorModel: string
   createdAt: string
   updatedAt: string
+}
+
+export type AppTeamWorkspaceMember = {
+  workspaceId: string
+  assistantId: string
+  sortOrder: number
+  createdAt: string
 }
 
 export type CreateTeamWorkspaceInput = {
@@ -14,15 +24,31 @@ export type CreateTeamWorkspaceInput = {
   rootPath: string
 }
 
-export type UpdateTeamWorkspaceInput = Partial<CreateTeamWorkspaceInput>
+export type UpdateTeamWorkspaceInput = Partial<CreateTeamWorkspaceInput> & {
+  teamDescription?: string
+  supervisorProviderId?: string | null
+  supervisorModel?: string
+}
 
 function parseTeamWorkspaceRow(row: Record<string, unknown>): AppTeamWorkspace {
   return {
     id: String(row.id),
     name: String(row.name),
     rootPath: String(row.root_path),
+    teamDescription: String(row.team_description),
+    supervisorProviderId: row.supervisor_provider_id ? String(row.supervisor_provider_id) : null,
+    supervisorModel: String(row.supervisor_model),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at)
+  }
+}
+
+function parseTeamWorkspaceMemberRow(row: Record<string, unknown>): AppTeamWorkspaceMember {
+  return {
+    workspaceId: String(row.workspace_id),
+    assistantId: String(row.assistant_id),
+    sortOrder: Number(row.sort_order),
+    createdAt: String(row.created_at)
   }
 }
 
@@ -31,7 +57,7 @@ export class TeamWorkspacesRepository {
 
   async list(): Promise<AppTeamWorkspace[]> {
     const result = await this.db.execute(
-      'SELECT id, name, root_path, created_at, updated_at FROM app_team_workspaces ORDER BY created_at DESC'
+      'SELECT id, name, root_path, team_description, supervisor_provider_id, supervisor_model, created_at, updated_at FROM app_team_workspaces ORDER BY created_at DESC'
     )
 
     return result.rows.map((row) => parseTeamWorkspaceRow(row as Record<string, unknown>))
@@ -39,7 +65,7 @@ export class TeamWorkspacesRepository {
 
   async getById(id: string): Promise<AppTeamWorkspace | null> {
     const result = await this.db.execute(
-      'SELECT id, name, root_path, created_at, updated_at FROM app_team_workspaces WHERE id = ? LIMIT 1',
+      'SELECT id, name, root_path, team_description, supervisor_provider_id, supervisor_model, created_at, updated_at FROM app_team_workspaces WHERE id = ? LIMIT 1',
       [id]
     )
     const row = result.rows.at(0)
@@ -72,12 +98,61 @@ export class TeamWorkspacesRepository {
       return null
     }
 
+    const supervisorProviderId =
+      'supervisorProviderId' in input ? input.supervisorProviderId ?? null : existing.supervisorProviderId
+
     await this.db.execute(
-      'UPDATE app_team_workspaces SET name = ?, root_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [input.name ?? existing.name, input.rootPath ?? existing.rootPath, id]
+      `
+        UPDATE app_team_workspaces
+        SET
+          name = ?,
+          root_path = ?,
+          team_description = ?,
+          supervisor_provider_id = ?,
+          supervisor_model = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `,
+      [
+        input.name ?? existing.name,
+        input.rootPath ?? existing.rootPath,
+        input.teamDescription ?? existing.teamDescription,
+        supervisorProviderId,
+        input.supervisorModel ?? existing.supervisorModel,
+        id
+      ]
     )
 
     return this.getById(id)
+  }
+
+  async listMembers(workspaceId: string): Promise<AppTeamWorkspaceMember[]> {
+    const result = await this.db.execute(
+      `
+        SELECT workspace_id, assistant_id, sort_order, created_at
+        FROM app_team_workspace_members
+        WHERE workspace_id = ?
+        ORDER BY sort_order ASC, created_at ASC
+      `,
+      [workspaceId]
+    )
+
+    return result.rows.map((row) => parseTeamWorkspaceMemberRow(row as Record<string, unknown>))
+  }
+
+  async replaceMembers(workspaceId: string, assistantIds: string[]): Promise<void> {
+    const uniqueAssistantIds = assistantIds.filter(
+      (assistantId, index) => assistantIds.indexOf(assistantId) === index
+    )
+
+    await this.db.execute('DELETE FROM app_team_workspace_members WHERE workspace_id = ?', [workspaceId])
+
+    for (const [index, assistantId] of uniqueAssistantIds.entries()) {
+      await this.db.execute(
+        'INSERT INTO app_team_workspace_members (workspace_id, assistant_id, sort_order) VALUES (?, ?, ?)',
+        [workspaceId, assistantId, index]
+      )
+    }
   }
 
   async delete(id: string): Promise<boolean> {

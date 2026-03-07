@@ -23,7 +23,7 @@ export type TeamThreadMemberRecord = {
 export type CreateTeamThreadInput = {
   workspaceId: string
   resourceId: string
-  title: string
+  title?: string
 }
 
 export type UpdateTeamThreadInput = {

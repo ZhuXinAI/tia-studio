@@ -75,7 +75,7 @@ export function createThreadChatTransport(
         body: {
           ...body,
           id,
-          message: messages[messages.length - 1]
+          messages: messages.slice(-1)
         }
       }
     },

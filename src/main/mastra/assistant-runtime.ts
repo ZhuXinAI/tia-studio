@@ -79,6 +79,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
         trigger: params.trigger,
         abortSignal: params.abortSignal,
         maxSteps: assistant.maxSteps,
+        providerOptions: this.buildProviderOptions(provider.type),
         memory: {
           thread: params.threadId,
           resource: params.profileId,
@@ -550,6 +551,18 @@ export class AssistantRuntimeService implements AssistantRuntime {
     return {
       ...(baseOptions as MemoryConfig),
       generateTitle: true
+    }
+  }
+
+  private buildProviderOptions(providerType: string): Record<string, unknown> | undefined {
+    if (providerType !== 'openai-response') {
+      return undefined
+    }
+
+    return {
+      openai: {
+        store: false
+      }
     }
   }
 

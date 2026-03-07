@@ -11,6 +11,9 @@ const mockState = vi.hoisted(() => {
     routeParams,
     listTeamWorkspacesMock: vi.fn(),
     createTeamWorkspaceMock: vi.fn(),
+    updateTeamWorkspaceMock: vi.fn(),
+    listTeamWorkspaceMembersMock: vi.fn(),
+    replaceTeamWorkspaceMembersMock: vi.fn(),
     listTeamThreadsMock: vi.fn(),
     listTeamThreadMembersMock: vi.fn(),
     createTeamThreadMock: vi.fn(),
@@ -44,7 +47,11 @@ vi.mock('../../settings/providers/providers-query', () => ({
 
 vi.mock('../team-workspaces-query', () => ({
   listTeamWorkspaces: (...args: unknown[]) => mockState.listTeamWorkspacesMock(...args),
-  createTeamWorkspace: (...args: unknown[]) => mockState.createTeamWorkspaceMock(...args)
+  createTeamWorkspace: (...args: unknown[]) => mockState.createTeamWorkspaceMock(...args),
+  updateTeamWorkspace: (...args: unknown[]) => mockState.updateTeamWorkspaceMock(...args),
+  listTeamWorkspaceMembers: (...args: unknown[]) => mockState.listTeamWorkspaceMembersMock(...args),
+  replaceTeamWorkspaceMembers: (...args: unknown[]) =>
+    mockState.replaceTeamWorkspaceMembersMock(...args)
 }))
 
 vi.mock('../team-threads-query', () => ({
@@ -129,17 +136,39 @@ describe('useTeamPageController', () => {
     mockState.routeParams.threadId = 'thread-1'
 
     mockState.navigateMock.mockReset()
+    mockState.navigateMock.mockImplementation((nextRoute: string) => {
+      const segments = nextRoute.split('/').filter((segment) => segment.length > 0)
+      mockState.routeParams.workspaceId = segments[1]
+      mockState.routeParams.threadId = segments[2]
+    })
     mockState.listTeamWorkspacesMock.mockReset()
     mockState.listTeamWorkspacesMock.mockResolvedValue([
       {
         id: 'workspace-1',
         name: 'Docs Workspace',
         rootPath: '/Users/demo/project',
+        teamDescription: '',
+        supervisorProviderId: null,
+        supervisorModel: '',
         createdAt: '2026-03-07T00:00:00.000Z',
         updatedAt: '2026-03-07T00:00:00.000Z'
       }
     ])
     mockState.createTeamWorkspaceMock.mockReset()
+    mockState.createTeamWorkspaceMock.mockResolvedValue({
+      id: 'workspace-2',
+      name: 'new-workspace',
+      rootPath: '/Users/demo/new-workspace',
+      teamDescription: '',
+      supervisorProviderId: null,
+      supervisorModel: '',
+      createdAt: '2026-03-07T00:00:00.000Z',
+      updatedAt: '2026-03-07T00:00:00.000Z'
+    })
+    mockState.updateTeamWorkspaceMock.mockReset()
+    mockState.listTeamWorkspaceMembersMock.mockReset()
+    mockState.listTeamWorkspaceMembersMock.mockResolvedValue([])
+    mockState.replaceTeamWorkspaceMembersMock.mockReset()
     mockState.createTeamThreadMock.mockReset()
     mockState.updateTeamThreadMock.mockReset()
     mockState.replaceTeamThreadMembersMock.mockReset()
@@ -220,6 +249,14 @@ describe('useTeamPageController', () => {
     mockState.setMessagesMock.mockReset()
     mockState.stopMock.mockReset()
 
+    window.tiaDesktop = {
+      getConfig: vi.fn(async () => ({
+        baseUrl: 'http://127.0.0.1:4769',
+        authToken: 'team-token'
+      })),
+      pickDirectory: vi.fn(async () => '/Users/demo/new-workspace')
+    }
+
     controller = null
     ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     container = document.createElement('div')
@@ -234,7 +271,7 @@ describe('useTeamPageController', () => {
     container.remove()
   })
 
-  it('blocks send when the team thread has no members', async () => {
+  it('blocks send when the selected workspace has no members', async () => {
     await act(async () => {
       root.render(
         <Harness
@@ -245,10 +282,183 @@ describe('useTeamPageController', () => {
       )
     })
 
-    await waitForCondition(() => controller?.selectedThread?.id === 'thread-1', 'team thread load')
+    await waitForCondition(
+      () => controller?.selectedWorkspace?.id === 'workspace-1',
+      'workspace load'
+    )
 
     expect(controller?.readiness.canChat).toBe(false)
     expect(controller?.readiness.checks.map((check) => check.id)).toContain('members')
     expect(controller?.selectedMembers).toEqual([])
+  })
+
+  it('treats sparse workspace payloads as not ready instead of crashing', async () => {
+    mockState.listTeamWorkspacesMock.mockResolvedValue([
+      {
+        id: 'workspace-1',
+        name: 'Docs Workspace',
+        teamDescription: '',
+        supervisorProviderId: null,
+        createdAt: '2026-03-07T00:00:00.000Z',
+        updatedAt: '2026-03-07T00:00:00.000Z'
+      } as unknown
+    ])
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(
+      () => controller?.selectedWorkspace?.id === 'workspace-1',
+      'workspace load with sparse payload'
+    )
+
+    expect(controller?.readiness.canChat).toBe(false)
+    expect(controller?.readiness.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'workspace', ready: false }),
+        expect.objectContaining({ id: 'model', ready: false })
+      ])
+    )
+  })
+
+  it('opens config immediately after creating a workspace', async () => {
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(() => controller?.selectedWorkspace?.id === 'workspace-1', 'initial workspace load')
+
+    await act(async () => {
+      await controller?.handleCreateWorkspace()
+    })
+
+    await waitForCondition(
+      () => controller?.selectedWorkspace?.id === 'workspace-2' && controller?.isConfigDialogOpen === true,
+      'new workspace selection and config dialog'
+    )
+
+    expect(mockState.createTeamWorkspaceMock).toHaveBeenCalledWith({
+      name: 'new-workspace',
+      rootPath: '/Users/demo/new-workspace'
+    })
+  })
+
+  it('saves team config at workspace scope even when no thread is selected', async () => {
+    mockState.routeParams.threadId = undefined
+    mockState.listTeamThreadsMock.mockResolvedValue([])
+    mockState.listTeamWorkspaceMembersMock.mockResolvedValue([
+      {
+        workspaceId: 'workspace-1',
+        assistantId: 'assistant-1',
+        sortOrder: 0,
+        createdAt: '2026-03-07T00:00:00.000Z'
+      }
+    ])
+    mockState.updateTeamWorkspaceMock.mockResolvedValue({
+      id: 'workspace-1',
+      name: 'Docs Workspace',
+      rootPath: '/Users/demo/project',
+      teamDescription: 'Coordinate docs release',
+      supervisorProviderId: 'provider-1',
+      supervisorModel: 'gpt-5',
+      createdAt: '2026-03-07T00:00:00.000Z',
+      updatedAt: '2026-03-07T00:00:00.000Z'
+    })
+    mockState.replaceTeamWorkspaceMembersMock.mockResolvedValue([
+      {
+        workspaceId: 'workspace-1',
+        assistantId: 'assistant-1',
+        sortOrder: 0,
+        createdAt: '2026-03-07T00:00:00.000Z'
+      }
+    ])
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(
+      () => controller?.selectedWorkspace?.id === 'workspace-1' && controller?.selectedThread === null,
+      'workspace-only selection'
+    )
+
+    act(() => {
+      controller?.openConfigDialog()
+    })
+
+    await act(async () => {
+      await controller?.handleSubmitConfig({
+        teamDescription: 'Coordinate docs release',
+        supervisorProviderId: 'provider-1',
+        supervisorModel: 'gpt-5',
+        assistantIds: ['assistant-1']
+      })
+    })
+
+    expect(mockState.updateTeamWorkspaceMock).toHaveBeenCalledWith('workspace-1', {
+      teamDescription: 'Coordinate docs release',
+      supervisorProviderId: 'provider-1',
+      supervisorModel: 'gpt-5'
+    })
+    expect(mockState.replaceTeamWorkspaceMembersMock).toHaveBeenCalledWith('workspace-1', [
+      'assistant-1'
+    ])
+    expect(controller?.selectedMemberIds).toEqual(['assistant-1'])
+    expect(controller?.isConfigDialogOpen).toBe(false)
+  })
+
+  it('creates new team threads without a title payload', async () => {
+    mockState.createTeamThreadMock.mockResolvedValue({
+      id: 'thread-2',
+      workspaceId: 'workspace-1',
+      resourceId: 'default-profile',
+      title: '',
+      teamDescription: '',
+      supervisorProviderId: null,
+      supervisorModel: '',
+      lastMessageAt: null,
+      createdAt: '2026-03-07T00:00:00.000Z',
+      updatedAt: '2026-03-07T00:00:00.000Z'
+    })
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(() => controller?.selectedWorkspace?.id === 'workspace-1', 'workspace load')
+
+    await act(async () => {
+      await controller?.handleCreateThread()
+    })
+
+    expect(mockState.createTeamThreadMock).toHaveBeenCalledWith({
+      workspaceId: 'workspace-1',
+      resourceId: 'default-profile'
+    })
   })
 })

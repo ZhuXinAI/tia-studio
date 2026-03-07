@@ -1,660 +1,455 @@
-# Team Feature Implementation Plan
+# Team Workspace-Owned Configuration Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Build a new `Team` surface with manual Team workspaces, Team threads, per-thread supervisor configuration, live assistant-member references, and a streamed Team execution status panel.
+**Goal:** Move team configuration to workspace ownership, open team configuration as soon as a workspace is created, adopt the collapsible Codex-style team sidebar, and auto-generate team thread titles from supervisor memory.
 
-**Architecture:** Add a separate Team persistence and runtime path instead of extending the existing assistant chat path in place. Team chat resolves live assistant members into a dynamic Mastra supervisor agent per run, overrides all member workspaces with the selected Team workspace at runtime, streams chat output in AI SDK format, and streams status events in parallel for the Team graph.
+**Architecture:** Extend `app_team_workspaces` with team configuration fields and add `app_team_workspace_members` as the live roster source. Keep `app_team_threads` focused on conversations, migrate runtime/readiness to read from the workspace, and refactor the renderer so team configuration is available whenever a workspace is active. Reuse the existing assistant sidebar primitives for the collapsible workspace/thread hierarchy and sync generated team thread titles back from Mastra memory after successful runs.
 
-**Tech Stack:** Electron, React 19, React Router, Vitest, Hono, SQLite/libSQL, Mastra `Agent.stream()`, `@mastra/ai-sdk`, AI SDK `useChat`, and `@xyflow/react`.
+**Tech Stack:** Electron, React 19, React Router, Vitest, Hono, SQLite/libSQL, Mastra `Agent.stream()`, `@mastra/memory`, AI SDK `useChat`, and the existing `src/renderer/src/components/ui/sidebar.tsx` primitives.
 
 ---
 
-### Task 1: Add Team schema and repositories
+### Task 1: Move team ownership into workspace persistence
 
 **Files:**
 - Modify: `src/main/persistence/migrations/0001_app_core.sql`
 - Modify: `src/main/persistence/migrations/0001_app_core.ts`
 - Modify: `src/main/persistence/migrate.ts`
-- Create: `src/main/persistence/repos/team-workspaces-repo.ts`
-- Create: `src/main/persistence/repos/team-threads-repo.ts`
-- Create: `src/main/persistence/repos/team-workspaces-repo.test.ts`
-- Create: `src/main/persistence/repos/team-threads-repo.test.ts`
+- Modify: `src/main/persistence/migrate.test.ts`
+- Modify: `src/main/persistence/migrate-fallback.test.ts`
+- Modify: `src/main/persistence/repos/team-workspaces-repo.ts`
+- Modify: `src/main/persistence/repos/team-workspaces-repo.test.ts`
+- Modify: `src/main/persistence/repos/team-threads-repo.ts`
+- Modify: `src/main/persistence/repos/team-threads-repo.test.ts`
 
 **Step 1: Write the failing tests**
 
-Create repository tests covering:
+Add coverage for:
 
-- Team workspace create/list/update/delete
-- Team thread create/list/update/delete
-- Team member replacement with stable `sortOrder`
-- Cascading delete from Team workspace to Team threads and Team-thread members
+- workspace config fields (`teamDescription`, `supervisorProviderId`, `supervisorModel`)
+- workspace member storage and ordering
+- thread creation without config fields
+- migration/backfill creating `app_team_workspace_members`
 
-Test sketch for `src/main/persistence/repos/team-workspaces-repo.test.ts`:
+Test sketch:
 
 ```ts
-it('creates and lists team workspaces', async () => {
-  const db = await migrateAppSchema(':memory:')
-  const repo = new TeamWorkspacesRepository(db)
-
-  await repo.create({
+it('stores workspace-owned supervisor configuration', async () => {
+  const workspace = await repo.create({
     name: 'Docs Workspace',
     rootPath: '/Users/demo/project'
   })
 
-  const workspaces = await repo.list()
+  const updated = await repo.update(workspace.id, {
+    teamDescription: 'Coordinate docs release',
+    supervisorProviderId: 'provider-1',
+    supervisorModel: 'gpt-5'
+  })
 
-  expect(workspaces).toHaveLength(1)
-  expect(workspaces[0]).toMatchObject({
-    name: 'Docs Workspace',
-    rootPath: '/Users/demo/project'
+  expect(updated).toMatchObject({
+    teamDescription: 'Coordinate docs release',
+    supervisorProviderId: 'provider-1',
+    supervisorModel: 'gpt-5'
   })
 })
 ```
 
-Test sketch for `src/main/persistence/repos/team-threads-repo.test.ts`:
+**Step 2: Run the persistence tests to verify they fail**
 
-```ts
-it('replaces team thread members in order', async () => {
-  const thread = await repo.create({
-    workspaceId,
-    resourceId: 'default-profile',
-    title: 'Release team'
-  })
+Run:
 
-  await repo.replaceMembers(thread.id, ['assistant-2', 'assistant-1'])
-
-  const members = await repo.listMembers(thread.id)
-  expect(members.map((member) => member.assistantId)).toEqual(['assistant-2', 'assistant-1'])
-})
+```bash
+npm run test -- src/main/persistence/migrate.test.ts src/main/persistence/migrate-fallback.test.ts src/main/persistence/repos/team-workspaces-repo.test.ts src/main/persistence/repos/team-threads-repo.test.ts
 ```
 
-**Step 2: Run tests to verify they fail**
-
-Run: `pnpm vitest run src/main/persistence/repos/team-workspaces-repo.test.ts src/main/persistence/repos/team-threads-repo.test.ts`
-
-Expected: FAIL because the Team tables and repositories do not exist yet.
+Expected: FAIL because the workspace config columns, workspace-members table, and repo methods do not exist yet.
 
 **Step 3: Write the minimal implementation**
 
-- Add `app_team_workspaces`, `app_team_threads`, and `app_team_thread_members` to both core migration sources.
-- In `src/main/persistence/migrate.ts`, add `ensureTeamTables(db)` so existing databases gain the new tables safely.
-- Implement:
-  - `TeamWorkspacesRepository`
-  - `TeamThreadsRepository`
-- Keep the repository API small:
+- Add workspace-owned config columns to `app_team_workspaces`.
+- Add `app_team_workspace_members`.
+- Make `ensureTeamTables(db)` idempotently add missing columns and backfill data from existing configured threads.
+- Expand `TeamWorkspacesRepository`:
 
 ```ts
-type CreateTeamWorkspaceInput = {
-  name: string
-  rootPath: string
+export type UpdateTeamWorkspaceInput = {
+  name?: string
+  rootPath?: string
+  teamDescription?: string
+  supervisorProviderId?: string | null
+  supervisorModel?: string
 }
+```
 
-type CreateTeamThreadInput = {
+- Add:
+  - `listMembers(workspaceId)`
+  - `replaceMembers(workspaceId, assistantIds)`
+- Simplify `TeamThreadsRepository` so threads no longer expose team-owned config as active behavior.
+
+**Step 4: Re-run the persistence tests to verify they pass**
+
+Run:
+
+```bash
+npm run test -- src/main/persistence/migrate.test.ts src/main/persistence/migrate-fallback.test.ts src/main/persistence/repos/team-workspaces-repo.test.ts src/main/persistence/repos/team-threads-repo.test.ts
+```
+
+Expected: PASS
+
+**Step 5: Commit**
+
+```bash
+git add src/main/persistence/migrations/0001_app_core.sql src/main/persistence/migrations/0001_app_core.ts src/main/persistence/migrate.ts src/main/persistence/migrate.test.ts src/main/persistence/migrate-fallback.test.ts src/main/persistence/repos/team-workspaces-repo.ts src/main/persistence/repos/team-workspaces-repo.test.ts src/main/persistence/repos/team-threads-repo.ts src/main/persistence/repos/team-threads-repo.test.ts
+git commit -m "refactor: move team config to workspaces"
+```
+
+---
+
+### Task 2: Move API and renderer contracts to workspace-level team config
+
+**Files:**
+- Modify: `src/main/server/validators/team-validator.ts`
+- Modify: `src/main/server/routes/team-workspaces-route.ts`
+- Modify: `src/main/server/routes/team-workspaces-route.test.ts`
+- Modify: `src/main/server/routes/team-threads-route.ts`
+- Modify: `src/main/server/routes/team-threads-route.test.ts`
+- Modify: `src/renderer/src/features/team/team-workspaces-query.ts`
+- Modify: `src/renderer/src/features/team/team-threads-query.ts`
+- Modify: `src/renderer/src/features/team/team-queries.test.ts`
+
+**Step 1: Write the failing tests**
+
+Add coverage for:
+
+- patching workspace-owned team config
+- listing and replacing workspace members
+- creating team threads without a title input
+- renderer query helpers calling workspace member endpoints instead of thread member endpoints
+
+Test sketch:
+
+```ts
+await expect(replaceTeamWorkspaceMembers('workspace-1', ['assistant-2'])).resolves.toEqual([
+  expect.objectContaining({
+    workspaceId: 'workspace-1',
+    assistantId: 'assistant-2'
+  })
+])
+```
+
+**Step 2: Run the contract tests to verify they fail**
+
+Run:
+
+```bash
+npm run test -- src/main/server/routes/team-workspaces-route.test.ts src/main/server/routes/team-threads-route.test.ts src/renderer/src/features/team/team-queries.test.ts
+```
+
+Expected: FAIL because workspace member endpoints and thread-create contract changes are not implemented yet.
+
+**Step 3: Write the minimal implementation**
+
+- Extend `updateTeamWorkspaceSchema` with team config fields.
+- Add workspace member schemas and routes:
+  - `GET /v1/team/workspaces/:workspaceId/members`
+  - `PUT /v1/team/workspaces/:workspaceId/members`
+- Narrow thread creation to:
+
+```ts
+export type CreateTeamThreadInput = {
   workspaceId: string
   resourceId: string
-  title: string
 }
 ```
 
-- In `TeamThreadsRepository`, expose:
-  - `listByWorkspace(workspaceId)`
-  - `getById(id)`
-  - `create(input)`
-  - `update(id, input)`
-  - `delete(id)`
-  - `listMembers(threadId)`
-  - `replaceMembers(threadId, assistantIds)`
-  - `touchLastMessageAt(id, timestamp)`
+- Default new thread titles to `''` on the server.
+- Remove renderer dependency on `listTeamThreadMembers` and `replaceTeamThreadMembers`.
 
-**Step 4: Re-run tests to verify they pass**
+**Step 4: Re-run the contract tests to verify they pass**
 
-Run: `pnpm vitest run src/main/persistence/repos/team-workspaces-repo.test.ts src/main/persistence/repos/team-threads-repo.test.ts`
+Run:
+
+```bash
+npm run test -- src/main/server/routes/team-workspaces-route.test.ts src/main/server/routes/team-threads-route.test.ts src/renderer/src/features/team/team-queries.test.ts
+```
 
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-git add src/main/persistence/migrations/0001_app_core.sql src/main/persistence/migrations/0001_app_core.ts src/main/persistence/migrate.ts src/main/persistence/repos/team-workspaces-repo.ts src/main/persistence/repos/team-threads-repo.ts src/main/persistence/repos/team-workspaces-repo.test.ts src/main/persistence/repos/team-threads-repo.test.ts
-git commit -m "feat: add team persistence layer"
+git add src/main/server/validators/team-validator.ts src/main/server/routes/team-workspaces-route.ts src/main/server/routes/team-workspaces-route.test.ts src/main/server/routes/team-threads-route.ts src/main/server/routes/team-threads-route.test.ts src/renderer/src/features/team/team-workspaces-query.ts src/renderer/src/features/team/team-threads-query.ts src/renderer/src/features/team/team-queries.test.ts
+git commit -m "refactor: expose workspace-scoped team config APIs"
 ```
 
 ---
 
-### Task 2: Add Team validators and REST routes
+### Task 3: Shift runtime and title generation to workspace-owned team state
 
 **Files:**
-- Create: `src/main/server/validators/team-validator.ts`
-- Create: `src/main/server/routes/team-workspaces-route.ts`
-- Create: `src/main/server/routes/team-threads-route.ts`
-- Create: `src/main/server/routes/team-workspaces-route.test.ts`
-- Create: `src/main/server/routes/team-threads-route.test.ts`
-- Modify: `src/main/server/create-app.ts`
-- Modify: `src/main/index.ts`
+- Modify: `src/main/mastra/team-runtime.ts`
+- Modify: `src/main/mastra/team-runtime.test.ts`
+- Modify: `src/main/persistence/repos/team-workspaces-repo.ts`
+- Modify: `src/main/persistence/repos/team-threads-repo.ts`
+- Modify: `src/main/server/routes/team-chat-route.test.ts`
 
-**Step 1: Write the failing route tests**
+**Step 1: Write the failing runtime tests**
 
-Create route tests covering:
+Add coverage for:
 
-- create/list/update/delete Team workspaces
-- create/list/update/delete Team threads
-- replace Team thread members
-- validation errors for blank names, missing workspace IDs, and duplicate member IDs
-- 404 responses for unknown Team workspaces and Team threads
+- runtime reading team description/provider/model from the workspace
+- runtime reading members from workspace members
+- readiness failures when workspace config is incomplete
+- syncing generated thread titles back to `app_team_threads`
 
 Test sketch:
 
 ```ts
-it('updates team thread members', async () => {
-  const response = await app.request(`/v1/team/threads/${threadId}/members`, {
-    method: 'PUT',
-    headers: authHeaders,
-    body: JSON.stringify({
-      assistantIds: ['assistant-2', 'assistant-1']
-    })
-  })
-
-  expect(response.status).toBe(200)
-  const body = await response.json()
-  expect(body.members.map((member: { assistantId: string }) => member.assistantId)).toEqual([
-    'assistant-2',
-    'assistant-1'
-  ])
-})
-```
-
-**Step 2: Run tests to verify they fail**
-
-Run: `pnpm vitest run src/main/server/routes/team-workspaces-route.test.ts src/main/server/routes/team-threads-route.test.ts`
-
-Expected: FAIL because the Team routes and validators are not registered.
-
-**Step 3: Write the minimal implementation**
-
-- Add Zod schemas in `src/main/server/validators/team-validator.ts`:
-  - `createTeamWorkspaceSchema`
-  - `updateTeamWorkspaceSchema`
-  - `createTeamThreadSchema`
-  - `updateTeamThreadSchema`
-  - `replaceTeamThreadMembersSchema`
-- Implement Team routes:
-  - `registerTeamWorkspacesRoute`
-  - `registerTeamThreadsRoute`
-- Wire the repositories into `createApp(...)` and instantiate them in `src/main/index.ts`.
-- Route response shapes should stay consistent with existing API style:
-
-```ts
-return context.json({
-  ...thread,
-  members
-})
-```
-
-**Step 4: Re-run tests to verify they pass**
-
-Run: `pnpm vitest run src/main/server/routes/team-workspaces-route.test.ts src/main/server/routes/team-threads-route.test.ts`
-
-Expected: PASS
-
-**Step 5: Commit**
-
-```bash
-git add src/main/server/validators/team-validator.ts src/main/server/routes/team-workspaces-route.ts src/main/server/routes/team-threads-route.ts src/main/server/routes/team-workspaces-route.test.ts src/main/server/routes/team-threads-route.test.ts src/main/server/create-app.ts src/main/index.ts
-git commit -m "feat: add team REST routes"
-```
-
----
-
-### Task 3: Build Team runtime and Team chat endpoints
-
-**Files:**
-- Create: `src/main/mastra/team-runtime.ts`
-- Create: `src/main/mastra/team-runtime.test.ts`
-- Create: `src/main/server/chat/team-run-status-store.ts`
-- Create: `src/main/server/routes/team-chat-route.ts`
-- Create: `src/main/server/routes/team-chat-route.test.ts`
-- Modify: `src/main/server/create-app.ts`
-- Modify: `src/main/index.ts`
-
-**Step 1: Write the failing runtime and route tests**
-
-Cover:
-
-- Team runtime resolves live assistant members
-- Team runtime applies the Team workspace override instead of assistant workspace paths
-- Team runtime rejects invalid Team thread configuration
-- Team runtime emits status events during delegation
-- Team chat history reads persisted Mastra memory for Team thread IDs
-
-Runtime test sketch:
-
-```ts
-it('overrides member workspaces with the team workspace root path', async () => {
-  const runtime = new TeamRuntimeService({
-    mastra,
-    assistantsRepo,
-    providersRepo,
-    teamWorkspacesRepo,
-    teamThreadsRepo,
-    threadsRepo,
-    webSearchSettingsRepo,
-    mcpServersRepo
-  })
-
+it('syncs a generated team thread title after the first run', async () => {
   await runtime.streamTeamChat({
-    threadId: 'team-thread-1',
+    threadId: thread.id,
     profileId: 'default-profile',
-    messages: [{ id: '1', role: 'user', parts: [{ type: 'text', text: 'ship it' }] }]
+    messages: [{ id: '1', role: 'user', parts: [{ type: 'text', text: 'Plan release' }] }]
   })
 
-  expect(buildWorkspaceSpy).toHaveBeenCalledWith(
-    expect.objectContaining({ rootPath: '/team/workspace' })
-  )
-})
-```
-
-Route test sketch:
-
-```ts
-it('returns status events for an active run', async () => {
-  const response = await app.request('/team-chat/thread-1/runs/run-1/status', {
-    method: 'GET',
-    headers: authHeaders
+  await expect(teamThreadsRepo.getById(thread.id)).resolves.toMatchObject({
+    title: 'Plan release checklist'
   })
-
-  expect(response.status).toBe(200)
-  expect(response.headers.get('content-type')).toContain('text/event-stream')
 })
 ```
 
-**Step 2: Run tests to verify they fail**
+**Step 2: Run the runtime tests to verify they fail**
 
-Run: `pnpm vitest run src/main/mastra/team-runtime.test.ts src/main/server/routes/team-chat-route.test.ts`
-
-Expected: FAIL because Team runtime and Team chat routes do not exist.
-
-**Step 3: Write the minimal implementation**
-
-- Create `TeamRuntimeService` with:
-  - `streamTeamChat(params)`
-  - `listTeamThreadMessages(params)`
-- Resolve the Team thread, Team workspace, supervisor provider, and live assistant members.
-- Build member agents dynamically from live assistant records.
-- Build the supervisor agent dynamically using the Team-thread description plus selected members:
-
-```ts
-const supervisor = new Agent({
-  id: `team-supervisor:${thread.id}`,
-  name: 'Team Supervisor',
-  instructions: supervisorInstructions,
-  model,
-  agents: memberAgents,
-  memory
-})
-```
-
-- Call `supervisor.stream(...)`, then convert the result with `toAISdkV5Stream(stream, { from: 'agent', sendReasoning: true })`.
-- Emit Team status events from:
-  - `delegation.onDelegationStart`
-  - `delegation.onDelegationComplete`
-  - `onIterationComplete`
-- Add a small in-memory `TeamRunStatusStore` keyed by `runId` to let the status route stream new events to the renderer.
-- In `team-chat-route.ts`, add:
-  - `GET /team-chat/:threadId/history`
-  - `POST /team-chat/:threadId`
-  - `GET /team-chat/:threadId/runs/:runId/status`
-
-**Step 4: Re-run tests to verify they pass**
-
-Run: `pnpm vitest run src/main/mastra/team-runtime.test.ts src/main/server/routes/team-chat-route.test.ts`
-
-Expected: PASS
-
-**Step 5: Commit**
+Run:
 
 ```bash
-git add src/main/mastra/team-runtime.ts src/main/mastra/team-runtime.test.ts src/main/server/chat/team-run-status-store.ts src/main/server/routes/team-chat-route.ts src/main/server/routes/team-chat-route.test.ts src/main/server/create-app.ts src/main/index.ts
-git commit -m "feat: add team runtime and team chat routes"
+npm run test -- src/main/mastra/team-runtime.test.ts src/main/server/routes/team-chat-route.test.ts
 ```
 
----
-
-### Task 4: Add Team renderer data and streaming utilities
-
-**Files:**
-- Create: `src/renderer/src/features/team/team-workspaces-query.ts`
-- Create: `src/renderer/src/features/team/team-threads-query.ts`
-- Create: `src/renderer/src/features/team/team-chat-query.ts`
-- Create: `src/renderer/src/features/team/team-status-stream.ts`
-- Create: `src/renderer/src/features/team/team-queries.test.ts`
-
-**Step 1: Write the failing tests**
-
-Cover:
-
-- Team workspace and Team thread CRUD query helpers call the correct endpoints.
-- Team chat transport posts to `/team-chat/:threadId`.
-- Team status stream uses authenticated `fetch`, not `EventSource`.
-
-Test sketch:
-
-```ts
-it('opens the team status stream with authorization headers', async () => {
-  const fetchMock = vi.fn().mockResolvedValue(streamingResponse)
-  vi.stubGlobal('fetch', fetchMock)
-
-  await openTeamStatusStream({
-    threadId: 'thread-1',
-    runId: 'run-1',
-    onEvent: vi.fn()
-  })
-
-  expect(fetchMock).toHaveBeenCalledWith(
-    expect.stringContaining('/team-chat/thread-1/runs/run-1/status'),
-    expect.objectContaining({
-      headers: expect.objectContaining({
-        Authorization: expect.stringContaining('Bearer ')
-      })
-    })
-  )
-})
-```
-
-**Step 2: Run tests to verify they fail**
-
-Run: `pnpm vitest run src/renderer/src/features/team/team-queries.test.ts`
-
-Expected: FAIL because the Team renderer data layer does not exist.
+Expected: FAIL because `TeamRuntimeService` still reads thread config and never syncs generated team thread titles.
 
 **Step 3: Write the minimal implementation**
 
-- Add Team query helpers for workspaces and Team threads using `createApiClient()`.
-- Add Team chat transport mirroring the existing `createThreadChatTransport(...)`, but targeting Team endpoints.
-- Add `openTeamStatusStream(...)` using authenticated `fetch` plus `ReadableStream` parsing:
+- Resolve supervisor config from the workspace record.
+- Resolve members from `app_team_workspace_members`.
+- Mirror the assistant-runtime title-sync pattern:
 
 ```ts
-const response = await fetch(url, {
-  method: 'GET',
-  headers: {
-    Authorization: `Bearer ${config.authToken}`
+if (this.shouldReplaceThreadTitle(appThread.title)) {
+  const memoryThread = await memoryStore.getThreadById({ threadId: params.threadId })
+  const generatedTitle = this.toNonEmptyString(memoryThread?.title)
+  if (generatedTitle) {
+    await this.options.teamThreadsRepo.updateTitle(params.threadId, generatedTitle)
   }
-})
+}
 ```
 
-- Parse server events into a small union type such as:
+- Keep `generateTitle: true` in both `Memory` construction and per-run memory options.
 
-```ts
-type TeamStatusEvent =
-  | { type: 'run-started'; runId: string }
-  | { type: 'delegation-started'; runId: string; assistantId: string }
-  | { type: 'delegation-finished'; runId: string; assistantId: string; outcome: 'done' | 'error' }
+**Step 4: Re-run the runtime tests to verify they pass**
+
+Run:
+
+```bash
+npm run test -- src/main/mastra/team-runtime.test.ts src/main/server/routes/team-chat-route.test.ts
 ```
-
-**Step 4: Re-run tests to verify they pass**
-
-Run: `pnpm vitest run src/renderer/src/features/team/team-queries.test.ts`
 
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-git add src/renderer/src/features/team/team-workspaces-query.ts src/renderer/src/features/team/team-threads-query.ts src/renderer/src/features/team/team-chat-query.ts src/renderer/src/features/team/team-status-stream.ts src/renderer/src/features/team/team-queries.test.ts
-git commit -m "feat: add team renderer data layer"
+git add src/main/mastra/team-runtime.ts src/main/mastra/team-runtime.test.ts src/main/persistence/repos/team-workspaces-repo.ts src/main/persistence/repos/team-threads-repo.ts src/main/server/routes/team-chat-route.test.ts
+git commit -m "refactor: run teams from workspace config"
 ```
 
 ---
 
-### Task 5: Add Team routing, nav, and page shell
+### Task 4: Refactor the controller around workspace-scoped configuration
 
 **Files:**
-- Modify: `package.json`
-- Modify: `src/renderer/src/app/router.tsx`
-- Modify: `src/renderer/src/app/router.test.tsx`
-- Modify: `src/renderer/src/app/layout/app-shell.tsx`
-- Modify: `src/renderer/src/app/layout/app-shell.test.tsx`
-- Create: `src/renderer/src/features/team/pages/team-page.tsx`
-- Create: `src/renderer/src/features/team/team-page.test.tsx`
+- Modify: `src/renderer/src/features/team/hooks/use-team-page-controller.ts`
+- Modify: `src/renderer/src/features/team/hooks/use-team-page-controller.test.tsx`
+- Modify: `src/renderer/src/features/team/pages/team-page.tsx`
+- Modify: `src/renderer/src/features/team/team-page.test.tsx`
+- Modify: `src/renderer/src/features/team/components/team-chat-card.tsx`
+- Modify: `src/renderer/src/features/team/components/team-config-dialog.tsx`
+- Modify: `src/renderer/src/features/team/components/team-config-dialog.test.tsx`
 
-**Step 1: Write the failing tests**
+**Step 1: Write the failing controller and dialog tests**
 
-Update routing and shell tests to assert:
+Add coverage for:
 
-- `Team` appears in the top nav
-- `/team` renders the Team page
-- the Team page uses a three-column layout shell
+- opening `Configure Team` when only a workspace is selected
+- auto-opening the config dialog after `handleCreateWorkspace`
+- loading/saving selected members from workspace members
+- creating a thread without a title field
+- removing the thread title input from the dialog
 
 Test sketch:
 
 ```ts
-it('renders the team route from the top nav', () => {
-  const router = createAppMemoryRouter(['/team'])
-  const html = renderToString(<RouterProvider router={router} />)
-
-  expect(html).toContain('Team')
-  expect(html).toContain('Team Workspaces')
-  expect(html).toContain('Team Status')
+await act(async () => {
+  await controller?.handleCreateWorkspace()
 })
+
+expect(controller?.selectedWorkspace?.id).toBe('workspace-2')
+expect(controller?.isConfigDialogOpen).toBe(true)
 ```
 
-**Step 2: Run tests to verify they fail**
+**Step 2: Run the controller and dialog tests to verify they fail**
 
-Run: `pnpm vitest run src/renderer/src/app/router.test.tsx src/renderer/src/app/layout/app-shell.test.tsx src/renderer/src/features/team/team-page.test.tsx`
+Run:
 
-Expected: FAIL because the Team route and Team page do not exist.
+```bash
+npm run test -- src/renderer/src/features/team/hooks/use-team-page-controller.test.tsx src/renderer/src/features/team/components/team-config-dialog.test.tsx src/renderer/src/features/team/team-page.test.tsx
+```
+
+Expected: FAIL because the controller still requires a selected thread for config and the dialog still renders `Thread Title`.
 
 **Step 3: Write the minimal implementation**
 
-- Add `@xyflow/react` to `package.json`.
-- Register `/team/:workspaceId?/:threadId?` in `src/renderer/src/app/router.tsx`.
-- Add a `Team` button to the header in `src/renderer/src/app/layout/app-shell.tsx`.
-- Create `TeamPage` with a three-column shell and placeholder sections:
+- Load/save workspace config through `updateTeamWorkspace(...)`.
+- Load/save members through workspace member query helpers.
+- Open config immediately after workspace creation succeeds.
+- Allow `openConfigDialog()` whenever `selectedWorkspace` exists.
+- Remove the `title` field from `TeamConfigDialogValues`.
+- Keep `New Team Thread` creation limited to workspace/thread creation only.
+
+**Step 4: Re-run the controller and dialog tests to verify they pass**
+
+Run:
+
+```bash
+npm run test -- src/renderer/src/features/team/hooks/use-team-page-controller.test.tsx src/renderer/src/features/team/components/team-config-dialog.test.tsx src/renderer/src/features/team/team-page.test.tsx
+```
+
+Expected: PASS
+
+**Step 5: Commit**
+
+```bash
+git add src/renderer/src/features/team/hooks/use-team-page-controller.ts src/renderer/src/features/team/hooks/use-team-page-controller.test.tsx src/renderer/src/features/team/pages/team-page.tsx src/renderer/src/features/team/team-page.test.tsx src/renderer/src/features/team/components/team-chat-card.tsx src/renderer/src/features/team/components/team-config-dialog.tsx src/renderer/src/features/team/components/team-config-dialog.test.tsx
+git commit -m "refactor: make team config workspace scoped"
+```
+
+---
+
+### Task 5: Rebuild the sidebar with the existing collapsible thread pattern
+
+**Files:**
+- Modify: `src/renderer/src/features/team/components/team-sidebar.tsx`
+- Modify: `src/renderer/src/features/team/components/team-sidebar.test.tsx`
+- Reference: `src/renderer/src/features/threads/components/thread-sidebar.tsx`
+- Reference: `src/renderer/src/components/ui/sidebar.tsx`
+
+**Step 1: Write the failing sidebar tests**
+
+Add coverage for:
+
+- rendering workspaces as top-level collapsible items
+- rendering threads as nested items under the selected workspace
+- selecting a workspace before a thread
+- keeping `New Workspace` and `New Team Thread` actions wired correctly
+
+Test sketch:
+
+```ts
+expect(container.textContent).toContain('Docs Workspace')
+expect(container.textContent).toContain('Release Team')
+expect(container.querySelector('[aria-expanded="true"]')).not.toBeNull()
+```
+
+**Step 2: Run the sidebar tests to verify they fail**
+
+Run:
+
+```bash
+npm run test -- src/renderer/src/features/team/components/team-sidebar.test.tsx
+```
+
+Expected: FAIL because the sidebar still uses the card/list layout instead of the nested sidebar primitives.
+
+**Step 3: Write the minimal implementation**
+
+- Rebuild `TeamSidebar` with the same primitives used by the assistant thread sidebar:
 
 ```tsx
-<section className="flex h-[calc(100vh-3.5rem)] min-h-[650px] min-w-[960px]">
-  <aside className="w-1/3">...</aside>
-  <div className="w-1/3">...</div>
-  <aside className="w-1/3">...</aside>
-</section>
+<SidebarMenuItem>
+  <SidebarMenuButton onClick={() => onSelectWorkspace(workspace.id)}>
+    <Folder className="size-4" />
+    <span>{workspace.name}</span>
+  </SidebarMenuButton>
+  {workspace.id === selectedWorkspaceId ? (
+    <SidebarMenuSub>{/* nested thread items */}</SidebarMenuSub>
+  ) : null}
+</SidebarMenuItem>
 ```
 
-**Step 4: Re-run tests to verify they pass**
+- Keep behavior simple: selected workspace expands; threads render under it.
 
-Run: `pnpm vitest run src/renderer/src/app/router.test.tsx src/renderer/src/app/layout/app-shell.test.tsx src/renderer/src/features/team/team-page.test.tsx`
+**Step 4: Re-run the sidebar tests and a focused UI regression pass**
+
+Run:
+
+```bash
+npm run test -- src/renderer/src/features/team/components/team-sidebar.test.tsx src/renderer/src/features/team/hooks/use-team-page-controller.test.tsx src/renderer/src/features/team/components/team-config-dialog.test.tsx src/renderer/src/features/team/team-page.test.tsx
+```
 
 Expected: PASS
 
 **Step 5: Commit**
 
 ```bash
-git add package.json src/renderer/src/app/router.tsx src/renderer/src/app/router.test.tsx src/renderer/src/app/layout/app-shell.tsx src/renderer/src/app/layout/app-shell.test.tsx src/renderer/src/features/team/pages/team-page.tsx src/renderer/src/features/team/team-page.test.tsx
-git commit -m "feat: add team route and page shell"
+git add src/renderer/src/features/team/components/team-sidebar.tsx src/renderer/src/features/team/components/team-sidebar.test.tsx
+git commit -m "feat: adopt collapsible team sidebar"
 ```
 
 ---
 
-### Task 6: Add Team sidebar, controller, and configuration dialog
+### Task 6: Verify the full feature before handoff
 
 **Files:**
-- Create: `src/renderer/src/features/team/hooks/use-team-page-controller.ts`
-- Create: `src/renderer/src/features/team/hooks/use-team-page-controller.test.tsx`
-- Create: `src/renderer/src/features/team/components/team-sidebar.tsx`
-- Create: `src/renderer/src/features/team/components/team-sidebar.test.tsx`
-- Create: `src/renderer/src/features/team/components/team-config-dialog.tsx`
-- Create: `src/renderer/src/features/team/components/team-config-dialog.test.tsx`
-- Modify: `src/renderer/src/features/team/pages/team-page.tsx`
+- Modify as needed: only files touched by failing tests from Tasks 1-5
 
-**Step 1: Write the failing tests**
+**Step 1: Run the focused end-to-end feature suite**
 
-Cover:
+Run:
 
-- Team workspace selection
-- Team thread selection
-- Team workspace creation action
-- Team thread creation action
-- Team config dialog validation for missing supervisor settings and empty member list
-- setup blockers when a Team thread is incomplete
-
-Controller test sketch:
-
-```ts
-it('blocks send when the team thread has no members', async () => {
-  const controller = renderHook(() => useTeamPageController(), { wrapper })
-  expect(controller.result.current.readiness.canChat).toBe(false)
-  expect(controller.result.current.readiness.checks.map(check => check.id)).toContain('members')
-})
+```bash
+npm run test -- src/main/persistence/migrate.test.ts src/main/persistence/migrate-fallback.test.ts src/main/persistence/repos/team-workspaces-repo.test.ts src/main/persistence/repos/team-threads-repo.test.ts src/main/server/routes/team-workspaces-route.test.ts src/main/server/routes/team-threads-route.test.ts src/main/server/routes/team-chat-route.test.ts src/main/mastra/team-runtime.test.ts src/renderer/src/features/team/team-queries.test.ts src/renderer/src/features/team/hooks/use-team-page-controller.test.tsx src/renderer/src/features/team/components/team-config-dialog.test.tsx src/renderer/src/features/team/components/team-sidebar.test.tsx src/renderer/src/features/team/team-page.test.tsx
 ```
 
-**Step 2: Run tests to verify they fail**
+Expected: PASS
 
-Run: `pnpm vitest run src/renderer/src/features/team/hooks/use-team-page-controller.test.tsx src/renderer/src/features/team/components/team-sidebar.test.tsx src/renderer/src/features/team/components/team-config-dialog.test.tsx`
+**Step 2: Run static verification**
 
-Expected: FAIL because the Team controller and Team UI components do not exist.
+Run:
 
-**Step 3: Write the minimal implementation**
-
-- Build `useTeamPageController()` to load:
-  - Team workspaces
-  - Team threads for the selected workspace
-  - Team-thread member state
-  - assistants/providers for Team configuration
-- Reuse the existing assistant config patterns where it fits, but keep Team-specific state separate.
-- Add `TeamSidebar` with:
-  - workspace list
-  - per-workspace Team thread list
-  - `New Workspace`
-  - `New Team Thread`
-- Add `TeamConfigDialog` with:
-  - Team thread title
-  - Team description
-  - supervisor provider
-  - supervisor model
-  - multi-select Team members
-
-**Step 4: Re-run tests to verify they pass**
-
-Run: `pnpm vitest run src/renderer/src/features/team/hooks/use-team-page-controller.test.tsx src/renderer/src/features/team/components/team-sidebar.test.tsx src/renderer/src/features/team/components/team-config-dialog.test.tsx`
+```bash
+npm run typecheck
+```
 
 Expected: PASS
+
+**Step 3: Run the broader team-area regression pass**
+
+Run:
+
+```bash
+npm run test -- src/renderer/src/features/team src/main/server/routes src/main/mastra/team-runtime.test.ts
+```
+
+Expected: PASS
+
+**Step 4: Fix only regressions caused by this feature**
+
+- Do not widen scope beyond team ownership, sidebar structure, dialog flow, and title generation.
 
 **Step 5: Commit**
 
 ```bash
-git add src/renderer/src/features/team/hooks/use-team-page-controller.ts src/renderer/src/features/team/hooks/use-team-page-controller.test.tsx src/renderer/src/features/team/components/team-sidebar.tsx src/renderer/src/features/team/components/team-sidebar.test.tsx src/renderer/src/features/team/components/team-config-dialog.tsx src/renderer/src/features/team/components/team-config-dialog.test.tsx src/renderer/src/features/team/pages/team-page.tsx
-git commit -m "feat: add team sidebar and config dialog"
-```
-
----
-
-### Task 7: Add Team chat card and Team status graph
-
-**Files:**
-- Create: `src/renderer/src/features/team/components/team-chat-card.tsx`
-- Create: `src/renderer/src/features/team/components/team-chat-card.test.tsx`
-- Create: `src/renderer/src/features/team/components/team-status-graph.tsx`
-- Create: `src/renderer/src/features/team/components/team-status-graph.test.tsx`
-- Modify: `src/renderer/src/features/team/pages/team-page.tsx`
-- Modify: `src/renderer/src/features/team/hooks/use-team-page-controller.ts`
-
-**Step 1: Write the failing tests**
-
-Cover:
-
-- Team chat card renders Team-thread metadata and blocks send when setup is incomplete
-- Team status graph maps streamed events to supervisor/member node state
-- event log renders delegation progress text
-
-Graph test sketch:
-
-```ts
-it('marks a member node running after delegation-started', () => {
-  render(
-    <TeamStatusGraph
-      assistants={[{ id: 'assistant-1', name: 'Planner' }]}
-      events={[
-        { type: 'delegation-started', runId: 'run-1', assistantId: 'assistant-1' }
-      ]}
-    />
-  )
-
-  expect(screen.getByText('Planner')).toHaveAttribute('data-state', 'running')
-})
-```
-
-**Step 2: Run tests to verify they fail**
-
-Run: `pnpm vitest run src/renderer/src/features/team/components/team-chat-card.test.tsx src/renderer/src/features/team/components/team-status-graph.test.tsx`
-
-Expected: FAIL because the Team chat/status components do not exist.
-
-**Step 3: Write the minimal implementation**
-
-- Add `TeamChatCard` reusing the existing thread-chat feel:
-  - title/header metadata
-  - composer
-  - message history
-  - send/stop controls
-- Hook it to Team chat transport plus Team status stream subscription.
-- Add `TeamStatusGraph` using `@xyflow/react`:
-  - central supervisor node
-  - member nodes around it
-  - event log below or beside the graph
-- Keep the first pass deliberately simple: deterministic layout, status color changes, no drag persistence.
-
-**Step 4: Re-run tests to verify they pass**
-
-Run: `pnpm vitest run src/renderer/src/features/team/components/team-chat-card.test.tsx src/renderer/src/features/team/components/team-status-graph.test.tsx`
-
-Expected: PASS
-
-**Step 5: Commit**
-
-```bash
-git add src/renderer/src/features/team/components/team-chat-card.tsx src/renderer/src/features/team/components/team-chat-card.test.tsx src/renderer/src/features/team/components/team-status-graph.tsx src/renderer/src/features/team/components/team-status-graph.test.tsx src/renderer/src/features/team/pages/team-page.tsx src/renderer/src/features/team/hooks/use-team-page-controller.ts
-git commit -m "feat: add team chat and status graph"
-```
-
----
-
-### Task 8: Verify the full Team slice
-
-**Files:**
-- Modify: `src/renderer/src/app/router.test.tsx`
-- Modify: `src/main/server/routes/team-chat-route.test.ts`
-- Modify: `src/main/mastra/team-runtime.test.ts`
-- Modify: `src/renderer/src/features/team/team-page.test.tsx`
-
-**Step 1: Add the final end-to-end-ish smoke tests**
-
-Add one last set of focused tests that prove the vertical slice works together:
-
-- renderer route renders Team shell
-- controller blocks send when Team config is incomplete
-- Team chat route rejects invalid Team threads
-- Team runtime emits at least one status event for a valid run
-
-**Step 2: Run targeted tests**
-
-Run: `pnpm vitest run src/main/persistence/repos/team-workspaces-repo.test.ts src/main/persistence/repos/team-threads-repo.test.ts src/main/server/routes/team-workspaces-route.test.ts src/main/server/routes/team-threads-route.test.ts src/main/server/routes/team-chat-route.test.ts src/main/mastra/team-runtime.test.ts src/renderer/src/app/router.test.tsx src/renderer/src/app/layout/app-shell.test.tsx src/renderer/src/features/team/team-page.test.tsx src/renderer/src/features/team/hooks/use-team-page-controller.test.tsx src/renderer/src/features/team/components/team-sidebar.test.tsx src/renderer/src/features/team/components/team-config-dialog.test.tsx src/renderer/src/features/team/components/team-chat-card.test.tsx src/renderer/src/features/team/components/team-status-graph.test.tsx`
-
-Expected: PASS
-
-**Step 3: Run typecheck**
-
-Run: `pnpm typecheck`
-
-Expected: PASS
-
-**Step 4: Run the full test suite**
-
-Run: `pnpm test`
-
-Expected: PASS, or only unrelated pre-existing failures.
-
-**Step 5: Commit**
-
-```bash
-git add src/main src/renderer/src package.json
-git commit -m "feat: add team feature"
+git add .
+git commit -m "feat: improve workspace-owned team flow"
 ```

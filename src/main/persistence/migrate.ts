@@ -11,6 +11,14 @@ function parseStatements(sql: string): string[] {
     .filter((statement) => statement.length > 0)
 }
 
+function isMissingColumnIndexError(statement: string, error: unknown): boolean {
+  if (!statement.startsWith('CREATE INDEX IF NOT EXISTS')) {
+    return false
+  }
+
+  return error instanceof Error && /no such column/i.test(error.message)
+}
+
 async function ensureAssistantMaxStepsColumn(db: AppDatabase): Promise<void> {
   const tableInfo = await db.execute("PRAGMA table_info('app_assistants')")
   const hasMaxStepsColumn = tableInfo.rows.some((row) => {
@@ -62,10 +70,35 @@ async function ensureTeamTables(db: AppDatabase): Promise<void> {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       root_path TEXT NOT NULL,
+      team_description TEXT NOT NULL DEFAULT '',
+      supervisor_provider_id TEXT,
+      supervisor_model TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (supervisor_provider_id) REFERENCES app_providers(id)
     )
   `)
+
+  const teamWorkspaceTableInfo = await db.execute("PRAGMA table_info('app_team_workspaces')")
+  const teamWorkspaceColumns = teamWorkspaceTableInfo.rows.map((row) =>
+    String((row as Record<string, unknown>).name)
+  )
+
+  if (!teamWorkspaceColumns.includes('team_description')) {
+    await db.execute(
+      "ALTER TABLE app_team_workspaces ADD COLUMN team_description TEXT NOT NULL DEFAULT ''"
+    )
+  }
+
+  if (!teamWorkspaceColumns.includes('supervisor_provider_id')) {
+    await db.execute('ALTER TABLE app_team_workspaces ADD COLUMN supervisor_provider_id TEXT')
+  }
+
+  if (!teamWorkspaceColumns.includes('supervisor_model')) {
+    await db.execute(
+      "ALTER TABLE app_team_workspaces ADD COLUMN supervisor_model TEXT NOT NULL DEFAULT ''"
+    )
+  }
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS app_team_threads (
@@ -81,6 +114,17 @@ async function ensureTeamTables(db: AppDatabase): Promise<void> {
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (workspace_id) REFERENCES app_team_workspaces(id) ON DELETE CASCADE,
       FOREIGN KEY (supervisor_provider_id) REFERENCES app_providers(id)
+    )
+  `)
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_team_workspace_members (
+      workspace_id TEXT NOT NULL,
+      assistant_id TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (workspace_id, assistant_id),
+      FOREIGN KEY (workspace_id) REFERENCES app_team_workspaces(id) ON DELETE CASCADE
     )
   `)
 
@@ -105,11 +149,106 @@ async function ensureTeamTables(db: AppDatabase): Promise<void> {
     'CREATE INDEX IF NOT EXISTS idx_app_team_threads_supervisor_provider_id ON app_team_threads(supervisor_provider_id)'
   )
   await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_team_workspaces_supervisor_provider_id ON app_team_workspaces(supervisor_provider_id)'
+  )
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_team_workspace_members_workspace_id ON app_team_workspace_members(workspace_id)'
+  )
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_team_workspace_members_assistant_id ON app_team_workspace_members(assistant_id)'
+  )
+  await db.execute(
     'CREATE INDEX IF NOT EXISTS idx_app_team_thread_members_team_thread_id ON app_team_thread_members(team_thread_id)'
   )
   await db.execute(
     'CREATE INDEX IF NOT EXISTS idx_app_team_thread_members_assistant_id ON app_team_thread_members(assistant_id)'
   )
+
+  const workspaceConfigs = await db.execute(`
+    SELECT
+      id,
+      COALESCE(team_description, '') AS team_description,
+      supervisor_provider_id,
+      COALESCE(supervisor_model, '') AS supervisor_model
+    FROM app_team_workspaces
+  `)
+
+  for (const row of workspaceConfigs.rows) {
+    const workspace = row as Record<string, unknown>
+    const workspaceId = String(workspace.id)
+    const hasWorkspaceConfig =
+      String(workspace.team_description).trim().length > 0 ||
+      (workspace.supervisor_provider_id !== null && workspace.supervisor_provider_id !== undefined) ||
+      String(workspace.supervisor_model).trim().length > 0
+
+    const workspaceMembers = await db.execute(
+      'SELECT assistant_id FROM app_team_workspace_members WHERE workspace_id = ? LIMIT 1',
+      [workspaceId]
+    )
+    const hasWorkspaceMembers = workspaceMembers.rows.length > 0
+
+    if (hasWorkspaceConfig && hasWorkspaceMembers) {
+      continue
+    }
+
+    const legacyThreadResult = await db.execute(
+      `
+        SELECT id, team_description, supervisor_provider_id, supervisor_model
+        FROM app_team_threads
+        WHERE workspace_id = ?
+          AND (
+            TRIM(COALESCE(team_description, '')) != ''
+            OR supervisor_provider_id IS NOT NULL
+            OR TRIM(COALESCE(supervisor_model, '')) != ''
+          )
+        ORDER BY COALESCE(last_message_at, updated_at, created_at) DESC
+        LIMIT 1
+      `,
+      [workspaceId]
+    )
+    const legacyThread = legacyThreadResult.rows.at(0) as Record<string, unknown> | undefined
+
+    if (legacyThread && !hasWorkspaceConfig) {
+      await db.execute(
+        `
+          UPDATE app_team_workspaces
+          SET team_description = ?, supervisor_provider_id = ?, supervisor_model = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `,
+        [
+          String(legacyThread.team_description ?? ''),
+          legacyThread.supervisor_provider_id ? String(legacyThread.supervisor_provider_id) : null,
+          String(legacyThread.supervisor_model ?? ''),
+          workspaceId
+        ]
+      )
+    }
+
+    if (!legacyThread || hasWorkspaceMembers) {
+      continue
+    }
+
+    const legacyMembersResult = await db.execute(
+      `
+        SELECT assistant_id, sort_order
+        FROM app_team_thread_members
+        WHERE team_thread_id = ?
+        ORDER BY sort_order ASC, created_at ASC
+      `,
+      [String(legacyThread.id)]
+    )
+
+    for (const memberRow of legacyMembersResult.rows) {
+      const member = memberRow as Record<string, unknown>
+      await db.execute(
+        `
+          INSERT OR IGNORE INTO app_team_workspace_members (workspace_id, assistant_id, sort_order)
+          VALUES (?, ?, ?)
+        `,
+        [workspaceId, String(member.assistant_id), Number(member.sort_order)]
+      )
+    }
+  }
 }
 
 export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> {
@@ -130,7 +269,15 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   const statements = parseStatements(migrationSql)
 
   for (const statement of statements) {
-    await db.execute(statement)
+    try {
+      await db.execute(statement)
+    } catch (error) {
+      if (isMissingColumnIndexError(statement, error)) {
+        continue
+      }
+
+      throw error
+    }
   }
 
   await ensureAssistantMaxStepsColumn(db)

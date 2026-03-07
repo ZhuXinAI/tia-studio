@@ -59,7 +59,7 @@ export function TeamPage(): React.JSX.Element {
 
       <TeamConfigDialog
         isOpen={controller.isConfigDialogOpen}
-        thread={controller.selectedThread}
+        workspace={controller.selectedWorkspace}
         providers={controller.providers}
         assistants={controller.assistants}
         selectedAssistantIds={controller.selectedMemberIds}

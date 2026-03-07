@@ -173,7 +173,7 @@ export function TeamChatCard({
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={!selectedThread}
+                disabled={!selectedWorkspace}
                 onClick={onOpenTeamConfig}
               >
                 <Settings2 className="size-4" />

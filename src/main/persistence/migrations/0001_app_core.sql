@@ -49,8 +49,12 @@ CREATE TABLE IF NOT EXISTS app_team_workspaces (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   root_path TEXT NOT NULL,
+  team_description TEXT NOT NULL DEFAULT '',
+  supervisor_provider_id TEXT,
+  supervisor_model TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (supervisor_provider_id) REFERENCES app_providers(id)
 );
 
 CREATE TABLE IF NOT EXISTS app_team_threads (
@@ -66,6 +70,15 @@ CREATE TABLE IF NOT EXISTS app_team_threads (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (workspace_id) REFERENCES app_team_workspaces(id) ON DELETE CASCADE,
   FOREIGN KEY (supervisor_provider_id) REFERENCES app_providers(id)
+);
+
+CREATE TABLE IF NOT EXISTS app_team_workspace_members (
+  workspace_id TEXT NOT NULL,
+  assistant_id TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (workspace_id, assistant_id),
+  FOREIGN KEY (workspace_id) REFERENCES app_team_workspaces(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS app_team_thread_members (
@@ -90,5 +103,8 @@ CREATE INDEX IF NOT EXISTS idx_app_threads_resource_id ON app_threads(resource_i
 CREATE INDEX IF NOT EXISTS idx_app_team_threads_workspace_id ON app_team_threads(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_app_team_threads_resource_id ON app_team_threads(resource_id);
 CREATE INDEX IF NOT EXISTS idx_app_team_threads_supervisor_provider_id ON app_team_threads(supervisor_provider_id);
+CREATE INDEX IF NOT EXISTS idx_app_team_workspaces_supervisor_provider_id ON app_team_workspaces(supervisor_provider_id);
+CREATE INDEX IF NOT EXISTS idx_app_team_workspace_members_workspace_id ON app_team_workspace_members(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_app_team_workspace_members_assistant_id ON app_team_workspace_members(assistant_id);
 CREATE INDEX IF NOT EXISTS idx_app_team_thread_members_team_thread_id ON app_team_thread_members(team_thread_id);
 CREATE INDEX IF NOT EXISTS idx_app_team_thread_members_assistant_id ON app_team_thread_members(assistant_id);

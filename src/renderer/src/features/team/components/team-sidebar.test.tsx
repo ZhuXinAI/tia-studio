@@ -35,6 +35,9 @@ describe('TeamSidebar', () => {
               id: 'workspace-1',
               name: 'Docs Workspace',
               rootPath: '/Users/demo/project',
+              teamDescription: '',
+              supervisorProviderId: null,
+              supervisorModel: '',
               createdAt: '2026-03-07T00:00:00.000Z',
               updatedAt: '2026-03-07T00:00:00.000Z'
             }
@@ -81,6 +84,7 @@ describe('TeamSidebar', () => {
 
     expect(onSelectWorkspace).toHaveBeenCalledWith('workspace-1')
     expect(onSelectThread).toHaveBeenCalledWith('thread-1')
+    expect(container.querySelector('[data-slot="sidebar-menu-sub"]')).not.toBeNull()
   })
 
   it('fires the create workspace and create thread actions', () => {
@@ -120,5 +124,63 @@ describe('TeamSidebar', () => {
 
     expect(onCreateWorkspace).toHaveBeenCalledTimes(1)
     expect(onCreateThread).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows nested thread items only for the selected workspace', () => {
+    act(() => {
+      root.render(
+        <TeamSidebar
+          workspaces={[
+            {
+              id: 'workspace-1',
+              name: 'Docs Workspace',
+              rootPath: '/Users/demo/project',
+              teamDescription: '',
+              supervisorProviderId: null,
+              supervisorModel: '',
+              createdAt: '2026-03-07T00:00:00.000Z',
+              updatedAt: '2026-03-07T00:00:00.000Z'
+            },
+            {
+              id: 'workspace-2',
+              name: 'App Workspace',
+              rootPath: '/Users/demo/app',
+              teamDescription: '',
+              supervisorProviderId: null,
+              supervisorModel: '',
+              createdAt: '2026-03-07T00:00:00.000Z',
+              updatedAt: '2026-03-07T00:00:00.000Z'
+            }
+          ]}
+          threads={[
+            {
+              id: 'thread-1',
+              workspaceId: 'workspace-1',
+              resourceId: 'default-profile',
+              title: '',
+              teamDescription: '',
+              supervisorProviderId: null,
+              supervisorModel: '',
+              lastMessageAt: null,
+              createdAt: '2026-03-07T00:00:00.000Z',
+              updatedAt: '2026-03-07T00:00:00.000Z'
+            }
+          ]}
+          selectedWorkspaceId="workspace-1"
+          selectedThreadId={null}
+          isLoadingData={false}
+          isLoadingThreads={false}
+          isCreatingWorkspace={false}
+          isCreatingThread={false}
+          onCreateWorkspace={() => undefined}
+          onCreateThread={() => undefined}
+          onSelectWorkspace={() => undefined}
+          onSelectThread={() => undefined}
+        />
+      )
+    })
+
+    expect(container.textContent).toContain('Untitled Team Thread')
+    expect(container.textContent).toContain('App Workspace')
   })
 })
