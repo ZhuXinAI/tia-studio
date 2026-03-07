@@ -8,6 +8,7 @@ function createAssistant(overrides?: Partial<AssistantRecord>): AssistantRecord 
   return {
     id: 'assistant-1',
     name: 'Planner',
+    description: '',
     instructions: '',
     providerId: 'provider-1',
     workspaceConfig: { rootPath: '/workspace/a' },

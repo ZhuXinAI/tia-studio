@@ -62,6 +62,7 @@ describe('TeamConfigDialog', () => {
             {
               id: 'assistant-1',
               name: 'Planner',
+              description: '',
               instructions: '',
               providerId: 'provider-1',
               workspaceConfig: {},
@@ -136,6 +137,7 @@ describe('TeamConfigDialog', () => {
             {
               id: 'assistant-1',
               name: 'Planner',
+              description: '',
               instructions: '',
               providerId: 'provider-1',
               workspaceConfig: {},

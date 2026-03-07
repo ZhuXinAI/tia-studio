@@ -41,6 +41,7 @@ describe('assistants route', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: 'Trip Planner',
+        description: 'Plans travel itineraries and bookings.',
         providerId: provider.id,
         workspaceConfig: { root: '/tmp/workspace' }
       })
@@ -49,6 +50,7 @@ describe('assistants route', () => {
     expect(response.status).toBe(201)
     const body = await response.json()
     expect(body.name).toBe('Trip Planner')
+    expect(body.description).toBe('Plans travel itineraries and bookings.')
     expect(body.providerId).toBe(provider.id)
     expect(body.maxSteps).toBe(100)
   })
@@ -87,13 +89,15 @@ describe('assistants route', () => {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        instructions: 'You are a helpful travel assistant.'
+        instructions: 'You are a helpful travel assistant.',
+        description: 'Handles trip planning requests.'
       })
     })
 
     expect(patchResponse.status).toBe(200)
     const patched = await patchResponse.json()
     expect(patched.instructions).toBe('You are a helpful travel assistant.')
+    expect(patched.description).toBe('Handles trip planning requests.')
   })
 
   it('updates assistant max steps', async () => {

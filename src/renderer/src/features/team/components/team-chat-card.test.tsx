@@ -135,6 +135,7 @@ describe('TeamChatCard', () => {
           {
             id: 'assistant-1',
             name: 'Planner',
+            description: '',
             instructions: '',
             providerId: 'provider-1',
             workspaceConfig: {},

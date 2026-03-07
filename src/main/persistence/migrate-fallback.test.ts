@@ -30,6 +30,7 @@ it('falls back to bundled migration SQL when migration file is missing', async (
   expect(tableNames).toContain('app_team_workspaces')
   expect(tableNames).toContain('app_team_workspace_members')
   expect(tableNames).toContain('app_preferences')
+  expect(assistantColumns).toContain('description')
   expect(assistantColumns).toContain('max_steps')
   expect(teamWorkspaceColumns).toContain('team_description')
   expect(teamWorkspaceColumns).toContain('supervisor_provider_id')

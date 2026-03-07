@@ -78,6 +78,7 @@ function buildAssistant(overrides?: Partial<AppAssistant>): AppAssistant {
   return {
     id: 'assistant-1',
     name: 'Researcher',
+    description: 'Finds facts, sources, and supporting evidence.',
     instructions: 'Research the problem.',
     providerId: 'provider-member',
     workspaceConfig: {
@@ -346,6 +347,47 @@ describe('TeamRuntimeService', () => {
     const supervisorConfig = agentConfigs.at(-1) as { agents?: Record<string, unknown> } | undefined
     expect(supervisorConfig?.agents).toBeDefined()
     expect(Object.keys(supervisorConfig?.agents ?? {})).toEqual(['assistant-live'])
+  })
+
+  it('passes assistant descriptions into team routing context', async () => {
+    const runtime = new TeamRuntimeService({
+      mastra: { getStorage: () => null } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () =>
+          buildAssistant({
+            description: 'Investigates bugs, facts, and source material.'
+          })
+        )
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async (id: string) => buildProvider({ id }))
+      } as unknown as ProvidersRepository,
+      teamWorkspacesRepo: {
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [buildWorkspaceMember('assistant-1')])
+      } as unknown as TeamWorkspacesRepository,
+      teamThreadsRepo: {
+        getById: vi.fn(async () => buildTeamThread()),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as TeamThreadsRepository,
+      statusStore: new TeamRunStatusStore()
+    })
+
+    await runtime.streamTeamChat({
+      threadId: 'team-thread-1',
+      profileId: 'default-profile',
+      messages: []
+    })
+
+    const memberConfig = agentConfigs.find((config) => config.id === 'assistant-1') as
+      | { description?: string }
+      | undefined
+    const supervisorConfig = agentConfigs.at(-1) as { instructions?: string } | undefined
+
+    expect(memberConfig?.description).toBe('Investigates bugs, facts, and source material.')
+    expect(supervisorConfig?.instructions).toContain(
+      '- Researcher: Investigates bugs, facts, and source material.'
+    )
   })
 
   it('disables OpenAI Responses storage for openai-response supervisors', async () => {

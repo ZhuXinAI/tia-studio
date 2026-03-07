@@ -35,6 +35,7 @@ it('creates core app tables', async () => {
   expect(tableNames).toContain('app_team_workspaces')
   expect(tableNames).toContain('app_team_workspace_members')
   expect(tableNames).toContain('app_preferences')
+  expect(assistantColumns).toContain('description')
   expect(assistantColumns).toContain('max_steps')
   expect(teamWorkspaceColumns).toContain('team_description')
   expect(teamWorkspaceColumns).toContain('supervisor_provider_id')
@@ -168,6 +169,10 @@ it('backfills workspace-owned team config from legacy thread-owned records', asy
   await legacyDb.close()
 
   const migratedDb = await migrateAppSchema(dbPath)
+  const assistantColumnsResult = await migratedDb.execute("PRAGMA table_info('app_assistants')")
+  const assistantColumns = assistantColumnsResult.rows.map((row) =>
+    String((row as Record<string, unknown>).name)
+  )
   const workspaceResult = await migratedDb.execute(
     'SELECT team_description, supervisor_provider_id, supervisor_model FROM app_team_workspaces WHERE id = ?',
     ['workspace-1']
@@ -195,6 +200,7 @@ it('backfills workspace-owned team config from legacy thread-owned records', asy
       sort_order: 1
     }
   ])
+  expect(assistantColumns).toContain('description')
 
   await migratedDb.close()
 })

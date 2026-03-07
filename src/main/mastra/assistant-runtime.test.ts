@@ -36,6 +36,7 @@ function buildAssistant(): AppAssistant {
   return {
     id: 'assistant-1',
     name: 'TIA',
+    description: 'Handles general assistant requests.',
     instructions: 'You are helpful.',
     providerId: 'provider-1',
     workspaceConfig: { rootPath: '/tmp' },

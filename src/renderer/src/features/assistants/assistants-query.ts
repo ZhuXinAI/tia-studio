@@ -4,6 +4,7 @@ import { createApiClient } from '../../lib/api-client'
 export type AssistantRecord = {
   id: string
   name: string
+  description: string
   instructions: string
   providerId: string
   workspaceConfig: Record<string, unknown>
@@ -17,6 +18,7 @@ export type AssistantRecord = {
 
 export type SaveAssistantInput = {
   name: string
+  description?: string
   instructions?: string
   providerId: string
   workspaceConfig?: Record<string, unknown>

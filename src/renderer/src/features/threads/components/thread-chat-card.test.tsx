@@ -62,6 +62,7 @@ describe('ThreadChatCard', () => {
         selectedAssistant={{
           id: 'assistant-1',
           name: 'Planner',
+          description: '',
           instructions: 'Keep plans concise.',
           providerId: 'provider-1',
           workspaceConfig: { rootPath: '/tmp/workspace' },
@@ -113,6 +114,7 @@ describe('ThreadChatCard', () => {
         selectedAssistant={{
           id: 'assistant-1',
           name: 'Planner',
+          description: '',
           instructions: 'Keep plans concise.',
           providerId: 'provider-1',
           workspaceConfig: { rootPath: '/tmp/workspace' },

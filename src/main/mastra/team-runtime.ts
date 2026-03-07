@@ -249,6 +249,7 @@ export class TeamRuntimeService implements TeamRuntime {
         const agent = new Agent({
           id: assistant.id,
           name: assistant.name,
+          description: this.toNonEmptyString(assistant.description) ?? undefined,
           instructions: assistant.instructions || 'You are a helpful team member.',
           model: resolveModel({
             type: provider.type,
@@ -271,7 +272,12 @@ export class TeamRuntimeService implements TeamRuntime {
   private buildSupervisorInstructions(teamDescription: string, assistants: AppAssistant[]): string {
     const normalizedDescription =
       this.toNonEmptyString(teamDescription) ?? 'Coordinate the team to answer the user request.'
-    const roster = assistants.map((assistant) => `- ${assistant.name}`).join('\n')
+    const roster = assistants
+      .map((assistant) => {
+        const description = this.toNonEmptyString(assistant.description)
+        return description ? `- ${assistant.name}: ${description}` : `- ${assistant.name}`
+      })
+      .join('\n')
 
     return `${normalizedDescription}\n\nAvailable team members:\n${roster}`
   }
@@ -435,7 +441,7 @@ export class TeamRuntimeService implements TeamRuntime {
       .filter((item) => item.length > 0)
   }
 
-  private buildProviderOptions(providerType: string): Record<string, unknown> | undefined {
+  private buildProviderOptions(providerType: string): AgentExecutionOptions['providerOptions'] {
     if (providerType !== 'openai-response') {
       return undefined
     }

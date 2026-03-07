@@ -1,7 +1,7 @@
 import os from 'node:os'
 import path from 'node:path'
 import { Agent } from '@mastra/core/agent'
-import type { ToolsInput } from '@mastra/core/agent'
+import type { AgentExecutionOptions, ToolsInput } from '@mastra/core/agent'
 import type { MemoryConfig } from '@mastra/core/memory'
 import type { Mastra } from '@mastra/core/mastra'
 import { LocalFilesystem, LocalSandbox, Workspace } from '@mastra/core/workspace'
@@ -554,7 +554,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
     }
   }
 
-  private buildProviderOptions(providerType: string): Record<string, unknown> | undefined {
+  private buildProviderOptions(providerType: string): AgentExecutionOptions['providerOptions'] {
     if (providerType !== 'openai-response') {
       return undefined
     }

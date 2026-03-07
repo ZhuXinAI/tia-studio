@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS app_providers (
 CREATE TABLE IF NOT EXISTS app_assistants (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
   instructions TEXT NOT NULL DEFAULT '',
   provider_id TEXT,
   workspace_config TEXT NOT NULL DEFAULT '{}',
