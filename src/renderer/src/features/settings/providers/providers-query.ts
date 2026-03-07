@@ -1,3 +1,4 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createApiClient } from '../../../lib/api-client'
 
 export type ProviderType = 'openai' | 'openai-response' | 'gemini' | 'anthropic' | 'ollama'
@@ -38,6 +39,13 @@ type ProviderConnectionTestResult = {
 const apiClient = createApiClient()
 const legacyProvidersStorageKey = 'tia.providers.v1'
 export const providerConnectionEventName = 'tia:provider:test-connection'
+
+// Query keys for cache management
+export const providerKeys = {
+  all: ['providers'] as const,
+  lists: () => [...providerKeys.all, 'list'] as const,
+  detail: (id: string) => [...providerKeys.all, 'detail', id] as const
+}
 
 function normalizeProviderModels(providerModels?: string[]): string[] | null {
   if (!providerModels || providerModels.length === 0) {
@@ -107,6 +115,7 @@ async function migrateLegacyProvidersIfNeeded(
   return true
 }
 
+// Legacy functions (kept for backward compatibility during migration)
 export async function listProviders(): Promise<ProviderRecord[]> {
   const providers = await apiClient.get<ProviderRecord[]>('/v1/providers')
   const migrated = await migrateLegacyProvidersIfNeeded(providers)
@@ -168,4 +177,52 @@ export async function testProviderConnection(input: SaveProviderInput): Promise<
   if (!result.ok) {
     throw new Error(result.error ?? 'Connection check failed')
   }
+}
+
+// TanStack Query hooks
+export function useProviders() {
+  return useQuery({
+    queryKey: providerKeys.lists(),
+    queryFn: listProviders
+  })
+}
+
+export function useCreateProvider() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: createProvider,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: providerKeys.lists() })
+    }
+  })
+}
+
+export function useUpdateProvider() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Partial<SaveProviderInput> }) =>
+      updateProvider(id, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: providerKeys.lists() })
+    }
+  })
+}
+
+export function useDeleteProvider() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: deleteProvider,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: providerKeys.lists() })
+    }
+  })
+}
+
+export function useTestProviderConnection() {
+  return useMutation({
+    mutationFn: testProviderConnection
+  })
 }

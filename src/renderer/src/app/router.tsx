@@ -20,7 +20,15 @@ export const appRoutes: RouteObject[] = [
         loader: () => redirect('/chat')
       },
       {
-        path: 'chat/:assistantId?/:threadId?',
+        path: 'chat',
+        element: <ThreadPage />
+      },
+      {
+        path: 'chat/:assistantId',
+        element: <ThreadPage />
+      },
+      {
+        path: 'chat/:assistantId/:threadId',
         element: <ThreadPage />
       },
       {

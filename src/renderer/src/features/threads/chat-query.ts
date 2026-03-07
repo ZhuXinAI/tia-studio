@@ -70,6 +70,15 @@ export function createThreadChatTransport(
       threadId: input.threadId,
       profileId: input.profileId
     },
+    prepareSendMessagesRequest({ body, id, messages }) {
+      return {
+        body: {
+          ...body,
+          id,
+          message: messages[messages.length - 1]
+        }
+      }
+    },
     fetch: createDesktopChatFetch()
   })
 }

@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createDesktopChatFetch, listThreadChatMessages, resolveDesktopChatUrl } from './chat-query'
+import {
+  createDesktopChatFetch,
+  createThreadChatTransport,
+  listThreadChatMessages,
+  resolveDesktopChatUrl
+} from './chat-query'
 
 describe('chat query', () => {
   beforeEach(() => {
@@ -78,5 +83,55 @@ describe('chat query', () => {
         method: 'GET'
       })
     )
+  })
+
+  it('sends only the latest message in transport request bodies', async () => {
+    const fetchSpy = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(
+      async () => new Response('server error', { status: 500 })
+    )
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const transport = createThreadChatTransport({
+      assistantId: 'assistant-1',
+      threadId: 'thread-1',
+      profileId: 'profile-1'
+    })
+
+    await expect(
+      transport.sendMessages({
+        trigger: 'submit-message',
+        chatId: 'chat-1',
+        messageId: undefined,
+        messages: [
+          {
+            id: 'msg-1',
+            role: 'user',
+            parts: [{ type: 'text', text: 'hello' }]
+          },
+          {
+            id: 'msg-2',
+            role: 'user',
+            parts: [{ type: 'text', text: 'latest' }]
+          }
+        ],
+        abortSignal: undefined,
+        headers: undefined,
+        body: undefined,
+        metadata: undefined
+      })
+    ).rejects.toThrow()
+
+    const requestInit = fetchSpy.mock.calls[0]?.[1]
+    const requestBody = JSON.parse(String(requestInit?.body))
+
+    expect(requestBody).toMatchObject({
+      id: 'chat-1',
+      threadId: 'thread-1',
+      profileId: 'profile-1',
+      message: {
+        id: 'msg-2'
+      }
+    })
+    expect(requestBody.messages).toBeUndefined()
   })
 })

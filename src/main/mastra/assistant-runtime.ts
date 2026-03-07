@@ -277,10 +277,6 @@ export class AssistantRuntimeService implements AssistantRuntime {
       throw new ChatRouteError(409, 'provider_model_missing', 'Assistant provider model is missing')
     }
 
-    if (!this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})) {
-      throw new ChatRouteError(409, 'assistant_not_ready', 'Assistant workspace is not configured')
-    }
-
     return { assistant, provider }
   }
 
@@ -365,7 +361,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       instructions: agentInstructions,
       model: model as never,
       memory,
-      workspace,
+      ...(workspace ? { workspace } : {}),
       tools,
       inputProcessors: [new AttachmentUploader()]
     })
@@ -377,10 +373,10 @@ export class AssistantRuntimeService implements AssistantRuntime {
   private async buildWorkspace(
     workspaceConfig: JsonObject,
     skillsConfig: JsonObject
-  ): Promise<Workspace> {
+  ): Promise<Workspace | undefined> {
     const rootPath = this.resolveWorkspaceRootPath(workspaceConfig)
     if (!rootPath) {
-      throw new ChatRouteError(409, 'assistant_not_ready', 'Assistant workspace is not configured')
+      return undefined
     }
 
     const skillsPaths = this.resolveSkillsPaths(rootPath, skillsConfig)
