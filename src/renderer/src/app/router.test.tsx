@@ -107,4 +107,34 @@ describe('app router', () => {
     expect(html).toContain('Team Chat')
     expect(html).toContain('Team Status')
   })
+
+  it('renders a direct team thread route without falling into the route error UI', async () => {
+    const router = createAppMemoryRouter(['/team/workspace-1/thread-1'])
+
+    await router.navigate('/team/workspace-1/thread-1')
+
+    const html = renderToString(
+      <QueryClientProvider
+        client={
+          new QueryClient({
+            defaultOptions: {
+              queries: {
+                retry: false
+              },
+              mutations: {
+                retry: false
+              }
+            }
+          })
+        }
+      >
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    )
+
+    expect(router.state.location.pathname).toBe('/team/workspace-1/thread-1')
+    expect(html).toContain('Team Workspaces')
+    expect(html).not.toContain('Something went wrong')
+    expect(html).not.toContain('Not Found')
+  })
 })

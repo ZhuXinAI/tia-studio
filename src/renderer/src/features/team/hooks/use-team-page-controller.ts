@@ -14,6 +14,7 @@ import {
 } from '../team-chat-query'
 import {
   createTeamThread,
+  deleteTeamThread,
   listTeamThreads,
   type TeamThreadRecord
 } from '../team-threads-query'
@@ -135,6 +136,7 @@ export function useTeamPageController() {
   const [isLoadingChatHistory, setIsLoadingChatHistory] = useState(false)
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false)
   const [isCreatingThread, setIsCreatingThread] = useState(false)
+  const [deletingThreadId, setDeletingThreadId] = useState<string | null>(null)
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false)
   const [isSavingConfig, setIsSavingConfig] = useState(false)
   const [configError, setConfigError] = useState<string | null>(null)
@@ -175,6 +177,7 @@ export function useTeamPageController() {
       selectedMembers
     })
   }, [providers, selectedMemberIds, selectedMembers, selectedThread, selectedWorkspace])
+  const selectedThreadProfileId = selectedThread?.resourceId ?? profileId
 
   const handleRunStarted = useCallback(
     (runId: string) => {
@@ -207,10 +210,10 @@ export function useTeamPageController() {
 
     return createTeamChatTransport({
       threadId: selectedThread.id,
-      profileId,
+      profileId: selectedThreadProfileId,
       onRunStarted: handleRunStarted
     })
-  }, [handleRunStarted, profileId, selectedThread])
+  }, [handleRunStarted, selectedThread, selectedThreadProfileId])
 
   const chat = useChat({
     id: selectedThread ? `team:${selectedThread.id}` : 'team-chat',
@@ -389,7 +392,7 @@ export function useTeamPageController() {
 
     void listTeamThreadMessages({
       threadId: selectedThread.id,
-      profileId
+      profileId: selectedThreadProfileId
     })
       .then((messages) => {
         if (!active) {
@@ -415,7 +418,7 @@ export function useTeamPageController() {
     return () => {
       active = false
     }
-  }, [profileId, selectedThread, setMessages])
+  }, [selectedThread, selectedThreadProfileId, setMessages])
 
   const selectWorkspacePath = useCallback(async (): Promise<string | null> => {
     const picker = window.tiaDesktop?.pickDirectory
@@ -489,6 +492,27 @@ export function useTeamPageController() {
     }
   }, [navigate, profileId, selectedWorkspace])
 
+  const handleDeleteThread = useCallback(
+    async (thread: TeamThreadRecord): Promise<void> => {
+      setDeletingThreadId(thread.id)
+      setLoadError(null)
+
+      try {
+        await deleteTeamThread(thread.id)
+        setThreads((currentThreads) => currentThreads.filter((currentThread) => currentThread.id !== thread.id))
+
+        if (params.threadId === thread.id) {
+          navigate(routeToTeam(thread.workspaceId), { replace: true })
+        }
+      } catch (error) {
+        setLoadError(toErrorMessage(error))
+      } finally {
+        setDeletingThreadId(null)
+      }
+    },
+    [navigate, params.threadId]
+  )
+
   const handleSubmitConfig = useCallback(
     async (input: TeamConfigDialogValues): Promise<void> => {
       if (!selectedWorkspace) {
@@ -515,7 +539,7 @@ export function useTeamPageController() {
       } catch (error) {
         setConfigError(toErrorMessage(error))
       } finally {
-      setIsSavingConfig(false)
+        setIsSavingConfig(false)
       }
     },
     [selectedWorkspace]
@@ -565,6 +589,7 @@ export function useTeamPageController() {
     isLoadingChatHistory,
     isCreatingWorkspace,
     isCreatingThread,
+    deletingThreadId,
     isConfigDialogOpen,
     isSavingConfig,
     configError,
@@ -576,6 +601,7 @@ export function useTeamPageController() {
     handleSelectThread,
     handleCreateWorkspace,
     handleCreateThread,
+    handleDeleteThread,
     handleSubmitConfig,
     handleSubmitMessage,
     handleAbortGeneration,

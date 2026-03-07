@@ -20,10 +20,12 @@ export function TeamPage(): React.JSX.Element {
             isLoadingThreads={controller.isLoadingThreads}
             isCreatingWorkspace={controller.isCreatingWorkspace}
             isCreatingThread={controller.isCreatingThread}
+            deletingThreadId={controller.deletingThreadId}
             onCreateWorkspace={controller.handleCreateWorkspace}
             onCreateThread={controller.handleCreateThread}
             onSelectWorkspace={controller.handleSelectWorkspace}
             onSelectThread={controller.handleSelectThread}
+            onDeleteThread={controller.handleDeleteThread}
           />
         </aside>
 

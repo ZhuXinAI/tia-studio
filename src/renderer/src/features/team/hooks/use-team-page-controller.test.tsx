@@ -9,6 +9,7 @@ const mockState = vi.hoisted(() => {
 
   return {
     routeParams,
+    activeResourceId: 'default-profile',
     listTeamWorkspacesMock: vi.fn(),
     createTeamWorkspaceMock: vi.fn(),
     updateTeamWorkspaceMock: vi.fn(),
@@ -19,6 +20,7 @@ const mockState = vi.hoisted(() => {
     createTeamThreadMock: vi.fn(),
     updateTeamThreadMock: vi.fn(),
     replaceTeamThreadMembersMock: vi.fn(),
+    deleteTeamThreadMock: vi.fn(),
     listTeamThreadMessagesMock: vi.fn(),
     createTeamChatTransportMock: vi.fn(),
     openTeamStatusStreamMock: vi.fn(),
@@ -60,7 +62,8 @@ vi.mock('../team-threads-query', () => ({
   createTeamThread: (...args: unknown[]) => mockState.createTeamThreadMock(...args),
   updateTeamThread: (...args: unknown[]) => mockState.updateTeamThreadMock(...args),
   replaceTeamThreadMembers: (...args: unknown[]) =>
-    mockState.replaceTeamThreadMembersMock(...args)
+    mockState.replaceTeamThreadMembersMock(...args),
+  deleteTeamThread: (...args: unknown[]) => mockState.deleteTeamThreadMock(...args)
 }))
 
 vi.mock('../team-chat-query', () => ({
@@ -73,7 +76,7 @@ vi.mock('../team-status-stream', () => ({
 }))
 
 vi.mock('../../threads/threads-query', () => ({
-  getActiveResourceId: () => 'default-profile'
+  getActiveResourceId: () => mockState.activeResourceId
 }))
 
 vi.mock('../../threads/thread-page-routing', () => ({
@@ -117,6 +120,18 @@ function Harness({
   return <div />
 }
 
+async function rerenderHarness(): Promise<void> {
+  await act(async () => {
+    root.render(
+      <Harness
+        onControllerChange={(value) => {
+          controller = value
+        }}
+      />
+    )
+  })
+}
+
 async function waitForCondition(condition: () => boolean, description: string): Promise<void> {
   for (let attempt = 0; attempt < 40; attempt += 1) {
     if (condition()) {
@@ -141,6 +156,7 @@ describe('useTeamPageController', () => {
       mockState.routeParams.workspaceId = segments[1]
       mockState.routeParams.threadId = segments[2]
     })
+    mockState.activeResourceId = 'default-profile'
     mockState.listTeamWorkspacesMock.mockReset()
     mockState.listTeamWorkspacesMock.mockResolvedValue([
       {
@@ -172,6 +188,8 @@ describe('useTeamPageController', () => {
     mockState.createTeamThreadMock.mockReset()
     mockState.updateTeamThreadMock.mockReset()
     mockState.replaceTeamThreadMembersMock.mockReset()
+    mockState.deleteTeamThreadMock.mockReset()
+    mockState.deleteTeamThreadMock.mockResolvedValue(undefined)
 
     mockState.listTeamThreadsMock.mockReset()
     mockState.listTeamThreadsMock.mockResolvedValue([
@@ -272,15 +290,7 @@ describe('useTeamPageController', () => {
   })
 
   it('blocks send when the selected workspace has no members', async () => {
-    await act(async () => {
-      root.render(
-        <Harness
-          onControllerChange={(value) => {
-            controller = value
-          }}
-        />
-      )
-    })
+    await rerenderHarness()
 
     await waitForCondition(
       () => controller?.selectedWorkspace?.id === 'workspace-1',
@@ -304,15 +314,7 @@ describe('useTeamPageController', () => {
       } as unknown
     ])
 
-    await act(async () => {
-      root.render(
-        <Harness
-          onControllerChange={(value) => {
-            controller = value
-          }}
-        />
-      )
-    })
+    await rerenderHarness()
 
     await waitForCondition(
       () => controller?.selectedWorkspace?.id === 'workspace-1',
@@ -329,15 +331,7 @@ describe('useTeamPageController', () => {
   })
 
   it('opens config immediately after creating a workspace', async () => {
-    await act(async () => {
-      root.render(
-        <Harness
-          onControllerChange={(value) => {
-            controller = value
-          }}
-        />
-      )
-    })
+    await rerenderHarness()
 
     await waitForCondition(() => controller?.selectedWorkspace?.id === 'workspace-1', 'initial workspace load')
 
@@ -386,15 +380,7 @@ describe('useTeamPageController', () => {
       }
     ])
 
-    await act(async () => {
-      root.render(
-        <Harness
-          onControllerChange={(value) => {
-            controller = value
-          }}
-        />
-      )
-    })
+    await rerenderHarness()
 
     await waitForCondition(
       () => controller?.selectedWorkspace?.id === 'workspace-1' && controller?.selectedThread === null,
@@ -440,15 +426,7 @@ describe('useTeamPageController', () => {
       updatedAt: '2026-03-07T00:00:00.000Z'
     })
 
-    await act(async () => {
-      root.render(
-        <Harness
-          onControllerChange={(value) => {
-            controller = value
-          }}
-        />
-      )
-    })
+    await rerenderHarness()
 
     await waitForCondition(() => controller?.selectedWorkspace?.id === 'workspace-1', 'workspace load')
 
@@ -460,5 +438,87 @@ describe('useTeamPageController', () => {
       workspaceId: 'workspace-1',
       resourceId: 'default-profile'
     })
+  })
+
+  it('loads team history with the selected thread resource id', async () => {
+    mockState.activeResourceId = 'profile-from-main-chat'
+    mockState.routeParams.threadId = undefined
+    mockState.listTeamThreadsMock.mockResolvedValue([
+      {
+        id: 'thread-1',
+        workspaceId: 'workspace-1',
+        resourceId: 'profile-from-team-thread',
+        title: 'Release Team',
+        teamDescription: 'Coordinate the release checklist.',
+        supervisorProviderId: 'provider-1',
+        supervisorModel: 'gpt-5',
+        lastMessageAt: null,
+        createdAt: '2026-03-07T00:00:00.000Z',
+        updatedAt: '2026-03-07T00:00:00.000Z'
+      }
+    ])
+
+    await rerenderHarness()
+
+    await waitForCondition(
+      () => controller?.selectedWorkspace?.id === 'workspace-1',
+      'workspace load'
+    )
+
+    act(() => {
+      mockState.routeParams.threadId = 'thread-1'
+    })
+    await rerenderHarness()
+
+    await waitForCondition(
+      () =>
+        mockState.listTeamThreadMessagesMock.mock.calls.some(
+          ([input]) => (input as { profileId: string }).profileId === 'profile-from-team-thread'
+        ),
+      'team thread history load'
+    )
+
+    expect(mockState.createTeamChatTransportMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        threadId: 'thread-1',
+        profileId: 'profile-from-team-thread'
+      })
+    )
+    expect(mockState.listTeamThreadMessagesMock).toHaveBeenCalledWith({
+      threadId: 'thread-1',
+      profileId: 'profile-from-team-thread'
+    })
+  })
+
+  it('deletes the selected team thread and returns to the workspace route', async () => {
+    mockState.routeParams.threadId = undefined
+
+    await rerenderHarness()
+
+    await waitForCondition(
+      () => controller?.selectedWorkspace?.id === 'workspace-1',
+      'workspace load'
+    )
+
+    act(() => {
+      mockState.routeParams.threadId = 'thread-1'
+    })
+    await rerenderHarness()
+
+    await waitForCondition(
+      () => controller?.selectedThread?.id === 'thread-1',
+      'thread selection'
+    )
+
+    const selectedThread = controller?.selectedThread
+    expect(selectedThread).not.toBeNull()
+
+    await act(async () => {
+      await controller?.handleDeleteThread(selectedThread!)
+    })
+
+    expect(mockState.deleteTeamThreadMock).toHaveBeenCalledWith('thread-1')
+    expect(mockState.navigateMock).toHaveBeenCalledWith('/team/workspace-1', { replace: true })
+    expect(controller?.threads).toEqual([])
   })
 })
