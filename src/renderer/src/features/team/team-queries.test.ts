@@ -6,6 +6,8 @@ import {
   createTeamWorkspace,
   deleteTeamWorkspace,
   listTeamWorkspaces,
+  listTeamWorkspaceMembers,
+  replaceTeamWorkspaceMembers,
   updateTeamWorkspace
 } from './team-workspaces-query'
 import {
@@ -28,6 +30,9 @@ function createWorkspaceRecord(id: string) {
     id,
     name: 'Docs Workspace',
     rootPath: '/Users/demo/project',
+    teamDescription: 'Coordinate docs release',
+    supervisorProviderId: 'provider-1',
+    supervisorModel: 'gpt-5',
     createdAt: '2026-03-07T00:00:00.000Z',
     updatedAt: '2026-03-07T00:00:00.000Z'
   }
@@ -38,7 +43,7 @@ function createThreadRecord(id: string) {
     id,
     workspaceId: 'workspace-1',
     resourceId: 'default-profile',
-    title: 'Release Team',
+    title: '',
     teamDescription: 'Coordinate the release checklist.',
     supervisorProviderId: 'provider-1',
     supervisorModel: 'gpt-5',
@@ -63,6 +68,18 @@ describe('team renderer data layer', () => {
   it('calls the team workspace and thread endpoints', async () => {
     const workspaceRecord = createWorkspaceRecord('workspace-1')
     const threadRecord = createThreadRecord('thread-1')
+    const updatedThreadRecord = {
+      ...threadRecord,
+      title: 'Release Team'
+    }
+    const workspaceMembers = [
+      {
+        workspaceId: 'workspace-1',
+        assistantId: 'assistant-2',
+        sortOrder: 0,
+        createdAt: '2026-03-07T00:00:00.000Z'
+      }
+    ]
     const members = [
       {
         teamThreadId: 'thread-1',
@@ -99,6 +116,18 @@ describe('team renderer data layer', () => {
           headers: { 'Content-Type': 'application/json' }
         })
       )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(workspaceMembers), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(workspaceMembers), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      )
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(
         new Response(JSON.stringify([threadRecord]), {
@@ -113,7 +142,7 @@ describe('team renderer data layer', () => {
         })
       )
       .mockResolvedValueOnce(
-        new Response(JSON.stringify(threadRecord), {
+        new Response(JSON.stringify(updatedThreadRecord), {
           status: 200,
           headers: { 'Content-Type': 'application/json' }
         })
@@ -148,25 +177,29 @@ describe('team renderer data layer', () => {
     ).resolves.toEqual(workspaceRecord)
     await expect(
       updateTeamWorkspace('workspace-1', {
-        name: 'Docs Workspace'
+        teamDescription: 'Coordinate docs release',
+        supervisorProviderId: 'provider-1',
+        supervisorModel: 'gpt-5'
       })
     ).resolves.toEqual(workspaceRecord)
+    await expect(listTeamWorkspaceMembers('workspace-1')).resolves.toEqual(workspaceMembers)
+    await expect(replaceTeamWorkspaceMembers('workspace-1', ['assistant-2'])).resolves.toEqual(
+      workspaceMembers
+    )
     await deleteTeamWorkspace('workspace-1')
 
     await expect(listTeamThreads('workspace-1')).resolves.toEqual([threadRecord])
     await expect(
       createTeamThread({
         workspaceId: 'workspace-1',
-        resourceId: 'default-profile',
-        title: 'Release Team'
+        resourceId: 'default-profile'
       })
     ).resolves.toEqual(threadRecord)
     await expect(
       updateTeamThread('thread-1', {
-        supervisorProviderId: 'provider-1',
-        supervisorModel: 'gpt-5'
+        title: 'Release Team'
       })
-    ).resolves.toEqual(threadRecord)
+    ).resolves.toEqual(updatedThreadRecord)
     await expect(listTeamThreadMembers('thread-1')).resolves.toEqual(members)
     await expect(replaceTeamThreadMembers('thread-1', ['assistant-2'])).resolves.toEqual(members)
     await deleteTeamThread('thread-1')
@@ -183,20 +216,60 @@ describe('team renderer data layer', () => {
       expect.objectContaining({ method: 'GET' })
     )
     expect(fetchSpy).toHaveBeenNthCalledWith(
-      5,
+      4,
+      'http://127.0.0.1:4769/v1/team/workspaces/workspace-1/members',
+      expect.objectContaining({ method: 'GET' })
+    )
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      7,
       'http://127.0.0.1:4769/v1/team/threads?workspaceId=workspace-1',
       expect.objectContaining({ method: 'GET' })
     )
     expect(fetchSpy).toHaveBeenNthCalledWith(
-      8,
+      10,
       'http://127.0.0.1:4769/v1/team/threads/thread-1/members',
       expect.objectContaining({ method: 'GET' })
     )
     expect(fetchSpy).toHaveBeenNthCalledWith(
-      11,
+      13,
       'http://127.0.0.1:4769/team-chat/thread-1/history?profileId=default-profile',
       expect.objectContaining({ method: 'GET' })
     )
+  })
+
+  it('normalizes sparse team workspace payloads from the API', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify([
+            {
+              id: 'workspace-1',
+              name: 'Docs Workspace',
+              createdAt: '2026-03-07T00:00:00.000Z',
+              updatedAt: '2026-03-07T00:00:00.000Z'
+            }
+          ]),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
+      )
+    )
+
+    await expect(listTeamWorkspaces()).resolves.toEqual([
+      {
+        id: 'workspace-1',
+        name: 'Docs Workspace',
+        rootPath: '',
+        teamDescription: '',
+        supervisorProviderId: null,
+        supervisorModel: '',
+        createdAt: '2026-03-07T00:00:00.000Z',
+        updatedAt: '2026-03-07T00:00:00.000Z'
+      }
+    ])
   })
 
   it('creates a team chat transport for the team endpoint and captures the run id header', async () => {

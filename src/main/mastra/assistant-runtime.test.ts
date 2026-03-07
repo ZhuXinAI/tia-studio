@@ -36,6 +36,7 @@ function buildAssistant(): AppAssistant {
   return {
     id: 'assistant-1',
     name: 'TIA',
+    description: 'Handles general assistant requests.',
     instructions: 'You are helpful.',
     providerId: 'provider-1',
     workspaceConfig: { rootPath: '/tmp' },
@@ -48,7 +49,7 @@ function buildAssistant(): AppAssistant {
   }
 }
 
-function buildProvider(): AppProvider {
+function buildProvider(overrides?: Partial<AppProvider>): AppProvider {
   return {
     id: 'provider-1',
     name: 'openai',
@@ -63,7 +64,8 @@ function buildProvider(): AppProvider {
     icon: null,
     officialSite: null,
     createdAt: '2026-03-02T00:00:00.000Z',
-    updatedAt: '2026-03-02T00:00:00.000Z'
+    updatedAt: '2026-03-02T00:00:00.000Z',
+    ...overrides
   }
 }
 
@@ -220,6 +222,55 @@ describe('AssistantRuntimeService', () => {
       expect.objectContaining({
         params: expect.objectContaining({
           maxSteps: 17
+        })
+      })
+    )
+  })
+
+  it('disables OpenAI Responses storage for openai-response providers', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(new ReadableStream())
+
+    const assistant = buildAssistant()
+    const runtime = new AssistantRuntimeService({
+      mastra: await createMastraInstance(':memory:'),
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider({ type: 'openai-response' }))
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1'
+        }))
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    await runtime.streamChat({
+      assistantId: assistant.id,
+      threadId: 'thread-1',
+      profileId: 'profile-1',
+      messages: []
+    })
+
+    expect(handleChatStreamMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          providerOptions: {
+            openai: {
+              store: false
+            }
+          }
         })
       })
     )

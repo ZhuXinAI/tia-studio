@@ -78,6 +78,7 @@ function buildAssistant(overrides?: Partial<AppAssistant>): AppAssistant {
   return {
     id: 'assistant-1',
     name: 'Researcher',
+    description: 'Finds facts, sources, and supporting evidence.',
     instructions: 'Research the problem.',
     providerId: 'provider-member',
     workspaceConfig: {
@@ -109,6 +110,77 @@ function buildProvider(overrides?: Partial<AppProvider>): AppProvider {
     officialSite: null,
     createdAt: '2026-03-07T00:00:00.000Z',
     updatedAt: '2026-03-07T00:00:00.000Z',
+    ...overrides
+  }
+}
+
+function buildTeamWorkspace(
+  overrides?: Partial<{
+    id: string
+    name: string
+    rootPath: string
+    teamDescription: string
+    supervisorProviderId: string | null
+    supervisorModel: string
+    createdAt: string
+    updatedAt: string
+  }>
+) {
+  return {
+    id: 'workspace-1',
+    name: 'Team Workspace',
+    rootPath: '/team/workspace',
+    teamDescription: 'Coordinate release',
+    supervisorProviderId: 'provider-supervisor',
+    supervisorModel: 'gpt-5',
+    createdAt: '2026-03-07T00:00:00.000Z',
+    updatedAt: '2026-03-07T00:00:00.000Z',
+    ...overrides
+  }
+}
+
+function buildTeamThread(
+  overrides?: Partial<{
+    id: string
+    workspaceId: string
+    resourceId: string
+    title: string
+    teamDescription: string
+    supervisorProviderId: string | null
+    supervisorModel: string
+    lastMessageAt: string | null
+    createdAt: string
+    updatedAt: string
+  }>
+) {
+  return {
+    id: 'team-thread-1',
+    workspaceId: 'workspace-1',
+    resourceId: 'default-profile',
+    title: 'Release team',
+    teamDescription: 'Legacy thread description',
+    supervisorProviderId: null,
+    supervisorModel: '',
+    lastMessageAt: null,
+    createdAt: '2026-03-07T00:00:00.000Z',
+    updatedAt: '2026-03-07T00:00:00.000Z',
+    ...overrides
+  }
+}
+
+function buildWorkspaceMember(
+  assistantId: string,
+  overrides?: Partial<{
+    workspaceId: string
+    sortOrder: number
+    createdAt: string
+  }>
+) {
+  return {
+    workspaceId: 'workspace-1',
+    assistantId,
+    sortOrder: 0,
+    createdAt: '2026-03-07T00:00:00.000Z',
     ...overrides
   }
 }
@@ -215,35 +287,11 @@ describe('TeamRuntimeService', () => {
         )
       } as unknown as ProvidersRepository,
       teamWorkspacesRepo: {
-        getById: vi.fn(async () => ({
-          id: 'workspace-1',
-          name: 'Team Workspace',
-          rootPath: '/team/workspace',
-          createdAt: '2026-03-07T00:00:00.000Z',
-          updatedAt: '2026-03-07T00:00:00.000Z'
-        }))
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [buildWorkspaceMember('assistant-1')])
       } as unknown as TeamWorkspacesRepository,
       teamThreadsRepo: {
-        getById: vi.fn(async () => ({
-          id: 'team-thread-1',
-          workspaceId: 'workspace-1',
-          resourceId: 'default-profile',
-          title: 'Release team',
-          teamDescription: 'Coordinate release',
-          supervisorProviderId: 'provider-supervisor',
-          supervisorModel: 'gpt-5',
-          lastMessageAt: null,
-          createdAt: '2026-03-07T00:00:00.000Z',
-          updatedAt: '2026-03-07T00:00:00.000Z'
-        })),
-        listMembers: vi.fn(async () => [
-          {
-            teamThreadId: 'team-thread-1',
-            assistantId: 'assistant-1',
-            sortOrder: 0,
-            createdAt: '2026-03-07T00:00:00.000Z'
-          }
-        ]),
+        getById: vi.fn(async () => buildTeamThread()),
         touchLastMessageAt: vi.fn(async () => undefined)
       } as unknown as TeamThreadsRepository,
       statusStore: new TeamRunStatusStore()
@@ -277,41 +325,14 @@ describe('TeamRuntimeService', () => {
         getById: vi.fn(async (id: string) => buildProvider({ id }))
       } as unknown as ProvidersRepository,
       teamWorkspacesRepo: {
-        getById: vi.fn(async () => ({
-          id: 'workspace-1',
-          name: 'Team Workspace',
-          rootPath: '/team/workspace',
-          createdAt: '2026-03-07T00:00:00.000Z',
-          updatedAt: '2026-03-07T00:00:00.000Z'
-        }))
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [
+          buildWorkspaceMember('assistant-live', { sortOrder: 0 }),
+          buildWorkspaceMember('assistant-missing', { sortOrder: 1 })
+        ])
       } as unknown as TeamWorkspacesRepository,
       teamThreadsRepo: {
-        getById: vi.fn(async () => ({
-          id: 'team-thread-1',
-          workspaceId: 'workspace-1',
-          resourceId: 'default-profile',
-          title: 'Release team',
-          teamDescription: 'Coordinate release',
-          supervisorProviderId: 'provider-supervisor',
-          supervisorModel: 'gpt-5',
-          lastMessageAt: null,
-          createdAt: '2026-03-07T00:00:00.000Z',
-          updatedAt: '2026-03-07T00:00:00.000Z'
-        })),
-        listMembers: vi.fn(async () => [
-          {
-            teamThreadId: 'team-thread-1',
-            assistantId: 'assistant-live',
-            sortOrder: 0,
-            createdAt: '2026-03-07T00:00:00.000Z'
-          },
-          {
-            teamThreadId: 'team-thread-1',
-            assistantId: 'assistant-missing',
-            sortOrder: 1,
-            createdAt: '2026-03-07T00:00:00.000Z'
-          }
-        ]),
+        getById: vi.fn(async () => buildTeamThread()),
         touchLastMessageAt: vi.fn(async () => undefined)
       } as unknown as TeamThreadsRepository,
       statusStore: new TeamRunStatusStore()
@@ -328,6 +349,89 @@ describe('TeamRuntimeService', () => {
     expect(Object.keys(supervisorConfig?.agents ?? {})).toEqual(['assistant-live'])
   })
 
+  it('passes assistant descriptions into team routing context', async () => {
+    const runtime = new TeamRuntimeService({
+      mastra: { getStorage: () => null } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () =>
+          buildAssistant({
+            description: 'Investigates bugs, facts, and source material.'
+          })
+        )
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async (id: string) => buildProvider({ id }))
+      } as unknown as ProvidersRepository,
+      teamWorkspacesRepo: {
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [buildWorkspaceMember('assistant-1')])
+      } as unknown as TeamWorkspacesRepository,
+      teamThreadsRepo: {
+        getById: vi.fn(async () => buildTeamThread()),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as TeamThreadsRepository,
+      statusStore: new TeamRunStatusStore()
+    })
+
+    await runtime.streamTeamChat({
+      threadId: 'team-thread-1',
+      profileId: 'default-profile',
+      messages: []
+    })
+
+    const memberConfig = agentConfigs.find((config) => config.id === 'assistant-1') as
+      | { description?: string }
+      | undefined
+    const supervisorConfig = agentConfigs.at(-1) as { instructions?: string } | undefined
+
+    expect(memberConfig?.description).toBe('Investigates bugs, facts, and source material.')
+    expect(supervisorConfig?.instructions).toContain(
+      '- Researcher: Investigates bugs, facts, and source material.'
+    )
+  })
+
+  it('disables OpenAI Responses storage for openai-response supervisors', async () => {
+    const runtime = new TeamRuntimeService({
+      mastra: { getStorage: () => null } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => buildAssistant())
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async (id: string) =>
+          id === 'provider-supervisor'
+            ? buildProvider({ id, type: 'openai-response' })
+            : buildProvider({ id })
+        )
+      } as unknown as ProvidersRepository,
+      teamWorkspacesRepo: {
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [buildWorkspaceMember('assistant-1')])
+      } as unknown as TeamWorkspacesRepository,
+      teamThreadsRepo: {
+        getById: vi.fn(async () => buildTeamThread()),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as TeamThreadsRepository,
+      statusStore: new TeamRunStatusStore()
+    })
+
+    await runtime.streamTeamChat({
+      threadId: 'team-thread-1',
+      profileId: 'default-profile',
+      messages: []
+    })
+
+    expect(agentStreamMock).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({
+        providerOptions: {
+          openai: {
+            store: false
+          }
+        }
+      })
+    )
+  })
+
   it('rejects invalid team thread configuration', async () => {
     const runtime = new TeamRuntimeService({
       mastra: { getStorage: () => null } as unknown as Mastra,
@@ -338,28 +442,11 @@ describe('TeamRuntimeService', () => {
         getById: vi.fn(async (id: string) => buildProvider({ id }))
       } as unknown as ProvidersRepository,
       teamWorkspacesRepo: {
-        getById: vi.fn(async () => ({
-          id: 'workspace-1',
-          name: 'Team Workspace',
-          rootPath: '/team/workspace',
-          createdAt: '2026-03-07T00:00:00.000Z',
-          updatedAt: '2026-03-07T00:00:00.000Z'
-        }))
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [])
       } as unknown as TeamWorkspacesRepository,
       teamThreadsRepo: {
-        getById: vi.fn(async () => ({
-          id: 'team-thread-1',
-          workspaceId: 'workspace-1',
-          resourceId: 'default-profile',
-          title: 'Release team',
-          teamDescription: 'Coordinate release',
-          supervisorProviderId: 'provider-supervisor',
-          supervisorModel: 'gpt-5',
-          lastMessageAt: null,
-          createdAt: '2026-03-07T00:00:00.000Z',
-          updatedAt: '2026-03-07T00:00:00.000Z'
-        })),
-        listMembers: vi.fn(async () => []),
+        getById: vi.fn(async () => buildTeamThread()),
         touchLastMessageAt: vi.fn(async () => undefined)
       } as unknown as TeamThreadsRepository,
       statusStore: new TeamRunStatusStore()
@@ -387,35 +474,11 @@ describe('TeamRuntimeService', () => {
         getById: vi.fn(async (id: string) => buildProvider({ id }))
       } as unknown as ProvidersRepository,
       teamWorkspacesRepo: {
-        getById: vi.fn(async () => ({
-          id: 'workspace-1',
-          name: 'Team Workspace',
-          rootPath: '/team/workspace',
-          createdAt: '2026-03-07T00:00:00.000Z',
-          updatedAt: '2026-03-07T00:00:00.000Z'
-        }))
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [buildWorkspaceMember('assistant-1')])
       } as unknown as TeamWorkspacesRepository,
       teamThreadsRepo: {
-        getById: vi.fn(async () => ({
-          id: 'team-thread-1',
-          workspaceId: 'workspace-1',
-          resourceId: 'default-profile',
-          title: 'Release team',
-          teamDescription: 'Coordinate release',
-          supervisorProviderId: 'provider-supervisor',
-          supervisorModel: 'gpt-5',
-          lastMessageAt: null,
-          createdAt: '2026-03-07T00:00:00.000Z',
-          updatedAt: '2026-03-07T00:00:00.000Z'
-        })),
-        listMembers: vi.fn(async () => [
-          {
-            teamThreadId: 'team-thread-1',
-            assistantId: 'assistant-1',
-            sortOrder: 0,
-            createdAt: '2026-03-07T00:00:00.000Z'
-          }
-        ]),
+        getById: vi.fn(async () => buildTeamThread()),
         touchLastMessageAt: vi.fn(async () => undefined)
       } as unknown as TeamThreadsRepository,
       statusStore
@@ -477,28 +540,11 @@ describe('TeamRuntimeService', () => {
         getById: vi.fn(async (id: string) => buildProvider({ id }))
       } as unknown as ProvidersRepository,
       teamWorkspacesRepo: {
-        getById: vi.fn(async () => ({
-          id: 'workspace-1',
-          name: 'Team Workspace',
-          rootPath: '/team/workspace',
-          createdAt: '2026-03-07T00:00:00.000Z',
-          updatedAt: '2026-03-07T00:00:00.000Z'
-        }))
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [])
       } as unknown as TeamWorkspacesRepository,
       teamThreadsRepo: {
-        getById: vi.fn(async () => ({
-          id: 'team-thread-1',
-          workspaceId: 'workspace-1',
-          resourceId: 'default-profile',
-          title: 'Release team',
-          teamDescription: 'Coordinate release',
-          supervisorProviderId: 'provider-supervisor',
-          supervisorModel: 'gpt-5',
-          lastMessageAt: null,
-          createdAt: '2026-03-07T00:00:00.000Z',
-          updatedAt: '2026-03-07T00:00:00.000Z'
-        })),
-        listMembers: vi.fn(async () => []),
+        getById: vi.fn(async () => buildTeamThread()),
         touchLastMessageAt: vi.fn(async () => undefined)
       } as unknown as TeamThreadsRepository,
       statusStore: new TeamRunStatusStore()
@@ -515,5 +561,53 @@ describe('TeamRuntimeService', () => {
       perPage: false
     })
     expect(messages).toEqual(uiMessages)
+  })
+
+  it('syncs generated team thread titles from Mastra memory after streaming', async () => {
+    const getThreadById = vi.fn(async () => ({
+      title: 'Plan release checklist'
+    }))
+    const updateTitle = vi.fn(async () => buildTeamThread({ title: 'Plan release checklist' }))
+
+    const runtime = new TeamRuntimeService({
+      mastra: {
+        getStorage: () => ({
+          getStore: async () => ({
+            getThreadById
+          })
+        })
+      } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => buildAssistant())
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async (id: string) => buildProvider({ id }))
+      } as unknown as ProvidersRepository,
+      teamWorkspacesRepo: {
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [buildWorkspaceMember('assistant-1')])
+      } as unknown as TeamWorkspacesRepository,
+      teamThreadsRepo: {
+        getById: vi.fn(async () => buildTeamThread({ title: '' })),
+        touchLastMessageAt: vi.fn(async () => undefined),
+        updateTitle
+      } as unknown as TeamThreadsRepository,
+      statusStore: new TeamRunStatusStore()
+    })
+
+    await drainStream(
+      (
+        await runtime.streamTeamChat({
+          threadId: 'team-thread-1',
+          profileId: 'default-profile',
+          messages: [{ id: '1', role: 'user', parts: [{ type: 'text', text: 'Plan release' }] }]
+        })
+      ).stream
+    )
+
+    expect(getThreadById).toHaveBeenCalledWith({
+      threadId: 'team-thread-1'
+    })
+    expect(updateTitle).toHaveBeenCalledWith('team-thread-1', 'Plan release checklist')
   })
 })

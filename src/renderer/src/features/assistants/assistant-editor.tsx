@@ -13,6 +13,7 @@ import { ModelPickerDialog } from './model-picker-dialog'
 
 type AssistantEditorValues = {
   name: string
+  description: string
   instructions: string
   providerId: string
   workspacePath: string
@@ -93,6 +94,7 @@ function toInitialValues(
 
   return {
     name: initialValue?.name ?? '',
+    description: initialValue?.description ?? '',
     instructions: initialValue?.instructions ?? '',
     providerId: initialValue?.providerId ?? '',
     workspacePath:
@@ -196,6 +198,7 @@ export function AssistantEditor({
 
     await onSubmit({
       name: values.name.trim(),
+      description: values.description.trim(),
       instructions: values.instructions.trim(),
       providerId: values.providerId,
       workspaceConfig: workspacePath.length > 0 ? {
@@ -287,6 +290,20 @@ export function AssistantEditor({
                   </span>
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="assistant-description">Description</FieldLabel>
+                <p className="text-muted-foreground text-xs mb-2">
+                  Helps the team supervisor choose this assistant for the right task.
+                </p>
+                <Textarea
+                  id="assistant-description"
+                  rows={2}
+                  value={values.description}
+                  onChange={(event) => handleInput('description', event.target.value)}
+                  placeholder="Researches facts, finds sources, and validates claims."
+                />
               </Field>
 
               <Field>

@@ -51,8 +51,7 @@ describe('team threads route', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         workspaceId,
-        resourceId: 'default-profile',
-        title: 'Release team'
+        resourceId: 'default-profile'
       })
     })
 
@@ -67,7 +66,7 @@ describe('team threads route', () => {
     await expect(listResponse.json()).resolves.toEqual([
       expect.objectContaining({
         id: created.id,
-        title: 'Release team'
+        title: ''
       })
     ])
 
@@ -75,20 +74,14 @@ describe('team threads route', () => {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: 'Launch team',
-        teamDescription: 'Coordinate launch',
-        supervisorProviderId: providerId,
-        supervisorModel: 'gpt-5'
+        title: 'Launch team'
       })
     })
 
     expect(patchResponse.status).toBe(200)
     await expect(patchResponse.json()).resolves.toMatchObject({
       id: created.id,
-      title: 'Launch team',
-      teamDescription: 'Coordinate launch',
-      supervisorProviderId: providerId,
-      supervisorModel: 'gpt-5'
+      title: 'Launch team'
     })
 
     const deleteResponse = await app.request(`http://localhost/v1/team/threads/${created.id}`, {
@@ -155,8 +148,7 @@ describe('team threads route', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         workspaceId: '',
-        resourceId: '',
-        title: ''
+        resourceId: ''
       })
     })
 
@@ -180,8 +172,7 @@ describe('team threads route', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         workspaceId: 'missing-workspace',
-        resourceId: 'default-profile',
-        title: 'Release team'
+        resourceId: 'default-profile'
       })
     })
 

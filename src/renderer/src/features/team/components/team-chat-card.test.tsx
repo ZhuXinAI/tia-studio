@@ -56,6 +56,9 @@ describe('TeamChatCard', () => {
           id: 'workspace-1',
           name: 'Docs Workspace',
           rootPath: '/Users/demo/project',
+          teamDescription: '',
+          supervisorProviderId: null,
+          supervisorModel: '',
           createdAt: '2026-03-07T00:00:00.000Z',
           updatedAt: '2026-03-07T00:00:00.000Z'
         }}
@@ -110,6 +113,9 @@ describe('TeamChatCard', () => {
           id: 'workspace-1',
           name: 'Docs Workspace',
           rootPath: '/Users/demo/project',
+          teamDescription: '',
+          supervisorProviderId: 'provider-1',
+          supervisorModel: 'gpt-5',
           createdAt: '2026-03-07T00:00:00.000Z',
           updatedAt: '2026-03-07T00:00:00.000Z'
         }}
@@ -129,6 +135,7 @@ describe('TeamChatCard', () => {
           {
             id: 'assistant-1',
             name: 'Planner',
+            description: '',
             instructions: '',
             providerId: 'provider-1',
             workspaceConfig: {},

@@ -60,13 +60,13 @@ export class TeamRuntimeService implements TeamRuntime {
       throw new ChatRouteError(409, 'team_not_ready', 'Team workspace is not configured')
     }
 
-    const members = await this.options.teamThreadsRepo.listMembers(thread.id)
+    const members = await this.options.teamWorkspacesRepo.listMembers(workspace.id)
     if (members.length === 0) {
       throw new ChatRouteError(409, 'team_not_ready', 'Team must include at least one member')
     }
 
-    const supervisorProviderId = this.toNonEmptyString(thread.supervisorProviderId)
-    const supervisorModel = this.toNonEmptyString(thread.supervisorModel)
+    const supervisorProviderId = this.toNonEmptyString(workspace.supervisorProviderId)
+    const supervisorModel = this.toNonEmptyString(workspace.supervisorModel)
     if (!supervisorProviderId || !supervisorModel) {
       throw new ChatRouteError(
         409,
@@ -108,7 +108,7 @@ export class TeamRuntimeService implements TeamRuntime {
     const supervisor = new Agent({
       id: `team-supervisor:${thread.id}`,
       name: 'Team Supervisor',
-      instructions: this.buildSupervisorInstructions(thread.teamDescription, liveAssistants),
+      instructions: this.buildSupervisorInstructions(workspace.teamDescription, liveAssistants),
       model: resolveModel({
         type: supervisorProvider.type,
         apiKey: supervisorProvider.apiKey,
@@ -125,6 +125,7 @@ export class TeamRuntimeService implements TeamRuntime {
 
     try {
       const stream = await supervisor.stream(params.messages as never, {
+        providerOptions: this.buildProviderOptions(supervisorProvider.type),
         memory: {
           thread: thread.id,
           resource: params.profileId,
@@ -177,7 +178,8 @@ export class TeamRuntimeService implements TeamRuntime {
           }) as unknown as ReadableStream<UIMessageChunk>,
           {
             threadId: thread.id,
-            runId
+            runId,
+            profileId: params.profileId
           }
         )
       }
@@ -247,6 +249,7 @@ export class TeamRuntimeService implements TeamRuntime {
         const agent = new Agent({
           id: assistant.id,
           name: assistant.name,
+          description: this.toNonEmptyString(assistant.description) ?? undefined,
           instructions: assistant.instructions || 'You are a helpful team member.',
           model: resolveModel({
             type: provider.type,
@@ -269,14 +272,62 @@ export class TeamRuntimeService implements TeamRuntime {
   private buildSupervisorInstructions(teamDescription: string, assistants: AppAssistant[]): string {
     const normalizedDescription =
       this.toNonEmptyString(teamDescription) ?? 'Coordinate the team to answer the user request.'
-    const roster = assistants.map((assistant) => `- ${assistant.name}`).join('\n')
+    const roster = assistants
+      .map((assistant) => {
+        const description = this.toNonEmptyString(assistant.description)
+        return description ? `- ${assistant.name}: ${description}` : `- ${assistant.name}`
+      })
+      .join('\n')
 
     return `${normalizedDescription}\n\nAvailable team members:\n${roster}`
   }
 
+  private async syncGeneratedThreadTitle(params: {
+    threadId: string
+    profileId: string
+  }): Promise<void> {
+    const appThread = await this.options.teamThreadsRepo.getById(params.threadId)
+    if (!appThread || appThread.resourceId !== params.profileId) {
+      return
+    }
+
+    if (!this.shouldReplaceThreadTitle(appThread.title)) {
+      return
+    }
+
+    const storage = this.options.mastra.getStorage()
+    if (!storage) {
+      return
+    }
+
+    const memoryStore = await storage.getStore('memory')
+    if (!memoryStore || typeof memoryStore.getThreadById !== 'function') {
+      return
+    }
+
+    const memoryThread = await memoryStore.getThreadById({
+      threadId: params.threadId
+    })
+    const generatedTitle = this.toNonEmptyString(memoryThread?.title)
+    if (!generatedTitle || appThread.title.trim() === generatedTitle) {
+      return
+    }
+
+    await this.options.teamThreadsRepo.updateTitle(params.threadId, generatedTitle)
+  }
+
+  private shouldReplaceThreadTitle(title: string): boolean {
+    const normalizedTitle = title.trim()
+    if (normalizedTitle.length === 0) {
+      return true
+    }
+
+    return /^New Team Thread(?: \d+)?$/i.test(normalizedTitle)
+  }
+
   private streamWithRunSync(
     stream: ReadableStream<UIMessageChunk>,
-    params: { threadId: string; runId: string }
+    params: { threadId: string; runId: string; profileId: string }
   ): ReadableStream<UIMessageChunk> {
     const reader = stream.getReader()
     let finalized = false
@@ -299,6 +350,11 @@ export class TeamRuntimeService implements TeamRuntime {
         )
         return
       }
+
+      await this.syncGeneratedThreadTitle({
+        threadId: params.threadId,
+        profileId: params.profileId
+      }).catch(() => undefined)
 
       this.options.statusStore.finishRun(params.runId)
     }
@@ -383,6 +439,18 @@ export class TeamRuntimeService implements TeamRuntime {
       .filter((item): item is string => typeof item === 'string')
       .map((item) => item.trim())
       .filter((item) => item.length > 0)
+  }
+
+  private buildProviderOptions(providerType: string): AgentExecutionOptions['providerOptions'] {
+    if (providerType !== 'openai-response') {
+      return undefined
+    }
+
+    return {
+      openai: {
+        store: false
+      }
+    }
   }
 
   private toNonEmptyString(value: unknown): string | null {

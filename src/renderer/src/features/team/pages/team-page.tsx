@@ -20,10 +20,12 @@ export function TeamPage(): React.JSX.Element {
             isLoadingThreads={controller.isLoadingThreads}
             isCreatingWorkspace={controller.isCreatingWorkspace}
             isCreatingThread={controller.isCreatingThread}
+            deletingThreadId={controller.deletingThreadId}
             onCreateWorkspace={controller.handleCreateWorkspace}
             onCreateThread={controller.handleCreateThread}
             onSelectWorkspace={controller.handleSelectWorkspace}
             onSelectThread={controller.handleSelectThread}
+            onDeleteThread={controller.handleDeleteThread}
           />
         </aside>
 
@@ -59,7 +61,7 @@ export function TeamPage(): React.JSX.Element {
 
       <TeamConfigDialog
         isOpen={controller.isConfigDialogOpen}
-        thread={controller.selectedThread}
+        workspace={controller.selectedWorkspace}
         providers={controller.providers}
         assistants={controller.assistants}
         selectedAssistantIds={controller.selectedMemberIds}

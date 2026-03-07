@@ -3,11 +3,10 @@ import { useChat } from '@ai-sdk/react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
-  createAssistant,
-  deleteAssistant,
-  listAssistants,
-  updateAssistant,
-  type AssistantRecord,
+  useAssistants,
+  useCreateAssistant,
+  useUpdateAssistant,
+  useDeleteAssistant,
   type SaveAssistantInput
 } from '../../assistants/assistants-query'
 import type { AssistantDialogMode } from '../components/assistant-config-dialog'
@@ -15,16 +14,21 @@ import {
   getMcpServersSettings,
   type McpServerRecord
 } from '../../settings/mcp-servers/mcp-servers-query'
-import { listProviders, type ProviderRecord } from '../../settings/providers/providers-query'
+import { useProviders } from '../../settings/providers/providers-query'
 import {
-  createThread,
-  deleteThread,
+  useThreads,
+  useCreateThread,
+  useDeleteThread,
   getActiveResourceId,
   listThreads,
   type ThreadRecord
 } from '../threads-query'
 import { createThreadChatTransport, listThreadChatMessages } from '../chat-query'
-import { buildAssistantThreadBranches, evaluateAssistantReadiness } from '../thread-page-helpers'
+import {
+  buildAssistantThreadBranches,
+  evaluateAssistantReadiness,
+  resolveVisibleThreads
+} from '../thread-page-helpers'
 import {
   createThreadTitle,
   findLatestThreadAcrossAssistants,
@@ -47,24 +51,38 @@ export type ThreadPageController = ReturnType<typeof useThreadPageController>
 export function useThreadPageController() {
   const params = useParams()
   const navigate = useNavigate()
-  const [assistants, setAssistants] = useState<AssistantRecord[]>([])
-  const [providers, setProviders] = useState<ProviderRecord[]>([])
+
+  // TanStack Query hooks for data fetching
+  const { data: assistants = [], isLoading: isLoadingAssistants, error: assistantsError } = useAssistants()
+  const { data: allProviders = [], isLoading: isLoadingProviders, error: providersError } = useProviders()
+  const createAssistantMutation = useCreateAssistant()
+  const updateAssistantMutation = useUpdateAssistant()
+  const deleteAssistantMutation = useDeleteAssistant()
+  const createThreadMutation = useCreateThread()
+  const deleteThreadMutation = useDeleteThread()
+
+  // Filter to only show enabled providers
+  const providers = useMemo(() => allProviders.filter((provider) => provider.enabled), [allProviders])
+
+  // Local state for MCP servers (not yet migrated to TanStack Query)
   const [mcpServers, setMcpServers] = useState<Record<string, McpServerRecord>>({})
+
+  // Local state for threads (will be replaced by useThreads hook)
   const [threads, setThreads] = useState<ThreadRecord[]>([])
-  const [isLoadingData, setIsLoadingData] = useState(true)
-  const [isLoadingThreads, setIsLoadingThreads] = useState(false)
-  const [isCreatingThread, setIsCreatingThread] = useState(false)
-  const [deletingThreadId, setDeletingThreadId] = useState<string | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
+
+  // Derived loading states
+  const isLoadingData = isLoadingAssistants || isLoadingProviders
+  const loadError = assistantsError ? toErrorMessage(assistantsError) : providersError ? toErrorMessage(providersError) : null
+
+  // UI state
   const [isLoadingChatHistory, setIsLoadingChatHistory] = useState(false)
   const [assistantDialogMode, setAssistantDialogMode] = useState<AssistantDialogMode>('edit')
   const [assistantDialogAssistantId, setAssistantDialogAssistantId] = useState<string | null>(null)
   const [isAssistantDialogOpen, setIsAssistantDialogOpen] = useState(false)
-  const [isSubmittingAssistantDialog, setIsSubmittingAssistantDialog] = useState(false)
   const [assistantDialogError, setAssistantDialogError] = useState<string | null>(null)
-  const [deletingAssistantId, setDeletingAssistantId] = useState<string | null>(null)
   const pendingThreadMessageRef = useRef<PendingThreadMessage | null>(null)
   const [hasPendingMessage, setHasPendingMessage] = useState(false)
+  const hasLoadedInitialMessagesRef = useRef(false)
   const [tokenUsage, setTokenUsage] = useState<{
     inputTokens: number
     outputTokens: number
@@ -194,42 +212,16 @@ export function useThreadPageController() {
     }
   }, [selectedAssistant?.id, selectedThread?.id])
 
-  const loadAssistantsAndProviders = useCallback(async () => {
-    setIsLoadingData(true)
-    setLoadError(null)
-    try {
-      const [assistantsResult, providersResult, mcpSettingsResult] = await Promise.allSettled([
-        listAssistants(),
-        listProviders(),
-        getMcpServersSettings()
-      ])
-
-      if (assistantsResult.status === 'rejected') {
-        throw assistantsResult.reason
-      }
-
-      if (providersResult.status === 'rejected') {
-        throw providersResult.reason
-      }
-
-      setAssistants(assistantsResult.value)
-      setProviders(providersResult.value)
-
-      if (mcpSettingsResult.status === 'fulfilled') {
-        setMcpServers(mcpSettingsResult.value.mcpServers)
-      } else {
-        setMcpServers({})
-      }
-    } catch (error) {
-      setLoadError(toErrorMessage(error))
-    } finally {
-      setIsLoadingData(false)
-    }
-  }, [])
-
+  // Load MCP servers on mount
   useEffect(() => {
-    void loadAssistantsAndProviders()
-  }, [loadAssistantsAndProviders])
+    void getMcpServersSettings()
+      .then((result) => {
+        setMcpServers(result.mcpServers)
+      })
+      .catch(() => {
+        setMcpServers({})
+      })
+  }, [])
 
   useEffect(() => {
     if (!isAssistantDialogOpen) {
@@ -237,7 +229,7 @@ export function useThreadPageController() {
     }
 
     const handleEscape = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape' && !isSubmittingAssistantDialog) {
+      if (event.key === 'Escape' && !createAssistantMutation.isPending && !updateAssistantMutation.isPending) {
         setIsAssistantDialogOpen(false)
         setAssistantDialogError(null)
       }
@@ -247,7 +239,7 @@ export function useThreadPageController() {
     return () => {
       window.removeEventListener('keydown', handleEscape)
     }
-  }, [isAssistantDialogOpen, isSubmittingAssistantDialog])
+  }, [isAssistantDialogOpen, createAssistantMutation.isPending, updateAssistantMutation.isPending])
 
   useEffect(() => {
     if (!isAssistantDialogOpen || assistantDialogMode !== 'edit') {
@@ -350,7 +342,7 @@ export function useThreadPageController() {
         if (!active) {
           return
         }
-        setLoadError(toErrorMessage(error))
+        toast.error(toErrorMessage(error))
         navigate(routeToAssistantThreads(assistants[0].id), { replace: true })
       }
     }
@@ -362,37 +354,21 @@ export function useThreadPageController() {
     }
   }, [assistants, isLoadingData, navigate, params.assistantId])
 
+  // Use TanStack Query to fetch threads for the selected assistant
+  const { data: threadsData = [], isLoading: isLoadingThreads } = useThreads(selectedAssistant?.id, {
+    enabled: !!selectedAssistant
+  })
+
+  // Keep threads in local state sorted by recent activity
   useEffect(() => {
-    if (!selectedAssistant) {
-      setThreads([])
-      return
-    }
-
-    let active = true
-    setIsLoadingThreads(true)
-    setLoadError(null)
-
-    void listThreads(selectedAssistant.id)
-      .then((nextThreads) => {
-        if (active) {
-          setThreads(sortThreadsByRecentActivity(nextThreads))
-        }
+    setThreads((currentThreads) =>
+      resolveVisibleThreads({
+        currentThreads,
+        selectedAssistantId: selectedAssistant?.id ?? null,
+        threads: threadsData
       })
-      .catch((error) => {
-        if (active) {
-          setLoadError(toErrorMessage(error))
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setIsLoadingThreads(false)
-        }
-      })
-
-    return () => {
-      active = false
-    }
-  }, [selectedAssistant])
+    )
+  }, [selectedAssistant?.id, threadsData])
 
   useEffect(() => {
     setTokenUsage(null)
@@ -416,11 +392,13 @@ export function useThreadPageController() {
     if (!assistantId || !threadId) {
       setIsLoadingChatHistory(false)
       setMessages([])
+      hasLoadedInitialMessagesRef.current = false
       return
     }
 
     let active = true
     setIsLoadingChatHistory(true)
+    hasLoadedInitialMessagesRef.current = false
 
     void listThreadChatMessages({
       assistantId,
@@ -432,12 +410,14 @@ export function useThreadPageController() {
           return
         }
         setMessages(messages)
+        hasLoadedInitialMessagesRef.current = true
       })
       .catch((error) => {
         if (!active) {
           return
         }
         setMessages([])
+        hasLoadedInitialMessagesRef.current = true
         toast.error(toErrorMessage(error))
       })
       .finally(() => {
@@ -449,7 +429,7 @@ export function useThreadPageController() {
     return () => {
       active = false
     }
-  }, [profileId, selectedAssistant?.id, selectedThread?.id, setMessages])
+  }, [profileId, selectedAssistant?.id, selectedThread?.id])
 
   const createNewThread = useCallback(
     async (options?: { notify?: boolean }): Promise<ThreadRecord | null> => {
@@ -457,9 +437,8 @@ export function useThreadPageController() {
         return null
       }
 
-      setIsCreatingThread(true)
       try {
-        const createdThread = await createThread({
+        const createdThread = await createThreadMutation.mutateAsync({
           assistantId: selectedAssistant.id,
           resourceId: getActiveResourceId(),
           title: createThreadTitle()
@@ -475,18 +454,14 @@ export function useThreadPageController() {
       } catch (error) {
         toast.error(toErrorMessage(error))
         return null
-      } finally {
-        setIsCreatingThread(false)
       }
     },
-    [navigate, selectedAssistant]
+    [navigate, selectedAssistant, createThreadMutation]
   )
 
   const handleDeleteThread = async (thread: ThreadRecord): Promise<void> => {
-    setDeletingThreadId(thread.id)
-
     try {
-      await deleteThread(thread.id)
+      await deleteThreadMutation.mutateAsync(thread.id)
       setThreads((currentThreads) => currentThreads.filter((item) => item.id !== thread.id))
       if (selectedThread?.id === thread.id) {
         navigate(routeToAssistantThreads(thread.assistantId), { replace: true })
@@ -494,8 +469,6 @@ export function useThreadPageController() {
       toast.success('Thread removed.')
     } catch (error) {
       toast.error(toErrorMessage(error))
-    } finally {
-      setDeletingThreadId(null)
     }
   }
 
@@ -513,13 +486,11 @@ export function useThreadPageController() {
   }, [])
 
   const handleSubmitAssistantDialog = async (input: SaveAssistantInput): Promise<void> => {
-    setIsSubmittingAssistantDialog(true)
     setAssistantDialogError(null)
 
     try {
       if (assistantDialogMode === 'create') {
-        const createdAssistant = await createAssistant(input)
-        setAssistants((currentAssistants) => [createdAssistant, ...currentAssistants])
+        const createdAssistant = await createAssistantMutation.mutateAsync(input)
         setThreads([])
         toast.success('Assistant created.')
         setIsAssistantDialogOpen(false)
@@ -533,25 +504,21 @@ export function useThreadPageController() {
         return
       }
 
-      const updatedAssistant = await updateAssistant(assistantDialogAssistant.id, input)
-      setAssistants((currentAssistants) =>
-        currentAssistants.map((assistant) =>
-          assistant.id === updatedAssistant.id ? updatedAssistant : assistant
-        )
-      )
+      await updateAssistantMutation.mutateAsync({
+        id: assistantDialogAssistant.id,
+        input
+      })
       toast.success('Assistant configuration updated.')
       setIsAssistantDialogOpen(false)
       setAssistantDialogAssistantId(null)
     } catch (error) {
       setAssistantDialogError(toErrorMessage(error))
-    } finally {
-      setIsSubmittingAssistantDialog(false)
     }
   }
 
   const handleDeleteAssistant = useCallback(
     async (assistantId: string): Promise<void> => {
-      if (deletingAssistantId) {
+      if (deleteAssistantMutation.isPending) {
         return
       }
 
@@ -576,27 +543,17 @@ export function useThreadPageController() {
         }
       }
 
-      setDeletingAssistantId(assistantId)
-
       try {
-        await deleteAssistant(assistantId)
-
-        let fallbackAssistantId: string | null = null
-        setAssistants((currentAssistants) => {
-          const nextAssistants = currentAssistants.filter(
-            (assistant) => assistant.id !== assistantId
-          )
-          fallbackAssistantId = nextAssistants.at(0)?.id ?? null
-          return nextAssistants
-        })
+        await deleteAssistantMutation.mutateAsync(assistantId)
 
         setThreads((currentThreads) =>
           currentThreads.filter((thread) => thread.assistantId !== assistantId)
         )
 
         if (params.assistantId === assistantId) {
-          if (fallbackAssistantId) {
-            navigate(routeToAssistantThreads(fallbackAssistantId), { replace: true })
+          const fallbackAssistant = assistants.find((a) => a.id !== assistantId)
+          if (fallbackAssistant) {
+            navigate(routeToAssistantThreads(fallbackAssistant.id), { replace: true })
           } else {
             setMessages([])
             navigate('/chat', { replace: true })
@@ -612,15 +569,13 @@ export function useThreadPageController() {
         toast.success('Assistant deleted.')
       } catch (error) {
         toast.error(toErrorMessage(error))
-      } finally {
-        setDeletingAssistantId(null)
       }
     },
     [
       assistantDialogAssistantId,
       assistantDialogMode,
       assistants,
-      deletingAssistantId,
+      deleteAssistantMutation,
       navigate,
       params.assistantId,
       setMessages
@@ -686,6 +641,17 @@ export function useThreadPageController() {
       return
     }
 
+    // Ensure chat transport is ready
+    if (!chatTransport) {
+      return
+    }
+
+    // Ensure initial messages have been loaded
+    if (!hasLoadedInitialMessagesRef.current) {
+      return
+    }
+
+    // Clear pending message state immediately to prevent duplicate sends
     const messageToSend = pendingMessage.text
     pendingThreadMessageRef.current = null
     setHasPendingMessage(false)
@@ -700,18 +666,19 @@ export function useThreadPageController() {
     isLoadingChatHistory,
     isChatStreaming,
     selectedThread,
+    chatTransport,
     sendMessage
   ])
 
   const closeAssistantDialog = useCallback(() => {
-    if (isSubmittingAssistantDialog) {
+    if (createAssistantMutation.isPending || updateAssistantMutation.isPending) {
       return
     }
 
     setIsAssistantDialogOpen(false)
     setAssistantDialogAssistantId(null)
     setAssistantDialogError(null)
-  }, [isSubmittingAssistantDialog])
+  }, [createAssistantMutation.isPending, updateAssistantMutation.isPending])
 
   const openCreateAssistantDialog = useCallback(() => {
     setAssistantDialogMode('create')
@@ -759,9 +726,9 @@ export function useThreadPageController() {
     chat,
     isLoadingData,
     isLoadingThreads,
-    isCreatingThread,
-    deletingThreadId,
-    deletingAssistantId,
+    isCreatingThread: createThreadMutation.isPending,
+    deletingThreadId: deleteThreadMutation.isPending ? deleteThreadMutation.variables : null,
+    deletingAssistantId: deleteAssistantMutation.isPending ? deleteAssistantMutation.variables : null,
     isLoadingChatHistory,
     isChatStreaming,
     chatError,
@@ -772,7 +739,7 @@ export function useThreadPageController() {
     assistantDialogMode,
     assistantDialogAssistant,
     isAssistantDialogOpen,
-    isSubmittingAssistantDialog,
+    isSubmittingAssistantDialog: createAssistantMutation.isPending || updateAssistantMutation.isPending,
     assistantDialogError,
     tokenUsage,
     onCreateThread: () => {

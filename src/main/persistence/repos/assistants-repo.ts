@@ -6,6 +6,7 @@ const DEFAULT_ASSISTANT_MAX_STEPS = 100
 export type AppAssistant = {
   id: string
   name: string
+  description: string
   instructions: string
   providerId: string | null
   workspaceConfig: Record<string, unknown>
@@ -19,6 +20,7 @@ export type AppAssistant = {
 
 export type CreateAssistantInput = {
   name: string
+  description?: string
   instructions?: string
   providerId: string | null
   workspaceConfig?: Record<string, unknown>
@@ -88,6 +90,7 @@ function parseAssistantRow(row: Record<string, unknown>): AppAssistant {
   return {
     id: String(row.id),
     name: String(row.name),
+    description: String(row.description ?? ''),
     instructions: String(row.instructions),
     providerId: String(row.provider_id),
     workspaceConfig: parseJsonObject(row.workspace_config),
@@ -105,7 +108,7 @@ export class AssistantsRepository {
 
   async list(): Promise<AppAssistant[]> {
     const result = await this.db.execute(
-      'SELECT id, name, instructions, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config, created_at, updated_at FROM app_assistants ORDER BY created_at DESC'
+      'SELECT id, name, description, instructions, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config, created_at, updated_at FROM app_assistants ORDER BY created_at DESC'
     )
 
     return result.rows.map((row) => parseAssistantRow(row as Record<string, unknown>))
@@ -113,7 +116,7 @@ export class AssistantsRepository {
 
   async getById(id: string): Promise<AppAssistant | null> {
     const result = await this.db.execute(
-      'SELECT id, name, instructions, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config, created_at, updated_at FROM app_assistants WHERE id = ? LIMIT 1',
+      'SELECT id, name, description, instructions, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config, created_at, updated_at FROM app_assistants WHERE id = ? LIMIT 1',
       [id]
     )
     const row = result.rows.at(0)
@@ -141,10 +144,11 @@ export class AssistantsRepository {
   async create(input: CreateAssistantInput): Promise<AppAssistant> {
     const id = randomUUID()
     await this.db.execute(
-      'INSERT INTO app_assistants (id, name, instructions, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO app_assistants (id, name, description, instructions, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
         input.name,
+        input.description ?? '',
         input.instructions ?? '',
         input.providerId,
         JSON.stringify(input.workspaceConfig ?? {}),
@@ -170,9 +174,10 @@ export class AssistantsRepository {
     }
 
     await this.db.execute(
-      'UPDATE app_assistants SET name = ?, instructions = ?, provider_id = ?, workspace_config = ?, skills_config = ?, mcp_config = ?, max_steps = ?, memory_config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE app_assistants SET name = ?, description = ?, instructions = ?, provider_id = ?, workspace_config = ?, skills_config = ?, mcp_config = ?, max_steps = ?, memory_config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [
         input.name ?? existing.name,
+        input.description ?? existing.description,
         input.instructions ?? existing.instructions,
         input.providerId ?? existing.providerId,
         JSON.stringify(input.workspaceConfig ?? existing.workspaceConfig),

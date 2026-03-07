@@ -12,6 +12,9 @@ const mockState = vi.hoisted(() => {
     routeParams,
     sendResolvers,
     chatStatus: 'ready' as 'ready' | 'submitted' | 'streaming',
+    assistantsData: [] as Array<Record<string, unknown>>,
+    providersData: [] as Array<Record<string, unknown>>,
+    threadsData: [] as Array<Record<string, unknown>>,
     listAssistantsMock: vi.fn(),
     createAssistantMock: vi.fn(),
     updateAssistantMock: vi.fn(),
@@ -37,6 +40,24 @@ vi.mock('react-router-dom', () => ({
 }))
 
 vi.mock('../../assistants/assistants-query', () => ({
+  useAssistants: () => ({
+    data: mockState.assistantsData,
+    isLoading: false,
+    error: null
+  }),
+  useCreateAssistant: () => ({
+    isPending: false,
+    mutateAsync: mockState.createAssistantMock
+  }),
+  useUpdateAssistant: () => ({
+    isPending: false,
+    mutateAsync: mockState.updateAssistantMock
+  }),
+  useDeleteAssistant: () => ({
+    isPending: false,
+    variables: null,
+    mutateAsync: mockState.deleteAssistantMock
+  }),
   listAssistants: (...args: unknown[]) => mockState.listAssistantsMock(...args),
   createAssistant: (...args: unknown[]) => mockState.createAssistantMock(...args),
   updateAssistant: (...args: unknown[]) => mockState.updateAssistantMock(...args),
@@ -44,6 +65,11 @@ vi.mock('../../assistants/assistants-query', () => ({
 }))
 
 vi.mock('../../settings/providers/providers-query', () => ({
+  useProviders: () => ({
+    data: mockState.providersData,
+    isLoading: false,
+    error: null
+  }),
   listProviders: (...args: unknown[]) => mockState.listProvidersMock(...args)
 }))
 
@@ -52,6 +78,19 @@ vi.mock('../../settings/mcp-servers/mcp-servers-query', () => ({
 }))
 
 vi.mock('../threads-query', () => ({
+  useThreads: () => ({
+    data: mockState.threadsData,
+    isLoading: false
+  }),
+  useCreateThread: () => ({
+    isPending: false,
+    mutateAsync: mockState.createThreadMock
+  }),
+  useDeleteThread: () => ({
+    isPending: false,
+    variables: null,
+    mutateAsync: mockState.deleteThreadMock
+  }),
   createThread: (...args: unknown[]) => mockState.createThreadMock(...args),
   deleteThread: (...args: unknown[]) => mockState.deleteThreadMock(...args),
   getActiveResourceId: () => 'default-profile',
@@ -148,6 +187,21 @@ describe('useThreadPageController', () => {
         updatedAt: '2026-03-01T00:00:00.000Z'
       }
     ])
+    mockState.assistantsData = [
+      {
+        id: 'assistant-1',
+        name: 'Planner',
+        instructions: 'Keep responses concise.',
+        providerId: 'provider-1',
+        workspaceConfig: { rootPath: '/workspace/demo' },
+        skillsConfig: {},
+        mcpConfig: {},
+        maxSteps: 100,
+        memoryConfig: null,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z'
+      }
+    ]
     mockState.createAssistantMock.mockReset()
     mockState.createAssistantMock.mockResolvedValue({
       id: 'assistant-2',
@@ -194,12 +248,31 @@ describe('useThreadPageController', () => {
         updatedAt: '2026-03-01T00:00:00.000Z'
       }
     ])
+    mockState.providersData = [
+      {
+        id: 'provider-1',
+        name: 'OpenAI',
+        type: 'openai',
+        apiKey: 'secret',
+        apiHost: 'https://api.openai.com/v1',
+        selectedModel: 'gpt-5',
+        providerModels: null,
+        enabled: true,
+        supportsVision: false,
+        isBuiltIn: false,
+        icon: null,
+        officialSite: null,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z'
+      }
+    ]
 
     mockState.getMcpServersSettingsMock.mockReset()
     mockState.getMcpServersSettingsMock.mockResolvedValue({ mcpServers: {} })
 
     mockState.listThreadsMock.mockReset()
     mockState.listThreadsMock.mockResolvedValue([])
+    mockState.threadsData = []
 
     mockState.createThreadMock.mockReset()
     mockState.createThreadMock.mockResolvedValue({
@@ -360,6 +433,17 @@ describe('useThreadPageController', () => {
         updatedAt: '2026-03-01T00:00:00.000Z'
       }
     ])
+    mockState.threadsData = [
+      {
+        id: 'thread-1',
+        assistantId: 'assistant-1',
+        resourceId: 'default-profile',
+        title: 'New Thread',
+        lastMessageAt: null,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z'
+      }
+    ]
 
     await act(async () => {
       root.render(

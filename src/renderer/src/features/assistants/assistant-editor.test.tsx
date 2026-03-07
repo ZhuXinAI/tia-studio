@@ -130,6 +130,7 @@ describe('assistant editor', () => {
           initialValue={{
             id: 'assistant-1',
             name: 'Planner',
+            description: 'Routes travel bookings and itinerary work.',
             instructions: 'Original prompt',
             providerId: 'provider-1',
             workspaceConfig: { rootPath: '/Users/windht/Dev' },
@@ -146,7 +147,11 @@ describe('assistant editor', () => {
     })
 
     const promptInput = container.querySelector('#assistant-prompt') as HTMLTextAreaElement | null
+    const descriptionInput = container.querySelector(
+      '#assistant-description'
+    ) as HTMLTextAreaElement | null
     expect(promptInput).not.toBeNull()
+    expect(descriptionInput?.value).toBe('Routes travel bookings and itinerary work.')
 
     const submitButton = findButtonByText(container, 'Update Assistant')
     await act(async () => {
@@ -155,6 +160,7 @@ describe('assistant editor', () => {
 
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
+        description: 'Routes travel bookings and itinerary work.',
         instructions: 'Original prompt'
       })
     )
@@ -169,6 +175,7 @@ describe('assistant editor', () => {
           initialValue={{
             id: 'assistant-1',
             name: 'Planner',
+            description: '',
             instructions: '',
             providerId: 'provider-1',
             workspaceConfig: { rootPath: '/Users/windht/Dev/tia-studio' },
@@ -205,6 +212,7 @@ describe('assistant editor', () => {
           initialValue={{
             id: 'assistant-1',
             name: 'Planner',
+            description: '',
             instructions: '',
             providerId: 'provider-1',
             workspaceConfig: { rootPath: '/Users/windht/Dev/tia-studio' },

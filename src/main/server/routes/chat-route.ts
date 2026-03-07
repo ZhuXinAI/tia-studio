@@ -96,6 +96,7 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
 
     const parsed = chatRequestSchema.safeParse(body)
     if (!parsed.success) {
+      console.log(parsed.error.issues)
       return context.json(
         { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' },
         400

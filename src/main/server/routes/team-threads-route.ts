@@ -62,7 +62,10 @@ export function registerTeamThreadsRoute(app: Hono, options: RegisterTeamThreads
       }
     }
 
-    const thread = await options.teamThreadsRepo.create(parsed.data)
+    const thread = await options.teamThreadsRepo.create({
+      ...parsed.data,
+      title: parsed.data.title ?? ''
+    })
     return context.json(thread, 201)
   })
 

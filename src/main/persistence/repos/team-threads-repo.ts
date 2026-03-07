@@ -164,4 +164,13 @@ export class TeamThreadsRepository {
 
     return this.getById(id)
   }
+
+  async updateTitle(id: string, title: string): Promise<AppTeamThread | null> {
+    await this.db.execute(
+      'UPDATE app_team_threads SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [title, id]
+    )
+
+    return this.getById(id)
+  }
 }

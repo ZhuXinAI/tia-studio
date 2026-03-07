@@ -1,8 +1,10 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createApiClient } from '../../lib/api-client'
 
 export type AssistantRecord = {
   id: string
   name: string
+  description: string
   instructions: string
   providerId: string
   workspaceConfig: Record<string, unknown>
@@ -16,6 +18,7 @@ export type AssistantRecord = {
 
 export type SaveAssistantInput = {
   name: string
+  description?: string
   instructions?: string
   providerId: string
   workspaceConfig?: Record<string, unknown>
@@ -27,6 +30,14 @@ export type SaveAssistantInput = {
 
 const apiClient = createApiClient()
 
+// Query keys for cache management
+export const assistantKeys = {
+  all: ['assistants'] as const,
+  lists: () => [...assistantKeys.all, 'list'] as const,
+  detail: (id: string) => [...assistantKeys.all, 'detail', id] as const
+}
+
+// Legacy functions (kept for backward compatibility during migration)
 export async function listAssistants(): Promise<AssistantRecord[]> {
   return apiClient.get<AssistantRecord[]>('/v1/assistants')
 }
@@ -44,4 +55,49 @@ export async function updateAssistant(
 
 export async function deleteAssistant(assistantId: string): Promise<void> {
   await apiClient.delete(`/v1/assistants/${assistantId}`)
+}
+
+// TanStack Query hooks
+export function useAssistants() {
+  return useQuery({
+    queryKey: assistantKeys.lists(),
+    queryFn: listAssistants
+  })
+}
+
+export function useCreateAssistant() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: createAssistant,
+    onSuccess: () => {
+      // Invalidate and refetch assistants list
+      queryClient.invalidateQueries({ queryKey: assistantKeys.lists() })
+    }
+  })
+}
+
+export function useUpdateAssistant() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Partial<SaveAssistantInput> }) =>
+      updateAssistant(id, input),
+    onSuccess: () => {
+      // Invalidate and refetch assistants list
+      queryClient.invalidateQueries({ queryKey: assistantKeys.lists() })
+    }
+  })
+}
+
+export function useDeleteAssistant() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: deleteAssistant,
+    onSuccess: () => {
+      // Invalidate and refetch assistants list
+      queryClient.invalidateQueries({ queryKey: assistantKeys.lists() })
+    }
+  })
 }
