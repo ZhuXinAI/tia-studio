@@ -21,12 +21,16 @@ import { ensureBuiltInDefaultAgent } from './default-agent/default-agent-bootstr
 import { ensureBuiltInProviders } from './default-agent/built-in-providers-bootstrap'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
 import { createMastraInstance } from './mastra/store'
+import { TeamRuntimeService } from './mastra/team-runtime'
 import { migrateAppSchema } from './persistence/migrate'
 import { AssistantsRepository } from './persistence/repos/assistants-repo'
 import { McpServersRepository } from './persistence/repos/mcp-servers-repo'
 import { ProvidersRepository } from './persistence/repos/providers-repo'
+import { TeamThreadsRepository } from './persistence/repos/team-threads-repo'
+import { TeamWorkspacesRepository } from './persistence/repos/team-workspaces-repo'
 import { ThreadsRepository } from './persistence/repos/threads-repo'
 import { WebSearchSettingsRepository } from './persistence/repos/web-search-settings-repo'
+import { TeamRunStatusStore } from './server/chat/team-run-status-store'
 import { createApp } from './server/create-app'
 import { listAssistantSkills, removeWorkspaceSkill } from './skills/skills-manager'
 import { bringWindowToFront, buildTrayMenuTemplate } from './tray'
@@ -114,6 +118,8 @@ async function startLocalApiServer(): Promise<void> {
   const providersRepo = new ProvidersRepository(db)
   const assistantsRepo = new AssistantsRepository(db)
   const threadsRepo = new ThreadsRepository(db)
+  const teamWorkspacesRepo = new TeamWorkspacesRepository(db)
+  const teamThreadsRepo = new TeamThreadsRepository(db)
   const webSearchSettingsRepo = new WebSearchSettingsRepository(db)
   const mcpServersRepo = new McpServersRepository(join(app.getPath('userData'), 'mcp.json'))
   await ensureBuiltInProviders(providersRepo)
@@ -131,6 +137,15 @@ async function startLocalApiServer(): Promise<void> {
     webSearchSettingsRepo,
     mcpServersRepo
   })
+  const teamRunStatusStore = new TeamRunStatusStore()
+  const teamRuntime = new TeamRuntimeService({
+    mastra,
+    assistantsRepo,
+    providersRepo,
+    teamWorkspacesRepo,
+    teamThreadsRepo,
+    statusStore: teamRunStatusStore
+  })
 
   const apiApp = createApp({
     token: serverConfig.token,
@@ -138,10 +153,14 @@ async function startLocalApiServer(): Promise<void> {
       providers: providersRepo,
       assistants: assistantsRepo,
       threads: threadsRepo,
+      teamWorkspaces: teamWorkspacesRepo,
+      teamThreads: teamThreadsRepo,
       webSearchSettings: webSearchSettingsRepo,
       mcpServers: mcpServersRepo
     },
-    assistantRuntime
+    assistantRuntime,
+    teamRuntime,
+    teamRunStatusStore
   })
 
   localApiServer = serve(

@@ -29,16 +29,6 @@ function canDeleteAssistant(assistant: AssistantRecord): boolean {
   return assistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] !== true
 }
 
-function hasWorkspaceRootPath(assistant: AssistantRecord | null): boolean {
-  if (!assistant) {
-    return false
-  }
-
-  const rootPath =
-    typeof assistant.workspaceConfig.rootPath === 'string' ? assistant.workspaceConfig.rootPath : ''
-  return rootPath.trim().length > 0
-}
-
 export function evaluateAssistantReadiness(input: {
   assistant: AssistantRecord | null
   providers: ProviderRecord[]

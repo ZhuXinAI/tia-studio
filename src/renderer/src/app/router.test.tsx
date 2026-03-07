@@ -79,7 +79,19 @@ describe('app router', () => {
     const html = renderToString(<RouterProvider router={router} />)
 
     expect(html).toContain('aria-label="Open settings"')
+    expect(html).toContain('Home')
+    expect(html).toContain('Team')
     expect(html).not.toContain('Control Center')
-    expect(html).toContain('data-slot="button"')
+  })
+
+  it('renders the team route from the top nav', () => {
+    const router = createAppMemoryRouter(['/team'])
+    const html = renderToString(<RouterProvider router={router} />)
+
+    expect(html).toContain('Home')
+    expect(html).toContain('Team')
+    expect(html).toContain('Team Workspaces')
+    expect(html).toContain('Team Chat')
+    expect(html).toContain('Team Status')
   })
 })

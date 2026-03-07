@@ -1,22 +1,43 @@
-import { Home, Settings } from 'lucide-react'
+import { Home, Settings, Users } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { cn } from '../../lib/utils'
 
 export function AppShell(): React.JSX.Element {
   const location = useLocation()
+  const isChatRoute = location.pathname.startsWith('/chat')
+  const isTeamRoute = location.pathname.startsWith('/team')
   const isSettingsRoute = location.pathname.startsWith('/settings')
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground transition-colors duration-200">
       <header className="drag-region sticky top-0 z-20 border-b border-border/70 bg-background/20 pl-[80px] pr-3 py-1 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-3">
-          <Button asChild variant="ghost" size="sm" className="no-drag">
-            <NavLink to="/chat" className="no-drag inline-flex items-center gap-2">
-              <Home className="size-4" />
-              <span className="text-sm font-medium">Home</span>
-            </NavLink>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              asChild
+              variant={isChatRoute ? 'secondary' : 'ghost'}
+              size="sm"
+              className="no-drag"
+            >
+              <NavLink to="/chat" className="no-drag inline-flex items-center gap-2">
+                <Home className="size-4" />
+                <span className="text-sm font-medium">Home</span>
+              </NavLink>
+            </Button>
+
+            <Button
+              asChild
+              variant={isTeamRoute ? 'secondary' : 'ghost'}
+              size="sm"
+              className="no-drag"
+            >
+              <NavLink to="/team" className="no-drag inline-flex items-center gap-2">
+                <Users className="size-4" />
+                <span className="text-sm font-medium">Team</span>
+              </NavLink>
+            </Button>
+          </div>
 
           <Button
             asChild

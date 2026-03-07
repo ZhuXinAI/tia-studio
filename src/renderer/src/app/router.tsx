@@ -8,6 +8,7 @@ import { AboutSettingsPage } from '../features/settings/pages/about-settings-pag
 import { DisplaySettingsPage } from '../features/settings/pages/display-settings-page'
 import { SettingsPageLayout } from '../features/settings/pages/settings-page-layout'
 import { RouteError } from '../components/route-error'
+import { TeamPage } from '../features/team/pages/team-page'
 
 export const appRoutes: RouteObject[] = [
   {
@@ -22,6 +23,10 @@ export const appRoutes: RouteObject[] = [
       {
         path: 'chat/:assistantId?/:threadId?',
         element: <ThreadPage />
+      },
+      {
+        path: 'team/:workspaceId?/:threadId?',
+        element: <TeamPage />
       },
       {
         path: 'settings',

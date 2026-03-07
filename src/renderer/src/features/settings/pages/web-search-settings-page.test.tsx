@@ -100,15 +100,14 @@ describe('web search settings page', () => {
     })
     await flushAsyncWork()
 
-    const buttons = Array.from(container.querySelectorAll('button'))
-    const disableBackgroundButton = buttons.find((button) =>
-      button.textContent?.includes('Disable')
-    )
+    const switches = Array.from(container.querySelectorAll('[role="switch"]'))
+    const backgroundSwitch = switches[0] as HTMLButtonElement | undefined
 
-    expect(disableBackgroundButton).toBeDefined()
+    expect(backgroundSwitch).toBeDefined()
+    expect(backgroundSwitch?.getAttribute('aria-checked')).toBe('true')
 
     await act(async () => {
-      disableBackgroundButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      backgroundSwitch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
     await flushAsyncWork()
 

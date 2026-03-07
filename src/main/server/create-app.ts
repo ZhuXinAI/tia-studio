@@ -3,15 +3,22 @@ import { cors } from 'hono/cors'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { McpServersRepository } from '../persistence/repos/mcp-servers-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
+import type { TeamThreadsRepository } from '../persistence/repos/team-threads-repo'
+import type { TeamWorkspacesRepository } from '../persistence/repos/team-workspaces-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import type { AssistantRuntime } from '../mastra/assistant-runtime'
+import type { TeamRuntime } from '../mastra/team-runtime'
 import { createBearerAuthMiddleware } from './auth-middleware'
+import type { TeamRunStatusStore } from './chat/team-run-status-store'
 import { registerAssistantsRoute } from './routes/assistants-route'
 import { registerChatRoute } from './routes/chat-route'
 import { registerHealthRoute } from './routes/health-route'
 import { registerMcpServersRoute } from './routes/mcp-servers-route'
 import { registerProvidersRoute } from './routes/providers-route'
+import { registerTeamChatRoute } from './routes/team-chat-route'
+import { registerTeamThreadsRoute } from './routes/team-threads-route'
+import { registerTeamWorkspacesRoute } from './routes/team-workspaces-route'
 import { registerThreadsRoute } from './routes/threads-route'
 import { registerWebSearchSettingsRoute } from './routes/web-search-settings-route'
 
@@ -21,10 +28,14 @@ type CreateAppOptions = {
     providers: ProvidersRepository
     assistants: AssistantsRepository
     threads: ThreadsRepository
+    teamWorkspaces: TeamWorkspacesRepository
+    teamThreads: TeamThreadsRepository
     webSearchSettings: WebSearchSettingsRepository
     mcpServers: McpServersRepository
   }
   assistantRuntime?: AssistantRuntime
+  teamRuntime?: TeamRuntime
+  teamRunStatusStore?: TeamRunStatusStore
 }
 
 export function createApp(options: CreateAppOptions): Hono {
@@ -48,6 +59,15 @@ export function createApp(options: CreateAppOptions): Hono {
     })
   )
   app.use('/chat/*', createBearerAuthMiddleware(options.token))
+  app.use(
+    '/team-chat/*',
+    cors({
+      origin: (origin) => origin ?? '*',
+      allowMethods: ['GET', 'POST', 'OPTIONS'],
+      allowHeaders: ['Authorization', 'Content-Type']
+    })
+  )
+  app.use('/team-chat/*', createBearerAuthMiddleware(options.token))
   registerHealthRoute(app)
 
   if (options.repositories) {
@@ -63,6 +83,14 @@ export function createApp(options: CreateAppOptions): Hono {
       threadsRepo: options.repositories.threads,
       assistantsRepo: options.repositories.assistants
     })
+    registerTeamWorkspacesRoute(app, {
+      teamWorkspacesRepo: options.repositories.teamWorkspaces
+    })
+    registerTeamThreadsRoute(app, {
+      teamThreadsRepo: options.repositories.teamThreads,
+      teamWorkspacesRepo: options.repositories.teamWorkspaces,
+      providersRepo: options.repositories.providers
+    })
     registerWebSearchSettingsRoute(app, {
       webSearchSettingsRepo: options.repositories.webSearchSettings
     })
@@ -74,6 +102,13 @@ export function createApp(options: CreateAppOptions): Hono {
   if (options.assistantRuntime) {
     registerChatRoute(app, {
       assistantRuntime: options.assistantRuntime
+    })
+  }
+
+  if (options.teamRuntime && options.teamRunStatusStore) {
+    registerTeamChatRoute(app, {
+      teamRuntime: options.teamRuntime,
+      teamRunStatusStore: options.teamRunStatusStore
     })
   }
 
