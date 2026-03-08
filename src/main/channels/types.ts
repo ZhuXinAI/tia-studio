@@ -32,7 +32,7 @@ export type ChannelMessageSendRequestedEvent = {
   channelId: string
   channelType: ChannelType
   remoteChatId: string
-  message: string
+  content: string
   metadata?: Record<string, unknown>
 }
 

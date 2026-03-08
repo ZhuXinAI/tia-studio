@@ -89,7 +89,7 @@ export class ChannelService {
       return
     }
 
-    await adapter.send(event.remoteChatId, event.message)
+    await adapter.send(event.remoteChatId, event.content)
   }
 
   private async buildAdapter(channel: AppChannel): Promise<ChannelAdapter | null> {

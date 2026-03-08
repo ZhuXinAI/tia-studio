@@ -34,7 +34,7 @@ describe('ChannelEventBus', () => {
       channelId: 'channel-1',
       channelType: 'lark' as const,
       remoteChatId: 'chat-1',
-      message: 'hello back'
+      content: 'hello back'
     }
 
     bus.subscribe('channel.message.send-requested', handler)

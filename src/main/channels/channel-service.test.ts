@@ -79,7 +79,7 @@ describe('ChannelService', () => {
       channelId: channel.id,
       channelType: channel.type as ChannelType,
       remoteChatId: 'chat-1',
-      message: 'reply'
+      content: 'reply'
     })
 
     expect(listEnabled).toHaveBeenCalledOnce()

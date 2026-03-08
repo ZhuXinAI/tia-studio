@@ -323,6 +323,62 @@ describe('AssistantRuntimeService', () => {
     )
   })
 
+  it('forwards incoming message metadata into mastra chat stream execution', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(new ReadableStream())
+
+    const assistant = buildAssistant()
+    const message = {
+      id: 'channel:channel-1:msg-1',
+      role: 'user' as const,
+      parts: [{ type: 'text' as const, text: 'hello from lark' }],
+      metadata: {
+        fromChannel: 'lark',
+        channelId: 'channel-1',
+        remoteChatId: 'oc_123',
+        remoteMessageId: 'msg-1'
+      }
+    }
+    const runtime = new AssistantRuntimeService({
+      mastra: await createMastraInstance(':memory:'),
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'default-profile'
+        }))
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    await runtime.streamChat({
+      assistantId: assistant.id,
+      threadId: 'thread-1',
+      profileId: 'default-profile',
+      messages: [message]
+    })
+
+    expect(handleChatStreamMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          messages: [message]
+        })
+      })
+    )
+  })
+
   it('touches thread lastMessageAt after streaming completes', async () => {
     handleChatStreamMock.mockReset()
     handleChatStreamMock.mockResolvedValue(

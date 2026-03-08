@@ -19,11 +19,16 @@ import { AutoUpdateService } from './auto-updater'
 import { resolveServerConfig } from './config/server-config'
 import { ensureBuiltInDefaultAgent } from './default-agent/default-agent-bootstrap'
 import { ensureBuiltInProviders } from './default-agent/built-in-providers-bootstrap'
+import { ChannelEventBus } from './channels/channel-event-bus'
+import { ChannelMessageRouter } from './channels/channel-message-router'
+import { ChannelService } from './channels/channel-service'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
 import { createMastraInstance } from './mastra/store'
 import { TeamRuntimeService } from './mastra/team-runtime'
 import { migrateAppSchema } from './persistence/migrate'
 import { AssistantsRepository } from './persistence/repos/assistants-repo'
+import { ChannelThreadBindingsRepository } from './persistence/repos/channel-thread-bindings-repo'
+import { ChannelsRepository } from './persistence/repos/channels-repo'
 import { McpServersRepository } from './persistence/repos/mcp-servers-repo'
 import { ProvidersRepository } from './persistence/repos/providers-repo'
 import { TeamThreadsRepository } from './persistence/repos/team-threads-repo'
@@ -45,6 +50,8 @@ let persistenceDatabasePath: string | null = null
 let appTray: Tray | null = null
 let mainWindow: BrowserWindow | null = null
 let webSearchSettingsWindow: BrowserWindow | null = null
+let channelService: ChannelService | null = null
+let channelMessageRouter: ChannelMessageRouter | null = null
 const searchBrowserPartition = 'persist:tia-browser-search'
 
 let isTransparentWindow = false
@@ -118,6 +125,8 @@ async function startLocalApiServer(): Promise<void> {
   const providersRepo = new ProvidersRepository(db)
   const assistantsRepo = new AssistantsRepository(db)
   const threadsRepo = new ThreadsRepository(db)
+  const channelsRepo = new ChannelsRepository(db)
+  const channelThreadBindingsRepo = new ChannelThreadBindingsRepository(db)
   const teamWorkspacesRepo = new TeamWorkspacesRepository(db)
   const teamThreadsRepo = new TeamThreadsRepository(db)
   const webSearchSettingsRepo = new WebSearchSettingsRepository(db)
@@ -146,6 +155,18 @@ async function startLocalApiServer(): Promise<void> {
     teamThreadsRepo,
     statusStore: teamRunStatusStore
   })
+  const channelEventBus = new ChannelEventBus()
+  channelService = new ChannelService({
+    channelsRepo,
+    eventBus: channelEventBus
+  })
+  channelMessageRouter = new ChannelMessageRouter({
+    eventBus: channelEventBus,
+    channelsRepo,
+    bindingsRepo: channelThreadBindingsRepo,
+    threadsRepo,
+    assistantRuntime
+  })
 
   const apiApp = createApp({
     token: serverConfig.token,
@@ -153,6 +174,7 @@ async function startLocalApiServer(): Promise<void> {
       providers: providersRepo,
       assistants: assistantsRepo,
       threads: threadsRepo,
+      channels: channelsRepo,
       teamWorkspaces: teamWorkspacesRepo,
       teamThreads: teamThreadsRepo,
       webSearchSettings: webSearchSettingsRepo,
@@ -160,7 +182,8 @@ async function startLocalApiServer(): Promise<void> {
     },
     assistantRuntime,
     teamRuntime,
-    teamRunStatusStore
+    teamRunStatusStore,
+    channelService
   })
 
   localApiServer = serve(
@@ -178,9 +201,22 @@ async function startLocalApiServer(): Promise<void> {
       }
     }
   )
+
+  await channelMessageRouter.start()
+  await channelService.start()
 }
 
 function stopLocalApiServer(): void {
+  if (channelService) {
+    void channelService.stop()
+    channelService = null
+  }
+
+  if (channelMessageRouter) {
+    void channelMessageRouter.stop()
+    channelMessageRouter = null
+  }
+
   if (!localApiServer) {
     return
   }
