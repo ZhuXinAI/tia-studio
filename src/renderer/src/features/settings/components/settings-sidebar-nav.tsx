@@ -1,4 +1,4 @@
-import { Cable, Cloud, Info, Search, Monitor, Wrench } from 'lucide-react'
+import { Cable, Cloud, Info, MessageCircleMore, Search, Monitor, Wrench } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
@@ -23,6 +23,11 @@ const settingsNavItems: SettingsNavItem[] = [
     title: 'Model Provider',
     icon: Cloud,
     to: '/settings/providers'
+  },
+  {
+    title: 'Channels',
+    icon: MessageCircleMore,
+    to: '/settings/channels'
   },
   {
     title: 'Web Search',

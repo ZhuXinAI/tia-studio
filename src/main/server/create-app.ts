@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
+import type { ChannelsRepository } from '../persistence/repos/channels-repo'
 import type { McpServersRepository } from '../persistence/repos/mcp-servers-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { TeamThreadsRepository } from '../persistence/repos/team-threads-repo'
@@ -13,6 +14,7 @@ import { createBearerAuthMiddleware } from './auth-middleware'
 import type { TeamRunStatusStore } from './chat/team-run-status-store'
 import { registerAssistantsRoute } from './routes/assistants-route'
 import { registerChatRoute } from './routes/chat-route'
+import { registerChannelsSettingsRoute } from './routes/channels-settings-route'
 import { registerHealthRoute } from './routes/health-route'
 import { registerMcpServersRoute } from './routes/mcp-servers-route'
 import { registerProvidersRoute } from './routes/providers-route'
@@ -32,10 +34,14 @@ type CreateAppOptions = {
     teamThreads: TeamThreadsRepository
     webSearchSettings: WebSearchSettingsRepository
     mcpServers: McpServersRepository
+    channels: ChannelsRepository
   }
   assistantRuntime?: AssistantRuntime
   teamRuntime?: TeamRuntime
   teamRunStatusStore?: TeamRunStatusStore
+  channelService?: {
+    reload(): Promise<void>
+  }
 }
 
 export function createApp(options: CreateAppOptions): Hono {
@@ -97,6 +103,12 @@ export function createApp(options: CreateAppOptions): Hono {
     registerMcpServersRoute(app, {
       mcpServersRepo: options.repositories.mcpServers
     })
+    if (options.channelService) {
+      registerChannelsSettingsRoute(app, {
+        channelsRepo: options.repositories.channels,
+        channelService: options.channelService
+      })
+    }
   }
 
   if (options.assistantRuntime) {

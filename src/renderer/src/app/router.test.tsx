@@ -85,9 +85,20 @@ describe('app router', () => {
 
     expect(html).toContain('Display Settings')
     expect(html).toContain('Model Provider')
+    expect(html).toContain('Channels')
     expect(html).toContain('Web Search')
     expect(html).toContain('MCP Servers')
     expect(html).toContain('About &amp; Feedback')
+  })
+
+  it('renders channels settings route', () => {
+    const html = renderRouter(['/settings/channels'])
+
+    expect(html).toContain('Channels')
+    expect(html).toContain('Lark')
+    expect(html).toContain('App ID')
+    expect(html).toContain('Model Provider')
+    expect(html).toContain('Web Search')
   })
 
   it('renders chat route with assistant creation controls', () => {

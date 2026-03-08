@@ -264,6 +264,44 @@ async function ensureTeamTables(db: AppDatabase): Promise<void> {
   }
 }
 
+async function ensureChannelsTables(db: AppDatabase): Promise<void> {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_channels (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      name TEXT NOT NULL,
+      assistant_id TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      config TEXT NOT NULL DEFAULT '{}',
+      last_error TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (assistant_id) REFERENCES app_assistants(id) ON DELETE SET NULL
+    )
+  `)
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_channel_thread_bindings (
+      channel_id TEXT NOT NULL,
+      remote_chat_id TEXT NOT NULL,
+      thread_id TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (channel_id, remote_chat_id),
+      FOREIGN KEY (channel_id) REFERENCES app_channels(id) ON DELETE CASCADE,
+      FOREIGN KEY (thread_id) REFERENCES app_threads(id) ON DELETE CASCADE
+    )
+  `)
+
+  await db.execute('CREATE INDEX IF NOT EXISTS idx_app_channels_type ON app_channels(type)')
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_channels_assistant_id ON app_channels(assistant_id)'
+  )
+  await db.execute('CREATE INDEX IF NOT EXISTS idx_app_channels_enabled ON app_channels(enabled)')
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_channel_thread_bindings_thread_id ON app_channel_thread_bindings(thread_id)'
+  )
+}
+
 export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> {
   const db = createAppDatabase(pathOrUrl)
 
@@ -298,6 +336,7 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   await ensureProviderSupportsVisionColumn(db)
   await ensureBuiltInProviderColumns(db)
   await ensureTeamTables(db)
+  await ensureChannelsTables(db)
 
   return db
 }

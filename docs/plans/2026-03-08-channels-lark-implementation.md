@@ -221,6 +221,7 @@ export interface ChannelAdapter {
 - Add bus event types:
   - `channel.message.received`
   - `channel.message.send-requested`
+- Model outbound send requests with a `content: string` field so the transport layer receives plain reply text.
 - `ChannelService` should:
   - build adapters from enabled repo records
   - bridge adapter `onMessage` callbacks into the bus
@@ -588,6 +589,7 @@ Expected: FAIL because the route and validator do not exist yet.
 **Step 3: Write minimal implementation**
 
 - Add a settings route at `/v1/settings/channels`.
+- Use `GET /v1/settings/channels` for reads and `PUT /v1/settings/channels` for upserts.
 - Suggested response shape:
 
 ```ts
