@@ -10,6 +10,30 @@ type AutoUpdateState = {
   lastCheckedAt: string | null
   message: string | null
 }
+type ManagedRuntimeKind = 'bun' | 'uv'
+type ManagedRuntimeSource = 'managed' | 'custom' | 'none'
+type ManagedRuntimeStatus =
+  | 'missing'
+  | 'installing'
+  | 'ready'
+  | 'custom-ready'
+  | 'update-available'
+  | 'invalid-custom-path'
+  | 'download-failed'
+  | 'extract-failed'
+  | 'validation-failed'
+type ManagedRuntimeRecord = {
+  source: ManagedRuntimeSource
+  binaryPath: string | null
+  version: string | null
+  installedAt: string | null
+  lastCheckedAt: string | null
+  releaseUrl: string | null
+  checksum: string | null
+  status: ManagedRuntimeStatus
+  errorMessage: string | null
+}
+type ManagedRuntimesState = Record<ManagedRuntimeKind, ManagedRuntimeRecord>
 
 const tiaDesktop = {
   getConfig: () =>
@@ -27,6 +51,16 @@ const tiaDesktop = {
   setAutoUpdateEnabled: (enabled: boolean) =>
     ipcRenderer.invoke('tia:set-auto-update-enabled', enabled) as Promise<AutoUpdateState>,
   checkForUpdates: () => ipcRenderer.invoke('tia:check-for-updates') as Promise<AutoUpdateState>,
+  getManagedRuntimeStatus: () =>
+    ipcRenderer.invoke('tia:get-managed-runtime-status') as Promise<ManagedRuntimesState>,
+  checkManagedRuntimeLatest: (kind: ManagedRuntimeKind) =>
+    ipcRenderer.invoke('tia:check-managed-runtime-latest', kind) as Promise<ManagedRuntimesState>,
+  installManagedRuntime: (kind: ManagedRuntimeKind) =>
+    ipcRenderer.invoke('tia:install-managed-runtime', kind) as Promise<ManagedRuntimesState>,
+  pickCustomRuntime: (kind: ManagedRuntimeKind) =>
+    ipcRenderer.invoke('tia:pick-custom-runtime', kind) as Promise<ManagedRuntimesState | null>,
+  clearManagedRuntime: (kind: ManagedRuntimeKind) =>
+    ipcRenderer.invoke('tia:clear-managed-runtime', kind) as Promise<ManagedRuntimesState>,
   pickDirectory: () => ipcRenderer.invoke('tia:pick-directory') as Promise<string | null>,
   listAssistantSkills: (workspaceRootPath: string) =>
     ipcRenderer.invoke('tia:list-assistant-skills', workspaceRootPath) as Promise<

@@ -1,4 +1,4 @@
-import { Cable, Cloud, Info, Search, Monitor } from 'lucide-react'
+import { Cable, Cloud, Info, Search, Monitor, Wrench } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
@@ -33,6 +33,11 @@ const settingsNavItems: SettingsNavItem[] = [
     title: 'MCP Servers',
     icon: Cable,
     to: '/settings/mcp-servers'
+  },
+  {
+    title: 'Runtime Setup',
+    icon: Wrench,
+    to: '/settings/runtimes'
   },
   {
     title: 'Display',

@@ -6,6 +6,7 @@ import { WebSearchSettingsPage } from '../features/settings/pages/web-search-set
 import { McpServersSettingsPage } from '../features/settings/pages/mcp-servers-settings-page'
 import { AboutSettingsPage } from '../features/settings/pages/about-settings-page'
 import { DisplaySettingsPage } from '../features/settings/pages/display-settings-page'
+import { RuntimeSetupPage } from '../features/settings/pages/runtime-setup-page'
 import { SettingsPageLayout } from '../features/settings/pages/settings-page-layout'
 import { RouteError } from '../components/route-error'
 import { TeamPage } from '../features/team/pages/team-page'
@@ -55,6 +56,10 @@ export const appRoutes: RouteObject[] = [
           {
             path: 'mcp-servers',
             element: <McpServersSettingsPage />
+          },
+          {
+            path: 'runtimes',
+            element: <RuntimeSetupPage />
           },
           {
             path: 'about',

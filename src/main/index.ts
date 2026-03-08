@@ -24,12 +24,17 @@ import { createMastraInstance } from './mastra/store'
 import { TeamRuntimeService } from './mastra/team-runtime'
 import { migrateAppSchema } from './persistence/migrate'
 import { AssistantsRepository } from './persistence/repos/assistants-repo'
+import {
+  type ManagedRuntimeKind,
+  ManagedRuntimesRepository
+} from './persistence/repos/managed-runtimes-repo'
 import { McpServersRepository } from './persistence/repos/mcp-servers-repo'
 import { ProvidersRepository } from './persistence/repos/providers-repo'
 import { TeamThreadsRepository } from './persistence/repos/team-threads-repo'
 import { TeamWorkspacesRepository } from './persistence/repos/team-workspaces-repo'
 import { ThreadsRepository } from './persistence/repos/threads-repo'
 import { WebSearchSettingsRepository } from './persistence/repos/web-search-settings-repo'
+import { ManagedRuntimeService } from './runtimes/managed-runtime-service'
 import { TeamRunStatusStore } from './server/chat/team-run-status-store'
 import { createApp } from './server/create-app'
 import { listAssistantSkills, removeWorkspaceSkill } from './skills/skills-manager'
@@ -45,6 +50,7 @@ let persistenceDatabasePath: string | null = null
 let appTray: Tray | null = null
 let mainWindow: BrowserWindow | null = null
 let webSearchSettingsWindow: BrowserWindow | null = null
+let managedRuntimeService: ManagedRuntimeService | null = null
 const searchBrowserPartition = 'persist:tia-browser-search'
 
 let isTransparentWindow = false
@@ -70,6 +76,22 @@ function normalizeWebSearchSettingsUrl(rawUrl: string): string {
   }
 
   return parsed.toString()
+}
+
+function assertManagedRuntimeKind(value: unknown): ManagedRuntimeKind {
+  if (value === 'bun' || value === 'uv') {
+    return value
+  }
+
+  throw new Error('Managed runtime kind must be "bun" or "uv"')
+}
+
+function resolveManagedRuntimeService(): ManagedRuntimeService {
+  if (!managedRuntimeService) {
+    throw new Error('Managed runtime service is not ready')
+  }
+
+  return managedRuntimeService
 }
 
 function resolveWebSearchSettingsWindow(parentWindow: BrowserWindow | null): BrowserWindow {
@@ -122,6 +144,13 @@ async function startLocalApiServer(): Promise<void> {
   const teamThreadsRepo = new TeamThreadsRepository(db)
   const webSearchSettingsRepo = new WebSearchSettingsRepository(db)
   const mcpServersRepo = new McpServersRepository(join(app.getPath('userData'), 'mcp.json'))
+  const managedRuntimesRepo = new ManagedRuntimesRepository(
+    join(app.getPath('userData'), 'managed-runtimes.json')
+  )
+  managedRuntimeService = new ManagedRuntimeService({
+    repository: managedRuntimesRepo,
+    managedRootPath: join(app.getPath('userData'), 'managed-runtimes')
+  })
   await ensureBuiltInProviders(providersRepo)
   await ensureBuiltInDefaultAgent({
     assistantsRepo,
@@ -135,7 +164,8 @@ async function startLocalApiServer(): Promise<void> {
     providersRepo,
     threadsRepo,
     webSearchSettingsRepo,
-    mcpServersRepo
+    mcpServersRepo,
+    managedRuntimeResolver: managedRuntimeService
   })
   const teamRunStatusStore = new TeamRunStatusStore()
   const teamRuntime = new TeamRuntimeService({
@@ -355,6 +385,38 @@ app.whenReady().then(async () => {
   })
   ipcMain.handle('tia:check-for-updates', () => {
     return autoUpdateService.checkForUpdates()
+  })
+  ipcMain.handle('tia:get-managed-runtime-status', () => {
+    return resolveManagedRuntimeService().getStatus()
+  })
+  ipcMain.handle('tia:check-managed-runtime-latest', async (_event, rawKind) => {
+    const kind = assertManagedRuntimeKind(rawKind)
+    return resolveManagedRuntimeService().checkLatest(kind)
+  })
+  ipcMain.handle('tia:install-managed-runtime', async (_event, rawKind) => {
+    const kind = assertManagedRuntimeKind(rawKind)
+    return resolveManagedRuntimeService().installManagedRuntime(kind)
+  })
+  ipcMain.handle('tia:pick-custom-runtime', async (event, rawKind) => {
+    const kind = assertManagedRuntimeKind(rawKind)
+    const currentWindow = BrowserWindow.fromWebContents(event.sender)
+    const openDialogOptions: OpenDialogOptions = {
+      title: `Select ${kind === 'bun' ? 'Bun' : 'UV'} Binary`,
+      properties: ['openFile']
+    }
+    const result = currentWindow
+      ? await dialog.showOpenDialog(currentWindow, openDialogOptions)
+      : await dialog.showOpenDialog(openDialogOptions)
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null
+    }
+
+    return resolveManagedRuntimeService().setCustomRuntime(kind, result.filePaths[0])
+  })
+  ipcMain.handle('tia:clear-managed-runtime', async (_event, rawKind) => {
+    const kind = assertManagedRuntimeKind(rawKind)
+    return resolveManagedRuntimeService().clearRuntime(kind)
   })
   ipcMain.handle('tia:pick-directory', async (event) => {
     const currentWindow = BrowserWindow.fromWebContents(event.sender)

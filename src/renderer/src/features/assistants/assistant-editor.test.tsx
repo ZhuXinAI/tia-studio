@@ -2,9 +2,11 @@
 
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AssistantEditor } from './assistant-editor'
 import type { ProviderRecord } from '../settings/providers/providers-query'
+import type { ManagedRuntimesState } from '../settings/runtimes/managed-runtimes-query'
 
 function findButtonByText(container: HTMLElement, text: string): HTMLButtonElement {
   const button = Array.from(container.querySelectorAll('button')).find((candidate) =>
@@ -78,18 +80,44 @@ describe('assistant editor', () => {
       installSource: 'local'
     }
   }
+  const missingManagedRuntimes: ManagedRuntimesState = {
+    bun: {
+      source: 'none',
+      binaryPath: null,
+      version: null,
+      installedAt: null,
+      lastCheckedAt: null,
+      releaseUrl: null,
+      checksum: null,
+      status: 'missing',
+      errorMessage: null
+    },
+    uv: {
+      source: 'none',
+      binaryPath: null,
+      version: null,
+      installedAt: null,
+      lastCheckedAt: null,
+      releaseUrl: null,
+      checksum: null,
+      status: 'missing',
+      errorMessage: null
+    }
+  }
 
   it('fills workspace path from system folder picker', async () => {
     const onSelectWorkspacePath = vi.fn().mockResolvedValue('/Users/windht/Dev')
 
     await act(async () => {
       root.render(
-        <AssistantEditor
-          providers={[provider]}
-          mcpServers={{}}
-          onSubmit={() => undefined}
-          onSelectWorkspacePath={onSelectWorkspacePath}
-        />
+        <MemoryRouter>
+          <AssistantEditor
+            providers={[provider]}
+            mcpServers={{}}
+            onSubmit={() => undefined}
+            onSelectWorkspacePath={onSelectWorkspacePath}
+          />
+        </MemoryRouter>
       )
     })
 
@@ -108,7 +136,9 @@ describe('assistant editor', () => {
   it('uses flex column layout for tab navigation spacing', async () => {
     await act(async () => {
       root.render(
-        <AssistantEditor providers={[provider]} mcpServers={{}} onSubmit={() => undefined} />
+        <MemoryRouter>
+          <AssistantEditor providers={[provider]} mcpServers={{}} onSubmit={() => undefined} />
+        </MemoryRouter>
       )
     })
 
@@ -124,25 +154,27 @@ describe('assistant editor', () => {
 
     await act(async () => {
       root.render(
-        <AssistantEditor
-          providers={[provider]}
-          mcpServers={{}}
-          initialValue={{
-            id: 'assistant-1',
-            name: 'Planner',
-            description: 'Routes travel bookings and itinerary work.',
-            instructions: 'Original prompt',
-            providerId: 'provider-1',
-            workspaceConfig: { rootPath: '/Users/windht/Dev' },
-            skillsConfig: {},
-            mcpConfig: {},
-            maxSteps: 100,
-            memoryConfig: null,
-            createdAt: '2026-03-02T00:00:00.000Z',
-            updatedAt: '2026-03-02T00:00:00.000Z'
-          }}
-          onSubmit={onSubmit}
-        />
+        <MemoryRouter>
+          <AssistantEditor
+            providers={[provider]}
+            mcpServers={{}}
+            initialValue={{
+              id: 'assistant-1',
+              name: 'Planner',
+              description: 'Routes travel bookings and itinerary work.',
+              instructions: 'Original prompt',
+              providerId: 'provider-1',
+              workspaceConfig: { rootPath: '/Users/windht/Dev' },
+              skillsConfig: {},
+              mcpConfig: {},
+              maxSteps: 100,
+              memoryConfig: null,
+              createdAt: '2026-03-02T00:00:00.000Z',
+              updatedAt: '2026-03-02T00:00:00.000Z'
+            }}
+            onSubmit={onSubmit}
+          />
+        </MemoryRouter>
       )
     })
 
@@ -169,25 +201,27 @@ describe('assistant editor', () => {
   it('shows configured MCP servers when the tools tab opens', async () => {
     await act(async () => {
       root.render(
-        <AssistantEditor
-          providers={[provider]}
-          mcpServers={mcpServers}
-          initialValue={{
-            id: 'assistant-1',
-            name: 'Planner',
-            description: '',
-            instructions: '',
-            providerId: 'provider-1',
-            workspaceConfig: { rootPath: '/Users/windht/Dev/tia-studio' },
-            skillsConfig: {},
-            mcpConfig: {},
-            maxSteps: 100,
-            memoryConfig: null,
-            createdAt: '2026-03-02T00:00:00.000Z',
-            updatedAt: '2026-03-02T00:00:00.000Z'
-          }}
-          onSubmit={() => undefined}
-        />
+        <MemoryRouter>
+          <AssistantEditor
+            providers={[provider]}
+            mcpServers={mcpServers}
+            initialValue={{
+              id: 'assistant-1',
+              name: 'Planner',
+              description: '',
+              instructions: '',
+              providerId: 'provider-1',
+              workspaceConfig: { rootPath: '/Users/windht/Dev/tia-studio' },
+              skillsConfig: {},
+              mcpConfig: {},
+              maxSteps: 100,
+              memoryConfig: null,
+              createdAt: '2026-03-02T00:00:00.000Z',
+              updatedAt: '2026-03-02T00:00:00.000Z'
+            }}
+            onSubmit={() => undefined}
+          />
+        </MemoryRouter>
       )
     })
 
@@ -201,30 +235,78 @@ describe('assistant editor', () => {
     expect(container.textContent).toContain('Disabled globally in MCP Server Settings.')
   })
 
+  it('shows runtime setup guidance for runtime-backed MCP tools', async () => {
+    window.tiaDesktop = {
+      getConfig: vi.fn(async () => ({
+        baseUrl: 'http://127.0.0.1:3456',
+        authToken: 'token'
+      })),
+      getManagedRuntimeStatus: vi.fn(async () => missingManagedRuntimes),
+      pickDirectory: vi.fn(async () => null)
+    }
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <AssistantEditor
+            providers={[provider]}
+            mcpServers={mcpServers}
+            initialValue={{
+              id: 'assistant-1',
+              name: 'Planner',
+              description: '',
+              instructions: '',
+              providerId: 'provider-1',
+              workspaceConfig: { rootPath: '/Users/windht/Dev/tia-studio' },
+              skillsConfig: {},
+              mcpConfig: {},
+              maxSteps: 100,
+              memoryConfig: null,
+              createdAt: '2026-03-02T00:00:00.000Z',
+              updatedAt: '2026-03-02T00:00:00.000Z'
+            }}
+            onSubmit={() => undefined}
+          />
+        </MemoryRouter>
+      )
+    })
+
+    const toolsButton = findButtonByText(container, 'Tools')
+    await act(async () => {
+      toolsButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await Promise.resolve()
+    })
+
+    expect(container.textContent).toContain('Runtime Setup')
+    expect(container.textContent).toContain('managed runtimes')
+  })
+
   it('includes tool toggles in the submit payload', async () => {
     const onSubmit = vi.fn(async () => undefined)
 
     await act(async () => {
       root.render(
-        <AssistantEditor
-          providers={[provider]}
-          mcpServers={mcpServers}
-          initialValue={{
-            id: 'assistant-1',
-            name: 'Planner',
-            description: '',
-            instructions: '',
-            providerId: 'provider-1',
-            workspaceConfig: { rootPath: '/Users/windht/Dev/tia-studio' },
-            skillsConfig: {},
-            mcpConfig: {},
-            maxSteps: 100,
-            memoryConfig: null,
-            createdAt: '2026-03-02T00:00:00.000Z',
-            updatedAt: '2026-03-02T00:00:00.000Z'
-          }}
-          onSubmit={onSubmit}
-        />
+        <MemoryRouter>
+          <AssistantEditor
+            providers={[provider]}
+            mcpServers={mcpServers}
+            initialValue={{
+              id: 'assistant-1',
+              name: 'Planner',
+              description: '',
+              instructions: '',
+              providerId: 'provider-1',
+              workspaceConfig: { rootPath: '/Users/windht/Dev/tia-studio' },
+              skillsConfig: {},
+              mcpConfig: {},
+              maxSteps: 100,
+              memoryConfig: null,
+              createdAt: '2026-03-02T00:00:00.000Z',
+              updatedAt: '2026-03-02T00:00:00.000Z'
+            }}
+            onSubmit={onSubmit}
+          />
+        </MemoryRouter>
       )
     })
 
@@ -260,7 +342,9 @@ describe('assistant editor', () => {
   it('keeps the tab panel at a fixed height while switching sections', async () => {
     await act(async () => {
       root.render(
-        <AssistantEditor providers={[provider]} mcpServers={{}} onSubmit={() => undefined} />
+        <MemoryRouter>
+          <AssistantEditor providers={[provider]} mcpServers={{}} onSubmit={() => undefined} />
+        </MemoryRouter>
       )
     })
 

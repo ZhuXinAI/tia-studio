@@ -122,6 +122,20 @@ describe('mcp servers settings page', () => {
     // Toast is rendered by Sonner in a portal, not in the component tree
   })
 
+  it('shows runtime setup guidance for managed-runtime commands', async () => {
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <McpServersSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    expect(container.textContent).toContain('Runtime Setup')
+    expect(container.textContent).toContain('managed runtimes')
+  })
+
   it('allows partial environment variable edits and persists them', async () => {
     await act(async () => {
       root.render(

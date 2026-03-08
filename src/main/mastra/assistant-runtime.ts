@@ -2,6 +2,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { Agent } from '@mastra/core/agent'
 import type { AgentExecutionOptions, ToolsInput } from '@mastra/core/agent'
+import type { MessageListInput } from '@mastra/core/agent/message-list'
 import type { MemoryConfig } from '@mastra/core/memory'
 import type { Mastra } from '@mastra/core/mastra'
 import { LocalFilesystem, LocalSandbox, Workspace } from '@mastra/core/workspace'
@@ -11,6 +12,11 @@ import { Memory } from '@mastra/memory'
 import { MCPClient, type MastraMCPServerDefinition } from '@mastra/mcp'
 import type { UIMessage, UIMessageChunk } from 'ai'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
+import type {
+  ManagedRuntimeKind,
+  ManagedRuntimeRecord,
+  ManagedRuntimesState
+} from '../persistence/repos/managed-runtimes-repo'
 import type { AppMcpServer, McpServersRepository } from '../persistence/repos/mcp-servers-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
@@ -22,7 +28,7 @@ import { AttachmentUploader } from './processors/attachment-uploader'
 
 type StreamChatParams = {
   assistantId: string
-  messages: UIMessage[]
+  messages: MessageListInput
   threadId: string
   profileId: string
   trigger?: 'submit-message' | 'regenerate-message'
@@ -52,6 +58,18 @@ type AssistantRuntimeServiceOptions = {
   threadsRepo: ThreadsRepository
   webSearchSettingsRepo: WebSearchSettingsRepository
   mcpServersRepo: McpServersRepository
+  managedRuntimeResolver?: {
+    getStatus: () => Promise<ManagedRuntimesState>
+    resolveManagedCommand: (
+      command: string,
+      args: string[],
+      env?: NodeJS.ProcessEnv
+    ) => Promise<{
+      command: string
+      args: string[]
+      env: NodeJS.ProcessEnv
+    }>
+  }
 }
 
 type JsonObject = Record<string, unknown>
@@ -75,7 +93,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       mastra: this.options.mastra,
       agentId: assistant.id,
       params: {
-        messages: params.messages,
+        messages: toAISdkV5Messages(params.messages),
         trigger: params.trigger,
         abortSignal: params.abortSignal,
         maxSteps: assistant.maxSteps,
@@ -452,7 +470,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       return {}
     }
 
-    const serverDefinitions = this.toMcpServerDefinitions(enabledMcpServers)
+    const serverDefinitions = await this.toMcpServerDefinitions(enabledMcpServers)
     if (Object.keys(serverDefinitions).length === 0) {
       await this.disconnectMcpClient(assistantId)
       return {}
@@ -477,24 +495,26 @@ export class AssistantRuntimeService implements AssistantRuntime {
     }
   }
 
-  private toMcpServerDefinitions(
+  private async toMcpServerDefinitions(
     servers: Record<string, AppMcpServer>
-  ): Record<string, MastraMCPServerDefinition> {
-    const entries = Object.entries(servers)
-      .map(([serverName, server]) => {
-        const definition = this.toMcpServerDefinition(server)
+  ): Promise<Record<string, MastraMCPServerDefinition>> {
+    const entries = (
+      await Promise.all(
+      Object.entries(servers).map(async ([serverName, server]) => {
+        const definition = await this.toMcpServerDefinition(server)
         if (!definition) {
           return null
         }
 
         return [serverName, definition] as const
       })
-      .filter((entry): entry is readonly [string, MastraMCPServerDefinition] => entry !== null)
+    )
+    ).filter((entry): entry is readonly [string, MastraMCPServerDefinition] => entry !== null)
 
     return Object.fromEntries(entries)
   }
 
-  private toMcpServerDefinition(server: AppMcpServer): MastraMCPServerDefinition | null {
+  private async toMcpServerDefinition(server: AppMcpServer): Promise<MastraMCPServerDefinition | null> {
     const command = this.toNonEmptyString(server.command)
     const url = this.toNonEmptyString(server.url)
     const serverType = server.type.trim().toLowerCase()
@@ -504,11 +524,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
         return null
       }
 
-      return {
-        command,
-        ...(server.args.length > 0 ? { args: server.args } : {}),
-        ...(Object.keys(server.env).length > 0 ? { env: server.env } : {})
-      }
+      return this.toCommandMcpServerDefinition(command, server.args, server.env)
     }
 
     if (url) {
@@ -522,14 +538,85 @@ export class AssistantRuntimeService implements AssistantRuntime {
     }
 
     if (command) {
-      return {
-        command,
-        ...(server.args.length > 0 ? { args: server.args } : {}),
-        ...(Object.keys(server.env).length > 0 ? { env: server.env } : {})
-      }
+      return this.toCommandMcpServerDefinition(command, server.args, server.env)
     }
 
     return null
+  }
+
+  private async toCommandMcpServerDefinition(
+    command: string,
+    args: string[],
+    env: Record<string, string>
+  ): Promise<MastraMCPServerDefinition> {
+    const resolved = await this.resolveManagedCommand(command, args, env)
+    const normalizedEnv = this.toStringMap(resolved.env)
+
+    return {
+      command: resolved.command,
+      ...(resolved.args.length > 0 ? { args: resolved.args } : {}),
+      ...(Object.keys(normalizedEnv).length > 0 ? { env: normalizedEnv } : {})
+    }
+  }
+
+  private async resolveManagedCommand(
+    command: string,
+    args: string[],
+    env: Record<string, string>
+  ): Promise<{
+    command: string
+    args: string[]
+    env: NodeJS.ProcessEnv
+  }> {
+    const runtimeResolver = this.options.managedRuntimeResolver
+    if (!runtimeResolver) {
+      return {
+        command,
+        args,
+        env
+      }
+    }
+
+    const requiredRuntime = this.getRequiredManagedRuntimeKind(command)
+    if (requiredRuntime) {
+      const status = await runtimeResolver.getStatus()
+      if (!this.isManagedRuntimeReady(status[requiredRuntime])) {
+        throw new ChatRouteError(
+          409,
+          'managed_runtime_missing',
+          `This MCP server uses ${command}, which requires the ${requiredRuntime} managed runtime. Open Runtime Setup to install or select ${requiredRuntime}.`
+        )
+      }
+    }
+
+    return runtimeResolver.resolveManagedCommand(command, args, env)
+  }
+
+  private getRequiredManagedRuntimeKind(command: string): ManagedRuntimeKind | null {
+    const normalized = command.trim().toLowerCase()
+
+    if (normalized === 'npx' || normalized === 'bun' || normalized === 'bunx') {
+      return 'bun'
+    }
+
+    if (normalized === 'uv' || normalized === 'uvx') {
+      return 'uv'
+    }
+
+    return null
+  }
+
+  private isManagedRuntimeReady(record: ManagedRuntimeRecord | undefined): boolean {
+    if (!record) {
+      return false
+    }
+
+    return (
+      Boolean(record.binaryPath) &&
+      (record.status === 'ready' ||
+        record.status === 'custom-ready' ||
+        record.status === 'update-available')
+    )
   }
 
   private async disconnectMcpClient(assistantId: string): Promise<void> {
@@ -615,6 +702,21 @@ export class AssistantRuntimeService implements AssistantRuntime {
         return null
       })
       .filter((entry): entry is readonly [string, boolean] => entry !== null)
+
+    return Object.fromEntries(entries)
+  }
+
+  private toStringMap(value: NodeJS.ProcessEnv): Record<string, string> {
+    const entries = Object.entries(value)
+      .map(([key, rawValue]) => {
+        const normalizedKey = key.trim()
+        if (normalizedKey.length === 0 || typeof rawValue !== 'string') {
+          return null
+        }
+
+        return [normalizedKey, rawValue] as const
+      })
+      .filter((entry): entry is readonly [string, string] => entry !== null)
 
     return Object.fromEntries(entries)
   }

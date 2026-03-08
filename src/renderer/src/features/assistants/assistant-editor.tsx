@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronDown } from 'lucide-react'
 import type { SaveAssistantInput, AssistantRecord } from './assistants-query'
@@ -10,6 +10,12 @@ import { Textarea } from '../../components/ui/textarea'
 import { Field, FieldLabel } from '../../components/ui/field'
 import { cn } from '../../lib/utils'
 import { ModelPickerDialog } from './model-picker-dialog'
+import {
+  getManagedRuntimeStatus,
+  getRequiredManagedRuntimeKind,
+  isManagedRuntimeReady,
+  type ManagedRuntimesState
+} from '../settings/runtimes/managed-runtimes-query'
 
 type AssistantEditorValues = {
   name: string
@@ -151,6 +157,7 @@ export function AssistantEditor({
   const [error, setError] = useState<string | null>(null)
   const [isSelectingWorkspacePath, setIsSelectingWorkspacePath] = useState(false)
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false)
+  const [managedRuntimeState, setManagedRuntimeState] = useState<ManagedRuntimesState | null>(null)
 
   const title = useMemo(() => {
     return initialValue ? 'Edit Assistant' : 'Create Assistant'
@@ -163,6 +170,41 @@ export function AssistantEditor({
   const mcpServerEntries = useMemo(() => {
     return Object.entries(mcpServers).sort(([left], [right]) => left.localeCompare(right))
   }, [mcpServers])
+
+  const runtimeBackedServerEntries = useMemo(() => {
+    return mcpServerEntries.filter(([, server]) => getRequiredManagedRuntimeKind(server.command))
+  }, [mcpServerEntries])
+
+  const shouldShowManagedRuntimeNote = useMemo(() => {
+    if (runtimeBackedServerEntries.length === 0) {
+      return false
+    }
+
+    if (!managedRuntimeState) {
+      return true
+    }
+
+    return runtimeBackedServerEntries.some(([, server]) => {
+      const requiredRuntime = getRequiredManagedRuntimeKind(server.command)
+      return requiredRuntime ? !isManagedRuntimeReady(managedRuntimeState[requiredRuntime]) : false
+    })
+  }, [managedRuntimeState, runtimeBackedServerEntries])
+
+  useEffect(() => {
+    let isCancelled = false
+
+    void getManagedRuntimeStatus()
+      .then((nextState) => {
+        if (!isCancelled) {
+          setManagedRuntimeState(nextState)
+        }
+      })
+      .catch(() => undefined)
+
+    return () => {
+      isCancelled = true
+    }
+  }, [])
 
   const handleInput = (key: keyof AssistantEditorValues, value: string): void => {
     setValues((current) => ({ ...current, [key]: value }))
@@ -357,6 +399,22 @@ export function AssistantEditor({
 
           {activeTab === 'tools' ? (
             <div className="space-y-3">
+              {shouldShowManagedRuntimeNote ? (
+                <div className="rounded-md border border-amber-300/40 bg-amber-400/10 px-3 py-2">
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                    Some MCP tools use managed runtimes.
+                  </p>
+                  <p className="text-sm text-amber-900/80 dark:text-amber-200/80">
+                    Finish setup in{' '}
+                    <Link className="underline underline-offset-2" to="/settings/runtimes">
+                      Runtime Setup
+                    </Link>{' '}
+                    if this assistant depends on <code>npx</code>, <code>bun</code>, or{' '}
+                    <code>uv</code>-backed tools.
+                  </p>
+                </div>
+              ) : null}
+
               {mcpServerEntries.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
                   No MCP servers configured yet. Add servers in{' '}

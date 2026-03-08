@@ -64,6 +64,14 @@ describe('app router', () => {
     expect(html).toContain('MCP Servers')
   })
 
+  it('renders runtime setup route', () => {
+    const html = renderRouter(['/settings/runtimes'])
+
+    expect(html).toContain('Runtime Setup')
+    expect(html).toContain('bun')
+    expect(html).toContain('Runtime Setup')
+  })
+
   it('renders about settings route', () => {
     const html = renderRouter(['/settings/about'])
 

@@ -1,0 +1,165 @@
+import os from 'node:os'
+import path from 'node:path'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { ManagedRuntimesRepository } from './managed-runtimes-repo'
+
+describe('ManagedRuntimesRepository', () => {
+  let tempDir: string
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(path.join(os.tmpdir(), 'tia-managed-runtimes-'))
+  })
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true })
+  })
+
+  it('returns default runtime state when file is missing', async () => {
+    const filePath = path.join(tempDir, 'managed-runtimes.json')
+    const repo = new ManagedRuntimesRepository(filePath)
+
+    const state = await repo.getState()
+
+    expect(state).toEqual({
+      bun: {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
+      },
+      uv: {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
+      }
+    })
+  })
+
+  it('normalizes bun and uv runtime records from disk', async () => {
+    const filePath = path.join(tempDir, 'managed-runtimes.json')
+    await writeFile(
+      filePath,
+      JSON.stringify({
+        bun: {
+          source: 'managed',
+          binaryPath: ' /tmp/bun ',
+          version: ' 1.2.3 ',
+          installedAt: ' 2026-03-08T00:00:00.000Z ',
+          lastCheckedAt: ' 2026-03-08T01:00:00.000Z ',
+          releaseUrl: ' https://example.test/bun ',
+          checksum: ' abc123 ',
+          status: 'ready',
+          errorMessage: '   '
+        },
+        uv: {
+          source: 'invalid-source',
+          binaryPath: 42,
+          version: '',
+          installedAt: false,
+          lastCheckedAt: undefined,
+          releaseUrl: null,
+          checksum: {},
+          status: 'unknown-status',
+          errorMessage: ' broken '
+        }
+      }),
+      'utf-8'
+    )
+
+    const repo = new ManagedRuntimesRepository(filePath)
+    const state = await repo.getState()
+
+    expect(state.bun).toEqual({
+      source: 'managed',
+      binaryPath: '/tmp/bun',
+      version: '1.2.3',
+      installedAt: '2026-03-08T00:00:00.000Z',
+      lastCheckedAt: '2026-03-08T01:00:00.000Z',
+      releaseUrl: 'https://example.test/bun',
+      checksum: 'abc123',
+      status: 'ready',
+      errorMessage: null
+    })
+    expect(state.uv).toEqual({
+      source: 'none',
+      binaryPath: null,
+      version: null,
+      installedAt: null,
+      lastCheckedAt: null,
+      releaseUrl: null,
+      checksum: null,
+      status: 'missing',
+      errorMessage: 'broken'
+    })
+  })
+
+  it('persists normalized runtime fields', async () => {
+    const filePath = path.join(tempDir, 'managed-runtimes.json')
+    const repo = new ManagedRuntimesRepository(filePath)
+
+    const saved = await repo.saveState({
+      bun: {
+        source: 'custom',
+        binaryPath: ' /custom/bun ',
+        version: ' 1.0.0 ',
+        installedAt: ' 2026-03-08T00:00:00.000Z ',
+        lastCheckedAt: ' 2026-03-08T01:00:00.000Z ',
+        releaseUrl: ' ',
+        checksum: null,
+        status: 'custom-ready',
+        errorMessage: ' custom runtime '
+      },
+      uv: {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'download-failed',
+        errorMessage: ' failed download '
+      }
+    })
+
+    expect(saved).toEqual({
+      bun: {
+        source: 'custom',
+        binaryPath: '/custom/bun',
+        version: '1.0.0',
+        installedAt: '2026-03-08T00:00:00.000Z',
+        lastCheckedAt: '2026-03-08T01:00:00.000Z',
+        releaseUrl: null,
+        checksum: null,
+        status: 'custom-ready',
+        errorMessage: 'custom runtime'
+      },
+      uv: {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'download-failed',
+        errorMessage: 'failed download'
+      }
+    })
+
+    const content = JSON.parse(await readFile(filePath, 'utf-8')) as unknown
+    expect(content).toEqual(saved)
+  })
+})
