@@ -8,7 +8,11 @@ import type { ChannelMessage, ChannelType } from './types'
 class FakeChannel extends AbstractChannel {
   readonly startMock = vi.fn(async () => undefined)
   readonly stopMock = vi.fn(async () => undefined)
-  readonly sendMock = vi.fn(async (_remoteChatId: string, _message: string) => undefined)
+  readonly sendMock = vi.fn(async (remoteChatId: string, message: string) => {
+    void remoteChatId
+    void message
+    return undefined
+  })
 
   constructor(id: string, type: ChannelType) {
     super(id, type)

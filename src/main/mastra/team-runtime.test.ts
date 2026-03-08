@@ -45,10 +45,14 @@ vi.mock('@mastra/core/workspace', () => ({
     }
   },
   LocalSandbox: class {
-    constructor(_options: Record<string, unknown>) {}
+    constructor(options: Record<string, unknown>) {
+      void options
+    }
   },
   Workspace: class {
-    constructor(_options: Record<string, unknown>) {}
+    constructor(options: Record<string, unknown>) {
+      void options
+    }
 
     init() {
       return workspaceInitMock()
@@ -66,7 +70,9 @@ vi.mock('@mastra/ai-sdk/ui', () => ({
 
 vi.mock('@mastra/memory', () => ({
   Memory: class {
-    constructor(_options: Record<string, unknown>) {}
+    constructor(options: Record<string, unknown>) {
+      void options
+    }
   }
 }))
 

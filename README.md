@@ -4,13 +4,13 @@
   <img src="tia-studio.png" alt="TIA Studio Interface" width="800">
 </p>
 
-A modern, desktop-native workspace for AI assistants, Teams, and Channels. TIA Studio gives you a clean interface for running local assistants, organizing them into teams, and connecting them to real-world channels from your own machine.
+A modern, *hackable*, desktop-native workspace for AI assistants, Teams, Channels, and claws. TIA Studio gives you a clean interface for running local assistants, organizing them into teams, and connecting them to real-world channels from your own machine.
 
 ## What is TIA Studio?
 
 TIA Studio is an Electron-based desktop application for building and operating AI assistants on your desktop. You can chat with a single assistant, coordinate a Team of assistants, or connect an assistant to a Channel so it can participate in conversations beyond the app itself.
 
-An assistant connected to a channel effectively becomes an OpenClaw-inspired local operator running on your computer: always close to your tools, your files, and your workflow.
+When an assistant is connected to a channel, it becomes a claw: an OpenClaw-inspired local operator running on your computer, close to your tools, your files, and your workflow.
 
 Today, TIA Studio supports Lark channels. Telegram and WhatsApp support are coming very soon, with more channels planned next.
 
@@ -32,6 +32,46 @@ We intentionally kept the architecture simple:
 3. **Workspace-centric** - Conversations are organized into threads and team views, making it easy to context-switch between different tasks
 4. **Minimal abstractions** - We use Mastra's primitives directly rather than building custom layers, and Assistant UI handles the chat UX without custom message components
 5. **Local-first** - Everything runs on your machine, with no required cloud dependencies
+
+## Claws
+
+In TIA Studio, a claw is not a separate runtime primitive. A claw is an assistant with a channel attached to it.
+
+![Claw architecture](./claws.png)
+
+This keeps the model simple:
+
+- The assistant remains the source of truth for provider selection, instructions, memory, workspace, and lifecycle state
+- The channel is only the transport layer that brings external messages in and sends assistant replies back out
+- The claw UI is a focused management surface for creating that assistant + channel pairing without introducing a second identity model
+
+### How claws are implemented
+
+Claws are implemented by composing existing assistant and channel records instead of introducing a new database entity:
+
+1. **Assistant-first creation** - `POST /v1/claws` creates a normal assistant, then either creates a new Lark channel or attaches an existing unbound channel to that assistant.
+2. **Channel binding as the link** - The claw relationship lives on `channel.assistantId`, which gives each channel a single active assistant owner while keeping detached channels reusable.
+3. **Built-in assistants stay out of the claw list** - The claws route only exposes user-managed assistants, so built-in agents keep their own lifecycle and do not show up as claws.
+4. **Runtime reload on every claw change** - After create, update, or delete, TIA Studio reloads both the channel service and the cron scheduler so routing and schedules immediately reflect the new attachment state.
+5. **One channel conversation becomes one assistant thread** - Incoming channel messages are routed through the event bus, mapped to a thread binding by remote chat, streamed through the assistant runtime, and then published back to the channel adapter as the outgoing reply.
+
+### Claws, cron, heartbeat, and identity
+
+Because a claw is still just an assistant underneath, assistant-owned behavior stays assistant-owned:
+
+| Concern | Owner | What happens for a claw |
+| --- | --- | --- |
+| Identity | Assistant workspace | `IDENTITY.md`, `SOUL.md`, and `MEMORY.md` are loaded as durable operating context for the same assistant whether you talk to it in the app or through a channel. |
+| Heartbeat | Assistant runtime | Scheduled runs mark the request as a heartbeat run, which adds `HEARTBEAT.md` on top of the normal identity files only for proactive/scheduled execution. |
+| Cron | Assistant + hidden thread | Cron jobs are stored against `assistantId`, require that assistant to have a workspace root, and create a hidden thread so scheduled work stays attached to the same assistant history. |
+| Enable/disable state | Assistant + channel runtime | A disabled claw disables the assistant side of the pairing, so runtime channel delivery and cron scheduling both stop until the assistant is enabled again. |
+
+That means adapting an assistant into a claw does **not** fork its identity:
+
+- Channel chat uses the same assistant instructions, provider, tools, and workspace as direct chat
+- Cron jobs still belong to the assistant, not to the channel, and their outputs are written back to the assistant workspace work logs
+- Heartbeat-specific guidance stays isolated in `HEARTBEAT.md`, so proactive runs can behave differently without mutating the assistant's core identity
+- Future claw capabilities can keep building on assistant primitives instead of introducing a parallel claw-only configuration stack
 
 ## Features
 
@@ -57,6 +97,8 @@ We intentionally kept the architecture simple:
 
 ```bash
 pnpm install
+
+pnpm approve-builds # Make sure you approve every package that needs native builds
 ```
 
 ### Development
