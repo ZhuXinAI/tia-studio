@@ -31,6 +31,7 @@ type TeamChatCardProps = {
   canAbortGeneration: boolean
   onSubmitMessage: (messageText: string) => Promise<void>
   onAbortGeneration: () => void
+  onOpenStatusDialog: () => void
   onOpenTeamConfig: () => void
   onCreateThread: () => void
 }
@@ -52,7 +53,8 @@ function TeamChatComposer({
   canAbortGeneration,
   canCompose,
   onSubmitMessage,
-  onAbortGeneration
+  onAbortGeneration,
+  onOpenStatusDialog
 }: Pick<
   TeamChatCardProps,
   | 'selectedThread'
@@ -61,6 +63,7 @@ function TeamChatComposer({
   | 'canAbortGeneration'
   | 'onSubmitMessage'
   | 'onAbortGeneration'
+  | 'onOpenStatusDialog'
 > & { canCompose: boolean }): React.JSX.Element {
   const aui = useAui()
   const composerText = useAuiState((state) => (state.composer.isEditing ? state.composer.text : ''))
@@ -105,6 +108,9 @@ function TeamChatComposer({
               : 'Pick a workspace and create a Team thread first.'}
           </p>
           <div className="flex items-center gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={onOpenStatusDialog}>
+              Open Team Status
+            </Button>
             {isChatStreaming ? (
               <Button type="button" disabled={!canAbortGeneration} onClick={onAbortGeneration}>
                 Stop
@@ -136,6 +142,7 @@ export function TeamChatCard({
   canAbortGeneration,
   onSubmitMessage,
   onAbortGeneration,
+  onOpenStatusDialog,
   onOpenTeamConfig,
   onCreateThread
 }: TeamChatCardProps): React.JSX.Element {
@@ -224,6 +231,7 @@ export function TeamChatCard({
             canCompose={canCompose}
             onSubmitMessage={onSubmitMessage}
             onAbortGeneration={onAbortGeneration}
+            onOpenStatusDialog={onOpenStatusDialog}
           />
         </ThreadPrimitive.Root>
       </Card>

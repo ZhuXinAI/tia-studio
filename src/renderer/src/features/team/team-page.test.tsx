@@ -4,7 +4,7 @@ import { TeamPage } from './pages/team-page'
 import { MemoryRouter } from 'react-router-dom'
 
 describe('TeamPage', () => {
-  it('renders the three-column team shell', () => {
+  it('matches the Home shell and removes the in-page status drawer', () => {
     const html = renderToString(
       <MemoryRouter initialEntries={['/team']}>
         <TeamPage />
@@ -13,6 +13,14 @@ describe('TeamPage', () => {
 
     expect(html).toContain('Team Workspaces')
     expect(html).toContain('Team Chat')
-    expect(html).toContain('Team Status')
+    expect(html).toContain('data-team-page-shell="true"')
+    expect(html).toContain('h-[calc(100vh-3.5rem)]')
+    expect(html).toContain('min-h-[650px]')
+    expect(html).toContain('overflow-hidden')
+    expect(html).toContain('border border-border/80 bg-background/50')
+    expect(html).toContain('data-slot="sidebar-inset"')
+    expect(html).toContain('data-team-main-chat="true"')
+    expect(html).toContain('data-team-status-dialog="true"')
+    expect(html).not.toContain('data-team-status-drawer=')
   })
 })

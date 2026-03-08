@@ -1,24 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { useNavigate, useParams } from 'react-router-dom'
-import {
-  listAssistants,
-  type AssistantRecord
-} from '../../assistants/assistants-query'
+import { listAssistants, type AssistantRecord } from '../../assistants/assistants-query'
 import { listProviders, type ProviderRecord } from '../../settings/providers/providers-query'
 import { getActiveResourceId } from '../../threads/threads-query'
 import { toErrorMessage } from '../../threads/thread-page-routing'
-import {
-  createTeamChatTransport,
-  listTeamThreadMessages
-} from '../team-chat-query'
+import { createTeamChatTransport, listTeamThreadMessages } from '../team-chat-query'
 import {
   createTeamThread,
   deleteTeamThread,
   listTeamThreads,
   type TeamThreadRecord
 } from '../team-threads-query'
-import { openTeamStatusStream, type TeamStatusEvent, type TeamStatusStreamHandle } from '../team-status-stream'
+import {
+  openTeamStatusStream,
+  type TeamStatusEvent,
+  type TeamStatusStreamHandle
+} from '../team-status-stream'
 import {
   createTeamWorkspace,
   listTeamWorkspaceMembers,
@@ -83,8 +81,9 @@ function evaluateTeamReadiness(input: {
   const selectedProvider =
     input.selectedWorkspace?.supervisorProviderId &&
     input.selectedWorkspace.supervisorProviderId.length > 0
-      ? (input.providers.find((provider) => provider.id === input.selectedWorkspace?.supervisorProviderId) ??
-        null)
+      ? (input.providers.find(
+          (provider) => provider.id === input.selectedWorkspace?.supervisorProviderId
+        ) ?? null)
       : null
 
   const checks: TeamReadinessCheck[] = [
@@ -218,7 +217,7 @@ export function useTeamPageController() {
   const chat = useChat({
     id: selectedThread ? `team:${selectedThread.id}` : 'team-chat',
     transport: chatTransport,
-    resume: Boolean(selectedThread && chatTransport),
+    resume: false,
     experimental_throttle: 48,
     onFinish: () => {
       if (!selectedThread) {
@@ -499,7 +498,9 @@ export function useTeamPageController() {
 
       try {
         await deleteTeamThread(thread.id)
-        setThreads((currentThreads) => currentThreads.filter((currentThread) => currentThread.id !== thread.id))
+        setThreads((currentThreads) =>
+          currentThreads.filter((currentThread) => currentThread.id !== thread.id)
+        )
 
         if (params.threadId === thread.id) {
           navigate(routeToTeam(thread.workspaceId), { replace: true })

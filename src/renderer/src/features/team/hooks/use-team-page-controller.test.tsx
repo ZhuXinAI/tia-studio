@@ -61,8 +61,7 @@ vi.mock('../team-threads-query', () => ({
   listTeamThreadMembers: (...args: unknown[]) => mockState.listTeamThreadMembersMock(...args),
   createTeamThread: (...args: unknown[]) => mockState.createTeamThreadMock(...args),
   updateTeamThread: (...args: unknown[]) => mockState.updateTeamThreadMock(...args),
-  replaceTeamThreadMembers: (...args: unknown[]) =>
-    mockState.replaceTeamThreadMembersMock(...args),
+  replaceTeamThreadMembers: (...args: unknown[]) => mockState.replaceTeamThreadMembersMock(...args),
   deleteTeamThread: (...args: unknown[]) => mockState.deleteTeamThreadMock(...args)
 }))
 
@@ -80,7 +79,8 @@ vi.mock('../../threads/threads-query', () => ({
 }))
 
 vi.mock('../../threads/thread-page-routing', () => ({
-  toErrorMessage: (error: unknown) => (error instanceof Error ? error.message : 'Unexpected request error')
+  toErrorMessage: (error: unknown) =>
+    error instanceof Error ? error.message : 'Unexpected request error'
 }))
 
 vi.mock('@ai-sdk/react', () => ({
@@ -333,14 +333,19 @@ describe('useTeamPageController', () => {
   it('opens config immediately after creating a workspace', async () => {
     await rerenderHarness()
 
-    await waitForCondition(() => controller?.selectedWorkspace?.id === 'workspace-1', 'initial workspace load')
+    await waitForCondition(
+      () => controller?.selectedWorkspace?.id === 'workspace-1',
+      'initial workspace load'
+    )
 
     await act(async () => {
       await controller?.handleCreateWorkspace()
     })
 
     await waitForCondition(
-      () => controller?.selectedWorkspace?.id === 'workspace-2' && controller?.isConfigDialogOpen === true,
+      () =>
+        controller?.selectedWorkspace?.id === 'workspace-2' &&
+        controller?.isConfigDialogOpen === true,
       'new workspace selection and config dialog'
     )
 
@@ -383,7 +388,8 @@ describe('useTeamPageController', () => {
     await rerenderHarness()
 
     await waitForCondition(
-      () => controller?.selectedWorkspace?.id === 'workspace-1' && controller?.selectedThread === null,
+      () =>
+        controller?.selectedWorkspace?.id === 'workspace-1' && controller?.selectedThread === null,
       'workspace-only selection'
     )
 
@@ -428,7 +434,10 @@ describe('useTeamPageController', () => {
 
     await rerenderHarness()
 
-    await waitForCondition(() => controller?.selectedWorkspace?.id === 'workspace-1', 'workspace load')
+    await waitForCondition(
+      () => controller?.selectedWorkspace?.id === 'workspace-1',
+      'workspace load'
+    )
 
     await act(async () => {
       await controller?.handleCreateThread()
@@ -488,6 +497,17 @@ describe('useTeamPageController', () => {
       threadId: 'thread-1',
       profileId: 'profile-from-team-thread'
     })
+
+    const lastUseChatCall = mockState.useChatMock.mock.calls.at(-1)?.[0] as
+      | { id?: string; resume?: boolean; transport?: unknown }
+      | undefined
+    expect(lastUseChatCall).toEqual(
+      expect.objectContaining({
+        id: 'team:thread-1',
+        resume: false
+      })
+    )
+    expect(lastUseChatCall?.transport).toBeDefined()
   })
 
   it('deletes the selected team thread and returns to the workspace route', async () => {
@@ -505,10 +525,7 @@ describe('useTeamPageController', () => {
     })
     await rerenderHarness()
 
-    await waitForCondition(
-      () => controller?.selectedThread?.id === 'thread-1',
-      'thread selection'
-    )
+    await waitForCondition(() => controller?.selectedThread?.id === 'thread-1', 'thread selection')
 
     const selectedThread = controller?.selectedThread
     expect(selectedThread).not.toBeNull()

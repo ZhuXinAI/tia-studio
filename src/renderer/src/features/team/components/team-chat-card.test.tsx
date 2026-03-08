@@ -94,6 +94,7 @@ describe('TeamChatCard', () => {
         onSubmitMessage={async () => undefined}
         onAbortGeneration={() => undefined}
         onOpenTeamConfig={() => undefined}
+        onOpenStatusDialog={() => undefined}
         onCreateThread={() => undefined}
       />
     )
@@ -102,6 +103,7 @@ describe('TeamChatCard', () => {
     expect(html).toContain('Docs Workspace')
     expect(html).toContain('Configure Team')
     expect(html).toContain('Team setup is incomplete.')
+    expect(html).toContain('Open Team Status')
   })
 
   it('shows stop while team chat is streaming', () => {
@@ -157,6 +159,7 @@ describe('TeamChatCard', () => {
         onSubmitMessage={async () => undefined}
         onAbortGeneration={() => undefined}
         onOpenTeamConfig={() => undefined}
+        onOpenStatusDialog={() => undefined}
         onCreateThread={() => undefined}
       />
     )
