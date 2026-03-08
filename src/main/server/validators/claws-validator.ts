@@ -1,0 +1,48 @@
+import { z } from 'zod'
+
+const createAssistantForClawSchema = z.object({
+  name: z.string().min(1),
+  providerId: z.string().min(1),
+  instructions: z.string().optional(),
+  enabled: z.boolean().optional()
+})
+
+const updateAssistantForClawSchema = z.object({
+  name: z.string().min(1).optional(),
+  providerId: z.string().min(1).optional(),
+  instructions: z.string().optional(),
+  enabled: z.boolean().optional()
+})
+
+const createLarkChannelSchema = z.object({
+  mode: z.literal('create'),
+  type: z.literal('lark'),
+  name: z.string().min(1),
+  appId: z.string().min(1),
+  appSecret: z.string().min(1)
+})
+
+const attachExistingChannelSchema = z.object({
+  mode: z.literal('attach'),
+  channelId: z.string().min(1)
+})
+
+const detachChannelSchema = z.object({
+  mode: z.literal('detach')
+})
+
+const keepChannelSchema = z.object({
+  mode: z.literal('keep')
+})
+
+export const createClawSchema = z.object({
+  assistant: createAssistantForClawSchema,
+  channel: z.union([createLarkChannelSchema, attachExistingChannelSchema]).optional()
+})
+
+export const updateClawSchema = z.object({
+  assistant: updateAssistantForClawSchema.optional(),
+  channel: z
+    .union([createLarkChannelSchema, attachExistingChannelSchema, detachChannelSchema, keepChannelSchema])
+    .optional()
+})

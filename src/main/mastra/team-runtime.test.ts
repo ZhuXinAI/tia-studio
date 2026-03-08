@@ -80,6 +80,7 @@ function buildAssistant(overrides?: Partial<AppAssistant>): AppAssistant {
     name: 'Researcher',
     description: 'Finds facts, sources, and supporting evidence.',
     instructions: 'Research the problem.',
+    enabled: true,
     providerId: 'provider-member',
     workspaceConfig: {
       rootPath: '/assistant/workspace'

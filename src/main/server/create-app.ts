@@ -14,7 +14,7 @@ import { createBearerAuthMiddleware } from './auth-middleware'
 import type { TeamRunStatusStore } from './chat/team-run-status-store'
 import { registerAssistantsRoute } from './routes/assistants-route'
 import { registerChatRoute } from './routes/chat-route'
-import { registerChannelsSettingsRoute } from './routes/channels-settings-route'
+import { registerClawsRoute } from './routes/claws-route'
 import { registerHealthRoute } from './routes/health-route'
 import { registerMcpServersRoute } from './routes/mcp-servers-route'
 import { registerProvidersRoute } from './routes/providers-route'
@@ -85,6 +85,14 @@ export function createApp(options: CreateAppOptions): Hono {
       assistantsRepo: options.repositories.assistants,
       providersRepo: options.repositories.providers
     })
+    if (options.channelService) {
+      registerClawsRoute(app, {
+        assistantsRepo: options.repositories.assistants,
+        providersRepo: options.repositories.providers,
+        channelsRepo: options.repositories.channels,
+        channelService: options.channelService
+      })
+    }
     registerThreadsRoute(app, {
       threadsRepo: options.repositories.threads,
       assistantsRepo: options.repositories.assistants
@@ -103,12 +111,6 @@ export function createApp(options: CreateAppOptions): Hono {
     registerMcpServersRoute(app, {
       mcpServersRepo: options.repositories.mcpServers
     })
-    if (options.channelService) {
-      registerChannelsSettingsRoute(app, {
-        channelsRepo: options.repositories.channels,
-        channelService: options.channelService
-      })
-    }
   }
 
   if (options.assistantRuntime) {

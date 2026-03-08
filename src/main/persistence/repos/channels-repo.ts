@@ -58,8 +58,20 @@ function parseChannelRow(row: Record<string, unknown>): AppChannel {
   }
 }
 
+const CHANNEL_COLUMNS = `
+  app_channels.id AS id,
+  app_channels.type AS type,
+  app_channels.name AS name,
+  app_channels.assistant_id AS assistant_id,
+  app_channels.enabled AS enabled,
+  app_channels.config AS config,
+  app_channels.last_error AS last_error,
+  app_channels.created_at AS created_at,
+  app_channels.updated_at AS updated_at
+`
+
 const CHANNEL_SELECT = `
-  SELECT id, type, name, assistant_id, enabled, config, last_error, created_at, updated_at
+  SELECT ${CHANNEL_COLUMNS}
   FROM app_channels
 `
 
@@ -80,8 +92,53 @@ export class ChannelsRepository {
     return result.rows.map((row) => parseChannelRow(row as Record<string, unknown>))
   }
 
+  async listRuntimeEnabled(): Promise<AppChannel[]> {
+    const result = await this.db.execute(
+      `
+        ${CHANNEL_SELECT}
+        INNER JOIN app_assistants ON app_assistants.id = app_channels.assistant_id
+        WHERE app_channels.enabled = 1
+          AND app_channels.assistant_id IS NOT NULL
+          AND app_assistants.enabled = 1
+        ORDER BY app_channels.created_at DESC
+      `
+    )
+
+    return result.rows.map((row) => parseChannelRow(row as Record<string, unknown>))
+  }
+
+  async listUnbound(): Promise<AppChannel[]> {
+    const result = await this.db.execute(
+      `${CHANNEL_SELECT} WHERE assistant_id IS NULL ORDER BY created_at DESC`
+    )
+
+    return result.rows.map((row) => parseChannelRow(row as Record<string, unknown>))
+  }
+
   async getById(id: string): Promise<AppChannel | null> {
     const result = await this.db.execute(`${CHANNEL_SELECT} WHERE id = ? LIMIT 1`, [id])
+    const row = result.rows.at(0)
+
+    if (!row) {
+      return null
+    }
+
+    return parseChannelRow(row as Record<string, unknown>)
+  }
+
+  async getRuntimeById(id: string): Promise<AppChannel | null> {
+    const result = await this.db.execute(
+      `
+        ${CHANNEL_SELECT}
+        INNER JOIN app_assistants ON app_assistants.id = app_channels.assistant_id
+        WHERE app_channels.id = ?
+          AND app_channels.enabled = 1
+          AND app_channels.assistant_id IS NOT NULL
+          AND app_assistants.enabled = 1
+        LIMIT 1
+      `,
+      [id]
+    )
     const row = result.rows.at(0)
 
     if (!row) {
@@ -98,6 +155,20 @@ export class ChannelsRepository {
     )
 
     return result.rows.map((row) => parseChannelRow(row as Record<string, unknown>))
+  }
+
+  async getByAssistantId(assistantId: string): Promise<AppChannel | null> {
+    const result = await this.db.execute(
+      `${CHANNEL_SELECT} WHERE assistant_id = ? ORDER BY created_at DESC LIMIT 1`,
+      [assistantId]
+    )
+    const row = result.rows.at(0)
+
+    if (!row) {
+      return null
+    }
+
+    return parseChannelRow(row as Record<string, unknown>)
   }
 
   async create(input: CreateChannelInput): Promise<AppChannel> {

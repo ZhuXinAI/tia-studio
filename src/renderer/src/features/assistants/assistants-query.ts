@@ -6,6 +6,7 @@ export type AssistantRecord = {
   name: string
   description: string
   instructions: string
+  enabled: boolean
   providerId: string
   workspaceConfig: Record<string, unknown>
   skillsConfig: Record<string, unknown>
@@ -20,6 +21,7 @@ export type SaveAssistantInput = {
   name: string
   description?: string
   instructions?: string
+  enabled?: boolean
   providerId: string
   workspaceConfig?: Record<string, unknown>
   skillsConfig?: Record<string, unknown>

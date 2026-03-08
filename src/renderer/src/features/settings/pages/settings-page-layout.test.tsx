@@ -28,5 +28,6 @@ describe('settings page layout', () => {
     expect(html).toContain('data-slot="sidebar"')
     expect(html).toContain('border-r border-border/70')
     expect(html).toContain('Model Provider Settings')
+    expect(html).not.toContain('Channels')
   })
 })

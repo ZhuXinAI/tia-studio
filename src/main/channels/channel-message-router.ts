@@ -10,7 +10,7 @@ import type { ChannelMessageReceivedEvent } from './types'
 
 type ChannelMessageRouterOptions = {
   eventBus: ChannelEventBus
-  channelsRepo: ChannelsRepository
+  channelsRepo: Pick<ChannelsRepository, 'getById' | 'getRuntimeById'>
   bindingsRepo: ChannelThreadBindingsRepository
   threadsRepo: ThreadsRepository
   assistantRuntime: AssistantRuntime
@@ -74,6 +74,11 @@ export class ChannelMessageRouter {
       return
     }
 
+    const runtimeChannel = await this.options.channelsRepo.getRuntimeById(event.channelId)
+    if (!runtimeChannel?.assistantId) {
+      return
+    }
+
     const existingBinding = await this.options.bindingsRepo.getByChannelAndRemoteChat(
       event.channelId,
       event.message.remoteChatId
@@ -84,7 +89,7 @@ export class ChannelMessageRouter {
       (
         await this.createThreadBinding({
           channelId: event.channelId,
-          assistantId: channel.assistantId,
+          assistantId: runtimeChannel.assistantId,
           remoteChatId: event.message.remoteChatId
         })
       ).threadId
@@ -105,7 +110,7 @@ export class ChannelMessageRouter {
     }
 
     const stream = await this.options.assistantRuntime.streamChat({
-      assistantId: channel.assistantId,
+      assistantId: runtimeChannel.assistantId,
       threadId,
       profileId: DEFAULT_PROFILE_ID,
       messages: [userMessage]

@@ -1,4 +1,4 @@
-import { Home, Settings, Users } from 'lucide-react'
+import { Bot, Home, Settings, Users } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { cn } from '../../lib/utils'
@@ -6,6 +6,7 @@ import { cn } from '../../lib/utils'
 export function AppShell(): React.JSX.Element {
   const location = useLocation()
   const isChatRoute = location.pathname.startsWith('/chat')
+  const isClawsRoute = location.pathname.startsWith('/claws')
   const isTeamRoute = location.pathname.startsWith('/team')
   const isSettingsRoute = location.pathname.startsWith('/settings')
 
@@ -23,6 +24,18 @@ export function AppShell(): React.JSX.Element {
               <NavLink to="/chat" className="no-drag inline-flex items-center gap-2">
                 <Home className="size-4" />
                 <span className="text-sm font-medium">Home</span>
+              </NavLink>
+            </Button>
+
+            <Button
+              asChild
+              variant={isClawsRoute ? 'secondary' : 'ghost'}
+              size="sm"
+              className="no-drag"
+            >
+              <NavLink to="/claws" className="no-drag inline-flex items-center gap-2">
+                <Bot className="size-4" />
+                <span className="text-sm font-medium">Claws</span>
               </NavLink>
             </Button>
 

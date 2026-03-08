@@ -47,16 +47,16 @@ function createChannelRecord(overrides?: Partial<AppChannel>): AppChannel {
 }
 
 describe('ChannelService', () => {
-  it('registers enabled channels and bridges inbound and outbound traffic', async () => {
+  it('registers runtime-enabled channels and bridges inbound and outbound traffic', async () => {
     const bus = new ChannelEventBus()
     const receivedHandler = vi.fn()
     const channel = createChannelRecord()
     const adapter = new FakeChannel(channel.id, channel.type as ChannelType)
-    const listEnabled = vi.fn(async () => [channel])
+    const listRuntimeEnabled = vi.fn(async () => [channel])
     const buildLarkChannel = vi.fn(async () => adapter)
     const service = new ChannelService({
       channelsRepo: {
-        listEnabled
+        listRuntimeEnabled
       },
       eventBus: bus,
       adapterFactories: {
@@ -82,7 +82,7 @@ describe('ChannelService', () => {
       content: 'reply'
     })
 
-    expect(listEnabled).toHaveBeenCalledOnce()
+    expect(listRuntimeEnabled).toHaveBeenCalledOnce()
     expect(buildLarkChannel).toHaveBeenCalledWith(channel)
     expect(adapter.startMock).toHaveBeenCalledOnce()
     expect(receivedHandler).toHaveBeenCalledWith({
@@ -105,14 +105,14 @@ describe('ChannelService', () => {
     const channel = createChannelRecord()
     const firstAdapter = new FakeChannel(channel.id, channel.type as ChannelType)
     const secondAdapter = new FakeChannel(channel.id, channel.type as ChannelType)
-    const listEnabled = vi.fn(async () => [channel])
+    const listRuntimeEnabled = vi.fn(async () => [channel])
     const buildLarkChannel = vi
       .fn<(_: AppChannel) => Promise<FakeChannel>>()
       .mockResolvedValueOnce(firstAdapter)
       .mockResolvedValueOnce(secondAdapter)
     const service = new ChannelService({
       channelsRepo: {
-        listEnabled
+        listRuntimeEnabled
       },
       eventBus: bus,
       adapterFactories: {
@@ -124,7 +124,7 @@ describe('ChannelService', () => {
     await service.reload()
     await service.stop()
 
-    expect(listEnabled).toHaveBeenCalledTimes(2)
+    expect(listRuntimeEnabled).toHaveBeenCalledTimes(2)
     expect(firstAdapter.startMock).toHaveBeenCalledOnce()
     expect(firstAdapter.stopMock).toHaveBeenCalledOnce()
     expect(secondAdapter.startMock).toHaveBeenCalledOnce()

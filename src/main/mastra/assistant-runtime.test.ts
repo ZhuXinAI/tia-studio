@@ -40,6 +40,7 @@ function buildAssistant(overrides?: Partial<AppAssistant>): AppAssistant {
     name: 'TIA',
     description: 'Handles general assistant requests.',
     instructions: 'You are helpful.',
+    enabled: true,
     providerId: 'provider-1',
     workspaceConfig: { rootPath: '/tmp' },
     skillsConfig: {},
