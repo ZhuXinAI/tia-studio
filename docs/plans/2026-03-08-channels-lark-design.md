@@ -64,6 +64,7 @@ The main-process event bus should start with two events:
 - `channel.message.send-requested`
   - published by the routing/assistant side
   - contains target channel, remote chat id, and final reply text to send
+  - uses a plain `content` string payload for the outbound reply body
 
 This keeps the bus intentionally small for v1 while still supporting full request/reply behavior.
 

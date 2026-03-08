@@ -58,7 +58,10 @@ describe('chat query', () => {
       {
         id: 'msg-user',
         role: 'user',
-        parts: [{ type: 'text', text: 'Hello' }]
+        parts: [{ type: 'text', text: 'Hello' }],
+        metadata: {
+          fromChannel: 'lark'
+        }
       }
     ]
     const fetchSpy = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(
@@ -77,6 +80,9 @@ describe('chat query', () => {
     })
 
     expect(messages).toEqual(responseBody)
+    expect(messages[0]?.metadata).toEqual({
+      fromChannel: 'lark'
+    })
     expect(fetchSpy).toHaveBeenCalledWith(
       'http://127.0.0.1:4769/chat/assistant-1/history?threadId=thread-1&profileId=profile-1',
       expect.objectContaining({

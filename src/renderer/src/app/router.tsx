@@ -2,6 +2,7 @@ import { createHashRouter, createMemoryRouter, redirect, type RouteObject } from
 import { AppShell } from './layout/app-shell'
 import { ThreadPage } from '../features/threads/pages/thread-page'
 import { ProvidersSettingsPage } from '../features/settings/pages/providers-settings-page'
+import { ChannelsSettingsPage } from '../features/settings/pages/channels-settings-page'
 import { WebSearchSettingsPage } from '../features/settings/pages/web-search-settings-page'
 import { McpServersSettingsPage } from '../features/settings/pages/mcp-servers-settings-page'
 import { AboutSettingsPage } from '../features/settings/pages/about-settings-page'
@@ -47,6 +48,10 @@ export const appRoutes: RouteObject[] = [
           {
             path: 'providers',
             element: <ProvidersSettingsPage />
+          },
+          {
+            path: 'channels',
+            element: <ChannelsSettingsPage />
           },
           {
             path: 'web-search',
