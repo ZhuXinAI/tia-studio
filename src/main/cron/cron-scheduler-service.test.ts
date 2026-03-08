@@ -7,8 +7,21 @@ import { CronSchedulerService } from './cron-scheduler-service'
 type MutableCronJob = AppCronJob
 type MutableCronJobRun = AppCronJobRun
 
+function mergeDefined<T extends object>(base: T, overrides?: Partial<T>): T {
+  if (!overrides) {
+    return { ...base }
+  }
+
+  return Object.entries(overrides).reduce<T>((result, [key, value]) => {
+    if (value !== undefined) {
+      Object.assign(result, { [key]: value })
+    }
+    return result
+  }, { ...base })
+}
+
 function createCronJob(overrides?: Partial<MutableCronJob>): MutableCronJob {
-  return {
+  return mergeDefined({
     id: 'cron-job-1',
     assistantId: 'assistant-1',
     threadId: 'thread-1',
@@ -21,9 +34,8 @@ function createCronJob(overrides?: Partial<MutableCronJob>): MutableCronJob {
     lastRunStatus: null,
     lastError: null,
     createdAt: '2026-03-09T09:00:00.000Z',
-    updatedAt: '2026-03-09T09:00:00.000Z',
-    ...overrides
-  }
+    updatedAt: '2026-03-09T09:00:00.000Z'
+  }, overrides)
 }
 
 class InMemoryCronJobsRepo {
@@ -77,21 +89,21 @@ class InMemoryCronJobRunsRepo {
 }
 
 function createAssistant(overrides?: Partial<AppAssistant>): AppAssistant {
-  return {
+  return mergeDefined({
     id: 'assistant-1',
     name: 'TIA',
     description: 'Handles general assistant requests.',
     instructions: 'You are helpful.',
     providerId: 'provider-1',
+    enabled: true,
     workspaceConfig: { rootPath: '/tmp/workspace-a' },
     skillsConfig: {},
     mcpConfig: {},
     maxSteps: 100,
     memoryConfig: null,
     createdAt: '2026-03-02T00:00:00.000Z',
-    updatedAt: '2026-03-02T00:00:00.000Z',
-    ...overrides
-  }
+    updatedAt: '2026-03-02T00:00:00.000Z'
+  }, overrides)
 }
 
 describe('CronSchedulerService', () => {
@@ -133,6 +145,34 @@ describe('CronSchedulerService', () => {
     await scheduler.reload()
 
     expect((await repo.getById('cron-job-1'))?.nextRunAt).toBe('2026-03-09T10:30:00.000Z')
+    expect(runJob).not.toHaveBeenCalled()
+
+    await scheduler.stop()
+  })
+
+  it('does not schedule jobs for disabled assistants', async () => {
+    vi.setSystemTime(new Date('2026-03-09T10:05:00.000Z'))
+    const jobs = [
+      createCronJob({
+        id: 'cron-job-disabled-assistant',
+        nextRunAt: '2026-03-09T10:15:00.000Z'
+      })
+    ]
+    const repo = new InMemoryCronJobsRepo(jobs)
+    const runJob = vi.fn(async () => {})
+    const scheduler = new CronSchedulerService({
+      cronJobsRepo: repo,
+      assistantsRepo: {
+        getById: vi.fn(async () => createAssistant({ enabled: false }))
+      },
+      runJob
+    })
+
+    await scheduler.start()
+
+    expect((await repo.getById('cron-job-disabled-assistant'))?.nextRunAt).toBeNull()
+
+    await vi.advanceTimersByTimeAsync(20 * 60_000)
     expect(runJob).not.toHaveBeenCalled()
 
     await scheduler.stop()

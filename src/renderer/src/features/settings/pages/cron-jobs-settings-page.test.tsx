@@ -49,6 +49,7 @@ describe('cron jobs settings page', () => {
         description: '',
         instructions: '',
         providerId: 'provider-1',
+        enabled: true,
         workspaceConfig: { rootPath: '/tmp/workspace-a' },
         skillsConfig: {},
         mcpConfig: {},
