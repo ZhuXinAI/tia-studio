@@ -89,7 +89,18 @@ export class ChannelService {
       return
     }
 
-    await adapter.send(event.remoteChatId, event.content)
+    const content =
+      typeof event.content === 'string'
+        ? event.content
+        : event.payload?.type === 'text'
+          ? event.payload.text
+          : null
+
+    if (!content || content.trim().length === 0) {
+      return
+    }
+
+    await adapter.send(event.remoteChatId, content)
   }
 
   private async buildAdapter(channel: AppChannel): Promise<ChannelAdapter | null> {

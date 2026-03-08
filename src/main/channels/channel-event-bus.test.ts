@@ -19,14 +19,13 @@ describe('ChannelEventBus', () => {
     }
 
     bus.subscribe('channel.message.received', handler)
-
     await bus.publish('channel.message.received', event)
 
     expect(handler).toHaveBeenCalledOnce()
     expect(handler).toHaveBeenCalledWith(event)
   })
 
-  it('publishes outbound send requests to subscribers', async () => {
+  it('publishes text outbound events to subscribers', async () => {
     const bus = new ChannelEventBus()
     const handler = vi.fn()
     const event = {
@@ -34,14 +33,61 @@ describe('ChannelEventBus', () => {
       channelId: 'channel-1',
       channelType: 'lark' as const,
       remoteChatId: 'chat-1',
-      content: 'hello back'
+      content: 'hello back',
+      payload: {
+        type: 'text' as const,
+        text: 'hello back'
+      }
     }
 
     bus.subscribe('channel.message.send-requested', handler)
-
     await bus.publish('channel.message.send-requested', event)
 
     expect(handler).toHaveBeenCalledOnce()
     expect(handler).toHaveBeenCalledWith(event)
+  })
+
+  it('publishes media outbound events to subscribers', async () => {
+    const bus = new ChannelEventBus()
+    const handler = vi.fn()
+    const event = {
+      eventId: 'evt-3',
+      channelId: 'channel-1',
+      channelType: 'lark' as const,
+      remoteChatId: 'chat-1',
+      payload: {
+        type: 'image' as const,
+        filePath: '/tmp/chart.png'
+      }
+    }
+
+    bus.subscribe('channel.message.send-requested', handler)
+    await bus.publish('channel.message.send-requested', event)
+
+    expect(handler).toHaveBeenCalledOnce()
+    expect(handler).toHaveBeenCalledWith(event)
+  })
+
+  it('unsubscribes listeners', async () => {
+    const bus = new ChannelEventBus()
+    const handler = vi.fn()
+    const unsubscribe = bus.subscribe('channel.message.send-requested', handler)
+
+    unsubscribe()
+
+    await bus.publish('channel.message.send-requested', {
+      eventId: 'evt-4',
+      channelId: 'channel-1',
+      channelType: 'lark',
+      remoteChatId: 'chat-1',
+      content: 'ignored',
+      payload: {
+        type: 'file',
+        filePath: '/tmp/report.pdf',
+        fileName: 'report.pdf'
+      }
+    })
+
+    expect(handler).not.toHaveBeenCalled()
   })
 })

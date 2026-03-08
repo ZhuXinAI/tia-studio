@@ -1,37 +1,37 @@
-import type { ChannelEventMap, ChannelEventName } from './types'
-
-type ChannelEventHandler<EventName extends ChannelEventName> = (
-  payload: ChannelEventMap[EventName]
-) => Promise<void> | void
+import type { ChannelEventHandler, ChannelEventMap, ChannelEventName } from './types'
 
 export class ChannelEventBus {
-  private readonly handlers: {
-    [EventName in ChannelEventName]: Set<ChannelEventHandler<EventName>>
-  } = {
-    'channel.message.received': new Set(),
-    'channel.message.send-requested': new Set()
-  }
+  private readonly handlers = new Map<ChannelEventName, Set<ChannelEventHandler<ChannelEventName>>>()
 
-  subscribe<EventName extends ChannelEventName>(
-    eventName: EventName,
-    handler: ChannelEventHandler<EventName>
+  subscribe<TEventName extends ChannelEventName>(
+    eventName: TEventName,
+    handler: ChannelEventHandler<TEventName>
   ): () => void {
-    const handlers = this.handlers[eventName] as Set<ChannelEventHandler<EventName>>
-    handlers.add(handler)
+    const nextHandlers = this.handlers.get(eventName) ?? new Set()
+    nextHandlers.add(handler as ChannelEventHandler<ChannelEventName>)
+    this.handlers.set(eventName, nextHandlers)
 
     return () => {
-      handlers.delete(handler)
+      const currentHandlers = this.handlers.get(eventName)
+      if (!currentHandlers) {
+        return
+      }
+
+      currentHandlers.delete(handler as ChannelEventHandler<ChannelEventName>)
+      if (currentHandlers.size === 0) {
+        this.handlers.delete(eventName)
+      }
     }
   }
 
-  async publish<EventName extends ChannelEventName>(
-    eventName: EventName,
-    payload: ChannelEventMap[EventName]
+  async publish<TEventName extends ChannelEventName>(
+    eventName: TEventName,
+    event: ChannelEventMap[TEventName]
   ): Promise<void> {
-    const handlers = [...(this.handlers[eventName] as Set<ChannelEventHandler<EventName>>)]
+    const handlers = [...(this.handlers.get(eventName) ?? [])]
 
     for (const handler of handlers) {
-      await handler(payload)
+      await handler(event)
     }
   }
 }

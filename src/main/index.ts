@@ -166,6 +166,7 @@ async function startLocalApiServer(): Promise<void> {
     providersRepo,
     userDataPath: app.getPath('userData')
   })
+  const channelEventBus = new ChannelEventBus()
   const mastra = await createMastraInstance(join(app.getPath('userData'), 'mastra.db'))
   const assistantRuntime = new AssistantRuntimeService({
     mastra,
@@ -174,6 +175,7 @@ async function startLocalApiServer(): Promise<void> {
     threadsRepo,
     webSearchSettingsRepo,
     mcpServersRepo,
+    channelEventBus,
     managedRuntimeResolver: managedRuntimeService
   })
   const teamRunStatusStore = new TeamRunStatusStore()
@@ -185,7 +187,6 @@ async function startLocalApiServer(): Promise<void> {
     teamThreadsRepo,
     statusStore: teamRunStatusStore
   })
-  const channelEventBus = new ChannelEventBus()
   channelService = new ChannelService({
     channelsRepo,
     eventBus: channelEventBus
