@@ -95,4 +95,60 @@ describe('threads query api client', () => {
       })
     )
   })
+
+  it('includes hidden threads when explicitly requested', async () => {
+    const responseBody = [
+      {
+        id: 'thread-1',
+        assistantId: 'assistant-1',
+        resourceId: 'profile-default',
+        title: 'Cron thread',
+        metadata: {
+          cron: true,
+          cronJobId: 'cron-job-1'
+        },
+        lastMessageAt: null,
+        createdAt: '2026-03-02T00:00:00.000Z',
+        updatedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ]
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(JSON.stringify(responseBody), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+    )
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const threads = await listThreads('assistant-1', { includeHidden: true })
+
+    expect(threads).toEqual(responseBody)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'http://127.0.0.1:4769/v1/threads?assistantId=assistant-1&includeHidden=true',
+      expect.objectContaining({
+        method: 'GET'
+      })
+    )
+  })
+
+  it('keeps hidden cron threads out of normal thread navigation requests by default', async () => {
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+    )
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await listThreads('assistant-1')
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'http://127.0.0.1:4769/v1/threads?assistantId=assistant-1',
+      expect.objectContaining({
+        method: 'GET'
+      })
+    )
+  })
 })

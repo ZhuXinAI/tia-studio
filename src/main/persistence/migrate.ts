@@ -191,7 +191,8 @@ async function ensureTeamTables(db: AppDatabase): Promise<void> {
     const workspaceId = String(workspace.id)
     const hasWorkspaceConfig =
       String(workspace.team_description).trim().length > 0 ||
-      (workspace.supervisor_provider_id !== null && workspace.supervisor_provider_id !== undefined) ||
+      (workspace.supervisor_provider_id !== null &&
+        workspace.supervisor_provider_id !== undefined) ||
       String(workspace.supervisor_model).trim().length > 0
 
     const workspaceMembers = await db.execute(
@@ -302,6 +303,98 @@ async function ensureChannelsTables(db: AppDatabase): Promise<void> {
   )
 }
 
+async function ensureThreadMetadataColumn(db: AppDatabase): Promise<void> {
+  const tableInfo = await db.execute("PRAGMA table_info('app_threads')")
+  const hasMetadataColumn = tableInfo.rows.some((row) => {
+    return String((row as Record<string, unknown>).name) === 'metadata'
+  })
+
+  if (hasMetadataColumn) {
+    return
+  }
+
+  await db.execute("ALTER TABLE app_threads ADD COLUMN metadata TEXT NOT NULL DEFAULT '{}'")
+}
+
+async function ensureCronTables(db: AppDatabase): Promise<void> {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_cron_jobs (
+      id TEXT PRIMARY KEY,
+      assistant_id TEXT NOT NULL,
+      thread_id TEXT,
+      name TEXT NOT NULL,
+      prompt TEXT NOT NULL,
+      cron_expression TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      last_run_at TEXT,
+      next_run_at TEXT,
+      last_run_status TEXT,
+      last_error TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (assistant_id) REFERENCES app_assistants(id) ON DELETE CASCADE,
+      FOREIGN KEY (thread_id) REFERENCES app_threads(id) ON DELETE SET NULL
+    )
+  `)
+
+  const cronJobsTableInfo = await db.execute("PRAGMA table_info('app_cron_jobs')")
+  const cronJobsColumns = cronJobsTableInfo.rows.map((row) =>
+    String((row as Record<string, unknown>).name)
+  )
+
+  if (!cronJobsColumns.includes('thread_id')) {
+    await db.execute(
+      'ALTER TABLE app_cron_jobs ADD COLUMN thread_id TEXT REFERENCES app_threads(id) ON DELETE SET NULL'
+    )
+  }
+
+  if (!cronJobsColumns.includes('last_run_at')) {
+    await db.execute('ALTER TABLE app_cron_jobs ADD COLUMN last_run_at TEXT')
+  }
+
+  if (!cronJobsColumns.includes('next_run_at')) {
+    await db.execute('ALTER TABLE app_cron_jobs ADD COLUMN next_run_at TEXT')
+  }
+
+  if (!cronJobsColumns.includes('last_run_status')) {
+    await db.execute('ALTER TABLE app_cron_jobs ADD COLUMN last_run_status TEXT')
+  }
+
+  if (!cronJobsColumns.includes('last_error')) {
+    await db.execute('ALTER TABLE app_cron_jobs ADD COLUMN last_error TEXT')
+  }
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_cron_job_runs (
+      id TEXT PRIMARY KEY,
+      cron_job_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      scheduled_for TEXT NOT NULL,
+      started_at TEXT NOT NULL,
+      finished_at TEXT,
+      output_text TEXT,
+      error TEXT,
+      work_log_path TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (cron_job_id) REFERENCES app_cron_jobs(id) ON DELETE CASCADE
+    )
+  `)
+
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_cron_jobs_assistant_id ON app_cron_jobs(assistant_id)'
+  )
+  await db.execute('CREATE INDEX IF NOT EXISTS idx_app_cron_jobs_enabled ON app_cron_jobs(enabled)')
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_cron_jobs_next_run_at ON app_cron_jobs(next_run_at)'
+  )
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_cron_job_runs_cron_job_id ON app_cron_job_runs(cron_job_id)'
+  )
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_cron_job_runs_scheduled_for ON app_cron_job_runs(scheduled_for)'
+  )
+}
+
 export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> {
   const db = createAppDatabase(pathOrUrl)
 
@@ -337,6 +430,8 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   await ensureBuiltInProviderColumns(db)
   await ensureTeamTables(db)
   await ensureChannelsTables(db)
+  await ensureThreadMetadataColumn(db)
+  await ensureCronTables(db)
 
   return db
 }

@@ -22,6 +22,7 @@ import { ensureBuiltInProviders } from './default-agent/built-in-providers-boots
 import { ChannelEventBus } from './channels/channel-event-bus'
 import { ChannelMessageRouter } from './channels/channel-message-router'
 import { ChannelService } from './channels/channel-service'
+import { CronSchedulerService } from './cron/cron-scheduler-service'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
 import { createMastraInstance } from './mastra/store'
 import { TeamRuntimeService } from './mastra/team-runtime'
@@ -29,6 +30,8 @@ import { migrateAppSchema } from './persistence/migrate'
 import { AssistantsRepository } from './persistence/repos/assistants-repo'
 import { ChannelThreadBindingsRepository } from './persistence/repos/channel-thread-bindings-repo'
 import { ChannelsRepository } from './persistence/repos/channels-repo'
+import { CronJobRunsRepository } from './persistence/repos/cron-job-runs-repo'
+import { CronJobsRepository } from './persistence/repos/cron-jobs-repo'
 import {
   type ManagedRuntimeKind,
   ManagedRuntimesRepository
@@ -58,6 +61,7 @@ let webSearchSettingsWindow: BrowserWindow | null = null
 let managedRuntimeService: ManagedRuntimeService | null = null
 let channelService: ChannelService | null = null
 let channelMessageRouter: ChannelMessageRouter | null = null
+let cronSchedulerService: CronSchedulerService | null = null
 const searchBrowserPartition = 'persist:tia-browser-search'
 
 let isTransparentWindow = false
@@ -148,6 +152,8 @@ async function startLocalApiServer(): Promise<void> {
   const assistantsRepo = new AssistantsRepository(db)
   const threadsRepo = new ThreadsRepository(db)
   const channelsRepo = new ChannelsRepository(db)
+  const cronJobRunsRepo = new CronJobRunsRepository(db)
+  const cronJobsRepo = new CronJobsRepository(db)
   const channelThreadBindingsRepo = new ChannelThreadBindingsRepository(db)
   const teamWorkspacesRepo = new TeamWorkspacesRepository(db)
   const teamThreadsRepo = new TeamThreadsRepository(db)
@@ -198,6 +204,22 @@ async function startLocalApiServer(): Promise<void> {
     threadsRepo,
     assistantRuntime
   })
+  cronSchedulerService = new CronSchedulerService({
+    cronJobsRepo,
+    cronJobRunsRepo,
+    assistantsRepo,
+    runJob: async (job) => {
+      if (!job.threadId) {
+        throw new Error('Cron job thread is missing')
+      }
+
+      return assistantRuntime.runCronJob({
+        assistantId: job.assistantId,
+        threadId: job.threadId,
+        prompt: job.prompt
+      })
+    }
+  })
 
   const apiApp = createApp({
     token: serverConfig.token,
@@ -206,6 +228,7 @@ async function startLocalApiServer(): Promise<void> {
       assistants: assistantsRepo,
       threads: threadsRepo,
       channels: channelsRepo,
+      cronJobs: cronJobsRepo,
       teamWorkspaces: teamWorkspacesRepo,
       teamThreads: teamThreadsRepo,
       webSearchSettings: webSearchSettingsRepo,
@@ -214,7 +237,8 @@ async function startLocalApiServer(): Promise<void> {
     assistantRuntime,
     teamRuntime,
     teamRunStatusStore,
-    channelService
+    channelService,
+    cronSchedulerService
   })
 
   localApiServer = serve(
@@ -235,6 +259,7 @@ async function startLocalApiServer(): Promise<void> {
 
   await channelMessageRouter.start()
   await channelService.start()
+  await cronSchedulerService.start()
 }
 
 function stopLocalApiServer(): void {
@@ -246,6 +271,11 @@ function stopLocalApiServer(): void {
   if (channelMessageRouter) {
     void channelMessageRouter.stop()
     channelMessageRouter = null
+  }
+
+  if (cronSchedulerService) {
+    void cronSchedulerService.stop()
+    cronSchedulerService = null
   }
 
   if (!localApiServer) {

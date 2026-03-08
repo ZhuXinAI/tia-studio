@@ -6,6 +6,7 @@ export type AppThread = {
   assistantId: string
   resourceId: string
   title: string
+  metadata: Record<string, unknown>
   lastMessageAt: string | null
   createdAt: string
   updatedAt: string
@@ -15,6 +16,28 @@ export type CreateThreadInput = {
   assistantId: string
   resourceId: string
   title: string
+  metadata?: Record<string, unknown>
+}
+
+export type ListThreadsOptions = {
+  includeHidden?: boolean
+}
+
+function parseJsonObject(value: unknown): Record<string, unknown> {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return {}
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>
+    }
+  } catch {
+    return {}
+  }
+
+  return {}
 }
 
 function parseThreadRow(row: Record<string, unknown>): AppThread {
@@ -23,6 +46,7 @@ function parseThreadRow(row: Record<string, unknown>): AppThread {
     assistantId: String(row.assistant_id),
     resourceId: String(row.resource_id),
     title: String(row.title),
+    metadata: parseJsonObject(row.metadata),
     lastMessageAt: row.last_message_at ? String(row.last_message_at) : null,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at)
@@ -32,19 +56,45 @@ function parseThreadRow(row: Record<string, unknown>): AppThread {
 export class ThreadsRepository {
   constructor(private readonly db: AppDatabase) {}
 
-  async listByAssistant(assistantId: string): Promise<AppThread[]> {
+  async listByAssistant(assistantId: string, options?: ListThreadsOptions): Promise<AppThread[]> {
     const result = await this.db.execute(
-      'SELECT id, assistant_id, resource_id, title, last_message_at, created_at, updated_at FROM app_threads WHERE assistant_id = ? ORDER BY COALESCE(last_message_at, created_at) DESC',
+      'SELECT id, assistant_id, resource_id, title, metadata, last_message_at, created_at, updated_at FROM app_threads WHERE assistant_id = ? ORDER BY COALESCE(last_message_at, created_at) DESC, rowid DESC',
       [assistantId]
     )
 
-    return result.rows.map((row) => parseThreadRow(row as Record<string, unknown>))
+    const threads = result.rows.map((row) => parseThreadRow(row as Record<string, unknown>))
+
+    if (options?.includeHidden) {
+      return threads
+    }
+
+    return threads.filter((thread) => thread.metadata.cron !== true)
   }
 
   async getById(id: string): Promise<AppThread | null> {
     const result = await this.db.execute(
-      'SELECT id, assistant_id, resource_id, title, last_message_at, created_at, updated_at FROM app_threads WHERE id = ? LIMIT 1',
+      'SELECT id, assistant_id, resource_id, title, metadata, last_message_at, created_at, updated_at FROM app_threads WHERE id = ? LIMIT 1',
       [id]
+    )
+    const row = result.rows.at(0)
+
+    if (!row) {
+      return null
+    }
+
+    return parseThreadRow(row as Record<string, unknown>)
+  }
+
+  async findHiddenByCronJobId(cronJobId: string): Promise<AppThread | null> {
+    const result = await this.db.execute(
+      `
+        SELECT id, assistant_id, resource_id, title, metadata, last_message_at, created_at, updated_at
+        FROM app_threads
+        WHERE json_extract(metadata, '$.cron') = 1
+          AND json_extract(metadata, '$.cronJobId') = ?
+        LIMIT 1
+      `,
+      [cronJobId]
     )
     const row = result.rows.at(0)
 
@@ -58,8 +108,8 @@ export class ThreadsRepository {
   async create(input: CreateThreadInput): Promise<AppThread> {
     const id = randomUUID()
     await this.db.execute(
-      'INSERT INTO app_threads (id, assistant_id, resource_id, title) VALUES (?, ?, ?, ?)',
-      [id, input.assistantId, input.resourceId, input.title]
+      'INSERT INTO app_threads (id, assistant_id, resource_id, title, metadata) VALUES (?, ?, ?, ?, ?)',
+      [id, input.assistantId, input.resourceId, input.title, JSON.stringify(input.metadata ?? {})]
     )
 
     const thread = await this.getById(id)

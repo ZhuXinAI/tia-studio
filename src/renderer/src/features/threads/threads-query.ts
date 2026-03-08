@@ -6,6 +6,7 @@ export type ThreadRecord = {
   assistantId: string
   resourceId: string
   title: string
+  metadata?: Record<string, unknown>
   lastMessageAt: string | null
   createdAt: string
   updatedAt: string
@@ -44,11 +45,21 @@ export function getActiveResourceId(): string {
   return rawValue
 }
 
+export type ListThreadsOptions = {
+  includeHidden?: boolean
+}
+
 // Legacy functions (kept for backward compatibility during migration)
-export async function listThreads(assistantId: string): Promise<ThreadRecord[]> {
+export async function listThreads(
+  assistantId: string,
+  options?: ListThreadsOptions
+): Promise<ThreadRecord[]> {
   const params = new URLSearchParams({
     assistantId
   })
+  if (options?.includeHidden) {
+    params.set('includeHidden', 'true')
+  }
   return apiClient.get<ThreadRecord[]>(`/v1/threads?${params.toString()}`)
 }
 

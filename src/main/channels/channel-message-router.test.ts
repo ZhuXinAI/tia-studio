@@ -39,7 +39,8 @@ function createAssistantReplyStream(text: string): ReadableStream<UIMessageChunk
 function createAssistantRuntimeStub(streamChat: AssistantRuntime['streamChat']): AssistantRuntime {
   return {
     streamChat,
-    listThreadMessages: vi.fn(async () => [])
+    listThreadMessages: vi.fn(async () => []),
+    runCronJob: vi.fn(async () => ({ outputText: '' }))
   }
 }
 
@@ -208,8 +209,8 @@ describe('ChannelMessageRouter', () => {
 
   it('publishes a send request after the assistant finishes', async () => {
     const publishedEvents: unknown[] = []
-    const streamChat = vi.fn<AssistantRuntime['streamChat']>(
-      async () => createAssistantReplyStream('Hello from assistant')
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
+      createAssistantReplyStream('Hello from assistant')
     )
     const router = new ChannelMessageRouter({
       eventBus,
@@ -247,8 +248,8 @@ describe('ChannelMessageRouter', () => {
 
   it('does not publish a send request when the assistant text is empty', async () => {
     const publishedEvents: unknown[] = []
-    const streamChat = vi.fn<AssistantRuntime['streamChat']>(
-      async () => createAssistantReplyStream('')
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
+      createAssistantReplyStream('')
     )
     const router = new ChannelMessageRouter({
       eventBus,

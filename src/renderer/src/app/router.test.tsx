@@ -101,6 +101,16 @@ describe('app router', () => {
     expect(html).toContain('Web Search')
   })
 
+  it('renders cron jobs settings route', () => {
+    const html = renderRouter(['/settings/cron-jobs'])
+
+    expect(html).toContain('Cron Jobs')
+    expect(html).toContain('Scheduled Jobs')
+    expect(html).toContain('Loading cron jobs')
+    expect(html).toContain('Channels')
+    expect(html).toContain('Web Search')
+  })
+
   it('renders chat route with assistant creation controls', () => {
     const html = renderRouter(['/chat'])
 

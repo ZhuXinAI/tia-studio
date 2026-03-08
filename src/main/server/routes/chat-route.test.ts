@@ -1,8 +1,18 @@
 import { Hono } from 'hono'
 import type { UIMessage } from 'ai'
 import { describe, expect, it, vi } from 'vitest'
+import type { AssistantRuntime } from '../../mastra/assistant-runtime'
 import { ChatRouteError } from '../chat/chat-errors'
 import { registerChatRoute } from './chat-route'
+
+function createAssistantRuntimeStub(overrides: Partial<AssistantRuntime>): AssistantRuntime {
+  return {
+    streamChat: vi.fn(async () => new ReadableStream()),
+    listThreadMessages: vi.fn(async () => []),
+    runCronJob: vi.fn(async () => ({ outputText: '' })),
+    ...overrides
+  }
+}
 
 describe('chat route', () => {
   it('streams chat with thread and profile ids', async () => {
@@ -10,10 +20,10 @@ describe('chat route', () => {
     const listThreadMessages = vi.fn(async () => [])
     const app = new Hono()
     registerChatRoute(app, {
-      assistantRuntime: {
+      assistantRuntime: createAssistantRuntimeStub({
         streamChat,
         listThreadMessages
-      }
+      })
     })
 
     const response = await app.request('http://localhost/chat/assistant-1', {
@@ -43,10 +53,10 @@ describe('chat route', () => {
     const listThreadMessages = vi.fn(async () => [])
     const app = new Hono()
     registerChatRoute(app, {
-      assistantRuntime: {
+      assistantRuntime: createAssistantRuntimeStub({
         streamChat,
         listThreadMessages
-      }
+      })
     })
 
     const response = await app.request('http://localhost/chat/assistant-1', {
@@ -69,10 +79,10 @@ describe('chat route', () => {
     const listThreadMessages = vi.fn(async () => [])
     const app = new Hono()
     registerChatRoute(app, {
-      assistantRuntime: {
+      assistantRuntime: createAssistantRuntimeStub({
         streamChat,
         listThreadMessages
-      }
+      })
     })
 
     const response = await app.request('http://localhost/chat/assistant-1', {
@@ -110,10 +120,10 @@ describe('chat route', () => {
     const listThreadMessages = vi.fn(async () => historyMessages)
     const app = new Hono()
     registerChatRoute(app, {
-      assistantRuntime: {
+      assistantRuntime: createAssistantRuntimeStub({
         streamChat,
         listThreadMessages
-      }
+      })
     })
 
     const response = await app.request(
@@ -135,10 +145,10 @@ describe('chat route', () => {
     const listThreadMessages = vi.fn(async () => [])
     const app = new Hono()
     registerChatRoute(app, {
-      assistantRuntime: {
+      assistantRuntime: createAssistantRuntimeStub({
         streamChat,
         listThreadMessages
-      }
+      })
     })
 
     const response = await app.request('http://localhost/chat/assistant-1/history')
@@ -153,10 +163,10 @@ describe('chat route', () => {
     const listThreadMessages = vi.fn(async () => [])
     const app = new Hono()
     registerChatRoute(app, {
-      assistantRuntime: {
+      assistantRuntime: createAssistantRuntimeStub({
         streamChat,
         listThreadMessages
-      }
+      })
     })
 
     const response = await app.request(
@@ -179,10 +189,10 @@ describe('chat route', () => {
     const listThreadMessages = vi.fn(async () => [])
     const app = new Hono()
     registerChatRoute(app, {
-      assistantRuntime: {
+      assistantRuntime: createAssistantRuntimeStub({
         streamChat,
         listThreadMessages
-      }
+      })
     })
 
     const streamResponse = await app.request('http://localhost/chat/assistant-1', {

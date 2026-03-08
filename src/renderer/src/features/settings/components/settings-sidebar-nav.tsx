@@ -1,4 +1,13 @@
-import { Cable, Cloud, Info, MessageCircleMore, Search, Monitor, Wrench } from 'lucide-react'
+import {
+  AlarmClock,
+  Cable,
+  Cloud,
+  Info,
+  MessageCircleMore,
+  Monitor,
+  Search,
+  Wrench
+} from 'lucide-react'
 import type { ComponentType } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
@@ -28,6 +37,11 @@ const settingsNavItems: SettingsNavItem[] = [
     title: 'Channels',
     icon: MessageCircleMore,
     to: '/settings/channels'
+  },
+  {
+    title: 'Cron Jobs',
+    icon: AlarmClock,
+    to: '/settings/cron-jobs'
   },
   {
     title: 'Web Search',

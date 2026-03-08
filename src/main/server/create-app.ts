@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { ChannelsRepository } from '../persistence/repos/channels-repo'
+import type { CronJobsRepository } from '../persistence/repos/cron-jobs-repo'
 import type { McpServersRepository } from '../persistence/repos/mcp-servers-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { TeamThreadsRepository } from '../persistence/repos/team-threads-repo'
@@ -15,6 +16,7 @@ import type { TeamRunStatusStore } from './chat/team-run-status-store'
 import { registerAssistantsRoute } from './routes/assistants-route'
 import { registerChatRoute } from './routes/chat-route'
 import { registerChannelsSettingsRoute } from './routes/channels-settings-route'
+import { registerCronJobsRoute } from './routes/cron-jobs-route'
 import { registerHealthRoute } from './routes/health-route'
 import { registerMcpServersRoute } from './routes/mcp-servers-route'
 import { registerProvidersRoute } from './routes/providers-route'
@@ -35,11 +37,15 @@ type CreateAppOptions = {
     webSearchSettings: WebSearchSettingsRepository
     mcpServers: McpServersRepository
     channels: ChannelsRepository
+    cronJobs: CronJobsRepository
   }
   assistantRuntime?: AssistantRuntime
   teamRuntime?: TeamRuntime
   teamRunStatusStore?: TeamRunStatusStore
   channelService?: {
+    reload(): Promise<void>
+  }
+  cronSchedulerService?: {
     reload(): Promise<void>
   }
 }
@@ -107,6 +113,14 @@ export function createApp(options: CreateAppOptions): Hono {
       registerChannelsSettingsRoute(app, {
         channelsRepo: options.repositories.channels,
         channelService: options.channelService
+      })
+    }
+    if (options.cronSchedulerService) {
+      registerCronJobsRoute(app, {
+        cronJobsRepo: options.repositories.cronJobs,
+        assistantsRepo: options.repositories.assistants,
+        threadsRepo: options.repositories.threads,
+        cronSchedulerService: options.cronSchedulerService
       })
     }
   }

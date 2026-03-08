@@ -6,6 +6,7 @@ import type { AgentExecutionOptions, ToolsInput } from '@mastra/core/agent'
 import type { MessageListInput } from '@mastra/core/agent/message-list'
 import type { MemoryConfig } from '@mastra/core/memory'
 import type { Mastra } from '@mastra/core/mastra'
+import { RequestContext } from '@mastra/core/request-context'
 import { LocalFilesystem, LocalSandbox, Workspace } from '@mastra/core/workspace'
 import { handleChatStream } from '@mastra/ai-sdk'
 import { toAISdkV5Messages } from '@mastra/ai-sdk/ui'
@@ -33,7 +34,9 @@ import {
   assistantWorkspaceContextInputProcessor,
   createSoulMemoryTools
 } from './tools/soul-memory-tools'
+import { createWorkLogTools } from './tools/work-log-tools'
 import { AttachmentUploader } from './processors/attachment-uploader'
+import { HEARTBEAT_RUN_CONTEXT_KEY } from './tool-context'
 
 type StreamChatParams = {
   assistantId: string
@@ -51,6 +54,16 @@ type ListThreadMessagesParams = {
   profileId: string
 }
 
+type RunCronJobParams = {
+  assistantId: string
+  threadId: string
+  prompt: string
+}
+
+type CronJobRunResult = {
+  outputText: string
+}
+
 type AssistantContext = {
   assistant: NonNullable<Awaited<ReturnType<AssistantsRepository['getById']>>>
   provider: NonNullable<Awaited<ReturnType<ProvidersRepository['getById']>>>
@@ -59,6 +72,7 @@ type AssistantContext = {
 export type AssistantRuntime = {
   streamChat: (params: StreamChatParams) => Promise<ReadableStream<UIMessageChunk>>
   listThreadMessages: (params: ListThreadMessagesParams) => Promise<UIMessage[]>
+  runCronJob: (params: RunCronJobParams) => Promise<CronJobRunResult>
 }
 
 type AssistantRuntimeServiceOptions = {
@@ -96,11 +110,13 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
   async streamChat(params: StreamChatParams): Promise<ReadableStream<UIMessageChunk>> {
     const { assistant, provider } = await this.getAssistantContext(params.assistantId)
-    await this.assertThreadBelongsToAssistant({
+    const thread = await this.getThreadForAssistant({
       assistantId: params.assistantId,
-      threadId: params.threadId,
-      profileId: params.profileId
+      threadId: params.threadId
     })
+    if (thread.resourceId !== params.profileId) {
+      throw new ChatRouteError(404, 'thread_not_found', 'Thread not found')
+    }
     await this.ensureAgentRegistered(assistant, provider)
 
     const stream = await handleChatStream({
@@ -128,6 +144,46 @@ export class AssistantRuntimeService implements AssistantRuntime {
       profileId: params.profileId,
       channelTarget: params.channelTarget
     })
+  }
+
+  async runCronJob(params: RunCronJobParams): Promise<CronJobRunResult> {
+    const { assistant, provider } = await this.getAssistantContext(params.assistantId)
+    await this.getThreadForAssistant({
+      assistantId: params.assistantId,
+      threadId: params.threadId
+    })
+    await this.ensureAgentRegistered(assistant, provider)
+
+    const requestContext = new RequestContext()
+    requestContext.set(HEARTBEAT_RUN_CONTEXT_KEY, randomUUID())
+
+    const stream = await handleChatStream({
+      mastra: this.options.mastra,
+      agentId: assistant.id,
+      params: {
+        messages: toAISdkV5Messages([
+          {
+            id: `cron:${params.threadId}:${randomUUID()}`,
+            role: 'user',
+            content: params.prompt,
+            parts: [
+              {
+                type: 'text',
+                text: params.prompt
+              }
+            ]
+          }
+        ]),
+        maxSteps: assistant.maxSteps,
+        providerOptions: this.buildProviderOptions(provider.type),
+        requestContext
+      },
+      sendReasoning: true
+    })
+
+    return {
+      outputText: await this.collectStreamText(stream as ReadableStream<UIMessageChunk>)
+    }
   }
 
   private streamWithThreadTitleSync(
@@ -283,7 +339,13 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
   async listThreadMessages(params: ListThreadMessagesParams): Promise<UIMessage[]> {
     await this.assertAssistantExists(params.assistantId)
-    await this.assertThreadBelongsToAssistant(params)
+    const thread = await this.getThreadForAssistant({
+      assistantId: params.assistantId,
+      threadId: params.threadId
+    })
+    if (thread.resourceId !== params.profileId) {
+      throw new ChatRouteError(404, 'thread_not_found', 'Thread not found')
+    }
 
     const storage = this.options.mastra.getStorage()
     if (!storage) {
@@ -313,15 +375,38 @@ export class AssistantRuntimeService implements AssistantRuntime {
     }
   }
 
-  private async assertThreadBelongsToAssistant(params: ListThreadMessagesParams): Promise<void> {
+  private async getThreadForAssistant(params: {
+    assistantId: string
+    threadId: string
+  }): Promise<NonNullable<Awaited<ReturnType<ThreadsRepository['getById']>>>> {
     const thread = await this.options.threadsRepo.getById(params.threadId)
-    if (
-      !thread ||
-      thread.assistantId !== params.assistantId ||
-      thread.resourceId !== params.profileId
-    ) {
+    if (!thread || thread.assistantId !== params.assistantId) {
       throw new ChatRouteError(404, 'thread_not_found', 'Thread not found')
     }
+
+    return thread
+  }
+
+  private async collectStreamText(stream: ReadableStream<UIMessageChunk>): Promise<string> {
+    const reader = stream.getReader()
+    const responseTextParts: string[] = []
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) {
+          break
+        }
+
+        if (value.type === 'text-delta' && typeof value.delta === 'string') {
+          responseTextParts.push(value.delta)
+        }
+      }
+    } finally {
+      reader.releaseLock()
+    }
+
+    return responseTextParts.join('')
   }
 
   private async getAssistantContext(assistantId: string): Promise<AssistantContext> {
@@ -395,9 +480,8 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
     const mcpTools = await this.buildMcpTools(assistant.id, enabledMcpServers)
     const workspaceRootPath = this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})
-    const soulMemoryTools = workspaceRootPath
-      ? createSoulMemoryTools({ workspaceRootPath })
-      : {}
+    const soulMemoryTools = workspaceRootPath ? createSoulMemoryTools({ workspaceRootPath }) : {}
+    const workLogTools = workspaceRootPath ? createWorkLogTools({ workspaceRootPath }) : {}
     const channelTools = createChannelTools({
       bus: this.channelEventBus,
       workspaceRootPath
@@ -405,6 +489,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
     const tools: ToolsInput = {
       browserSearch: browserSearchTool,
       ...soulMemoryTools,
+      ...workLogTools,
       ...channelTools,
       ...mcpTools
     }
@@ -569,21 +654,23 @@ export class AssistantRuntimeService implements AssistantRuntime {
   ): Promise<Record<string, MastraMCPServerDefinition>> {
     const entries = (
       await Promise.all(
-      Object.entries(servers).map(async ([serverName, server]) => {
-        const definition = await this.toMcpServerDefinition(server)
-        if (!definition) {
-          return null
-        }
+        Object.entries(servers).map(async ([serverName, server]) => {
+          const definition = await this.toMcpServerDefinition(server)
+          if (!definition) {
+            return null
+          }
 
-        return [serverName, definition] as const
-      })
-    )
+          return [serverName, definition] as const
+        })
+      )
     ).filter((entry): entry is readonly [string, MastraMCPServerDefinition] => entry !== null)
 
     return Object.fromEntries(entries)
   }
 
-  private async toMcpServerDefinition(server: AppMcpServer): Promise<MastraMCPServerDefinition | null> {
+  private async toMcpServerDefinition(
+    server: AppMcpServer
+  ): Promise<MastraMCPServerDefinition | null> {
     const command = this.toNonEmptyString(server.command)
     const url = this.toNonEmptyString(server.url)
     const serverType = server.type.trim().toLowerCase()
