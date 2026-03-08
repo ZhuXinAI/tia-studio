@@ -13,7 +13,9 @@ export type ChannelExecutionContext = {
 export function getChannelExecutionContext(
   requestContext: RequestContext | undefined
 ): ChannelExecutionContext | null {
-  const contextValue = requestContext?.get(CHANNEL_CONTEXT_KEY) as ChannelExecutionContext | undefined
+  const contextValue = requestContext?.get(CHANNEL_CONTEXT_KEY) as
+    | ChannelExecutionContext
+    | undefined
 
   if (!contextValue) {
     return null
@@ -24,6 +26,16 @@ export function getChannelExecutionContext(
     typeof contextValue.remoteChatId !== 'string' ||
     typeof contextValue.userId !== 'string'
   ) {
+    return null
+  }
+
+  return contextValue
+}
+
+export function getHeartbeatRunId(requestContext: RequestContext | undefined): string | null {
+  const contextValue = requestContext?.get(HEARTBEAT_RUN_CONTEXT_KEY)
+
+  if (typeof contextValue !== 'string' || contextValue.trim().length === 0) {
     return null
   }
 

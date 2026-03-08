@@ -19,7 +19,8 @@ export function registerThreadsRoute(app: Hono, options: RegisterThreadsRouteOpt
       return context.json({ ok: false, error: 'assistantId query is required' }, 400)
     }
 
-    const threads = await options.threadsRepo.listByAssistant(assistantId)
+    const includeHidden = context.req.query('includeHidden') === 'true'
+    const threads = await options.threadsRepo.listByAssistant(assistantId, { includeHidden })
     return context.json(threads)
   })
 

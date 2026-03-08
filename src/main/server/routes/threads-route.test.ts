@@ -12,12 +12,13 @@ describe('threads route', () => {
   let app: Hono
   let assistantsRepo: AssistantsRepository
   let providersRepo: ProvidersRepository
+  let threadsRepo: ThreadsRepository
 
   beforeEach(async () => {
     db = await migrateAppSchema(':memory:')
     assistantsRepo = new AssistantsRepository(db)
     providersRepo = new ProvidersRepository(db)
-    const threadsRepo = new ThreadsRepository(db)
+    threadsRepo = new ThreadsRepository(db)
     app = new Hono()
     registerThreadsRoute(app, { threadsRepo, assistantsRepo })
   })
@@ -189,6 +190,68 @@ describe('threads route', () => {
     )
     const listBody = await listResponse.json()
     expect(listBody).toEqual([])
+  })
+
+  it('excludes cron-owned hidden threads by default and includes them on demand', async () => {
+    const provider = await providersRepo.create({
+      name: 'OpenAI',
+      type: 'openai',
+      apiKey: 'test-key',
+      selectedModel: 'gpt-5'
+    })
+    const assistant = await assistantsRepo.create({
+      name: 'Trip Planner',
+      providerId: provider.id
+    })
+
+    const visibleThread = await threadsRepo.create({
+      assistantId: assistant.id,
+      resourceId: 'profile-default',
+      title: 'Visible chat'
+    })
+    const hiddenCronThread = await threadsRepo.create({
+      assistantId: assistant.id,
+      resourceId: 'profile-default',
+      title: 'Daily cron',
+      metadata: {
+        cron: true,
+        cronJobId: 'cron-job-1'
+      }
+    })
+
+    const defaultListResponse = await app.request(
+      `http://localhost/v1/threads?assistantId=${assistant.id}`
+    )
+
+    expect(defaultListResponse.status).toBe(200)
+    await expect(defaultListResponse.json()).resolves.toEqual([
+      expect.objectContaining({
+        id: visibleThread.id,
+        title: 'Visible chat'
+      })
+    ])
+
+    const includeHiddenResponse = await app.request(
+      `http://localhost/v1/threads?assistantId=${assistant.id}&includeHidden=true`
+    )
+
+    expect(includeHiddenResponse.status).toBe(200)
+    const includeHiddenBody = await includeHiddenResponse.json()
+    expect(includeHiddenBody).toHaveLength(2)
+    expect(includeHiddenBody).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: hiddenCronThread.id,
+          metadata: {
+            cron: true,
+            cronJobId: 'cron-job-1'
+          }
+        }),
+        expect.objectContaining({
+          id: visibleThread.id
+        })
+      ])
+    )
   })
 
   it('returns 404 when deleting missing thread', async () => {

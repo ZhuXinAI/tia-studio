@@ -13,6 +13,7 @@ import type { WebSearchSettingsRepository } from '../persistence/repos/web-searc
 import { ChannelEventBus } from '../channels/channel-event-bus'
 import { AssistantRuntimeService } from './assistant-runtime'
 import { createMastraInstance } from './store'
+import { HEARTBEAT_RUN_CONTEXT_KEY } from './tool-context'
 
 const { handleChatStreamMock, toAISdkV5MessagesMock } = vi.hoisted(() => ({
   handleChatStreamMock: vi.fn(),
@@ -224,6 +225,9 @@ describe('AssistantRuntimeService', () => {
           'browserSearch',
           'readSoulMemory',
           'updateSoulMemory',
+          'listWorkLogs',
+          'readWorkLog',
+          'searchWorkLogs',
           'sendMessageToChannel',
           'sendImage',
           'sendFile'
@@ -232,6 +236,39 @@ describe('AssistantRuntimeService', () => {
     } finally {
       await rm(workspaceRoot, { recursive: true, force: true })
     }
+  })
+
+  it('does not register work-log tools for assistants without workspaces', async () => {
+    const assistant = buildAssistant({
+      workspaceConfig: {}
+    })
+    const mastra = await createMastraInstance(':memory:')
+    const runtime = new AssistantRuntimeService({
+      mastra,
+      assistantsRepo: {} as AssistantsRepository,
+      providersRepo: {} as ProvidersRepository,
+      threadsRepo: {} as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing')
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never,
+      channelEventBus: new ChannelEventBus()
+    })
+
+    await (
+      runtime as unknown as {
+        ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+      }
+    ).ensureAgentRegistered(assistant, buildProvider())
+
+    const agent = mastra.getAgentById(assistant.id)
+    const tools = await agent.listTools()
+
+    expect(Object.keys(tools)).not.toEqual(
+      expect.arrayContaining(['listWorkLogs', 'readWorkLog', 'searchWorkLogs'])
+    )
   })
 
   it('registers the assistant workspace context processor alongside attachment uploads', async () => {
@@ -528,6 +565,138 @@ describe('AssistantRuntimeService', () => {
         })
       })
     )
+  })
+
+  it('injects heartbeat request context and omits memory persistence for cron runs', async () => {
+    handleChatStreamMock.mockReset()
+    toAISdkV5MessagesMock.mockReset()
+    toAISdkV5MessagesMock.mockImplementation((messages) => messages)
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.close()
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const runtime = new AssistantRuntimeService({
+      mastra: await createMastraInstance(':memory:'),
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          title: 'Cron thread',
+          metadata: {
+            cron: true
+          },
+          lastMessageAt: null,
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        }))
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+    ;(
+      runtime as unknown as {
+        ensureAgentRegistered: () => Promise<void>
+      }
+    ).ensureAgentRegistered = vi.fn(async () => undefined)
+
+    await runtime.runCronJob({
+      assistantId: assistant.id,
+      threadId: 'thread-1',
+      prompt: 'Check the workspace and report status.'
+    })
+
+    const handleCall = handleChatStreamMock.mock.calls[0]?.[0] as {
+      params: {
+        requestContext: {
+          get: (key: string) => unknown
+        }
+      } & Record<string, unknown>
+    }
+
+    expect(handleCall.params.requestContext.get(HEARTBEAT_RUN_CONTEXT_KEY)).toEqual(
+      expect.any(String)
+    )
+    expect('memory' in handleCall.params).toBe(false)
+  })
+
+  it('collects final assistant output text for cron runs', async () => {
+    handleChatStreamMock.mockReset()
+    toAISdkV5MessagesMock.mockReset()
+    toAISdkV5MessagesMock.mockImplementation((messages) => messages)
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.enqueue({ type: 'text-delta', delta: 'Workspace ' } as UIMessageChunk)
+          controller.enqueue({ type: 'text-delta', delta: 'is healthy.' } as UIMessageChunk)
+          controller.enqueue({ type: 'finish' } as UIMessageChunk)
+          controller.close()
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const runtime = new AssistantRuntimeService({
+      mastra: await createMastraInstance(':memory:'),
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          title: 'Cron thread',
+          metadata: {
+            cron: true
+          },
+          lastMessageAt: null,
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        }))
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+    ;(
+      runtime as unknown as {
+        ensureAgentRegistered: () => Promise<void>
+      }
+    ).ensureAgentRegistered = vi.fn(async () => undefined)
+
+    await expect(
+      runtime.runCronJob({
+        assistantId: assistant.id,
+        threadId: 'thread-1',
+        prompt: 'Check the workspace and report status.'
+      })
+    ).resolves.toEqual({
+      outputText: 'Workspace is healthy.'
+    })
   })
 
   it('publishes an outbound channel event after a channel-targeted reply completes', async () => {
