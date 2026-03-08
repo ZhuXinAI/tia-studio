@@ -149,6 +149,7 @@ describe('ChannelMessageRouter', () => {
         messages: [
           {
             id: `channel:${channelId}:msg-1`,
+            content: 'hello',
             role: 'user',
             parts: [{ type: 'text', text: 'hello' }],
             metadata: {

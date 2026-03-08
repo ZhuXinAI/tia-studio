@@ -325,11 +325,13 @@ describe('AssistantRuntimeService', () => {
 
   it('forwards incoming message metadata into mastra chat stream execution', async () => {
     handleChatStreamMock.mockReset()
+    toAISdkV5MessagesMock.mockReset()
     handleChatStreamMock.mockResolvedValue(new ReadableStream())
 
     const assistant = buildAssistant()
     const message = {
       id: 'channel:channel-1:msg-1',
+      content: 'hello from lark',
       role: 'user' as const,
       parts: [{ type: 'text' as const, text: 'hello from lark' }],
       metadata: {
@@ -339,6 +341,20 @@ describe('AssistantRuntimeService', () => {
         remoteMessageId: 'msg-1'
       }
     }
+    const convertedMessages = [
+      {
+        id: 'channel:channel-1:msg-1',
+        role: 'user' as const,
+        parts: [{ type: 'text' as const, text: 'hello from lark' }],
+        metadata: {
+          fromChannel: 'lark',
+          channelId: 'channel-1',
+          remoteChatId: 'oc_123',
+          remoteMessageId: 'msg-1'
+        }
+      }
+    ]
+    toAISdkV5MessagesMock.mockReturnValue(convertedMessages)
     const runtime = new AssistantRuntimeService({
       mastra: await createMastraInstance(':memory:'),
       assistantsRepo: {
@@ -370,10 +386,11 @@ describe('AssistantRuntimeService', () => {
       messages: [message]
     })
 
+    expect(toAISdkV5MessagesMock).toHaveBeenCalledWith([message])
     expect(handleChatStreamMock).toHaveBeenCalledWith(
       expect.objectContaining({
         params: expect.objectContaining({
-          messages: [message]
+          messages: convertedMessages
         })
       })
     )

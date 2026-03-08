@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import type { UIMessage, UIMessageChunk } from 'ai'
+import type { UIMessageWithMetadata } from '@mastra/core/agent/message-list'
+import type { UIMessageChunk } from 'ai'
 import type { AssistantRuntime } from '../mastra/assistant-runtime'
 import type { ChannelThreadBindingsRepository } from '../persistence/repos/channel-thread-bindings-repo'
 import type { ChannelsRepository } from '../persistence/repos/channels-repo'
@@ -88,8 +89,9 @@ export class ChannelMessageRouter {
         })
       ).threadId
 
-    const userMessage: UIMessage = {
+    const userMessage: UIMessageWithMetadata = {
       id: `channel:${event.channelId}:${event.message.id}`,
+      content: event.message.content,
       role: 'user',
       parts: [{ type: 'text', text: event.message.content }],
       metadata: {
