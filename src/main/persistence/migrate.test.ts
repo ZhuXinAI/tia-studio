@@ -23,6 +23,16 @@ it('creates core app tables', async () => {
   const assistantColumns = assistantColumnsResult.rows.map((row) =>
     String((row as Record<string, unknown>).name)
   )
+  const channelColumnsResult = await db.execute("PRAGMA table_info('app_channels')")
+  const channelColumns = channelColumnsResult.rows.map((row) =>
+    String((row as Record<string, unknown>).name)
+  )
+  const channelThreadBindingColumnsResult = await db.execute(
+    "PRAGMA table_info('app_channel_thread_bindings')"
+  )
+  const channelThreadBindingColumns = channelThreadBindingColumnsResult.rows.map((row) =>
+    String((row as Record<string, unknown>).name)
+  )
   const teamWorkspaceColumnsResult = await db.execute("PRAGMA table_info('app_team_workspaces')")
   const teamWorkspaceColumns = teamWorkspaceColumnsResult.rows.map((row) =>
     String((row as Record<string, unknown>).name)
@@ -32,11 +42,18 @@ it('creates core app tables', async () => {
   expect(tableNames).toContain('app_providers')
   expect(tableNames).toContain('app_assistants')
   expect(tableNames).toContain('app_threads')
+  expect(tableNames).toContain('app_channels')
+  expect(tableNames).toContain('app_channel_thread_bindings')
   expect(tableNames).toContain('app_team_workspaces')
   expect(tableNames).toContain('app_team_workspace_members')
   expect(tableNames).toContain('app_preferences')
   expect(assistantColumns).toContain('description')
   expect(assistantColumns).toContain('max_steps')
+  expect(channelColumns).toContain('assistant_id')
+  expect(channelColumns).toContain('config')
+  expect(channelColumns).toContain('last_error')
+  expect(channelThreadBindingColumns).toContain('remote_chat_id')
+  expect(channelThreadBindingColumns).toContain('thread_id')
   expect(teamWorkspaceColumns).toContain('team_description')
   expect(teamWorkspaceColumns).toContain('supervisor_provider_id')
   expect(teamWorkspaceColumns).toContain('supervisor_model')
