@@ -19,6 +19,7 @@ import { AutoUpdateService } from './auto-updater'
 import { resolveServerConfig } from './config/server-config'
 import { ensureBuiltInDefaultAgent } from './default-agent/default-agent-bootstrap'
 import { ensureBuiltInProviders } from './default-agent/built-in-providers-bootstrap'
+import { ChannelEventBus } from './channels/channel-event-bus'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
 import { createMastraInstance } from './mastra/store'
 import { TeamRuntimeService } from './mastra/team-runtime'
@@ -157,6 +158,7 @@ async function startLocalApiServer(): Promise<void> {
     providersRepo,
     userDataPath: app.getPath('userData')
   })
+  const channelEventBus = new ChannelEventBus()
   const mastra = await createMastraInstance(join(app.getPath('userData'), 'mastra.db'))
   const assistantRuntime = new AssistantRuntimeService({
     mastra,
@@ -165,6 +167,7 @@ async function startLocalApiServer(): Promise<void> {
     threadsRepo,
     webSearchSettingsRepo,
     mcpServersRepo,
+    channelEventBus,
     managedRuntimeResolver: managedRuntimeService
   })
   const teamRunStatusStore = new TeamRunStatusStore()

@@ -1,5 +1,6 @@
 import os from 'node:os'
 import path from 'node:path'
+import { access, mkdtemp, rm } from 'node:fs/promises'
 import { describe, expect, it, vi } from 'vitest'
 import type { Mastra } from '@mastra/core/mastra'
 import type { UIMessageChunk } from 'ai'
@@ -9,6 +10,7 @@ import type { AppProvider } from '../persistence/repos/providers-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
+import { ChannelEventBus } from '../channels/channel-event-bus'
 import { AssistantRuntimeService } from './assistant-runtime'
 import { createMastraInstance } from './store'
 
@@ -32,7 +34,7 @@ vi.mock('electron', () => ({
   BrowserWindow: undefined
 }))
 
-function buildAssistant(): AppAssistant {
+function buildAssistant(overrides?: Partial<AppAssistant>): AppAssistant {
   return {
     id: 'assistant-1',
     name: 'TIA',
@@ -45,7 +47,8 @@ function buildAssistant(): AppAssistant {
     maxSteps: 100,
     memoryConfig: null,
     createdAt: '2026-03-02T00:00:00.000Z',
-    updatedAt: '2026-03-02T00:00:00.000Z'
+    updatedAt: '2026-03-02T00:00:00.000Z',
+    ...overrides
   }
 }
 
@@ -142,6 +145,136 @@ describe('AssistantRuntimeService', () => {
 
     const memory = await agent.getMemory()
     expect(memory?.getMergedThreadConfig().generateTitle).toBe(true)
+  })
+
+  it('bootstraps assistant workspace files when registering an agent', async () => {
+    const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-assistant-runtime-'))
+
+    try {
+      const assistant = buildAssistant({
+        workspaceConfig: {
+          rootPath: workspaceRoot
+        }
+      })
+      const mastra = await createMastraInstance(':memory:')
+      const runtime = new AssistantRuntimeService({
+        mastra,
+        assistantsRepo: {} as AssistantsRepository,
+        providersRepo: {} as ProvidersRepository,
+        threadsRepo: {} as ThreadsRepository,
+        webSearchSettingsRepo: {
+          getDefaultEngine: vi.fn(async () => 'bing')
+        } as unknown as WebSearchSettingsRepository,
+        mcpServersRepo: {
+          getSettings: vi.fn(async () => ({ mcpServers: {} }))
+        } as never,
+        channelEventBus: new ChannelEventBus()
+      })
+
+      await (
+        runtime as unknown as {
+          ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+        }
+      ).ensureAgentRegistered(assistant, buildProvider())
+
+      await expect(access(path.join(workspaceRoot, 'IDENTITY.md'))).resolves.toBeUndefined()
+      await expect(access(path.join(workspaceRoot, 'SOUL.md'))).resolves.toBeUndefined()
+      await expect(access(path.join(workspaceRoot, 'MEMORY.md'))).resolves.toBeUndefined()
+      await expect(access(path.join(workspaceRoot, 'HEARTBEAT.md'))).resolves.toBeUndefined()
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('registers soul and channel tools for assistants with workspaces', async () => {
+    const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-assistant-runtime-'))
+
+    try {
+      const assistant = buildAssistant({
+        workspaceConfig: {
+          rootPath: workspaceRoot
+        }
+      })
+      const mastra = await createMastraInstance(':memory:')
+      const runtime = new AssistantRuntimeService({
+        mastra,
+        assistantsRepo: {} as AssistantsRepository,
+        providersRepo: {} as ProvidersRepository,
+        threadsRepo: {} as ThreadsRepository,
+        webSearchSettingsRepo: {
+          getDefaultEngine: vi.fn(async () => 'bing')
+        } as unknown as WebSearchSettingsRepository,
+        mcpServersRepo: {
+          getSettings: vi.fn(async () => ({ mcpServers: {} }))
+        } as never,
+        channelEventBus: new ChannelEventBus()
+      })
+
+      await (
+        runtime as unknown as {
+          ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+        }
+      ).ensureAgentRegistered(assistant, buildProvider())
+
+      const agent = mastra.getAgentById(assistant.id)
+      const tools = await agent.listTools()
+
+      expect(Object.keys(tools)).toEqual(
+        expect.arrayContaining([
+          'browserSearch',
+          'readSoulMemory',
+          'updateSoulMemory',
+          'sendMessageToChannel',
+          'sendImage',
+          'sendFile'
+        ])
+      )
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('registers the assistant workspace context processor alongside attachment uploads', async () => {
+    const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-assistant-runtime-'))
+
+    try {
+      const assistant = buildAssistant({
+        workspaceConfig: {
+          rootPath: workspaceRoot
+        }
+      })
+      const mastra = await createMastraInstance(':memory:')
+      const runtime = new AssistantRuntimeService({
+        mastra,
+        assistantsRepo: {} as AssistantsRepository,
+        providersRepo: {} as ProvidersRepository,
+        threadsRepo: {} as ThreadsRepository,
+        webSearchSettingsRepo: {
+          getDefaultEngine: vi.fn(async () => 'bing')
+        } as unknown as WebSearchSettingsRepository,
+        mcpServersRepo: {
+          getSettings: vi.fn(async () => ({ mcpServers: {} }))
+        } as never,
+        channelEventBus: new ChannelEventBus()
+      })
+
+      await (
+        runtime as unknown as {
+          ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+        }
+      ).ensureAgentRegistered(assistant, buildProvider())
+
+      const agent = mastra.getAgentById(assistant.id)
+      const attachmentProcessor = await agent.resolveProcessorById('attachment-uploader')
+      const workspaceContextProcessor = await agent.resolveProcessorById(
+        'assistant-workspace-context'
+      )
+
+      expect(attachmentProcessor?.id).toBe('attachment-uploader')
+      expect(workspaceContextProcessor?.id).toBe('assistant-workspace-context')
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true })
+    }
   })
 
   it('re-registers an agent when provider configuration changes', async () => {
@@ -321,6 +454,157 @@ describe('AssistantRuntimeService', () => {
         })
       })
     )
+  })
+
+  it('publishes an outbound channel event after a channel-targeted reply completes', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.enqueue({
+            type: 'text-delta',
+            id: 'message-1',
+            delta: 'Hello'
+          } as UIMessageChunk)
+          controller.enqueue({
+            type: 'text-delta',
+            id: 'message-1',
+            delta: ' world'
+          } as UIMessageChunk)
+          controller.enqueue({ type: 'finish' } as UIMessageChunk)
+          controller.close()
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const bus = new ChannelEventBus()
+    const publishedEvents: unknown[] = []
+    bus.subscribe('channel.message.send-requested', (event) => {
+      publishedEvents.push(event)
+    })
+
+    const runtime = new AssistantRuntimeService({
+      mastra: await createMastraInstance(':memory:'),
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          title: 'New Thread',
+          lastMessageAt: null,
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        })),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never,
+      channelEventBus: bus
+    })
+
+    await drainStream(
+      await runtime.streamChat({
+        assistantId: assistant.id,
+        threadId: 'thread-1',
+        profileId: 'profile-1',
+        messages: [],
+        channelTarget: {
+          channelId: 'channel-1',
+          channelType: 'lark',
+          remoteChatId: 'chat-1'
+        }
+      })
+    )
+
+    expect(publishedEvents).toEqual([
+      {
+        eventId: expect.any(String),
+        channelId: 'channel-1',
+        channelType: 'lark',
+        remoteChatId: 'chat-1',
+        payload: {
+          type: 'text',
+          text: 'Hello world'
+        }
+      }
+    ])
+  })
+
+  it('does not publish an outbound channel event when reply text is empty', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.enqueue({ type: 'finish' } as UIMessageChunk)
+          controller.close()
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const bus = new ChannelEventBus()
+    const publishedEvents: unknown[] = []
+    bus.subscribe('channel.message.send-requested', (event) => {
+      publishedEvents.push(event)
+    })
+
+    const runtime = new AssistantRuntimeService({
+      mastra: await createMastraInstance(':memory:'),
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          title: 'New Thread',
+          lastMessageAt: null,
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        })),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never,
+      channelEventBus: bus
+    })
+
+    await drainStream(
+      await runtime.streamChat({
+        assistantId: assistant.id,
+        threadId: 'thread-1',
+        profileId: 'profile-1',
+        messages: [],
+        channelTarget: {
+          channelId: 'channel-1',
+          channelType: 'lark',
+          remoteChatId: 'chat-1'
+        }
+      })
+    )
+
+    expect(publishedEvents).toEqual([])
   })
 
   it('touches thread lastMessageAt after streaming completes', async () => {

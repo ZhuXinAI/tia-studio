@@ -1,5 +1,6 @@
 import os from 'node:os'
 import path from 'node:path'
+import { randomUUID } from 'node:crypto'
 import { Agent } from '@mastra/core/agent'
 import type { AgentExecutionOptions, ToolsInput } from '@mastra/core/agent'
 import type { MessageListInput } from '@mastra/core/agent/message-list'
@@ -11,6 +12,8 @@ import { toAISdkV5Messages } from '@mastra/ai-sdk/ui'
 import { Memory } from '@mastra/memory'
 import { MCPClient, type MastraMCPServerDefinition } from '@mastra/mcp'
 import type { UIMessage, UIMessageChunk } from 'ai'
+import { ChannelEventBus } from '../channels/channel-event-bus'
+import type { ChannelTarget } from '../channels/types'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type {
   ManagedRuntimeKind,
@@ -22,8 +25,14 @@ import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import { ChatRouteError } from '../server/chat/chat-errors'
+import { ensureAssistantWorkspaceFiles } from './assistant-workspace'
 import { resolveModel } from './model-resolver'
 import { createBrowserSearchTool } from './tools/browser-search-tool'
+import { createChannelTools } from './tools/channel-tools'
+import {
+  assistantWorkspaceContextInputProcessor,
+  createSoulMemoryTools
+} from './tools/soul-memory-tools'
 import { AttachmentUploader } from './processors/attachment-uploader'
 
 type StreamChatParams = {
@@ -31,6 +40,7 @@ type StreamChatParams = {
   messages: MessageListInput
   threadId: string
   profileId: string
+  channelTarget?: ChannelTarget
   trigger?: 'submit-message' | 'regenerate-message'
   abortSignal?: AbortSignal
 }
@@ -58,6 +68,7 @@ type AssistantRuntimeServiceOptions = {
   threadsRepo: ThreadsRepository
   webSearchSettingsRepo: WebSearchSettingsRepository
   mcpServersRepo: McpServersRepository
+  channelEventBus?: ChannelEventBus
   managedRuntimeResolver?: {
     getStatus: () => Promise<ManagedRuntimesState>
     resolveManagedCommand: (
@@ -77,8 +88,11 @@ type JsonObject = Record<string, unknown>
 export class AssistantRuntimeService implements AssistantRuntime {
   private readonly registeredAgentSignatures = new Map<string, string>()
   private readonly assistantMcpClients = new Map<string, MCPClient>()
+  private readonly channelEventBus: ChannelEventBus
 
-  constructor(private readonly options: AssistantRuntimeServiceOptions) {}
+  constructor(private readonly options: AssistantRuntimeServiceOptions) {
+    this.channelEventBus = options.channelEventBus ?? new ChannelEventBus()
+  }
 
   async streamChat(params: StreamChatParams): Promise<ReadableStream<UIMessageChunk>> {
     const { assistant, provider } = await this.getAssistantContext(params.assistantId)
@@ -111,7 +125,8 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
     return this.streamWithThreadTitleSync(stream as ReadableStream<UIMessageChunk>, {
       threadId: params.threadId,
-      profileId: params.profileId
+      profileId: params.profileId,
+      channelTarget: params.channelTarget
     })
   }
 
@@ -120,10 +135,12 @@ export class AssistantRuntimeService implements AssistantRuntime {
     params: {
       threadId: string
       profileId: string
+      channelTarget?: ChannelTarget
     }
   ): ReadableStream<UIMessageChunk> {
     const reader = stream.getReader()
     let isSynced = false
+    const responseTextParts: string[] = []
 
     return new ReadableStream<UIMessageChunk>({
       pull: async (controller) => {
@@ -133,10 +150,18 @@ export class AssistantRuntimeService implements AssistantRuntime {
             if (!isSynced) {
               isSynced = true
               await this.syncThreadAfterStreaming(params)
+              await this.publishChannelReplyEvent({
+                channelTarget: params.channelTarget,
+                text: responseTextParts.join('')
+              })
             }
             controller.close()
             reader.releaseLock()
             return
+          }
+
+          if (value.type === 'text-delta' && typeof value.delta === 'string') {
+            responseTextParts.push(value.delta)
           }
 
           // Capture usage from finish chunk and add to message metadata
@@ -185,6 +210,31 @@ export class AssistantRuntimeService implements AssistantRuntime {
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
     await this.options.threadsRepo.touchLastMessageAt(params.threadId, now).catch(() => undefined)
     await this.syncGeneratedThreadTitle(params).catch(() => undefined)
+  }
+
+  private async publishChannelReplyEvent(input: {
+    channelTarget?: ChannelTarget
+    text: string
+  }): Promise<void> {
+    if (!input.channelTarget) {
+      return
+    }
+
+    const normalizedText = input.text.trim()
+    if (normalizedText.length === 0) {
+      return
+    }
+
+    await this.channelEventBus.publish('channel.message.send-requested', {
+      eventId: randomUUID(),
+      channelId: input.channelTarget.channelId,
+      channelType: input.channelTarget.channelType,
+      remoteChatId: input.channelTarget.remoteChatId,
+      payload: {
+        type: 'text',
+        text: normalizedText
+      }
+    })
   }
 
   private async syncGeneratedThreadTitle(params: {
@@ -343,8 +393,18 @@ export class AssistantRuntimeService implements AssistantRuntime {
     })
 
     const mcpTools = await this.buildMcpTools(assistant.id, enabledMcpServers)
+    const workspaceRootPath = this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})
+    const soulMemoryTools = workspaceRootPath
+      ? createSoulMemoryTools({ workspaceRootPath })
+      : {}
+    const channelTools = createChannelTools({
+      bus: this.channelEventBus,
+      workspaceRootPath
+    })
     const tools: ToolsInput = {
       browserSearch: browserSearchTool,
+      ...soulMemoryTools,
+      ...channelTools,
       ...mcpTools
     }
     const now = new Date()
@@ -373,6 +433,12 @@ export class AssistantRuntimeService implements AssistantRuntime {
       assistant.workspaceConfig ?? {},
       assistant.skillsConfig ?? {}
     )
+    const inputProcessors = [
+      ...(workspaceRootPath
+        ? [assistantWorkspaceContextInputProcessor({ workspaceRootPath })]
+        : []),
+      new AttachmentUploader()
+    ]
 
     const agent = new Agent({
       id: assistant.id,
@@ -382,7 +448,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       memory,
       ...(workspace ? { workspace } : {}),
       tools,
-      inputProcessors: [new AttachmentUploader()]
+      inputProcessors
     })
 
     this.options.mastra.addAgent(agent, assistant.id)
@@ -397,6 +463,8 @@ export class AssistantRuntimeService implements AssistantRuntime {
     if (!rootPath) {
       return undefined
     }
+
+    await ensureAssistantWorkspaceFiles(rootPath)
 
     const skillsPaths = this.resolveSkillsPaths(rootPath, skillsConfig)
     const filesystem = new LocalFilesystem({ basePath: rootPath })
