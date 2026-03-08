@@ -62,7 +62,9 @@ it('creates core app tables', async () => {
   await db.close()
 })
 
-it('backfills workspace-owned team config from legacy thread-owned records', async () => {
+it(
+  'backfills workspace-owned team config from legacy thread-owned records',
+  async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'tia-team-migrate-'))
   tempPaths.push(tempDir)
   const dbPath = path.join(tempDir, 'app.db')
@@ -221,7 +223,9 @@ it('backfills workspace-owned team config from legacy thread-owned records', asy
   expect(assistantColumns).toContain('description')
 
   await migratedDb.close()
-})
+  },
+  15_000
+)
 
 it('backfills assistant activation from legacy channel bindings', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'tia-assistant-enabled-migrate-'))

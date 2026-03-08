@@ -60,6 +60,8 @@ describe('ManagedRuntimeService', () => {
     const service = new ManagedRuntimeService({
       repository,
       managedRootPath: path.join(tempDir, 'managed'),
+      platform: 'darwin',
+      arch: 'arm64',
       fetchLatestRelease: vi.fn(async () => ({
         tag_name: 'bun-v1.2.0',
         html_url: 'https://example.test/releases/bun-v1.2.0',
@@ -86,6 +88,8 @@ describe('ManagedRuntimeService', () => {
     const service = new ManagedRuntimeService({
       repository,
       managedRootPath: path.join(tempDir, 'managed'),
+      platform: 'darwin',
+      arch: 'arm64',
       fetchLatestRelease: vi.fn(async () => ({
         tag_name: 'bun-v1.2.0',
         html_url: 'https://example.test/releases/bun-v1.2.0',

@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import type { Mastra } from '@mastra/core/mastra'
 import type { UIMessage, UIMessageChunk } from 'ai'
@@ -315,9 +316,11 @@ describe('TeamRuntimeService', () => {
     )
 
     expect(localFilesystemOptions.length).toBeGreaterThan(0)
-    expect(localFilesystemOptions.every((value) => value.basePath === '/team/workspace')).toBe(
-      true
-    )
+    expect(
+      localFilesystemOptions.every(
+        (value) => value.basePath === path.resolve('/team/workspace')
+      )
+    ).toBe(true)
   })
 
   it('resolves only live assistant members into the supervisor agent', async () => {
