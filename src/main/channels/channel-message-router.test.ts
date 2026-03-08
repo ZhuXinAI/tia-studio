@@ -70,7 +70,8 @@ describe('ChannelMessageRouter', () => {
     })
     const assistant = await assistantsRepo.create({
       name: 'Support Assistant',
-      providerId: provider.id
+      providerId: provider.id,
+      enabled: true
     })
     const channel = await channelsRepo.create({
       type: 'lark',
@@ -277,5 +278,47 @@ describe('ChannelMessageRouter', () => {
     })
 
     expect(publishedEvents).toEqual([])
+  })
+
+  it('ignores inbound messages when the attached assistant is disabled', async () => {
+    const disabledAssistant = await new AssistantsRepository(db).create({
+      name: 'Disabled Assistant',
+      providerId: (await new ProvidersRepository(db).list())[0]?.id ?? null,
+      enabled: false
+    })
+    const disabledChannel = await channelsRepo.create({
+      type: 'lark',
+      name: 'Disabled Lark',
+      assistantId: disabledAssistant.id,
+      enabled: true,
+      config: {
+        appId: 'cli_disabled',
+        appSecret: 'secret-disabled'
+      }
+    })
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () => createStream())
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat)
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-disabled',
+      channelId: disabledChannel.id,
+      channelType: 'lark',
+      message: {
+        id: 'msg-disabled',
+        remoteChatId: 'oc_disabled',
+        senderId: 'ou_user',
+        content: 'hello',
+        timestamp: new Date('2026-03-08T00:00:00.000Z')
+      }
+    })
+
+    expect(streamChat).not.toHaveBeenCalled()
+    await expect(bindingsRepo.getByChannelAndRemoteChat(disabledChannel.id, 'oc_disabled')).resolves.toBeNull()
   })
 })

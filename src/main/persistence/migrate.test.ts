@@ -48,6 +48,7 @@ it('creates core app tables', async () => {
   expect(tableNames).toContain('app_team_workspace_members')
   expect(tableNames).toContain('app_preferences')
   expect(assistantColumns).toContain('description')
+  expect(assistantColumns).toContain('enabled')
   expect(assistantColumns).toContain('max_steps')
   expect(channelColumns).toContain('assistant_id')
   expect(channelColumns).toContain('config')
@@ -218,6 +219,109 @@ it('backfills workspace-owned team config from legacy thread-owned records', asy
     }
   ])
   expect(assistantColumns).toContain('description')
+
+  await migratedDb.close()
+})
+
+it('backfills assistant activation from legacy channel bindings', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'tia-assistant-enabled-migrate-'))
+  tempPaths.push(tempDir)
+  const dbPath = path.join(tempDir, 'app.db')
+  const legacyDb = createAppDatabase(dbPath)
+
+  await legacyDb.execute('PRAGMA foreign_keys = ON')
+  await legacyDb.execute(`
+    CREATE TABLE IF NOT EXISTS app_profiles (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      is_active INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await legacyDb.execute(`
+    CREATE TABLE IF NOT EXISTS app_providers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      api_key TEXT NOT NULL,
+      api_host TEXT,
+      selected_model TEXT NOT NULL,
+      provider_models TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await legacyDb.execute(`
+    CREATE TABLE IF NOT EXISTS app_assistants (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      instructions TEXT NOT NULL DEFAULT '',
+      provider_id TEXT,
+      workspace_config TEXT NOT NULL DEFAULT '{}',
+      skills_config TEXT NOT NULL DEFAULT '{}',
+      mcp_config TEXT NOT NULL DEFAULT '{}',
+      max_steps INTEGER NOT NULL DEFAULT 100,
+      memory_config TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await legacyDb.execute(`
+    CREATE TABLE IF NOT EXISTS app_channels (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      name TEXT NOT NULL,
+      assistant_id TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      config TEXT NOT NULL DEFAULT '{}',
+      last_error TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  await legacyDb.execute(
+    'INSERT INTO app_assistants (id, name, instructions, provider_id) VALUES (?, ?, ?, ?), (?, ?, ?, ?)',
+    [
+      'assistant-bound',
+      'Bound Assistant',
+      '',
+      null,
+      'assistant-unbound',
+      'Unbound Assistant',
+      '',
+      null
+    ]
+  )
+  await legacyDb.execute(
+    'INSERT INTO app_channels (id, type, name, assistant_id, config) VALUES (?, ?, ?, ?, ?)',
+    ['channel-1', 'lark', 'Bound Lark', 'assistant-bound', '{"appId":"cli_1","appSecret":"secret"}']
+  )
+
+  await legacyDb.close()
+
+  const migratedDb = await migrateAppSchema(dbPath)
+  const assistantColumnsResult = await migratedDb.execute("PRAGMA table_info('app_assistants')")
+  const assistantColumns = assistantColumnsResult.rows.map((row) =>
+    String((row as Record<string, unknown>).name)
+  )
+  const assistantsResult = await migratedDb.execute(
+    'SELECT id, enabled FROM app_assistants ORDER BY id ASC'
+  )
+
+  expect(assistantColumns).toContain('enabled')
+  expect(assistantsResult.rows).toEqual([
+    {
+      id: 'assistant-bound',
+      enabled: 1
+    },
+    {
+      id: 'assistant-unbound',
+      enabled: 0
+    }
+  ])
 
   await migratedDb.close()
 })

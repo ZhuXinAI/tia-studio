@@ -10,6 +10,7 @@ function createAssistant(overrides?: Partial<AssistantRecord>): AssistantRecord 
     name: 'Planner',
     description: '',
     instructions: '',
+    enabled: true,
     providerId: 'provider-1',
     workspaceConfig: { rootPath: '/workspace/a' },
     skillsConfig: {},

@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS app_assistants (
   name TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
   instructions TEXT NOT NULL DEFAULT '',
+  enabled INTEGER NOT NULL DEFAULT 0,
   provider_id TEXT,
   workspace_config TEXT NOT NULL DEFAULT '{}',
   skills_config TEXT NOT NULL DEFAULT '{}',

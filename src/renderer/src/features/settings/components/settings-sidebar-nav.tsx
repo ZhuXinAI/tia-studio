@@ -3,7 +3,6 @@ import {
   Cable,
   Cloud,
   Info,
-  MessageCircleMore,
   Monitor,
   Search,
   Wrench
@@ -32,11 +31,6 @@ const settingsNavItems: SettingsNavItem[] = [
     title: 'Model Provider',
     icon: Cloud,
     to: '/settings/providers'
-  },
-  {
-    title: 'Channels',
-    icon: MessageCircleMore,
-    to: '/settings/channels'
   },
   {
     title: 'Cron Jobs',

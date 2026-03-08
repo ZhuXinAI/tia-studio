@@ -45,6 +45,19 @@ async function ensureAssistantDescriptionColumn(db: AppDatabase): Promise<void> 
   await db.execute("ALTER TABLE app_assistants ADD COLUMN description TEXT NOT NULL DEFAULT ''")
 }
 
+async function ensureAssistantEnabledColumn(db: AppDatabase): Promise<void> {
+  const tableInfo = await db.execute("PRAGMA table_info('app_assistants')")
+  const hasEnabledColumn = tableInfo.rows.some((row) => {
+    return String((row as Record<string, unknown>).name) === 'enabled'
+  })
+
+  if (hasEnabledColumn) {
+    return
+  }
+
+  await db.execute('ALTER TABLE app_assistants ADD COLUMN enabled INTEGER NOT NULL DEFAULT 0')
+}
+
 async function ensureProviderSupportsVisionColumn(db: AppDatabase): Promise<void> {
   const tableInfo = await db.execute("PRAGMA table_info('app_providers')")
   const hasSupportsVisionColumn = tableInfo.rows.some((row) => {
@@ -395,6 +408,18 @@ async function ensureCronTables(db: AppDatabase): Promise<void> {
   )
 }
 
+async function backfillAssistantEnabledFromChannels(db: AppDatabase): Promise<void> {
+  await db.execute(`
+    UPDATE app_assistants
+    SET enabled = 1
+    WHERE id IN (
+      SELECT DISTINCT assistant_id
+      FROM app_channels
+      WHERE assistant_id IS NOT NULL
+    )
+  `)
+}
+
 export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> {
   const db = createAppDatabase(pathOrUrl)
 
@@ -425,11 +450,13 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   }
 
   await ensureAssistantDescriptionColumn(db)
+  await ensureAssistantEnabledColumn(db)
   await ensureAssistantMaxStepsColumn(db)
   await ensureProviderSupportsVisionColumn(db)
   await ensureBuiltInProviderColumns(db)
   await ensureTeamTables(db)
   await ensureChannelsTables(db)
+  await backfillAssistantEnabledFromChannels(db)
   await ensureThreadMetadataColumn(db)
   await ensureCronTables(db)
 

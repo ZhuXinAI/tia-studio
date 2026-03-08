@@ -1,8 +1,8 @@
 import { createHashRouter, createMemoryRouter, redirect, type RouteObject } from 'react-router-dom'
 import { AppShell } from './layout/app-shell'
 import { ThreadPage } from '../features/threads/pages/thread-page'
+import { ClawsPage } from '../features/claws/pages/claws-page'
 import { ProvidersSettingsPage } from '../features/settings/pages/providers-settings-page'
-import { ChannelsSettingsPage } from '../features/settings/pages/channels-settings-page'
 import { CronJobsSettingsPage } from '../features/settings/pages/cron-jobs-settings-page'
 import { WebSearchSettingsPage } from '../features/settings/pages/web-search-settings-page'
 import { McpServersSettingsPage } from '../features/settings/pages/mcp-servers-settings-page'
@@ -40,6 +40,10 @@ export const appRoutes: RouteObject[] = [
         element: <TeamPage />
       },
       {
+        path: 'claws',
+        element: <ClawsPage />
+      },
+      {
         path: 'settings',
         element: <SettingsPageLayout />,
         children: [
@@ -53,7 +57,7 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: 'channels',
-            element: <ChannelsSettingsPage />
+            loader: () => redirect('/claws')
           },
           {
             path: 'cron-jobs',

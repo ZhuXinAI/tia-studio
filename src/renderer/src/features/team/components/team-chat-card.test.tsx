@@ -139,6 +139,7 @@ describe('TeamChatCard', () => {
             name: 'Planner',
             description: '',
             instructions: '',
+            enabled: true,
             providerId: 'provider-1',
             workspaceConfig: {},
             skillsConfig: {},

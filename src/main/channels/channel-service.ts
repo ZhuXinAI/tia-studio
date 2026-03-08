@@ -10,7 +10,7 @@ import type {
 } from './types'
 
 type ChannelsRepositoryLike = {
-  listEnabled(): Promise<AppChannel[]>
+  listRuntimeEnabled(): Promise<AppChannel[]>
 }
 
 type ChannelServiceOptions = {
@@ -37,7 +37,7 @@ export class ChannelService {
       }
     )
 
-    const channels = await this.options.channelsRepo.listEnabled()
+    const channels = await this.options.channelsRepo.listRuntimeEnabled()
 
     for (const channel of channels) {
       await this.registerChannel(channel)
