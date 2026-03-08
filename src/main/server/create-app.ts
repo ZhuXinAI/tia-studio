@@ -96,7 +96,8 @@ export function createApp(options: CreateAppOptions): Hono {
         assistantsRepo: options.repositories.assistants,
         providersRepo: options.repositories.providers,
         channelsRepo: options.repositories.channels,
-        channelService: options.channelService
+        channelService: options.channelService,
+        cronSchedulerService: options.cronSchedulerService
       })
     }
     registerThreadsRoute(app, {

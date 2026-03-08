@@ -9,11 +9,16 @@ type ChannelServiceLike = {
   reload(): Promise<void>
 }
 
+type CronSchedulerServiceLike = {
+  reload(): Promise<void>
+}
+
 type RegisterClawsRouteOptions = {
   assistantsRepo: AssistantsRepository
   providersRepo: ProvidersRepository
   channelsRepo: ChannelsRepository
   channelService: ChannelServiceLike
+  cronSchedulerService?: CronSchedulerServiceLike
 }
 
 type ClawResponse = {
@@ -154,6 +159,11 @@ async function attachChannelToAssistant(input: {
   return { ok: true }
 }
 
+async function reloadClawServices(options: RegisterClawsRouteOptions): Promise<void> {
+  await options.channelService.reload()
+  await options.cronSchedulerService?.reload()
+}
+
 export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions): void {
   app.get('/v1/claws', async (context) => {
     const availableChannels = await options.channelsRepo.listUnbound()
@@ -231,7 +241,7 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
       }
     }
 
-    await options.channelService.reload()
+    await reloadClawServices(options)
 
     return context.json(await loadClawByAssistantId(assistant.id, options), 201)
   })
@@ -303,7 +313,7 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
       })
     }
 
-    await options.channelService.reload()
+    await reloadClawServices(options)
 
     return context.json(await loadClawByAssistantId(assistantId, options))
   })
@@ -320,7 +330,7 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
       return context.json({ ok: false, error: 'Claw not found' }, 404)
     }
 
-    await options.channelService.reload()
+    await reloadClawServices(options)
 
     return context.body(null, 204)
   })

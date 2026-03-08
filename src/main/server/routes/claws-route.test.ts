@@ -14,7 +14,8 @@ describe('claws route', () => {
   let providersRepo: ProvidersRepository
   let assistantsRepo: AssistantsRepository
   let channelsRepo: ChannelsRepository
-  let reloadMock: ReturnType<typeof vi.fn<() => Promise<void>>>
+  let channelReloadMock: ReturnType<typeof vi.fn<() => Promise<void>>>
+  let cronReloadMock: ReturnType<typeof vi.fn<() => Promise<void>>>
   let providerId: string
 
   beforeEach(async () => {
@@ -22,7 +23,8 @@ describe('claws route', () => {
     providersRepo = new ProvidersRepository(db)
     assistantsRepo = new AssistantsRepository(db)
     channelsRepo = new ChannelsRepository(db)
-    reloadMock = vi.fn(async () => undefined)
+    channelReloadMock = vi.fn(async () => undefined)
+    cronReloadMock = vi.fn(async () => undefined)
     app = new Hono()
 
     const provider = await providersRepo.create({
@@ -38,7 +40,10 @@ describe('claws route', () => {
       providersRepo,
       channelsRepo,
       channelService: {
-        reload: reloadMock
+        reload: channelReloadMock
+      },
+      cronSchedulerService: {
+        reload: cronReloadMock
       }
     })
   })
@@ -146,7 +151,8 @@ describe('claws route', () => {
         name: 'Ops Lark'
       }
     })
-    expect(reloadMock).toHaveBeenCalledOnce()
+    expect(channelReloadMock).toHaveBeenCalledOnce()
+    expect(cronReloadMock).toHaveBeenCalledOnce()
   })
 
   it('swaps a claw to another unbound channel and reloads runtime', async () => {
@@ -196,7 +202,8 @@ describe('claws route', () => {
       id: nextChannel.id,
       assistantId: assistant.id
     })
-    expect(reloadMock).toHaveBeenCalledOnce()
+    expect(channelReloadMock).toHaveBeenCalledOnce()
+    expect(cronReloadMock).toHaveBeenCalledOnce()
   })
 
   it('rejects attaching a channel already bound to another assistant', async () => {
@@ -237,7 +244,8 @@ describe('claws route', () => {
       ok: false,
       error: 'Channel is already attached to another assistant'
     })
-    expect(reloadMock).not.toHaveBeenCalled()
+    expect(channelReloadMock).not.toHaveBeenCalled()
+    expect(cronReloadMock).not.toHaveBeenCalled()
   })
 
   it('deletes a claw and leaves its channel reusable', async () => {
@@ -267,6 +275,7 @@ describe('claws route', () => {
       id: channel.id,
       assistantId: null
     })
-    expect(reloadMock).toHaveBeenCalledOnce()
+    expect(channelReloadMock).toHaveBeenCalledOnce()
+    expect(cronReloadMock).toHaveBeenCalledOnce()
   })
 })

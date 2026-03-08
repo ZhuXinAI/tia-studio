@@ -22,6 +22,7 @@ type CronJobRunsRepositoryLike = {
 type AssistantsRepositoryLike = {
   getById(id: string): Promise<{
     name: string
+    enabled?: boolean
     workspaceConfig: Record<string, unknown>
   } | null>
 }
@@ -88,8 +89,17 @@ export class CronSchedulerService {
     }
   }
 
+  private async isAssistantEnabled(assistantId: string): Promise<boolean> {
+    if (!this.options.assistantsRepo) {
+      return true
+    }
+
+    const assistant = await this.options.assistantsRepo.getById(assistantId)
+    return assistant?.enabled !== false
+  }
+
   private async syncJob(job: AppCronJob): Promise<void> {
-    if (!job.enabled) {
+    if (!job.enabled || !(await this.isAssistantEnabled(job.assistantId))) {
       if (job.nextRunAt !== null) {
         await this.options.cronJobsRepo.update(job.id, { nextRunAt: null })
       }
@@ -128,7 +138,7 @@ export class CronSchedulerService {
       return
     }
 
-    if (!job.enabled) {
+    if (!job.enabled || !(await this.isAssistantEnabled(job.assistantId))) {
       await this.options.cronJobsRepo.update(jobId, { nextRunAt: null })
       return
     }
