@@ -10,7 +10,12 @@ const tempPaths: string[] = []
 afterEach(async () => {
   await Promise.all(
     tempPaths.splice(0).map(async (tempPath) => {
-      await rm(tempPath, { recursive: true, force: true })
+      await rm(tempPath, {
+        recursive: true,
+        force: true,
+        maxRetries: 10,
+        retryDelay: 100
+      })
     })
   )
 })
