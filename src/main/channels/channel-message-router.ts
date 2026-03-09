@@ -26,6 +26,7 @@ type ChannelMessageRouterOptions = {
 
 const DEFAULT_PROFILE_ID = 'default-profile'
 const DEFAULT_THREAD_TITLE = 'New Thread'
+const EMPTY_ASSISTANT_REPLY_MESSAGE = '[Error] Failed to generate a response. Please try again.'
 
 function toFriendlyErrorMessage(raw: string): string {
   let statusCode: number | undefined
@@ -92,6 +93,10 @@ async function drainStream(stream: ReadableStream<UIMessageChunk>): Promise<stri
   }
 
   return assistantText
+}
+
+function toErrorLogMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'An unknown error occurred'
 }
 
 export class ChannelMessageRouter {
@@ -174,37 +179,41 @@ export class ChannelMessageRouter {
 
       assistantReplyText = await drainStream(stream)
     } catch (error) {
-      const rawMessage =
-        error instanceof Error ? error.message : 'An unknown error occurred'
+      const rawMessage = toErrorLogMessage(error)
       console.error(`[ChannelMessageRouter] streamChat failed: ${rawMessage}`)
 
-      await this.options.eventBus.publish('channel.message.send-requested', {
-        eventId: randomUUID(),
-        channelId: event.channelId,
-        channelType: event.channelType,
-        remoteChatId: event.message.remoteChatId,
-        content: `[Error] ${toFriendlyErrorMessage(rawMessage)}`
-      })
+      await this.publishReply(event, `[Error] ${toFriendlyErrorMessage(rawMessage)}`)
       return
     }
 
-    this.options.threadMessageEventsStore?.appendMessagesUpdated({
-      assistantId: runtimeChannel.assistantId,
-      threadId,
-      profileId: DEFAULT_PROFILE_ID,
-      source: 'channel'
-    })
+    try {
+      this.options.threadMessageEventsStore?.appendMessagesUpdated({
+        assistantId: runtimeChannel.assistantId,
+        threadId,
+        profileId: DEFAULT_PROFILE_ID,
+        source: 'channel'
+      })
+    } catch (error) {
+      console.error(
+        `[ChannelMessageRouter] appendMessagesUpdated failed: ${toErrorLogMessage(error)}`
+      )
+    }
 
     if (assistantReplyText.trim().length === 0) {
+      await this.publishReply(event, EMPTY_ASSISTANT_REPLY_MESSAGE)
       return
     }
 
+    await this.publishReply(event, assistantReplyText)
+  }
+
+  private async publishReply(event: ChannelMessageReceivedEvent, content: string): Promise<void> {
     await this.options.eventBus.publish('channel.message.send-requested', {
       eventId: randomUUID(),
       channelId: event.channelId,
       channelType: event.channelType,
       remoteChatId: event.message.remoteChatId,
-      content: assistantReplyText
+      content
     })
   }
 

@@ -81,6 +81,8 @@ export type LarkChannelOptions = {
   sdk?: LarkSdkLike
 }
 
+const STALE_MESSAGE_MAX_AGE_MS = 30_000
+
 function toTimestamp(value: string | undefined): Date {
   if (!value) {
     return new Date()
@@ -97,6 +99,10 @@ function toTimestamp(value: string | undefined): Date {
   }
 
   return new Date()
+}
+
+function isStaleMessage(timestamp: Date): boolean {
+  return Date.now() - timestamp.getTime() >= STALE_MESSAGE_MAX_AGE_MS
 }
 
 export class LarkChannel extends AbstractChannel {
@@ -132,8 +138,13 @@ export class LarkChannel extends AbstractChannel {
         if (!message) {
           return
         }
+        if (isStaleMessage(message.timestamp)) {
+          return
+        }
 
-        await this.emitMessage(message)
+        void this.emitMessage(message).catch((error) => {
+          console.error(`[LarkChannel] Failed to process inbound message ${message.id}:`, error)
+        })
       }
     })
 
