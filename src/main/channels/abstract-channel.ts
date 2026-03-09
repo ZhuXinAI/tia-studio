@@ -2,6 +2,7 @@ import type { ChannelAdapter, ChannelMessage, ChannelType } from './types'
 
 export abstract class AbstractChannel implements ChannelAdapter {
   onMessage?: (message: ChannelMessage) => Promise<void> | void
+  acknowledgeMessage?(messageId: string): Promise<void>
 
   constructor(
     public readonly id: string,
