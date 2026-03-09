@@ -1,6 +1,7 @@
 {
   "appShell": {
     "nav": {
+      "chats": "聊天",
       "home": "主頁",
       "claws": "Claws",
       "team": "團隊",

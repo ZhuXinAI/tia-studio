@@ -9,8 +9,10 @@ import {
   CardTitle
 } from '../../../components/ui/card'
 import { useTranslation } from '../../../i18n/use-app-translation'
+import { queryClient } from '../../../lib/query-client'
 import type { ProviderRecord } from '../../settings/providers/providers-query'
 import { listProviders } from '../../settings/providers/providers-query'
+import { assistantKeys } from '../../assistants/assistants-query'
 import {
   approveClawPairing,
   createClaw,
@@ -43,6 +45,10 @@ function upsertClaw(claws: ClawRecord[], savedClaw: ClawRecord): ClawRecord[] {
   }
 
   return claws.map((claw) => (claw.id === savedClaw.id ? savedClaw : claw))
+}
+
+function invalidateAssistantsCache(): void {
+  void queryClient.invalidateQueries({ queryKey: assistantKeys.lists() })
 }
 
 export function ClawsPage(): React.JSX.Element {
@@ -98,6 +104,7 @@ export function ClawsPage(): React.JSX.Element {
         ...current,
         claws: upsertClaw(current.claws, savedClaw)
       }))
+      invalidateAssistantsCache()
       setIsDialogOpen(false)
       setEditingClaw(null)
 
@@ -125,6 +132,7 @@ export function ClawsPage(): React.JSX.Element {
           enabled: !claw.enabled
         }
       })
+      invalidateAssistantsCache()
       await refreshPage()
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : t('claws.errors.updateFailed'))
@@ -139,6 +147,7 @@ export function ClawsPage(): React.JSX.Element {
 
     try {
       await deleteClaw(claw.id)
+      invalidateAssistantsCache()
       await refreshPage()
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : t('claws.errors.deleteFailed'))
