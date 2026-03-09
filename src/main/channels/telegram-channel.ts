@@ -209,7 +209,9 @@ export class TelegramChannel extends AbstractChannel {
     )
 
     if (pairing?.status === 'approved') {
-      await this.emitApprovedMessage(message, content)
+      void this.emitApprovedMessage(message, content).catch((error) => {
+        console.error(`[TelegramChannel] Failed to process inbound message ${message.id}:`, error)
+      })
       return
     }
 
