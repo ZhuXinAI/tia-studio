@@ -32,11 +32,20 @@ describe('app router', () => {
     expect(router.state.location.pathname).toBe('/chat')
   })
 
-  it('redirects settings index route to /settings/about', async () => {
+  it('redirects settings index route to /settings/general', async () => {
     const router = createAppMemoryRouter(['/settings'])
 
     await router.navigate('/settings')
-    expect(router.state.location.pathname).toBe('/settings/about')
+    expect(router.state.location.pathname).toBe('/settings/general')
+  })
+
+  it('renders general settings route with settings sidebar', () => {
+    const html = renderRouter(['/settings/general'])
+
+    expect(html).toContain('General Settings')
+    expect(html).toContain('Language')
+    expect(html).toContain('General')
+    expect(html).toContain('Model Provider')
   })
 
   it('renders provider settings route', () => {

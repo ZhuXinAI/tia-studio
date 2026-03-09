@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { SidebarInset } from '../../../components/ui/sidebar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import { TeamChatCard } from '../components/team-chat-card'
 import { TeamConfigDialog } from '../components/team-config-dialog'
 import { TeamSidebar } from '../components/team-sidebar'
@@ -8,6 +9,7 @@ import { TeamStatusGraph } from '../components/team-status-graph'
 import { useTeamPageController } from '../hooks/use-team-page-controller'
 
 export function TeamPage(): React.JSX.Element {
+  const { t } = useTranslation()
   const controller = useTeamPageController()
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
 
@@ -61,7 +63,7 @@ export function TeamPage(): React.JSX.Element {
         <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
           <DialogContent className="w-[min(92vw,960px)] max-w-none">
             <DialogHeader>
-              <DialogTitle>Team Status</DialogTitle>
+              <DialogTitle>{t('team.status.title')}</DialogTitle>
             </DialogHeader>
             <div className="h-[min(70vh,640px)] min-h-0">
               <TeamStatusGraph

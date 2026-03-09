@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { Background, Controls, ReactFlow, type Edge, type Node } from '@xyflow/react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { i18n } from '../../../i18n'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import { cn } from '../../../lib/utils'
 import type { TeamStatusEvent } from '../team-status-stream'
 
@@ -20,23 +22,28 @@ const statusStyles: Record<StatusState, string> = {
 }
 
 function formatEventText(event: TeamStatusEvent, assistantNames: Map<string, string>): string {
+  const defaultMemberLabel = i18n.t('team.status.defaultMember')
   const primitiveId =
     typeof event.data?.primitiveId === 'string' ? event.data.primitiveId : undefined
-  const assistantLabel = primitiveId ? (assistantNames.get(primitiveId) ?? primitiveId) : 'A member'
+  const assistantLabel = primitiveId ? (assistantNames.get(primitiveId) ?? primitiveId) : defaultMemberLabel
 
   switch (event.type) {
     case 'run-started':
-      return 'Run started.'
+      return i18n.t('team.status.events.runStarted')
     case 'delegation-started':
-      return `${assistantLabel} is running.`
+      return i18n.t('team.status.events.delegationStarted', { assistant: assistantLabel })
     case 'delegation-finished':
-      return `${assistantLabel} finished.`
+      return i18n.t('team.status.events.delegationFinished', { assistant: assistantLabel })
     case 'iteration-complete':
-      return `Iteration ${String(event.data?.iteration ?? 0)} complete.`
+      return i18n.t('team.status.events.iterationComplete', {
+        iteration: String(event.data?.iteration ?? 0)
+      })
     case 'run-finished':
-      return 'Run finished.'
+      return i18n.t('team.status.events.runFinished')
     case 'run-failed':
-      return typeof event.data?.error === 'string' ? event.data.error : 'Run failed.'
+      return typeof event.data?.error === 'string'
+        ? event.data.error
+        : i18n.t('team.status.events.runFailed')
   }
 }
 
@@ -59,6 +66,7 @@ export function TeamStatusGraph({
   events,
   showEventLog = true
 }: TeamStatusGraphProps): React.JSX.Element {
+  const { t } = useTranslation()
   const assistantNames = useMemo(() => {
     return new Map(assistants.map((assistant) => [assistant.id, assistant.name]))
   }, [assistants])
@@ -109,7 +117,7 @@ export function TeamStatusGraph({
         id: 'supervisor',
         position: { x: 200, y: 20 },
         data: {
-          label: renderNodeLabel('Supervisor', supervisorState)
+          label: renderNodeLabel(t('team.status.supervisor'), supervisorState)
         }
       }
     ]
@@ -125,7 +133,7 @@ export function TeamStatusGraph({
     })
 
     return graphNodes
-  }, [assistantStates, assistants, supervisorState])
+  }, [assistantStates, assistants, supervisorState, t])
 
   const edges = useMemo<Edge[]>(() => {
     return assistants.map((assistant) => ({
@@ -146,7 +154,7 @@ export function TeamStatusGraph({
   return (
     <Card className="flex h-full min-h-0 flex-col border-border/80 bg-card/78">
       <CardHeader className="border-b border-border/70">
-        <CardTitle className="text-base">Team Status</CardTitle>
+        <CardTitle className="text-base">{t('team.status.title')}</CardTitle>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-4 py-4">
         <div
@@ -178,9 +186,9 @@ export function TeamStatusGraph({
 
         {showEventLog ? (
           <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-border/70 bg-muted/15 p-3">
-            <h3 className="mb-2 text-sm font-medium">Event Log</h3>
+            <h3 className="mb-2 text-sm font-medium">{t('team.status.eventLogTitle')}</h3>
             {eventLog.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No status events yet.</p>
+              <p className="text-muted-foreground text-sm">{t('team.status.emptyEventLog')}</p>
             ) : (
               <div className="chat-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1 text-sm">
                 {eventLog.map((event) => (

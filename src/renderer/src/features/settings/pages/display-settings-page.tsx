@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import {
   Card,
   CardContent,
@@ -8,33 +9,28 @@ import {
 } from '../../../components/ui/card'
 import { useTheme, type Theme } from '../../../components/theme-provider'
 import { Moon, Sun, Monitor, type LucideIcon } from 'lucide-react'
-
-type UiConfig = {
-  transparent?: boolean
-}
-
-const themeOptions: Array<{ value: Theme; label: string; icon: LucideIcon }> = [
-  { value: 'light', label: 'Light', icon: Sun },
-  { value: 'dark', label: 'Dark', icon: Moon },
-  { value: 'system', label: 'System', icon: Monitor }
-]
+import { getUiConfig, setUiConfig } from '../ui-config'
 
 export function DisplaySettingsPage(): React.JSX.Element {
+  const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
   const [isTransparent, setIsTransparent] = useState(false)
+  const themeOptions: Array<{ value: Theme; label: string; icon: LucideIcon }> = [
+    { value: 'light', label: t('settings.display.themeOptions.light'), icon: Sun },
+    { value: 'dark', label: t('settings.display.themeOptions.dark'), icon: Moon },
+    { value: 'system', label: t('settings.display.themeOptions.system'), icon: Monitor }
+  ]
 
   useEffect(() => {
     let isMounted = true
 
-    void window.electron.ipcRenderer
-      .invoke('tia:get-ui-config')
+    void getUiConfig()
       .then((config) => {
         if (!isMounted) {
           return
         }
 
-        const uiConfig = config as UiConfig
-        setIsTransparent(Boolean(uiConfig.transparent))
+        setIsTransparent(Boolean(config.transparent))
       })
       .catch(() => {})
 
@@ -46,8 +42,7 @@ export function DisplaySettingsPage(): React.JSX.Element {
   const toggleTransparent = async (): Promise<void> => {
     const newValue = !isTransparent
     setIsTransparent(newValue)
-    await window.electron.ipcRenderer
-      .invoke('tia:set-ui-config', { transparent: newValue })
+    await setUiConfig({ transparent: newValue })
       .catch(() => {
         setIsTransparent(!newValue)
       })
@@ -57,12 +52,12 @@ export function DisplaySettingsPage(): React.JSX.Element {
     <div className="py-4 flex flex-col gap-4 space-y-6">
       <Card className="border-border/70 bg-card/80 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle>Display Settings</CardTitle>
-          <CardDescription>Adjust the appearance of TIA Studio</CardDescription>
+          <CardTitle>{t('settings.display.title')}</CardTitle>
+          <CardDescription>{t('settings.display.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
-            <h3 className="text-sm font-medium">Theme</h3>
+            <h3 className="text-sm font-medium">{t('settings.display.themeLabel')}</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {themeOptions.map(({ value, label, icon: Icon }) => (
                 <button
@@ -83,9 +78,9 @@ export function DisplaySettingsPage(): React.JSX.Element {
           <div className="space-y-4 pt-4 border-t border-border/50">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <h3 className="text-sm font-medium">Transparent Window</h3>
+                <h3 className="text-sm font-medium">{t('settings.display.transparentTitle')}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Enable vibrant transparent window background (requires restart)
+                  {t('settings.display.transparentDescription')}
                 </p>
               </div>
               <button

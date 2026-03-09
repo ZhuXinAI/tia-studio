@@ -17,6 +17,7 @@ import { ToolGroup } from '../../../components/assistant-ui/tool-group'
 import { Button } from '../../../components/ui/button'
 import { Image } from '@renderer/components/assistant-ui/image'
 import { UserMessageAttachments } from '@renderer/components/assistant-ui/attachment'
+import { useTranslation } from '../../../i18n/use-app-translation'
 
 type ThreadChatMessageListProps = {
   assistantName: string
@@ -28,7 +29,10 @@ type ThreadChatMessageListProps = {
 
 const AssistantNameContext = createContext('Assistant')
 
-function formatMessageTimestamp(value: Date | string | null | undefined): string | null {
+function formatMessageTimestamp(
+  value: Date | string | null | undefined,
+  locale: string | undefined
+): string | null {
   if (!value) {
     return null
   }
@@ -38,7 +42,7 @@ function formatMessageTimestamp(value: Date | string | null | undefined): string
     return null
   }
 
-  return parsedDate.toLocaleDateString(undefined, {
+  return parsedDate.toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -47,8 +51,9 @@ function formatMessageTimestamp(value: Date | string | null | undefined): string
 }
 
 function MessageTimestamp({ className }: { className?: string }): React.JSX.Element | null {
+  const { i18n } = useTranslation()
   const createdAt = useAuiState((state) => state.message.createdAt)
-  const timestampLabel = formatMessageTimestamp(createdAt)
+  const timestampLabel = formatMessageTimestamp(createdAt, i18n.resolvedLanguage)
 
   if (!timestampLabel) {
     return null
@@ -73,22 +78,24 @@ function UserTextPart(): React.JSX.Element {
 }
 
 function UserFileAttachment(): React.JSX.Element {
+  const { t } = useTranslation()
   const file = useMessagePartFile()
 
   return (
     <div className="mb-2 inline-flex items-center gap-2 rounded-md border border-border/70 bg-muted/30 px-3 py-2">
       <File className="size-4 text-muted-foreground" />
-      <span className="text-sm">{file.filename || 'Untitled file'}</span>
+      <span className="text-sm">{file.filename || t('threads.messageList.untitledFile')}</span>
       {file.mimeType && <span className="text-muted-foreground text-xs">({file.mimeType})</span>}
     </div>
   )
 }
 
 function UserMessageBubble(): React.JSX.Element {
+  const { t } = useTranslation()
   return (
     <MessagePrimitive.Root className="ml-auto max-w-2xl px-4 py-3">
       <p className="text-muted-foreground mb-1 text-[11px] font-medium uppercase tracking-wide">
-        You
+        {t('threads.messageList.you')}
       </p>
 
       <UserMessageAttachments />
@@ -106,6 +113,7 @@ function UserMessageBubble(): React.JSX.Element {
 }
 
 function AssistantMessageBubble(): React.JSX.Element {
+  const { t } = useTranslation()
   const assistantName = useContext(AssistantNameContext)
 
   return (
@@ -135,7 +143,7 @@ function AssistantMessageBubble(): React.JSX.Element {
               variant="ghost"
               size="icon"
               className="size-7"
-              aria-label="Copy message"
+              aria-label={t('threads.messageList.copyMessage')}
             >
               <Copy className="size-3.5" />
             </Button>
@@ -146,7 +154,7 @@ function AssistantMessageBubble(): React.JSX.Element {
               variant="ghost"
               size="icon"
               className="size-7"
-              aria-label="Reload"
+              aria-label={t('threads.messageList.reloadMessage')}
             >
               <RotateCw className="size-3.5" />
             </Button>
@@ -159,7 +167,7 @@ function AssistantMessageBubble(): React.JSX.Element {
                 variant="ghost"
                 size="icon"
                 className="size-7"
-                aria-label="More actions"
+                aria-label={t('threads.messageList.moreActions')}
               >
                 <MoreHorizontal className="size-3.5" />
               </Button>
@@ -168,7 +176,7 @@ function AssistantMessageBubble(): React.JSX.Element {
             <ActionBarMorePrimitive.Content className="bg-card text-card-foreground border-border z-50 min-w-44 rounded-md border p-1 shadow-lg">
               <ActionBarPrimitive.ExportMarkdown asChild>
                 <ActionBarMorePrimitive.Item className="data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:opacity-50">
-                  Export Markdown
+                  {t('threads.messageList.exportMarkdown')}
                 </ActionBarMorePrimitive.Item>
               </ActionBarPrimitive.ExportMarkdown>
             </ActionBarMorePrimitive.Content>
@@ -186,11 +194,12 @@ export function ThreadChatMessageList({
   loadError,
   chatError
 }: ThreadChatMessageListProps): React.JSX.Element {
+  const { t } = useTranslation()
   return (
     <AssistantNameContext.Provider value={assistantName}>
       <ThreadPrimitive.Viewport className="chat-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
         <ThreadPrimitive.Empty>
-          <p className="text-muted-foreground text-sm">No messages yet.</p>
+          <p className="text-muted-foreground text-sm">{t('threads.messageList.empty')}</p>
         </ThreadPrimitive.Empty>
 
         <ThreadPrimitive.Messages
@@ -202,13 +211,13 @@ export function ThreadChatMessageList({
 
         {isLoadingChatHistory ? (
           <p role="status" className="text-muted-foreground text-xs">
-            Loading thread history...
+            {t('threads.messageList.loadingHistory')}
           </p>
         ) : null}
 
         {isChatStreaming ? (
           <p role="status" className="text-muted-foreground text-xs">
-            Assistant is responding...
+            {t('threads.messageList.responding')}
           </p>
         ) : null}
 

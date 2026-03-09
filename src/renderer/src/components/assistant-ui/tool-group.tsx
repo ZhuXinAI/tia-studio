@@ -5,6 +5,7 @@ import { ChevronDownIcon, LoaderIcon } from 'lucide-react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { useScrollLock } from '@assistant-ui/react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
+import { useTranslation } from '../../i18n/use-app-translation'
 import { cn } from '../../lib/utils'
 
 const ANIMATION_DURATION = 200
@@ -88,7 +89,8 @@ function ToolGroupTrigger({
   count: number
   active?: boolean
 }) {
-  const label = `${count} tool ${count === 1 ? 'call' : 'calls'}`
+  const { t } = useTranslation()
+  const label = t('assistantUi.toolGroup.label', { count })
 
   return (
     <CollapsibleTrigger

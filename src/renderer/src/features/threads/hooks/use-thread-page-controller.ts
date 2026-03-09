@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import {
   useAssistants,
   useCreateAssistant,
@@ -49,6 +50,7 @@ const BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__tiaBuiltInDefaultAgent'
 export type ThreadPageController = ReturnType<typeof useThreadPageController>
 
 export function useThreadPageController() {
+  const { t } = useTranslation()
   const params = useParams()
   const navigate = useNavigate()
 
@@ -448,7 +450,7 @@ export function useThreadPageController() {
         )
         navigate(routeToAssistantThreads(selectedAssistant.id, createdThread.id))
         if (options?.notify ?? true) {
-          toast.success('Thread created.')
+          toast.success(t('threads.toasts.threadCreated'))
         }
         return createdThread
       } catch (error) {
@@ -456,7 +458,7 @@ export function useThreadPageController() {
         return null
       }
     },
-    [navigate, selectedAssistant, createThreadMutation]
+    [createThreadMutation, navigate, selectedAssistant, t]
   )
 
   const handleDeleteThread = async (thread: ThreadRecord): Promise<void> => {
@@ -466,7 +468,7 @@ export function useThreadPageController() {
       if (selectedThread?.id === thread.id) {
         navigate(routeToAssistantThreads(thread.assistantId), { replace: true })
       }
-      toast.success('Thread removed.')
+      toast.success(t('threads.toasts.threadRemoved'))
     } catch (error) {
       toast.error(toErrorMessage(error))
     }
@@ -492,7 +494,7 @@ export function useThreadPageController() {
       if (assistantDialogMode === 'create') {
         const createdAssistant = await createAssistantMutation.mutateAsync(input)
         setThreads([])
-        toast.success('Assistant created.')
+        toast.success(t('threads.toasts.assistantCreated'))
         setIsAssistantDialogOpen(false)
         setAssistantDialogAssistantId(null)
         navigate(routeToAssistantThreads(createdAssistant.id))
@@ -500,7 +502,7 @@ export function useThreadPageController() {
       }
 
       if (!assistantDialogAssistant) {
-        setAssistantDialogError('Assistant not found.')
+        setAssistantDialogError(t('threads.assistantDialog.notFound'))
         return
       }
 
@@ -508,7 +510,7 @@ export function useThreadPageController() {
         id: assistantDialogAssistant.id,
         input
       })
-      toast.success('Assistant configuration updated.')
+      toast.success(t('threads.toasts.assistantUpdated'))
       setIsAssistantDialogOpen(false)
       setAssistantDialogAssistantId(null)
     } catch (error) {
@@ -528,15 +530,17 @@ export function useThreadPageController() {
       }
 
       if (assistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] === true) {
-        toast.error('Built-in default assistant cannot be deleted.')
+        toast.error(t('threads.toasts.builtInDeleteBlocked'))
         return
       }
 
       const confirmLabel =
-        assistant.name.trim().length > 0 ? assistant.name.trim() : 'this assistant'
+        assistant.name.trim().length > 0
+          ? assistant.name.trim()
+          : t('threads.toasts.assistantDeleteFallbackLabel')
       if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
         const confirmed = window.confirm(
-          `Delete "${confirmLabel}"? This will also delete all of its threads.`
+          t('threads.toasts.confirmAssistantDelete', { name: confirmLabel })
         )
         if (!confirmed) {
           return
@@ -566,7 +570,7 @@ export function useThreadPageController() {
           setAssistantDialogError(null)
         }
 
-        toast.success('Assistant deleted.')
+        toast.success(t('threads.toasts.assistantDeleted'))
       } catch (error) {
         toast.error(toErrorMessage(error))
       }
@@ -578,7 +582,8 @@ export function useThreadPageController() {
       deleteAssistantMutation,
       navigate,
       params.assistantId,
-      setMessages
+      setMessages,
+      t
     ]
   )
 

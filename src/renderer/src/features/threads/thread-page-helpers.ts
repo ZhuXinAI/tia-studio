@@ -1,5 +1,6 @@
 import type { AssistantRecord } from '../assistants/assistants-query'
 import type { ProviderRecord } from '../settings/providers/providers-query'
+import { i18n } from '../../i18n'
 import type { ThreadRecord } from './threads-query'
 import { sortThreadsByRecentActivity } from './thread-page-routing'
 
@@ -44,13 +45,13 @@ export function evaluateAssistantReadiness(input: {
   const checks: ReadinessCheck[] = [
     {
       id: 'provider',
-      label: 'Provider is assigned to this assistant',
+      label: i18n.t('threads.readiness.providerAssigned'),
       ready: providerReady,
       ctaPath: '/chat'
     },
     {
       id: 'model',
-      label: 'Provider has one selected model',
+      label: i18n.t('threads.readiness.providerModelSelected'),
       ready: modelReady,
       ctaPath: '/chat'
     }

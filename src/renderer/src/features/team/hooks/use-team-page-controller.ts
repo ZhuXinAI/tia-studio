@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { i18n } from '../../../i18n'
 import { listAssistants, type AssistantRecord } from '../../assistants/assistants-query'
 import { listProviders, type ProviderRecord } from '../../settings/providers/providers-query'
 import { getActiveResourceId } from '../../threads/threads-query'
@@ -56,7 +57,7 @@ function routeToTeam(workspaceId?: string | null, threadId?: string | null): str
 
 function createWorkspaceName(rootPath: string): string {
   const segments = rootPath.split(/[\\/]/).filter((segment) => segment.length > 0)
-  return segments.at(-1) ?? 'Team Workspace'
+  return segments.at(-1) ?? i18n.t('team.sidebar.defaultWorkspaceName')
 }
 
 function sortTeamThreadsByRecentActivity(threads: TeamThreadRecord[]): TeamThreadRecord[] {
@@ -89,27 +90,27 @@ function evaluateTeamReadiness(input: {
   const checks: TeamReadinessCheck[] = [
     {
       id: 'thread',
-      label: 'Team thread is selected',
+      label: i18n.t('team.readiness.threadSelected'),
       ready: Boolean(input.selectedThread)
     },
     {
       id: 'workspace',
-      label: 'Workspace path is configured',
+      label: i18n.t('team.readiness.workspaceConfigured'),
       ready: hasNonEmptyText(input.selectedWorkspace?.rootPath)
     },
     {
       id: 'provider',
-      label: 'Supervisor provider is configured',
+      label: i18n.t('team.readiness.providerConfigured'),
       ready: Boolean(selectedProvider)
     },
     {
       id: 'model',
-      label: 'Supervisor model is configured',
+      label: i18n.t('team.readiness.modelConfigured'),
       ready: hasNonEmptyText(input.selectedWorkspace?.supervisorModel)
     },
     {
       id: 'members',
-      label: 'At least one live team member is selected',
+      label: i18n.t('team.readiness.membersSelected'),
       ready: input.selectedMemberIds.length > 0 && input.selectedMembers.length > 0
     }
   ]

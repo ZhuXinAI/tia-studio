@@ -10,7 +10,6 @@ import {
   nativeImage
 } from 'electron'
 import { join } from 'path'
-import { readFileSync, writeFileSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { serve, type ServerType } from '@hono/node-server'
 import { autoUpdater } from 'electron-updater'
@@ -47,6 +46,7 @@ import { TeamRunStatusStore } from './server/chat/team-run-status-store'
 import { createApp } from './server/create-app'
 import { listAssistantSkills, removeWorkspaceSkill } from './skills/skills-manager'
 import { bringWindowToFront, buildTrayMenuTemplate } from './tray'
+import { UiConfigStore } from './ui-config'
 
 const serverConfig = resolveServerConfig({})
 const autoUpdateService = new AutoUpdateService({
@@ -63,16 +63,19 @@ let channelService: ChannelService | null = null
 let channelMessageRouter: ChannelMessageRouter | null = null
 let cronSchedulerService: CronSchedulerService | null = null
 const searchBrowserPartition = 'persist:tia-browser-search'
+let uiConfigStore: UiConfigStore | null = null
 
-let isTransparentWindow = false
-try {
-  const uiConfig = JSON.parse(
-    readFileSync(join(app.getPath('userData'), 'ui-config.json'), 'utf-8')
-  )
-  isTransparentWindow = Boolean(uiConfig.transparent)
-} catch {
-  // Ignore
+function resolveUiConfigStore(): UiConfigStore {
+  if (!uiConfigStore) {
+    uiConfigStore = new UiConfigStore({
+      filePath: join(app.getPath('userData'), 'ui-config.json')
+    })
+  }
+
+  return uiConfigStore
 }
+
+let isTransparentWindow = Boolean(resolveUiConfigStore().getConfig().transparent)
 
 function normalizeWebSearchSettingsUrl(rawUrl: string): string {
   let parsed: URL
@@ -419,20 +422,15 @@ app.whenReady().then(async () => {
     }
   })
   ipcMain.handle('tia:get-ui-config', () => {
-    return { transparent: isTransparentWindow }
+    return resolveUiConfigStore().getConfig()
   })
   ipcMain.handle('tia:set-ui-config', (_event, config) => {
-    try {
-      const existingStr = readFileSync(join(app.getPath('userData'), 'ui-config.json'), 'utf-8')
-      const existing = JSON.parse(existingStr)
-      writeFileSync(
-        join(app.getPath('userData'), 'ui-config.json'),
-        JSON.stringify({ ...existing, ...config })
-      )
-    } catch {
-      writeFileSync(join(app.getPath('userData'), 'ui-config.json'), JSON.stringify(config))
-    }
-    isTransparentWindow = config.transparent
+    const nextConfig = resolveUiConfigStore().updateConfig(config)
+    isTransparentWindow = Boolean(nextConfig.transparent)
+    return nextConfig
+  })
+  ipcMain.handle('tia:get-system-locale', () => {
+    return app.getLocale()
   })
   ipcMain.handle('tia:get-app-info', () => {
     return {

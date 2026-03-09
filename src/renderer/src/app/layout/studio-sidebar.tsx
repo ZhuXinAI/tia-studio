@@ -1,19 +1,20 @@
 import type { ComponentType } from 'react'
 import { Bot, Settings2 } from 'lucide-react'
+import { useTranslation } from '../../i18n/use-app-translation'
 import { NavLink } from 'react-router-dom'
 import { Button, buttonVariants } from '../../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { cn } from '../../lib/utils'
 
 type SidebarItem = {
-  title: string
+  titleKey: string
   to: string
   icon: ComponentType<{ className?: string }>
 }
 
 const workspaceItems: SidebarItem[] = [
   {
-    title: 'Chat',
+    titleKey: 'appShell.legacySidebar.chat',
     to: '/chat',
     icon: Bot
   }
@@ -21,17 +22,19 @@ const workspaceItems: SidebarItem[] = [
 
 const settingItems: SidebarItem[] = [
   {
-    title: 'Model Providers',
+    titleKey: 'appShell.legacySidebar.modelProviders',
     to: '/settings/providers',
     icon: Settings2
   }
 ]
 
-function SidebarNavGroup({ label, items }: { label: string; items: SidebarItem[] }) {
+function SidebarNavGroup({ labelKey, items }: { labelKey: string; items: SidebarItem[] }) {
+  const { t } = useTranslation()
+
   return (
     <section className="my-2">
       <h3 className="px-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-        {label}
+        {t(labelKey)}
       </h3>
       <div className="flex flex-col gap-1">
         {items.map((item) => (
@@ -49,7 +52,7 @@ function SidebarNavGroup({ label, items }: { label: string; items: SidebarItem[]
             }
           >
             <item.icon className="size-4" />
-            {item.title}
+            {t(item.titleKey)}
           </NavLink>
         ))}
       </div>
@@ -58,25 +61,27 @@ function SidebarNavGroup({ label, items }: { label: string; items: SidebarItem[]
 }
 
 export function StudioSidebar(): React.JSX.Element {
+  const { t } = useTranslation()
+
   return (
     <aside className="hidden w-72 shrink-0 border-r border-border/80 bg-background/95 p-4 md:block">
       <div className="py-4">
         <Card className="border-border/70 bg-card/90 py-0">
           <CardHeader className="px-4 py-4">
             <CardDescription className="text-xs tracking-[0.18em] uppercase">
-              TIA Studio
+              {t('appShell.legacySidebar.title')}
             </CardDescription>
-            <CardTitle className="text-base">Control Center</CardTitle>
+            <CardTitle className="text-base">{t('appShell.legacySidebar.subtitle')}</CardTitle>
           </CardHeader>
           <CardContent className="py-4 px-3 pb-3">
-            <SidebarNavGroup label="Workspace" items={workspaceItems} />
-            <SidebarNavGroup label="Settings" items={settingItems} />
+            <SidebarNavGroup labelKey="appShell.legacySidebar.workspace" items={workspaceItems} />
+            <SidebarNavGroup labelKey="appShell.legacySidebar.settings" items={settingItems} />
           </CardContent>
         </Card>
 
         <Button asChild variant="outline" className="w-full justify-start">
-          <a href="https://deepwiki.com/CherryHQ/cherry-studio" target="_blank" rel="noreferrer">
-            Cherry Studio Notes
+          <a href="https://github.com/ZhuXinAI/tia-studio" target="_blank" rel="noreferrer">
+            {t('appShell.legacySidebar.notes')}
           </a>
         </Button>
       </div>

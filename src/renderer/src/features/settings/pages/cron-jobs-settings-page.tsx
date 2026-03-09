@@ -1,5 +1,6 @@
 import { AlarmClock } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import { toast } from 'sonner'
 import { listAssistants, type AssistantRecord } from '../../assistants/assistants-query'
 import {
@@ -11,17 +12,6 @@ import {
 } from '../../../components/ui/card'
 import { listCronJobs, type CronJobRecord } from '../cron-jobs/cron-jobs-query'
 
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    const message = error.message.trim()
-    if (message.length > 0) {
-      return message
-    }
-  }
-
-  return 'Unexpected request error'
-}
-
 function formatTimestamp(value: string | null, fallback: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
     return fallback
@@ -30,22 +20,34 @@ function formatTimestamp(value: string | null, fallback: string): string {
   return value
 }
 
-function formatStatus(value: CronJobRecord['lastRunStatus']): string {
-  if (value === 'success') {
-    return 'success'
-  }
-
-  if (value === 'failed') {
-    return 'failed'
-  }
-
-  return 'never run'
-}
-
 export function CronJobsSettingsPage(): React.JSX.Element {
+  const { t } = useTranslation()
   const [cronJobs, setCronJobs] = useState<CronJobRecord[]>([])
   const [assistants, setAssistants] = useState<AssistantRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
+
+  const toErrorMessage = (error: unknown): string => {
+    if (error instanceof Error) {
+      const message = error.message.trim()
+      if (message.length > 0) {
+        return message
+      }
+    }
+
+    return t('settings.cronJobs.toasts.unexpectedError')
+  }
+
+  const formatStatus = (value: CronJobRecord['lastRunStatus']): string => {
+    if (value === 'success') {
+      return t('settings.cronJobs.status.success')
+    }
+
+    if (value === 'failed') {
+      return t('settings.cronJobs.status.failed')
+    }
+
+    return t('settings.cronJobs.status.neverRun')
+  }
 
   const loadData = useCallback(async () => {
     setIsLoading(true)
@@ -72,9 +74,9 @@ export function CronJobsSettingsPage(): React.JSX.Element {
   return (
     <div className="py-4 flex flex-col gap-4 space-y-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Cron Jobs</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('settings.cronJobs.title')}</h1>
         <p className="text-muted-foreground text-sm">
-          Review scheduler status, next runs, and the latest runtime errors for workspace cron jobs.
+          {t('settings.cronJobs.description')}
         </p>
       </header>
 
@@ -82,21 +84,15 @@ export function CronJobsSettingsPage(): React.JSX.Element {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlarmClock className="size-5" />
-            <span>Scheduled Jobs</span>
+            <span>{t('settings.cronJobs.cardTitle')}</span>
           </CardTitle>
-          <CardDescription>
-            Hidden cron threads stay out of normal chat history while their runtime status is
-            persisted here.
-          </CardDescription>
+          <CardDescription>{t('settings.cronJobs.cardDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {isLoading ? (
-            <p className="text-muted-foreground text-sm">Loading cron jobs…</p>
+            <p className="text-muted-foreground text-sm">{t('settings.cronJobs.loading')}</p>
           ) : cronJobs.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              No cron jobs configured yet. Create one through the cron job API to start scheduling
-              runs.
-            </p>
+            <p className="text-muted-foreground text-sm">{t('settings.cronJobs.empty')}</p>
           ) : (
             cronJobs.map((cronJob) => (
               <div key={cronJob.id} className="space-y-3 rounded-lg border border-border/60 p-4">
@@ -104,44 +100,50 @@ export function CronJobsSettingsPage(): React.JSX.Element {
                   <div className="space-y-1">
                     <h2 className="text-base font-medium">{cronJob.name}</h2>
                     <p className="text-muted-foreground text-xs">
-                      Assistant: {assistantNames.get(cronJob.assistantId) ?? cronJob.assistantId}
+                      {t('settings.cronJobs.assistantLabel', {
+                        assistant: assistantNames.get(cronJob.assistantId) ?? cronJob.assistantId
+                      })}
                     </p>
                   </div>
                   <p className="text-muted-foreground text-xs">
-                    {cronJob.enabled ? 'Enabled' : 'Disabled'}
+                    {cronJob.enabled
+                      ? t('settings.cronJobs.enabled')
+                      : t('settings.cronJobs.disabled')}
                   </p>
                 </div>
 
                 <dl className="grid gap-3 text-sm md:grid-cols-2">
                   <div className="space-y-1">
                     <dt className="text-muted-foreground text-xs uppercase tracking-wide">
-                      Cron Expression
+                      {t('settings.cronJobs.fields.cronExpression')}
                     </dt>
                     <dd>{cronJob.cronExpression}</dd>
                   </div>
                   <div className="space-y-1">
                     <dt className="text-muted-foreground text-xs uppercase tracking-wide">
-                      Next Run
+                      {t('settings.cronJobs.fields.nextRun')}
                     </dt>
-                    <dd>{formatTimestamp(cronJob.nextRunAt, 'Not scheduled')}</dd>
+                    <dd>
+                      {formatTimestamp(cronJob.nextRunAt, t('settings.cronJobs.fallbacks.notScheduled'))}
+                    </dd>
                   </div>
                   <div className="space-y-1">
                     <dt className="text-muted-foreground text-xs uppercase tracking-wide">
-                      Last Status
+                      {t('settings.cronJobs.fields.lastStatus')}
                     </dt>
                     <dd>{formatStatus(cronJob.lastRunStatus)}</dd>
                   </div>
                   <div className="space-y-1">
                     <dt className="text-muted-foreground text-xs uppercase tracking-wide">
-                      Last Run
+                      {t('settings.cronJobs.fields.lastRun')}
                     </dt>
-                    <dd>{formatTimestamp(cronJob.lastRunAt, 'Never')}</dd>
+                    <dd>{formatTimestamp(cronJob.lastRunAt, t('settings.cronJobs.fallbacks.never'))}</dd>
                   </div>
                   <div className="space-y-1 md:col-span-2">
                     <dt className="text-muted-foreground text-xs uppercase tracking-wide">
-                      Last Error
+                      {t('settings.cronJobs.fields.lastError')}
                     </dt>
-                    <dd>{cronJob.lastError ?? 'None'}</dd>
+                    <dd>{cronJob.lastError ?? t('settings.cronJobs.fallbacks.none')}</dd>
                   </div>
                 </dl>
               </div>

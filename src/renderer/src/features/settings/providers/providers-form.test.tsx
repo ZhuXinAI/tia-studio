@@ -7,16 +7,19 @@ import {
 
 describe('providers form helpers', () => {
   it('requires selected model before submit', () => {
-    const errors = validateProviderForm({
-      name: 'OpenAI',
-      type: 'openai',
-      apiKey: 'test-key',
-      apiHost: '',
-      selectedModel: '',
-      providerModelsText: '',
-      supportsVision: false,
-      enabled: true
-    })
+    const errors = validateProviderForm(
+      {
+        name: 'OpenAI',
+        type: 'openai',
+        apiKey: 'test-key',
+        apiHost: '',
+        selectedModel: '',
+        providerModelsText: '',
+        supportsVision: false,
+        enabled: true
+      },
+      'Selected model is required'
+    )
 
     expect(errors.selectedModel).toBe('Selected model is required')
   })

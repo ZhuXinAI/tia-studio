@@ -9,6 +9,7 @@ import { Input } from '../../components/ui/input'
 import { Textarea } from '../../components/ui/textarea'
 import { Field, FieldLabel } from '../../components/ui/field'
 import { cn } from '../../lib/utils'
+import { useTranslation } from '../../i18n/use-app-translation'
 import { ModelPickerDialog } from './model-picker-dialog'
 import {
   getManagedRuntimeStatus,
@@ -132,38 +133,41 @@ function parseMaxSteps(rawValue: string): number | null {
   return parsed
 }
 
-function toErrorMessage(error: unknown): string {
+function toErrorMessage(error: unknown, t: (key: string) => string): string {
   if (error instanceof Error) {
     const normalized = error.message.trim()
-    return normalized.length > 0 ? normalized : 'Unexpected request error'
+    return normalized.length > 0 ? normalized : t('common.errors.unexpectedRequest')
   }
 
-  return 'Unexpected request error'
+  return t('common.errors.unexpectedRequest')
 }
 
-function getSkillSourceLabel(source: AssistantSkillSource): string {
+function getSkillSourceLabel(
+  source: AssistantSkillSource,
+  t: (key: string) => string
+): string {
   if (source === 'workspace') {
-    return 'Workspace'
+    return t('assistants.editor.skillSources.workspace')
   }
 
   if (source === 'global-claude') {
-    return 'Global ~/.claude/skills'
+    return t('assistants.editor.skillSources.globalClaude')
   }
 
-  return 'Global ~/.agent/skills'
+  return t('assistants.editor.skillSources.globalAgent')
 }
 
-function validate(values: AssistantEditorValues): string | null {
+function validate(values: AssistantEditorValues, t: (key: string) => string): string | null {
   if (values.name.trim().length === 0) {
-    return 'Assistant name is required'
+    return t('assistants.editor.errors.nameRequired')
   }
 
   if (values.providerId.trim().length === 0) {
-    return 'Provider is required'
+    return t('assistants.editor.errors.providerRequired')
   }
 
   if (!parseMaxSteps(values.maxSteps)) {
-    return 'Max steps must be a positive whole number'
+    return t('assistants.editor.errors.maxStepsInvalid')
   }
 
   return null
@@ -177,6 +181,7 @@ export function AssistantEditor({
   onSelectWorkspacePath,
   onSubmit
 }: AssistantEditorProps): React.JSX.Element {
+  const { t } = useTranslation()
   const [values, setValues] = useState<AssistantEditorValues>(() =>
     toInitialValues(initialValue, mcpServers)
   )
@@ -191,8 +196,8 @@ export function AssistantEditor({
   const [removingSkillId, setRemovingSkillId] = useState<string | null>(null)
 
   const title = useMemo(() => {
-    return initialValue ? 'Edit Assistant' : 'Create Assistant'
-  }, [initialValue])
+    return initialValue ? t('assistants.editor.editTitle') : t('assistants.editor.createTitle')
+  }, [initialValue, t])
 
   const selectedProvider = useMemo(() => {
     return providers.find((provider) => provider.id === values.providerId) ?? null
@@ -247,7 +252,7 @@ export function AssistantEditor({
       .catch((loadError) => {
         if (!isCancelled) {
           setSkills([])
-          setSkillsError(toErrorMessage(loadError))
+          setSkillsError(toErrorMessage(loadError, t))
         }
       })
       .finally(() => {
@@ -259,7 +264,7 @@ export function AssistantEditor({
     return () => {
       isCancelled = true
     }
-  }, [activeTab, values.workspacePath])
+  }, [activeTab, t, values.workspacePath])
 
   useEffect(() => {
     let isCancelled = false
@@ -293,7 +298,7 @@ export function AssistantEditor({
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault()
-    const validationError = validate(values)
+    const validationError = validate(values, t)
     setError(validationError)
     if (validationError) {
       return
@@ -318,7 +323,8 @@ export function AssistantEditor({
         workspacePath.length > 0
           ? {
               rootPath: workspacePath
-      } : undefined,
+            }
+          : undefined,
       mcpConfig: nextMcpConfig,
       maxSteps
     })
@@ -338,7 +344,9 @@ export function AssistantEditor({
       }
     } catch (selectError) {
       setError(
-        selectError instanceof Error ? selectError.message : 'Unable to pick workspace folder'
+        selectError instanceof Error
+          ? selectError.message
+          : t('assistants.editor.errors.workspacePickerFailed')
       )
     } finally {
       setIsSelectingWorkspacePath(false)
@@ -366,7 +374,7 @@ export function AssistantEditor({
       const refreshedSkills = await listAssistantSkills(workspaceRootPath)
       setSkills(refreshedSkills)
     } catch (removeError) {
-      setSkillsError(toErrorMessage(removeError))
+      setSkillsError(toErrorMessage(removeError, t))
     } finally {
       setRemovingSkillId(null)
     }
@@ -388,7 +396,7 @@ export function AssistantEditor({
             )}
             onClick={() => setActiveTab('essential')}
           >
-            Essential Settings
+            {t('assistants.editor.tabs.essential')}
           </button>
           <button
             type="button"
@@ -400,7 +408,7 @@ export function AssistantEditor({
             )}
             onClick={() => setActiveTab('tools')}
           >
-            Tools
+            {t('assistants.editor.tabs.tools')}
           </button>
           <button
             type="button"
@@ -412,7 +420,7 @@ export function AssistantEditor({
             )}
             onClick={() => setActiveTab('skills')}
           >
-            Skills
+            {t('assistants.editor.tabs.skills')}
           </button>
         </aside>
 
@@ -420,17 +428,17 @@ export function AssistantEditor({
           {activeTab === 'essential' ? (
             <div className="space-y-4">
               <Field>
-                <FieldLabel htmlFor="assistant-name">Name</FieldLabel>
+                <FieldLabel htmlFor="assistant-name">{t('assistants.editor.fields.name')}</FieldLabel>
                 <Input
                   id="assistant-name"
                   value={values.name}
                   onChange={(event) => handleInput('name', event.target.value)}
-                  placeholder="Research Copilot"
+                  placeholder={t('assistants.editor.placeholders.name')}
                 />
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="assistant-provider">Provider</FieldLabel>
+                <FieldLabel htmlFor="assistant-provider">{t('assistants.editor.fields.provider')}</FieldLabel>
                 <Button
                   type="button"
                   variant="outline"
@@ -440,48 +448,50 @@ export function AssistantEditor({
                   <span className="truncate">
                     {selectedProvider
                       ? `${selectedProvider.name} (${selectedProvider.selectedModel})`
-                      : 'Select provider'}
+                      : t('assistants.editor.selectProvider')}
                   </span>
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="assistant-description">Description</FieldLabel>
+                <FieldLabel htmlFor="assistant-description">{t('assistants.editor.fields.description')}</FieldLabel>
                 <p className="text-muted-foreground text-xs mb-2">
-                  Helps the team supervisor choose this assistant for the right task.
+                  {t('assistants.editor.descriptionHelp')}
                 </p>
                 <Textarea
                   id="assistant-description"
                   rows={2}
                   value={values.description}
                   onChange={(event) => handleInput('description', event.target.value)}
-                  placeholder="Researches facts, finds sources, and validates claims."
+                  placeholder={t('assistants.editor.placeholders.description')}
                 />
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="assistant-prompt">Prompt</FieldLabel>
+                <FieldLabel htmlFor="assistant-prompt">{t('assistants.editor.fields.prompt')}</FieldLabel>
                 <Textarea
                   id="assistant-prompt"
                   rows={4}
                   value={values.instructions}
                   onChange={(event) => handleInput('instructions', event.target.value)}
-                  placeholder="You are a helpful assistant that answers with concise, practical steps."
+                  placeholder={t('assistants.editor.placeholders.prompt')}
                 />
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="assistant-workspace-path">Workspace Path (Optional)</FieldLabel>
+                <FieldLabel htmlFor="assistant-workspace-path">
+                  {t('assistants.editor.fields.workspacePath')}
+                </FieldLabel>
                 <p className="text-muted-foreground text-xs mb-2">
-                  To allow agent perform more complicate task, select a workspace.
+                  {t('assistants.editor.workspacePathHelp')}
                 </p>
                 <div className="flex items-center gap-2">
                   <Input
                     id="assistant-workspace-path"
                     value={values.workspacePath}
                     onChange={(event) => handleInput('workspacePath', event.target.value)}
-                    placeholder="/Users/name/workspace"
+                    placeholder={t('assistants.editor.placeholders.workspacePath')}
                   />
                   <Button
                     type="button"
@@ -489,13 +499,17 @@ export function AssistantEditor({
                     disabled={isSubmitting || isSelectingWorkspacePath || !onSelectWorkspacePath}
                     onClick={() => void handleSelectWorkspacePath()}
                   >
-                    {isSelectingWorkspacePath ? 'Opening...' : 'Browse'}
+                    {isSelectingWorkspacePath
+                      ? t('assistants.editor.openingButton')
+                      : t('common.actions.browse')}
                   </Button>
                 </div>
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="assistant-max-steps">Max Steps</FieldLabel>
+                <FieldLabel htmlFor="assistant-max-steps">
+                  {t('assistants.editor.fields.maxSteps')}
+                </FieldLabel>
                 <Input
                   id="assistant-max-steps"
                   type="number"
@@ -503,7 +517,7 @@ export function AssistantEditor({
                   step={1}
                   value={values.maxSteps}
                   onChange={(event) => handleInput('maxSteps', event.target.value)}
-                  placeholder="100"
+                  placeholder={t('assistants.editor.placeholders.maxSteps')}
                 />
               </Field>
             </div>
@@ -514,24 +528,23 @@ export function AssistantEditor({
               {shouldShowManagedRuntimeNote ? (
                 <div className="rounded-md border border-amber-300/40 bg-amber-400/10 px-3 py-2">
                   <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-                    Some MCP tools use managed runtimes.
+                    {t('assistants.editor.runtimeNoteTitle')}
                   </p>
                   <p className="text-sm text-amber-900/80 dark:text-amber-200/80">
-                    Finish setup in{' '}
+                    {t('assistants.editor.runtimeNotePrefix')}{' '}
                     <Link className="underline underline-offset-2" to="/settings/runtimes">
-                      Runtime Setup
-                    </Link>{' '}
-                    if this assistant depends on <code>npx</code>, <code>bun</code>, or{' '}
-                    <code>uv</code>-backed tools.
+                      {t('assistants.editor.runtimeNoteLinkLabel')}
+                    </Link>
+                    . {t('assistants.editor.runtimeNoteSuffix')}
                   </p>
                 </div>
               ) : null}
 
               {mcpServerEntries.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                  No MCP servers configured yet. Add servers in{' '}
+                  {t('assistants.editor.noMcpServersPrefix')}{' '}
                   <Link className="underline underline-offset-2" to="/settings/mcp-servers">
-                    MCP Server Settings
+                    {t('assistants.editor.noMcpServersLinkLabel')}
                   </Link>
                   .
                 </p>
@@ -558,14 +571,16 @@ export function AssistantEditor({
                           </p>
                           {!server.isActive ? (
                             <p className="text-amber-400 text-xs">
-                              Disabled globally in MCP Server Settings.
+                              {t('assistants.editor.mcpGloballyDisabled')}
                             </p>
                           ) : null}
                         </div>
                         <button
                           type="button"
                           role="switch"
-                          aria-label={`Toggle ${serverId} for this assistant`}
+                          aria-label={t('assistants.editor.toggleMcpAriaLabel', {
+                            serverId
+                          })}
                           aria-checked={isEnabled}
                           className={cn(
                             'relative inline-flex h-6 w-11 items-center rounded-full border transition-colors',
@@ -594,17 +609,19 @@ export function AssistantEditor({
           {activeTab === 'skills' ? (
             <div className="space-y-3">
               <p className="text-muted-foreground text-sm">
-                Skills are loaded from `~/.claude/skills`, `~/.agent/skills`, and `./skills`.
+                {t('assistants.editor.skills.description')}
               </p>
 
               {values.workspacePath.trim().length === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                  Set a workspace path first to load workspace skills.
+                  {t('assistants.editor.skills.workspaceRequired')}
                 </p>
               ) : null}
 
               {isSkillsLoading ? (
-                <p className="text-muted-foreground text-sm">Loading skills...</p>
+                <p className="text-muted-foreground text-sm">
+                  {t('assistants.editor.skills.loading')}
+                </p>
               ) : null}
 
               {skillsError ? (
@@ -615,7 +632,7 @@ export function AssistantEditor({
 
               {!isSkillsLoading && values.workspacePath.trim().length > 0 && skills.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                  No skills found in the configured global or workspace folders.
+                  {t('assistants.editor.skills.empty')}
                 </p>
               ) : null}
 
@@ -634,11 +651,11 @@ export function AssistantEditor({
                               <p className="text-muted-foreground text-xs">{skill.description}</p>
                             ) : (
                               <p className="text-muted-foreground text-xs">
-                                No description found in SKILL.md.
+                                {t('assistants.editor.skills.noDescription')}
                               </p>
                             )}
                             <p className="text-muted-foreground text-xs">
-                              {getSkillSourceLabel(skill.source)} · {skill.relativePath}
+                              {getSkillSourceLabel(skill.source, t)} · {skill.relativePath}
                             </p>
                           </div>
 
@@ -647,14 +664,20 @@ export function AssistantEditor({
                               type="button"
                               variant="outline"
                               size="sm"
-                              aria-label={`Remove skill ${skill.name}`}
+                              aria-label={t('assistants.editor.skills.removeAriaLabel', {
+                                name: skill.name
+                              })}
                               disabled={isSubmitting || isRemoving || removingSkillId !== null}
                               onClick={() => void handleRemoveWorkspaceSkill(skill)}
                             >
-                              {isRemoving ? 'Removing...' : 'Remove'}
+                              {isRemoving
+                                ? t('assistants.editor.skills.removingButton')
+                                : t('assistants.editor.skills.removeButton')}
                             </Button>
                           ) : (
-                            <span className="text-muted-foreground text-xs">Read-only</span>
+                            <span className="text-muted-foreground text-xs">
+                              {t('assistants.editor.skills.readOnly')}
+                            </span>
                           )}
                         </div>
                       </article>
@@ -674,7 +697,11 @@ export function AssistantEditor({
 
       <div className="mt-3 flex justify-end">
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : initialValue ? 'Update Assistant' : 'Create Assistant'}
+          {isSubmitting
+            ? t('assistants.editor.savingButton')
+            : initialValue
+              ? t('assistants.editor.updateButton')
+              : t('assistants.editor.createButton')}
         </Button>
       </div>
 

@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react'
+import { i18n } from '../i18n'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
 
@@ -40,16 +41,17 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           <Card className="max-w-lg p-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <h2 className="text-2xl font-semibold">Something went wrong</h2>
+                <h2 className="text-2xl font-semibold">{i18n.t('common.errorBoundary.title')}</h2>
                 <p className="text-muted-foreground">
-                  The application encountered an unexpected error. You can try refreshing the app or
-                  resetting the current view.
+                  {i18n.t('common.errorBoundary.description')}
                 </p>
               </div>
 
               {this.state.error && (
                 <details className="rounded-md bg-muted p-3 text-sm">
-                  <summary className="cursor-pointer font-medium">Error details</summary>
+                  <summary className="cursor-pointer font-medium">
+                    {i18n.t('common.errorBoundary.details')}
+                  </summary>
                   <pre className="mt-2 overflow-auto text-xs">
                     {this.state.error.message}
                     {'\n\n'}
@@ -60,10 +62,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
               <div className="flex gap-2">
                 <Button onClick={this.handleRefresh} className="flex-1">
-                  Refresh App
+                  {i18n.t('common.errorBoundary.refreshApp')}
                 </Button>
                 <Button onClick={this.handleReset} variant="outline" className="flex-1">
-                  Try Again
+                  {i18n.t('common.errorBoundary.tryAgain')}
                 </Button>
               </div>
             </div>

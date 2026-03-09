@@ -1,5 +1,6 @@
 import { Check, Search, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import { toast } from 'sonner'
 import {
   createProvider,
@@ -37,18 +38,18 @@ type ProviderFormInitialValue = {
   enabled: boolean
 }
 
-function toProviderTypeLabel(type: ProviderRecord['type']): string {
+function toProviderTypeLabel(type: ProviderRecord['type'], t: (key: string) => string): string {
   switch (type) {
     case 'openai':
-      return 'OpenAI Compatible'
+      return t('settings.providers.typeLabels.openai')
     case 'openai-response':
-      return 'OpenAI Responses'
+      return t('settings.providers.typeLabels.openai-response')
     case 'gemini':
-      return 'Gemini'
+      return t('settings.providers.typeLabels.gemini')
     case 'anthropic':
-      return 'Anthropic'
+      return t('settings.providers.typeLabels.anthropic')
     case 'ollama':
-      return 'Ollama'
+      return t('settings.providers.typeLabels.ollama')
     default:
       return type
   }
@@ -82,11 +83,11 @@ function getProviderInitials(name: string): string {
     .slice(0, 2)
 }
 
-function toErrorMessage(error: unknown): string {
+function toErrorMessage(error: unknown, t: (key: string, options?: Record<string, unknown>) => string): string {
   if (error instanceof Error) {
     const message = error.message.trim()
     if (message.length === 0) {
-      return 'Unexpected request error'
+      return t('settings.providers.toasts.unexpectedError')
     }
 
     try {
@@ -101,7 +102,7 @@ function toErrorMessage(error: unknown): string {
     return message
   }
 
-  return 'Unexpected request error'
+  return t('settings.providers.toasts.unexpectedError')
 }
 
 function toInitialFormValue(provider: ProviderRecord | null): ProviderFormInitialValue | undefined {
@@ -122,6 +123,7 @@ function toInitialFormValue(provider: ProviderRecord | null): ProviderFormInitia
 }
 
 export function ProvidersSettingsPage(): React.JSX.Element {
+  const { t } = useTranslation()
   const [providers, setProviders] = useState<ProviderRecord[]>([])
   const [providerSearchQuery, setProviderSearchQuery] = useState('')
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null)
@@ -145,7 +147,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
     if (query.length > 0) {
       filtered = providers.filter((provider) => {
-        return [provider.name, provider.selectedModel, toProviderTypeLabel(provider.type)].some(
+        return [provider.name, provider.selectedModel, toProviderTypeLabel(provider.type, t)].some(
           (value) => value.toLowerCase().includes(query)
         )
       })
@@ -158,7 +160,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
       }
       return a.name.localeCompare(b.name)
     })
-  }, [providerSearchQuery, providers])
+  }, [providerSearchQuery, providers, t])
 
   const refreshProviders = useCallback(async () => {
     setIsLoading(true)
@@ -195,7 +197,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
   const handleSaveEditedProvider = async (values: SaveProviderInput): Promise<void> => {
     if (!selectedProvider) {
-      toast.error('Provider not found.')
+      toast.error(t('settings.providers.toasts.providerNotFound'))
       return
     }
 
@@ -211,9 +213,9 @@ export function ProvidersSettingsPage(): React.JSX.Element {
         return nextProviders
       })
       setSelectedProviderId(updatedProvider.id)
-      toast.success('Provider saved locally.')
+      toast.success(t('settings.providers.toasts.providerSaved'))
     } catch (error) {
-      toast.error(toErrorMessage(error))
+      toast.error(toErrorMessage(error, t))
     } finally {
       setIsSubmitting(false)
     }
@@ -231,9 +233,9 @@ export function ProvidersSettingsPage(): React.JSX.Element {
       })
       setSelectedProviderId(createdProvider.id)
       setIsCreateDialogOpen(false)
-      toast.success('Provider created locally.')
+      toast.success(t('settings.providers.toasts.providerCreated'))
     } catch (error) {
-      toast.error(toErrorMessage(error))
+      toast.error(toErrorMessage(error, t))
     } finally {
       setIsSubmitting(false)
     }
@@ -243,9 +245,14 @@ export function ProvidersSettingsPage(): React.JSX.Element {
     setIsTestingConnection(true)
     try {
       await testProviderConnection(values)
-      toast.success(`Connection successful for ${values.type} (${values.selectedModel}).`)
+      toast.success(
+        t('settings.providers.toasts.connectionSuccess', {
+          type: values.type,
+          model: values.selectedModel
+        })
+      )
     } catch (error) {
-      toast.error(toErrorMessage(error))
+      toast.error(toErrorMessage(error, t))
     } finally {
       setIsTestingConnection(false)
     }
@@ -253,12 +260,12 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
   const handleDeleteSelectedProvider = async (): Promise<void> => {
     if (!selectedProvider) {
-      toast.error('Provider not found.')
+      toast.error(t('settings.providers.toasts.providerNotFound'))
       return
     }
 
     if (selectedProvider.isBuiltIn) {
-      toast.error('Cannot delete built-in provider.')
+      toast.error(t('settings.providers.toasts.builtInDeleteBlocked'))
       return
     }
 
@@ -279,9 +286,9 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
         return nextProviders
       })
-      toast.success('Provider deleted.')
+      toast.success(t('settings.providers.toasts.providerDeleted'))
     } catch (error) {
-      toast.error(toErrorMessage(error))
+      toast.error(toErrorMessage(error, t))
     } finally {
       setIsDeletingProviderId(null)
     }
@@ -294,7 +301,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
           <aside className="flex h-full min-h-0 w-[360px] flex-col overflow-hidden border-r border-r-border/70 bg-card shadow-xs">
             <div className="border-r-border/70 flex items-center justify-between px-4 py-3">
               <h2 className="text-muted-foreground text-xs font-semibold tracking-[0.2em] uppercase">
-                PROVIDERS
+                {t('settings.providers.sidebarTitle')}
               </h2>
               <Button
                 type="button"
@@ -305,7 +312,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                   setIsCreateDialogOpen(true)
                 }}
               >
-                + New
+                {t('settings.providers.newButton')}
               </Button>
             </div>
 
@@ -314,7 +321,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                 <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                 <Input
                   data-provider-search-input
-                  placeholder="Search providers..."
+                  placeholder={t('settings.providers.searchPlaceholder')}
                   className="h-9 pl-9"
                   value={providerSearchQuery}
                   onChange={(event) => setProviderSearchQuery(event.target.value)}
@@ -324,16 +331,18 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
             <div className="min-h-0 flex-1 overflow-y-auto">
               {isLoading ? (
-                <p className="text-muted-foreground px-4 py-3 text-sm">Loading providers...</p>
+                <p className="text-muted-foreground px-4 py-3 text-sm">
+                  {t('settings.providers.loading')}
+                </p>
               ) : null}
               {!isLoading && providers.length === 0 ? (
                 <p className="text-muted-foreground px-4 py-3 text-sm">
-                  No providers yet. Create one to get started.
+                  {t('settings.providers.empty')}
                 </p>
               ) : null}
               {!isLoading && providers.length > 0 && filteredProviders.length === 0 ? (
                 <p className="text-muted-foreground px-4 py-3 text-sm">
-                  No providers match your search.
+                  {t('settings.providers.emptySearch')}
                 </p>
               ) : null}
 
@@ -367,7 +376,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                       <div>
                         <p className="text-base font-semibold">{provider.name}</p>
                         <p className="text-muted-foreground text-sm">
-                          {toProviderTypeLabel(provider.type)} / {provider.selectedModel}
+                          {toProviderTypeLabel(provider.type, t)} / {provider.selectedModel}
                         </p>
                       </div>
                     </div>
@@ -387,14 +396,14 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                   {selectedProvider.isBuiltIn && selectedProvider.officialSite ? (
                     <div className="border-border/70 rounded-md border bg-muted/30 p-3">
                       <p className="text-sm text-muted-foreground">
-                        Built-in provider.{' '}
+                        {t('settings.providers.builtInProvider')}{' '}
                         <a
                           href={selectedProvider.officialSite}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-primary hover:underline"
                         >
-                          Visit official site
+                          {t('settings.providers.visitOfficialSite')}
                         </a>
                       </p>
                     </div>
@@ -414,7 +423,9 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                       <Button
                         type="button"
                         variant="destructive"
-                        aria-label={`Delete provider ${selectedProvider.name}`}
+                        aria-label={t('settings.providers.deleteAriaLabel', {
+                          name: selectedProvider.name
+                        })}
                         onClick={() => {
                           void handleDeleteSelectedProvider()
                         }}
@@ -426,15 +437,15 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                       >
                         <Trash2 className="size-4" />
                         {isDeletingProviderId === selectedProvider.id
-                          ? 'Deleting...'
-                          : 'Delete Provider'}
+                          ? t('settings.providers.deletingButton')
+                          : t('settings.providers.deleteButton')}
                       </Button>
                     </div>
                   ) : null}
                 </div>
               ) : (
                 <p className="text-muted-foreground text-sm">
-                  Select a provider in the sidebar to edit its model configuration.
+                  {t('settings.providers.selectPrompt')}
                 </p>
               )}
             </CardContent>
@@ -446,7 +457,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button
             type="button"
-            aria-label="Close provider dialog"
+            aria-label={t('settings.providers.createDialog.closeAriaLabel')}
             className="bg-background/80 absolute inset-0 backdrop-blur-sm"
             onClick={closeCreateDialog}
             disabled={isSubmitting || isTestingConnection}
@@ -460,9 +471,11 @@ export function ProvidersSettingsPage(): React.JSX.Element {
             <CardHeader className="pb-0">
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-1">
-                  <CardTitle id="create-provider-title">New Model Provider</CardTitle>
+                  <CardTitle id="create-provider-title">
+                    {t('settings.providers.createDialog.title')}
+                  </CardTitle>
                   <p className="text-muted-foreground text-sm">
-                    Create a provider profile and save credentials locally.
+                    {t('settings.providers.createDialog.description')}
                   </p>
                 </div>
                 <Button
@@ -471,7 +484,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                   size="icon"
                   onClick={closeCreateDialog}
                   disabled={isSubmitting || isTestingConnection}
-                  aria-label="Close dialog"
+                  aria-label={t('settings.providers.createDialog.closeButtonAriaLabel')}
                 >
                   <X className="size-4" />
                 </Button>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import type { AssistantRecord } from '../../assistants/assistants-query'
 import type { ProviderRecord } from '../../settings/providers/providers-query'
 import type { TeamWorkspaceRecord } from '../team-workspaces-query'
@@ -44,6 +45,7 @@ export function TeamConfigDialog({
   onClose,
   onSubmit
 }: TeamConfigDialogProps): React.JSX.Element | null {
+  const { t } = useTranslation()
   const [teamDescription, setTeamDescription] = useState('')
   const [supervisorProviderId, setSupervisorProviderId] = useState('')
   const [supervisorModel, setSupervisorModel] = useState('')
@@ -75,13 +77,13 @@ export function TeamConfigDialog({
 
     const nextValidationErrors: string[] = []
     if (supervisorProviderId.trim().length === 0) {
-      nextValidationErrors.push('Select a supervisor provider.')
+      nextValidationErrors.push(t('team.configDialog.validation.supervisorProvider'))
     }
     if (supervisorModel.trim().length === 0) {
-      nextValidationErrors.push('Enter a supervisor model.')
+      nextValidationErrors.push(t('team.configDialog.validation.supervisorModel'))
     }
     if (assistantIds.length === 0) {
-      nextValidationErrors.push('Select at least one team member.')
+      nextValidationErrors.push(t('team.configDialog.validation.members'))
     }
 
     setValidationErrors(nextValidationErrors)
@@ -101,7 +103,7 @@ export function TeamConfigDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
-        aria-label="Close team config dialog"
+        aria-label={t('team.configDialog.closeAriaLabel')}
         className="absolute inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
         disabled={isSaving}
@@ -113,18 +115,16 @@ export function TeamConfigDialog({
         className="relative z-10 w-full max-w-3xl"
       >
         <CardHeader>
-            <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
-              <CardTitle id="team-config-dialog-title">Configure Team</CardTitle>
-              <p className="text-muted-foreground text-sm">
-                Select a supervisor model and choose which assistants join this team.
-              </p>
+              <CardTitle id="team-config-dialog-title">{t('team.configDialog.title')}</CardTitle>
+              <p className="text-muted-foreground text-sm">{t('team.configDialog.description')}</p>
             </div>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              aria-label="Close dialog"
+              aria-label={t('common.actions.close')}
               onClick={onClose}
               disabled={isSaving}
             >
@@ -152,14 +152,14 @@ export function TeamConfigDialog({
 
             <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-2 text-sm">
-                <span className="font-medium">Supervisor Provider</span>
+                <span className="font-medium">{t('team.configDialog.fields.supervisorProvider')}</span>
                 <select
                   id="team-supervisor-provider"
                   value={supervisorProviderId}
                   onChange={(event) => setSupervisorProviderId(event.target.value)}
                   className="border-input w-full rounded-md border bg-transparent px-3 py-2"
                 >
-                  <option value="">Select provider</option>
+                  <option value="">{t('team.configDialog.selectProvider')}</option>
                   {providers.map((provider) => (
                     <option key={provider.id} value={provider.id}>
                       {provider.name}
@@ -170,7 +170,7 @@ export function TeamConfigDialog({
             </div>
 
             <label className="block space-y-2 text-sm">
-              <span className="font-medium">Team Description</span>
+              <span className="font-medium">{t('team.configDialog.fields.teamDescription')}</span>
               <textarea
                 id="team-description"
                 value={teamDescription}
@@ -181,7 +181,7 @@ export function TeamConfigDialog({
             </label>
 
             <label className="block space-y-2 text-sm">
-              <span className="font-medium">Supervisor Model</span>
+              <span className="font-medium">{t('team.configDialog.fields.supervisorModel')}</span>
               <input
                 id="team-supervisor-model"
                 value={supervisorModel}
@@ -191,7 +191,7 @@ export function TeamConfigDialog({
             </label>
 
             <fieldset className="space-y-3">
-              <legend className="text-sm font-medium">Team Members</legend>
+              <legend className="text-sm font-medium">{t('team.configDialog.fields.teamMembers')}</legend>
               <div className="grid gap-2 sm:grid-cols-2">
                 {sortedAssistants.map((assistant) => (
                   <label
@@ -213,10 +213,10 @@ export function TeamConfigDialog({
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
-                Cancel
+                {t('common.actions.cancel')}
               </Button>
               <Button type="submit" disabled={isSaving}>
-                Save Team
+                {t('team.configDialog.saveButton')}
               </Button>
             </div>
           </form>

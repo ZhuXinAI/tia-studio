@@ -4,11 +4,18 @@
   <img src="tia-studio.png" alt="TIA Studio Interface" width="800">
 </p>
 
-A modern, *hackable*, desktop-native workspace for AI assistants, Teams, Channels, and claws. TIA Studio gives you a clean interface for running local assistants, organizing them into teams, and connecting them to real-world channels from your own machine.
+<div align="center">
+
+[![][github-release-shield]][github-release-link]
+[![][github-contributors-shield]][github-contributors-link]
+
+</div>
+
+A modern, desktop-native workspace for AI assistants, Teams, Channels, and claws. TIA Studio gives you a clean interface for running local assistants, organizing them into teams, and connecting them to real-world channels from your own machine.
 
 ## What is TIA Studio?
 
-TIA Studio is an Electron-based desktop application for building and operating AI assistants on your desktop. You can chat with a single assistant, coordinate a Team of assistants, or connect an assistant to a Channel so it can participate in conversations beyond the app itself.
+TIA (Short for "This Is AI") Studio is an Electron-based desktop application for building and operating AI assistants on your desktop. You can chat with a single assistant, coordinate a Team of assistants, or connect an assistant to a Channel so it can participate in conversations beyond the app itself.
 
 When an assistant is connected to a channel, it becomes a claw: an OpenClaw-inspired local operator running on your computer, close to your tools, your files, and your workflow.
 
@@ -157,3 +164,10 @@ tia-studio/
 ## License
 
 MIT
+
+<!-- Links & Images -->
+
+[github-release-shield]: https://img.shields.io/github/v/release/ZhuXinAI/tia-studio?logo=github
+[github-release-link]: https://github.com/ZhuXinAI/tia-studio/releases
+[github-contributors-shield]: https://img.shields.io/github/contributors/ZhuXinAI/tia-studio?logo=github
+[github-contributors-link]: https://github.com/ZhuXinAI/tia-studio/graphs/contributors

@@ -14,6 +14,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem
 } from '../../../components/ui/sidebar'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import type { AssistantThreadBranch } from '../thread-page-helpers'
 import type { ThreadRecord } from '../threads-query'
 import { getThreadDisplayTitle } from '../thread-page-routing'
@@ -37,6 +38,7 @@ function AssistantActionsMenu({
   onEdit,
   onDelete
 }: AssistantActionsMenuProps): React.JSX.Element {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
 
@@ -96,7 +98,7 @@ function AssistantActionsMenu({
         size="icon"
         variant="ghost"
         className="size-7"
-        aria-label={`Assistant actions for ${assistantName}`}
+        aria-label={t('threads.sidebar.assistantActionsAriaLabel', { name: assistantName })}
         aria-haspopup="menu"
         aria-expanded={isOpen}
         disabled={isDisabled}
@@ -119,19 +121,19 @@ function AssistantActionsMenu({
             role="menuitem"
             onClick={closeAndEdit}
           >
-            Edit
+            {t('common.actions.edit')}
           </Button>
           {canDeleteAssistant ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              aria-label={`Delete assistant ${assistantName}`}
+              aria-label={t('threads.sidebar.deleteAssistantAriaLabel', { name: assistantName })}
               className="text-destructive h-8 w-full justify-start rounded-sm px-2 text-xs font-normal hover:text-destructive"
               role="menuitem"
               onClick={closeAndDelete}
             >
-              Delete
+              {t('common.actions.delete')}
             </Button>
           ) : null}
         </div>
@@ -177,6 +179,7 @@ export function ThreadSidebar({
   onDeleteAssistant,
   onDeleteThread
 }: ThreadSidebarProps): React.JSX.Element {
+  const { t } = useTranslation()
   const [confirmDeleteThreadId, setConfirmDeleteThreadId] = useState<string | null>(null)
   const confirmDeleteContainerRef = useRef<HTMLDivElement | null>(null)
 
@@ -214,8 +217,10 @@ export function ThreadSidebar({
     <Sidebar className="h-full w-80 border-r border-b-0">
       <SidebarHeader className="space-y-3">
         <div className="space-y-1">
-          <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">Main Chat</p>
-          <h1 className="text-lg font-semibold">Conversations</h1>
+          <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
+            {t('threads.sidebar.eyebrow')}
+          </p>
+          <h1 className="text-lg font-semibold">{t('threads.sidebar.title')}</h1>
         </div>
         <Button
           type="button"
@@ -225,31 +230,31 @@ export function ThreadSidebar({
           disabled={!canCreateThread || isCreatingThread}
         >
           <MessageSquarePlus className="size-4" />
-          {isCreatingThread ? 'Creating thread...' : 'New Thread'}
+          {isCreatingThread ? t('threads.sidebar.creatingThread') : t('threads.sidebar.newThread')}
         </Button>
       </SidebarHeader>
 
       <SidebarContent className="space-y-4">
         <SidebarGroup>
           <div className="flex items-center justify-between px-2">
-            <SidebarGroupLabel className="px-0">Assistants</SidebarGroupLabel>
+            <SidebarGroupLabel className="px-0">{t('threads.sidebar.assistants')}</SidebarGroupLabel>
             <Button
               type="button"
               variant="ghost"
               size="icon"
               className="size-7"
-              aria-label="Create assistant"
+              aria-label={t('threads.sidebar.createAssistantAriaLabel')}
               onClick={onCreateAssistant}
             >
               <Plus className="size-4" />
             </Button>
           </div>
           {isLoadingData ? (
-            <p className="text-muted-foreground px-2 text-xs">Loading assistants...</p>
+            <p className="text-muted-foreground px-2 text-xs">{t('threads.sidebar.loadingAssistants')}</p>
           ) : null}
           {!isLoadingData && assistantsCount === 0 ? (
             <p className="text-muted-foreground px-2 text-xs">
-              No assistants yet. Create one in Assistants.
+              {t('threads.sidebar.emptyAssistants')}
             </p>
           ) : null}
           <SidebarMenu>
@@ -283,14 +288,16 @@ export function ThreadSidebar({
                     {isLoadingThreads ? (
                       <SidebarMenuSubItem>
                         <p className="text-muted-foreground px-2 py-1 text-xs">
-                          Loading threads...
+                          {t('threads.sidebar.loadingThreads')}
                         </p>
                       </SidebarMenuSubItem>
                     ) : null}
 
                     {!isLoadingThreads && branch.threads.length === 0 ? (
                       <SidebarMenuSubItem>
-                        <p className="text-muted-foreground px-2 py-1 text-xs">No threads yet.</p>
+                        <p className="text-muted-foreground px-2 py-1 text-xs">
+                          {t('threads.sidebar.emptyThreads')}
+                        </p>
                       </SidebarMenuSubItem>
                     ) : null}
 
@@ -321,7 +328,9 @@ export function ThreadSidebar({
                                 size="icon"
                                 variant="ghost"
                                 className="text-muted-foreground hover:text-destructive size-7"
-                                aria-label={`Delete thread ${displayTitle}`}
+                                aria-label={t('threads.sidebar.deleteThreadAriaLabel', {
+                                  title: displayTitle
+                                })}
                                 disabled={isDeleting}
                                 onClick={() => {
                                   setConfirmDeleteThreadId((current) =>
@@ -335,33 +344,37 @@ export function ThreadSidebar({
                               {isConfirmingDelete ? (
                                 <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-md border border-border/70 bg-card p-2 shadow-lg">
                                   <p className="text-muted-foreground mb-2 text-xs">
-                                    Delete thread?
+                                    {t('threads.sidebar.deleteThreadPrompt')}
                                   </p>
                                   <div className="flex justify-end gap-2">
                                     <Button
                                       type="button"
                                       size="sm"
                                       variant="ghost"
-                                      aria-label={`Cancel delete thread ${displayTitle}`}
+                                      aria-label={t('threads.sidebar.cancelDeleteThreadAriaLabel', {
+                                        title: displayTitle
+                                      })}
                                       disabled={isDeleting}
                                       onClick={() => {
                                         setConfirmDeleteThreadId(null)
                                       }}
                                     >
-                                      Cancel
+                                      {t('common.actions.cancel')}
                                     </Button>
                                     <Button
                                       type="button"
                                       size="sm"
                                       variant="destructive"
-                                      aria-label={`Confirm delete thread ${displayTitle}`}
+                                      aria-label={t('threads.sidebar.confirmDeleteThreadAriaLabel', {
+                                        title: displayTitle
+                                      })}
                                       disabled={isDeleting}
                                       onClick={() => {
                                         setConfirmDeleteThreadId(null)
                                         onDeleteThread(thread)
                                       }}
                                     >
-                                      Delete
+                                      {t('common.actions.delete')}
                                     </Button>
                                   </div>
                                 </div>

@@ -10,6 +10,7 @@ import {
 } from '../../../components/ui/dialog'
 import { Input } from '../../../components/ui/input'
 import { Textarea } from '../../../components/ui/textarea'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import type { ProviderRecord } from '../../settings/providers/providers-query'
 import type { AvailableClawChannelRecord, ClawRecord, SaveClawInput } from '../claws-query'
 
@@ -42,6 +43,7 @@ export function ClawEditorDialog({
   onClose,
   onSubmit
 }: ClawEditorDialogProps): React.JSX.Element {
+  const { t } = useTranslation()
   const [name, setName] = useState(claw?.name ?? '')
   const [providerId, setProviderId] = useState(claw?.providerId ?? '')
   const [instructions, setInstructions] = useState(claw?.instructions ?? '')
@@ -67,10 +69,10 @@ export function ClawEditorDialog({
   }, [availableChannels, claw, isOpen])
 
   const dialogTitle = useMemo(() => {
-    return claw ? 'Edit Claw' : 'Create Claw'
-  }, [claw])
+    return claw ? t('claws.dialog.editTitle') : t('claws.dialog.createTitle')
+  }, [claw, t])
 
-  const submitLabel = claw ? 'Save Claw' : 'Create Claw'
+  const submitLabel = claw ? t('claws.dialog.saveButton') : t('claws.dialog.createButton')
 
   const canAttachExisting = availableChannels.length > 0
 
@@ -78,12 +80,12 @@ export function ClawEditorDialog({
     event.preventDefault()
 
     if (name.trim().length === 0) {
-      setErrorMessage('Assistant name is required')
+      setErrorMessage(t('claws.dialog.errors.assistantNameRequired'))
       return
     }
 
     if (providerId.trim().length === 0) {
-      setErrorMessage('Provider is required')
+      setErrorMessage(t('claws.dialog.errors.providerRequired'))
       return
     }
 
@@ -91,7 +93,7 @@ export function ClawEditorDialog({
 
     if (channelAction === 'attach') {
       if (existingChannelId.trim().length === 0) {
-        setErrorMessage('Pick a channel to attach')
+        setErrorMessage(t('claws.dialog.errors.channelRequired'))
         return
       }
 
@@ -105,7 +107,7 @@ export function ClawEditorDialog({
         appId.trim().length === 0 ||
         appSecret.trim().length === 0
       ) {
-        setErrorMessage('Lark channel name, app ID, and app secret are required')
+        setErrorMessage(t('claws.dialog.errors.channelCredentialsRequired'))
         return
       }
 
@@ -142,22 +144,20 @@ export function ClawEditorDialog({
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
-          <DialogDescription>
-            Connect an assistant to a Lark channel from one lightweight setup flow.
-          </DialogDescription>
+          <DialogDescription>{t('claws.dialog.description')}</DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
           <div className="grid gap-2">
             <label htmlFor="claw-name" className="text-sm font-medium">
-              Assistant Name
+              {t('claws.dialog.fields.assistantName')}
             </label>
             <Input id="claw-name" value={name} onChange={(event) => setName(event.target.value)} />
           </div>
 
           <div className="grid gap-2">
             <label htmlFor="claw-provider" className="text-sm font-medium">
-              Provider
+              {t('claws.dialog.fields.provider')}
             </label>
             <select
               id="claw-provider"
@@ -165,7 +165,7 @@ export function ClawEditorDialog({
               value={providerId}
               onChange={(event) => setProviderId(event.target.value)}
             >
-              <option value="">Select a provider</option>
+              <option value="">{t('claws.dialog.selectProvider')}</option>
               {providers.map((provider) => (
                 <option key={provider.id} value={provider.id}>
                   {provider.name}
@@ -176,7 +176,7 @@ export function ClawEditorDialog({
 
           <div className="grid gap-2">
             <label htmlFor="claw-instructions" className="text-sm font-medium">
-              Instructions
+              {t('claws.dialog.fields.instructions')}
             </label>
             <Textarea
               id="claw-instructions"
@@ -191,13 +191,13 @@ export function ClawEditorDialog({
               checked={enabled}
               onChange={(event) => setEnabled(event.target.checked)}
             />
-            <span>Enable this claw after saving</span>
+            <span>{t('claws.dialog.enableAfterSaving')}</span>
           </label>
 
           {claw ? (
             <div className="grid gap-2">
               <label htmlFor="claw-channel-action" className="text-sm font-medium">
-                Channel Action
+                {t('claws.dialog.fields.channelAction')}
               </label>
               <select
                 id="claw-channel-action"
@@ -205,10 +205,16 @@ export function ClawEditorDialog({
                 value={channelAction}
                 onChange={(event) => setChannelAction(event.target.value as ChannelAction)}
               >
-                {claw.channel ? <option value="keep">Keep current channel</option> : null}
-                <option value="create">Create new Lark channel</option>
-                {canAttachExisting ? <option value="attach">Attach existing channel</option> : null}
-                {claw.channel ? <option value="detach">Detach current channel</option> : null}
+                {claw.channel ? (
+                  <option value="keep">{t('claws.dialog.channelActions.keep')}</option>
+                ) : null}
+                <option value="create">{t('claws.dialog.channelActions.create')}</option>
+                {canAttachExisting ? (
+                  <option value="attach">{t('claws.dialog.channelActions.attach')}</option>
+                ) : null}
+                {claw.channel ? (
+                  <option value="detach">{t('claws.dialog.channelActions.detach')}</option>
+                ) : null}
               </select>
             </div>
           ) : null}
@@ -216,7 +222,7 @@ export function ClawEditorDialog({
           {channelAction === 'attach' ? (
             <div className="grid gap-2">
               <label htmlFor="claw-existing-channel" className="text-sm font-medium">
-                Existing Channel
+                {t('claws.dialog.fields.existingChannel')}
               </label>
               <select
                 id="claw-existing-channel"
@@ -224,7 +230,7 @@ export function ClawEditorDialog({
                 value={existingChannelId}
                 onChange={(event) => setExistingChannelId(event.target.value)}
               >
-                <option value="">Select a channel</option>
+                <option value="">{t('claws.dialog.selectChannel')}</option>
                 {availableChannels.map((channel) => (
                   <option key={channel.id} value={channel.id}>
                     {channel.name}
@@ -238,7 +244,7 @@ export function ClawEditorDialog({
             <>
               <div className="grid gap-2">
                 <label htmlFor="claw-channel-name" className="text-sm font-medium">
-                  Lark Channel Name
+                  {t('claws.dialog.fields.larkChannelName')}
                 </label>
                 <Input
                   id="claw-channel-name"
@@ -250,7 +256,7 @@ export function ClawEditorDialog({
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="grid gap-2">
                   <label htmlFor="claw-channel-app-id" className="text-sm font-medium">
-                    App ID
+                    {t('claws.dialog.fields.appId')}
                   </label>
                   <Input
                     id="claw-channel-app-id"
@@ -261,7 +267,7 @@ export function ClawEditorDialog({
 
                 <div className="grid gap-2">
                   <label htmlFor="claw-channel-app-secret" className="text-sm font-medium">
-                    App Secret
+                    {t('claws.dialog.fields.appSecret')}
                   </label>
                   <Input
                     id="claw-channel-app-secret"
@@ -278,7 +284,7 @@ export function ClawEditorDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-              Cancel
+              {t('common.actions.cancel')}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {submitLabel}

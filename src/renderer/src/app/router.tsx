@@ -1,4 +1,5 @@
 import { createHashRouter, createMemoryRouter, redirect, type RouteObject } from 'react-router-dom'
+import '../i18n'
 import { AppShell } from './layout/app-shell'
 import { ThreadPage } from '../features/threads/pages/thread-page'
 import { ClawsPage } from '../features/claws/pages/claws-page'
@@ -8,6 +9,7 @@ import { WebSearchSettingsPage } from '../features/settings/pages/web-search-set
 import { McpServersSettingsPage } from '../features/settings/pages/mcp-servers-settings-page'
 import { AboutSettingsPage } from '../features/settings/pages/about-settings-page'
 import { DisplaySettingsPage } from '../features/settings/pages/display-settings-page'
+import { GeneralSettingsPage } from '../features/settings/pages/general-settings-page'
 import { RuntimeSetupPage } from '../features/settings/pages/runtime-setup-page'
 import { SettingsPageLayout } from '../features/settings/pages/settings-page-layout'
 import { RouteError } from '../components/route-error'
@@ -49,7 +51,11 @@ export const appRoutes: RouteObject[] = [
         children: [
           {
             index: true,
-            loader: () => redirect('/settings/about')
+            loader: () => redirect('/settings/general')
+          },
+          {
+            path: 'general',
+            element: <GeneralSettingsPage />
           },
           {
             path: 'providers',
