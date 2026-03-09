@@ -6,6 +6,7 @@ import type { ToolExecutionContext } from '@mastra/core/tools'
 import { z } from 'zod'
 import { ensureAssistantWorkspaceFiles } from '../assistant-workspace'
 import { HEARTBEAT_RUN_CONTEXT_KEY } from '../tool-context'
+import { createNoArgToolInputSchema } from './tool-schema'
 
 type SoulMemoryToolsOptions = {
   workspaceRootPath: string
@@ -93,7 +94,7 @@ export function createSoulMemoryTools(options: SoulMemoryToolsOptions) {
     id: 'read-soul-memory',
     description:
       'Read the assistant workspace SOUL.md file when you need durable identity, preference, or memory context.',
-    inputSchema: z.object({}),
+    inputSchema: createNoArgToolInputSchema(),
     outputSchema: z.object({
       path: z.string(),
       content: z.string(),

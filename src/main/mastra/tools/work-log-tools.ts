@@ -3,6 +3,7 @@ import { readdir, readFile } from 'node:fs/promises'
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 import { resolveWorkLogsDirectory } from '../../cron/work-log-writer'
+import { createNoArgToolInputSchema } from './tool-schema'
 
 type WorkLogToolsOptions = {
   workspaceRootPath: string
@@ -75,7 +76,7 @@ export function createWorkLogTools(options: WorkLogToolsOptions) {
   const listWorkLogs = createTool({
     id: 'list-work-logs',
     description: 'List available daily work-log markdown files in the assistant workspace.',
-    inputSchema: z.object({}).default({}),
+    inputSchema: createNoArgToolInputSchema(),
     outputSchema: z.object({
       logs: z.array(
         z.object({
