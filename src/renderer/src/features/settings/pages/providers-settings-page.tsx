@@ -83,7 +83,10 @@ function getProviderInitials(name: string): string {
     .slice(0, 2)
 }
 
-function toErrorMessage(error: unknown, t: (key: string, options?: Record<string, unknown>) => string): string {
+function toErrorMessage(
+  error: unknown,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string {
   if (error instanceof Error) {
     const message = error.message.trim()
     if (message.length === 0) {

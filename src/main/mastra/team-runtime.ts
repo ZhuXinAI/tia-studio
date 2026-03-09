@@ -81,7 +81,9 @@ export class TeamRuntimeService implements TeamRuntime {
     }
 
     const liveAssistants = (
-      await Promise.all(members.map((member) => this.options.assistantsRepo.getById(member.assistantId)))
+      await Promise.all(
+        members.map((member) => this.options.assistantsRepo.getById(member.assistantId))
+      )
     ).filter((assistant): assistant is AppAssistant => assistant !== null)
 
     const memberAgents = await this.buildRunnableMemberAgents({

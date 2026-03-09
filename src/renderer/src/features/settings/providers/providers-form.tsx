@@ -112,7 +112,10 @@ export function ProvidersForm({
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const formErrors = validateProviderForm(values, t('settings.providers.form.errors.selectedModelRequired'))
+    const formErrors = validateProviderForm(
+      values,
+      t('settings.providers.form.errors.selectedModelRequired')
+    )
     setErrors(formErrors)
 
     if (Object.keys(formErrors).length > 0) {
@@ -127,7 +130,10 @@ export function ProvidersForm({
       return
     }
 
-    const formErrors = validateProviderForm(values, t('settings.providers.form.errors.selectedModelRequired'))
+    const formErrors = validateProviderForm(
+      values,
+      t('settings.providers.form.errors.selectedModelRequired')
+    )
     setErrors(formErrors)
     if (Object.keys(formErrors).length > 0) {
       return
@@ -152,9 +158,7 @@ export function ProvidersForm({
             <Switch
               id="provider-enabled"
               checked={values.enabled}
-              onCheckedChange={(checked) =>
-                setValues((prev) => ({ ...prev, enabled: checked }))
-              }
+              onCheckedChange={(checked) => setValues((prev) => ({ ...prev, enabled: checked }))}
             />
           </div>
         </Field>

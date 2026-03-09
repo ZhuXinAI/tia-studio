@@ -130,9 +130,7 @@ function canonicalizeLocaleTag(rawLocale: string): string {
   }
 }
 
-function normalizeSupportedLocale(
-  rawLocale: string | null | undefined
-): SupportedLocale | null {
+function normalizeSupportedLocale(rawLocale: string | null | undefined): SupportedLocale | null {
   if (!rawLocale) {
     return null
   }

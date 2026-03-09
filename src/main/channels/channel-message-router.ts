@@ -168,13 +168,18 @@ export class ChannelMessageRouter {
       }
     }
 
-    let assistantReplyText: string
+    let assistantReplyText = ''
     try {
       const stream = await this.options.assistantRuntime.streamChat({
         assistantId: runtimeChannel.assistantId,
         threadId,
         profileId: DEFAULT_PROFILE_ID,
-        messages: [userMessage]
+        messages: [userMessage],
+        channelTarget: {
+          channelId: event.channelId,
+          channelType: event.channelType,
+          remoteChatId: event.message.remoteChatId
+        }
       })
 
       assistantReplyText = await drainStream(stream)
@@ -203,8 +208,6 @@ export class ChannelMessageRouter {
       await this.publishReply(event, EMPTY_ASSISTANT_REPLY_MESSAGE)
       return
     }
-
-    await this.publishReply(event, assistantReplyText)
   }
 
   private async publishReply(event: ChannelMessageReceivedEvent, content: string): Promise<void> {

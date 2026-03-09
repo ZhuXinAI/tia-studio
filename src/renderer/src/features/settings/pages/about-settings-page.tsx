@@ -175,7 +175,7 @@ export function AboutSettingsPage(): React.JSX.Element {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     let cancelled = false
@@ -204,7 +204,7 @@ export function AboutSettingsPage(): React.JSX.Element {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t])
 
   const versionLabel = useMemo(() => {
     return appInfo.version.startsWith('v') ? appInfo.version : `v${appInfo.version}`
@@ -258,9 +258,7 @@ export function AboutSettingsPage(): React.JSX.Element {
     <div className="py-4 flex flex-col gap-4">
       <header className="py-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t('settings.about.title')}</h1>
-        <p className="text-muted-foreground text-sm">
-          {t('settings.about.description')}
-        </p>
+        <p className="text-muted-foreground text-sm">{t('settings.about.description')}</p>
       </header>
 
       {autoUpdateState.message ? (

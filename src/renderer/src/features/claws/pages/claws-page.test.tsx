@@ -799,7 +799,7 @@ describe('ClawsPage', () => {
           }
         }
       ],
-      availableChannels: []
+      configuredChannels: []
     })
 
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)

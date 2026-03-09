@@ -47,9 +47,7 @@ export class ChannelThreadBindingsRepository {
     return parseChannelThreadBindingRow(row as Record<string, unknown>)
   }
 
-  async create(
-    input: CreateChannelThreadBindingInput
-  ): Promise<AppChannelThreadBinding> {
+  async create(input: CreateChannelThreadBindingInput): Promise<AppChannelThreadBinding> {
     await this.db.execute(
       `
         INSERT OR IGNORE INTO app_channel_thread_bindings (channel_id, remote_chat_id, thread_id)

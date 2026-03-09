@@ -53,7 +53,9 @@ describe('TeamStatusGraph', () => {
   })
 
   it('can render graph-only mode without the event log', () => {
-    const html = renderToString(<TeamStatusGraph assistants={[]} events={[]} showEventLog={false} />)
+    const html = renderToString(
+      <TeamStatusGraph assistants={[]} events={[]} showEventLog={false} />
+    )
 
     expect(html).toContain('Team Status')
     expect(html).not.toContain('Event Log')

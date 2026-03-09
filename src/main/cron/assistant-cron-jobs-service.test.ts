@@ -97,7 +97,9 @@ describe('AssistantCronJobsService', () => {
       })
     ])
 
-    await expect(service.removeAssistantCronJob(firstAssistant.id, secondJob.id)).resolves.toBe(false)
+    await expect(service.removeAssistantCronJob(firstAssistant.id, secondJob.id)).resolves.toBe(
+      false
+    )
     await expect(cronJobsRepo.getById(secondJob.id)).resolves.toMatchObject({
       id: secondJob.id
     })

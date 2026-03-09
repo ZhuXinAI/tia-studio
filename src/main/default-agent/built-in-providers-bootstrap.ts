@@ -1,9 +1,7 @@
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import { BUILT_IN_PROVIDERS } from './built-in-providers'
 
-export async function ensureBuiltInProviders(
-  providersRepo: ProvidersRepository
-): Promise<void> {
+export async function ensureBuiltInProviders(providersRepo: ProvidersRepository): Promise<void> {
   const existingProviders = await providersRepo.list()
   const existingIds = new Set(existingProviders.map((p) => p.id))
 

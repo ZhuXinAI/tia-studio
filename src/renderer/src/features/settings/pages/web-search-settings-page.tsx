@@ -69,16 +69,19 @@ export function WebSearchSettingsPage(): React.JSX.Element {
     }
   }
 
-  const toErrorMessage = (error: unknown): string => {
-    if (error instanceof Error) {
-      const message = error.message.trim()
-      if (message.length > 0) {
-        return message
+  const toErrorMessage = useCallback(
+    (error: unknown): string => {
+      if (error instanceof Error) {
+        const message = error.message.trim()
+        if (message.length > 0) {
+          return message
+        }
       }
-    }
 
-    return t('settings.webSearch.toasts.unexpectedError')
-  }
+      return t('settings.webSearch.toasts.unexpectedError')
+    },
+    [t]
+  )
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true)
@@ -90,7 +93,7 @@ export function WebSearchSettingsPage(): React.JSX.Element {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [toErrorMessage])
 
   useEffect(() => {
     void loadSettings()
@@ -199,9 +202,7 @@ export function WebSearchSettingsPage(): React.JSX.Element {
     <div className="py-4 flex flex-col gap-4">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t('settings.webSearch.title')}</h1>
-        <p className="text-muted-foreground text-sm">
-          {t('settings.webSearch.description')}
-        </p>
+        <p className="text-muted-foreground text-sm">{t('settings.webSearch.description')}</p>
       </header>
 
       <Card>
@@ -291,9 +292,7 @@ export function WebSearchSettingsPage(): React.JSX.Element {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle>{t('settings.webSearch.browserBehavior.title')}</CardTitle>
-          <CardDescription>
-            {t('settings.webSearch.browserBehavior.description')}
-          </CardDescription>
+          <CardDescription>{t('settings.webSearch.browserBehavior.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {isLoading ? (

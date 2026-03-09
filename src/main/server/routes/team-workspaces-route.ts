@@ -80,7 +80,9 @@ export function registerTeamWorkspacesRoute(
   })
 
   app.get('/v1/team/workspaces/:workspaceId/members', async (context) => {
-    const existingWorkspace = await options.teamWorkspacesRepo.getById(context.req.param('workspaceId'))
+    const existingWorkspace = await options.teamWorkspacesRepo.getById(
+      context.req.param('workspaceId')
+    )
     if (!existingWorkspace) {
       return context.json({ ok: false, error: 'Team workspace not found' }, 404)
     }
@@ -105,7 +107,9 @@ export function registerTeamWorkspacesRoute(
       )
     }
 
-    const existingWorkspace = await options.teamWorkspacesRepo.getById(context.req.param('workspaceId'))
+    const existingWorkspace = await options.teamWorkspacesRepo.getById(
+      context.req.param('workspaceId')
+    )
     if (!existingWorkspace) {
       return context.json({ ok: false, error: 'Team workspace not found' }, 404)
     }

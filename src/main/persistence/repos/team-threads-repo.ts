@@ -106,7 +106,9 @@ export class TeamThreadsRepository {
     }
 
     const supervisorProviderId =
-      'supervisorProviderId' in input ? input.supervisorProviderId ?? null : existing.supervisorProviderId
+      'supervisorProviderId' in input
+        ? (input.supervisorProviderId ?? null)
+        : existing.supervisorProviderId
 
     await this.db.execute(
       'UPDATE app_team_threads SET title = ?, team_description = ?, supervisor_provider_id = ?, supervisor_model = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
@@ -146,7 +148,9 @@ export class TeamThreadsRepository {
       (assistantId, index) => assistantIds.indexOf(assistantId) === index
     )
 
-    await this.db.execute('DELETE FROM app_team_thread_members WHERE team_thread_id = ?', [threadId])
+    await this.db.execute('DELETE FROM app_team_thread_members WHERE team_thread_id = ?', [
+      threadId
+    ])
 
     for (const [index, assistantId] of uniqueAssistantIds.entries()) {
       await this.db.execute(

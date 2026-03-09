@@ -1,13 +1,4 @@
-import {
-  AlarmClock,
-  Cable,
-  Cloud,
-  Languages,
-  Info,
-  Monitor,
-  Search,
-  Wrench
-} from 'lucide-react'
+import { AlarmClock, Cable, Cloud, Languages, Info, Monitor, Search, Wrench } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { NavLink, useLocation } from 'react-router-dom'

@@ -58,20 +58,17 @@ describe('team workspaces route', () => {
       })
     ])
 
-    const patchResponse = await app.request(
-      `http://localhost/v1/team/workspaces/${created.id}`,
-      {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: 'Release Workspace',
-          rootPath: '/Users/demo/release',
-          teamDescription: 'Coordinate docs release',
-          supervisorProviderId: providerId,
-          supervisorModel: 'gpt-5'
-        })
-      }
-    )
+    const patchResponse = await app.request(`http://localhost/v1/team/workspaces/${created.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Release Workspace',
+        rootPath: '/Users/demo/release',
+        teamDescription: 'Coordinate docs release',
+        supervisorProviderId: providerId,
+        supervisorModel: 'gpt-5'
+      })
+    })
 
     expect(patchResponse.status).toBe(200)
     await expect(patchResponse.json()).resolves.toMatchObject({
@@ -83,12 +80,9 @@ describe('team workspaces route', () => {
       supervisorModel: 'gpt-5'
     })
 
-    const deleteResponse = await app.request(
-      `http://localhost/v1/team/workspaces/${created.id}`,
-      {
-        method: 'DELETE'
-      }
-    )
+    const deleteResponse = await app.request(`http://localhost/v1/team/workspaces/${created.id}`, {
+      method: 'DELETE'
+    })
 
     expect(deleteResponse.status).toBe(204)
     await expect(teamWorkspacesRepo.list()).resolves.toEqual([])

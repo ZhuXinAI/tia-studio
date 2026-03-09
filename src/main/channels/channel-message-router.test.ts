@@ -267,7 +267,43 @@ describe('ChannelMessageRouter', () => {
     )
   })
 
-  it('publishes a send request after the assistant finishes', async () => {
+  it('passes channel target metadata to the runtime for progressive outbound delivery', async () => {
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () => createStream())
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat)
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-1',
+      channelId,
+      channelType: 'lark',
+      message: {
+        id: 'msg-1',
+        remoteChatId: 'oc_123',
+        senderId: 'ou_user',
+        content: 'hello',
+        timestamp: new Date('2026-03-08T00:00:00.000Z')
+      }
+    })
+
+    expect(streamChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assistantId,
+        profileId: 'default-profile',
+        channelTarget: {
+          channelId,
+          channelType: 'lark',
+          remoteChatId: 'oc_123'
+        }
+      })
+    )
+  })
+
+  it('does not publish a send request after the assistant finishes', async () => {
     const publishedEvents: unknown[] = []
     const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
       createAssistantReplyStream('Hello from assistant')
@@ -297,13 +333,7 @@ describe('ChannelMessageRouter', () => {
       }
     })
 
-    expect(publishedEvents).toContainEqual(
-      expect.objectContaining({
-        channelId,
-        remoteChatId: 'oc_123',
-        content: 'Hello from assistant'
-      })
-    )
+    expect(publishedEvents).toEqual([])
   })
 
   it('publishes a fallback error when the assistant text is empty', async () => {
@@ -344,7 +374,6 @@ describe('ChannelMessageRouter', () => {
       })
     ])
   })
-
   it('publishes a thread message updated event after processing inbound channel messages', async () => {
     const appendMessagesUpdated = vi.fn()
     const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
@@ -623,7 +652,6 @@ describe('ChannelMessageRouter', () => {
       '[Error] Failed to generate a response. Please check the provider configuration.'
     )
   })
-
   it('ignores inbound messages when the attached assistant is disabled', async () => {
     const disabledAssistant = await new AssistantsRepository(db).create({
       name: 'Disabled Assistant',

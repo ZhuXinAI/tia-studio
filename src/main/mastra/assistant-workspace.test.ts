@@ -2,10 +2,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { afterEach, describe, expect, it } from 'vitest'
-import {
-  ensureAssistantWorkspaceFiles,
-  resolveAssistantWorkspacePath
-} from './assistant-workspace'
+import { ensureAssistantWorkspaceFiles, resolveAssistantWorkspacePath } from './assistant-workspace'
 
 describe('assistant workspace', () => {
   let workspaceRoot: string | null = null

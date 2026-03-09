@@ -168,13 +168,11 @@ describe('TeamConfigDialog', () => {
       submitButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    expect(onSubmit).toHaveBeenCalledWith(
-      {
-        teamDescription: '',
-        supervisorProviderId: 'provider-1',
-        supervisorModel: 'gpt-5',
-        assistantIds: ['assistant-1']
-      }
-    )
+    expect(onSubmit).toHaveBeenCalledWith({
+      teamDescription: '',
+      supervisorProviderId: 'provider-1',
+      supervisorModel: 'gpt-5',
+      assistantIds: ['assistant-1']
+    })
   })
 })

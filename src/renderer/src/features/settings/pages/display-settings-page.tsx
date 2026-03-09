@@ -42,10 +42,9 @@ export function DisplaySettingsPage(): React.JSX.Element {
   const toggleTransparent = async (): Promise<void> => {
     const newValue = !isTransparent
     setIsTransparent(newValue)
-    await setUiConfig({ transparent: newValue })
-      .catch(() => {
-        setIsTransparent(!newValue)
-      })
+    await setUiConfig({ transparent: newValue }).catch(() => {
+      setIsTransparent(!newValue)
+    })
   }
 
   return (

@@ -240,21 +240,22 @@ describe('team renderer data layer', () => {
   it('normalizes sparse team workspace payloads from the API', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify([
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify([
+              {
+                id: 'workspace-1',
+                name: 'Docs Workspace',
+                createdAt: '2026-03-07T00:00:00.000Z',
+                updatedAt: '2026-03-07T00:00:00.000Z'
+              }
+            ]),
             {
-              id: 'workspace-1',
-              name: 'Docs Workspace',
-              createdAt: '2026-03-07T00:00:00.000Z',
-              updatedAt: '2026-03-07T00:00:00.000Z'
+              status: 200,
+              headers: { 'Content-Type': 'application/json' }
             }
-          ]),
-          {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-          }
-        )
+          )
       )
     )
 
@@ -274,13 +275,14 @@ describe('team renderer data layer', () => {
 
   it('creates a team chat transport for the team endpoint and captures the run id header', async () => {
     const onRunStarted = vi.fn()
-    const fetchSpy = vi.fn(async () =>
-      new Response('ok', {
-        status: 200,
-        headers: {
-          'x-team-run-id': 'run-1'
-        }
-      })
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response('ok', {
+          status: 200,
+          headers: {
+            'x-team-run-id': 'run-1'
+          }
+        })
     )
     vi.stubGlobal('fetch', fetchSpy)
 
@@ -320,19 +322,20 @@ describe('team renderer data layer', () => {
       createdAt: '2026-03-07T00:00:00.000Z'
     }
     const encoder = new TextEncoder()
-    const fetchSpy = vi.fn(async () =>
-      new Response(
-        new ReadableStream({
-          start(controller) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
-            controller.close()
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+              controller.close()
+            }
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'text/event-stream; charset=utf-8' }
           }
-        }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'text/event-stream; charset=utf-8' }
-        }
-      )
+        )
     )
     vi.stubGlobal('fetch', fetchSpy)
     const eventSourceSpy = vi.fn()

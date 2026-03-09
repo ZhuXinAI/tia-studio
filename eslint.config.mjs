@@ -5,6 +5,12 @@ import eslintPluginReact from 'eslint-plugin-react'
 import eslintPluginReactHooks from 'eslint-plugin-react-hooks'
 import eslintPluginReactRefresh from 'eslint-plugin-react-refresh'
 
+const reactRefreshRules = (() => {
+  const nextRules = { ...eslintPluginReactRefresh.configs.vite.rules }
+  delete nextRules['react-refresh/only-export-components']
+  return nextRules
+})()
+
 export default defineConfig(
   { ignores: ['**/node_modules', '**/dist', '**/out', '**/.worktrees'] },
   tseslint.configs.recommended,
@@ -25,12 +31,33 @@ export default defineConfig(
     },
     rules: {
       ...eslintPluginReactHooks.configs.recommended.rules,
-      ...eslintPluginReactRefresh.configs.vite.rules,
+      ...reactRefreshRules,
+      'react-refresh/only-export-components': [
+        'warn',
+        {
+          allowConstantExport: true,
+          allowExportNames: [
+            'useTheme',
+            'buttonVariants',
+            'imageVariants',
+            'reasoningVariants',
+            'toolGroupVariants',
+            'validateProviderForm',
+            'parseProviderModelsInput',
+            'shouldShowProviderModelsField'
+          ]
+        }
+      ],
       // Disable strict rules that cause too many errors
       '@typescript-eslint/explicit-function-return-type': 'off',
       'react/prop-types': 'off',
-      'react-refresh/only-export-components': 'warn',
       'react-hooks/set-state-in-effect': 'off'
+    }
+  },
+  {
+    files: ['**/*.{js,mjs,cjs}'],
+    rules: {
+      '@typescript-eslint/explicit-function-return-type': 'off'
     }
   },
   eslintConfigPrettier

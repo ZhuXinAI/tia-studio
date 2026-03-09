@@ -1,7 +1,7 @@
-import type { MastraLanguageModel, MastraLegacyLanguageModel } from '@mastra/core/agent'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
+import type { MastraLanguageModel, MastraLegacyLanguageModel } from '@mastra/core/agent'
 import { createOllama } from 'ollama-ai-provider'
 
 export type ProviderModelConfig = {

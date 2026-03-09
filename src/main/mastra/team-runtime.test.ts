@@ -317,9 +317,7 @@ describe('TeamRuntimeService', () => {
 
     expect(localFilesystemOptions.length).toBeGreaterThan(0)
     expect(
-      localFilesystemOptions.every(
-        (value) => value.basePath === path.resolve('/team/workspace')
-      )
+      localFilesystemOptions.every((value) => value.basePath === path.resolve('/team/workspace'))
     ).toBe(true)
   })
 

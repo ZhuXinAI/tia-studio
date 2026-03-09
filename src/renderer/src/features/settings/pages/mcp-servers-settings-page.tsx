@@ -361,9 +361,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight">{t('settings.mcp.title')}</h1>
-            <p className="text-muted-foreground text-sm">
-              {t('settings.mcp.description')}
-            </p>
+            <p className="text-muted-foreground text-sm">{t('settings.mcp.description')}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -405,12 +403,10 @@ export function McpServersSettingsPage(): React.JSX.Element {
             ) : null}
 
             {!isLoading && serverEntries.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                {t('settings.mcp.empty')}
-              </p>
+              <p className="text-muted-foreground text-sm">{t('settings.mcp.empty')}</p>
             ) : null}
 
-            {serverEntries.map(([serverId, server]) => (
+            {serverEntries.map(([serverId, server]) =>
               (() => {
                 const requiredRuntime = getRequiredManagedRuntimeKind(server.command)
 
@@ -622,7 +618,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
                   </article>
                 )
               })()
-            ))}
+            )}
           </CardContent>
         </Card>
       </div>

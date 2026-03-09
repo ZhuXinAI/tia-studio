@@ -142,10 +142,7 @@ function toErrorMessage(error: unknown, t: (key: string) => string): string {
   return t('common.errors.unexpectedRequest')
 }
 
-function getSkillSourceLabel(
-  source: AssistantSkillSource,
-  t: (key: string) => string
-): string {
+function getSkillSourceLabel(source: AssistantSkillSource, t: (key: string) => string): string {
   if (source === 'workspace') {
     return t('assistants.editor.skillSources.workspace')
   }
@@ -428,7 +425,9 @@ export function AssistantEditor({
           {activeTab === 'essential' ? (
             <div className="space-y-4">
               <Field>
-                <FieldLabel htmlFor="assistant-name">{t('assistants.editor.fields.name')}</FieldLabel>
+                <FieldLabel htmlFor="assistant-name">
+                  {t('assistants.editor.fields.name')}
+                </FieldLabel>
                 <Input
                   id="assistant-name"
                   value={values.name}
@@ -438,7 +437,9 @@ export function AssistantEditor({
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="assistant-provider">{t('assistants.editor.fields.provider')}</FieldLabel>
+                <FieldLabel htmlFor="assistant-provider">
+                  {t('assistants.editor.fields.provider')}
+                </FieldLabel>
                 <Button
                   type="button"
                   variant="outline"
@@ -455,7 +456,9 @@ export function AssistantEditor({
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="assistant-description">{t('assistants.editor.fields.description')}</FieldLabel>
+                <FieldLabel htmlFor="assistant-description">
+                  {t('assistants.editor.fields.description')}
+                </FieldLabel>
                 <p className="text-muted-foreground text-xs mb-2">
                   {t('assistants.editor.descriptionHelp')}
                 </p>
@@ -469,7 +472,9 @@ export function AssistantEditor({
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="assistant-prompt">{t('assistants.editor.fields.prompt')}</FieldLabel>
+                <FieldLabel htmlFor="assistant-prompt">
+                  {t('assistants.editor.fields.prompt')}
+                </FieldLabel>
                 <Textarea
                   id="assistant-prompt"
                   rows={4}

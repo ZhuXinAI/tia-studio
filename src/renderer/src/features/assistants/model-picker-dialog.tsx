@@ -1,12 +1,7 @@
 import { Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { ProviderRecord } from '../settings/providers/providers-query'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle
-} from '../../components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { Input } from '../../components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { cn } from '../../lib/utils'
@@ -120,17 +115,13 @@ export function ModelPickerDialog({
                     type="button"
                     className={cn(
                       'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors',
-                      isSelected
-                        ? 'bg-primary/10 text-primary'
-                        : 'hover:bg-accent/40'
+                      isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-accent/40'
                     )}
                     onClick={() => handleSelect(provider.id)}
                   >
                     <Avatar className="h-10 w-10 shrink-0">
                       {avatarPath ? <AvatarImage src={avatarPath} alt={provider.name} /> : null}
-                      <AvatarFallback className="text-xs font-semibold">
-                        {initials}
-                      </AvatarFallback>
+                      <AvatarFallback className="text-xs font-semibold">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="text-base font-semibold truncate">{provider.name}</p>
