@@ -15,6 +15,7 @@ import { MCPClient, type MastraMCPServerDefinition } from '@mastra/mcp'
 import type { UIMessage, UIMessageChunk } from 'ai'
 import { ChannelEventBus } from '../channels/channel-event-bus'
 import type { ChannelTarget } from '../channels/types'
+import type { AssistantCronJobsService } from '../cron/assistant-cron-jobs-service'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type {
   ManagedRuntimeKind,
@@ -30,6 +31,7 @@ import { ensureAssistantWorkspaceFiles } from './assistant-workspace'
 import { resolveModel } from './model-resolver'
 import { createBrowserSearchTool } from './tools/browser-search-tool'
 import { createChannelTools } from './tools/channel-tools'
+import { createCronTools } from './tools/cron-tools'
 import {
   assistantWorkspaceContextInputProcessor,
   createSoulMemoryTools
@@ -83,6 +85,10 @@ type AssistantRuntimeServiceOptions = {
   webSearchSettingsRepo: WebSearchSettingsRepository
   mcpServersRepo: McpServersRepository
   channelEventBus?: ChannelEventBus
+  cronJobService?: Pick<
+    AssistantCronJobsService,
+    'createCronJob' | 'listAssistantCronJobs' | 'removeAssistantCronJob'
+  >
   managedRuntimeResolver?: {
     getStatus: () => Promise<ManagedRuntimesState>
     resolveManagedCommand: (
@@ -482,6 +488,13 @@ export class AssistantRuntimeService implements AssistantRuntime {
     const workspaceRootPath = this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})
     const soulMemoryTools = workspaceRootPath ? createSoulMemoryTools({ workspaceRootPath }) : {}
     const workLogTools = workspaceRootPath ? createWorkLogTools({ workspaceRootPath }) : {}
+    const cronTools =
+      workspaceRootPath && this.options.cronJobService
+        ? createCronTools({
+            assistantId: assistant.id,
+            cronJobService: this.options.cronJobService
+          })
+        : {}
     const channelTools = createChannelTools({
       bus: this.channelEventBus,
       workspaceRootPath
@@ -490,6 +503,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       browserSearch: browserSearchTool,
       ...soulMemoryTools,
       ...workLogTools,
+      ...cronTools,
       ...channelTools,
       ...mcpTools
     }
