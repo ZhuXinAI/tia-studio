@@ -505,7 +505,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       timeZoneName: 'short'
     })
     const baseInstructions = assistant.instructions || 'You are a helpful assistant.'
-    const agentInstructions = `${baseInstructions}\n\nCurrent date and time: ${currentDateTime}\n\nWhen users ask for current web information, call the browserSearch tool before answering.`
+    const agentInstructions = `${baseInstructions}\n\nCurrent date and time: ${currentDateTime}\n\n`
 
     const storage = this.options.mastra.getStorage()
     const memory = new Memory({
