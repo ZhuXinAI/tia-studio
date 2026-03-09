@@ -23,6 +23,10 @@ export type ListThreadsOptions = {
   includeHidden?: boolean
 }
 
+function isHiddenThread(thread: AppThread): boolean {
+  return thread.metadata.system === true || thread.metadata.cron === true
+}
+
 function parseJsonObject(value: unknown): Record<string, unknown> {
   if (typeof value !== 'string' || value.trim().length === 0) {
     return {}
@@ -68,7 +72,7 @@ export class ThreadsRepository {
       return threads
     }
 
-    return threads.filter((thread) => thread.metadata.cron !== true)
+    return threads.filter((thread) => !isHiddenThread(thread))
   }
 
   async getById(id: string): Promise<AppThread | null> {
@@ -90,8 +94,14 @@ export class ThreadsRepository {
       `
         SELECT id, assistant_id, resource_id, title, metadata, last_message_at, created_at, updated_at
         FROM app_threads
-        WHERE json_extract(metadata, '$.cron') = 1
-          AND json_extract(metadata, '$.cronJobId') = ?
+        WHERE json_extract(metadata, '$.cronJobId') = ?
+          AND (
+            json_extract(metadata, '$.cron') = 1
+            OR (
+              json_extract(metadata, '$.system') = 1
+              AND json_extract(metadata, '$.systemType') = 'cron'
+            )
+          )
         LIMIT 1
       `,
       [cronJobId]

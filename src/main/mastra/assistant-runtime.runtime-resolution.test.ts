@@ -7,6 +7,13 @@ import type {
 import type { AppMcpServer } from '../persistence/repos/mcp-servers-repo'
 import { AssistantRuntimeService } from './assistant-runtime'
 
+vi.mock('electron', () => ({
+  app: {
+    getPath: () => '/tmp/tia-studio-test'
+  },
+  BrowserWindow: undefined
+}))
+
 function createManagedRuntimeState(
   readyKinds: ManagedRuntimeKind[] = []
 ): ManagedRuntimesState {
