@@ -339,6 +339,44 @@ describe('ChannelMessageRouter', () => {
     expect(publishedEvents).toEqual([])
   })
 
+  it('publishes a thread message updated event after processing inbound channel messages', async () => {
+    const appendMessagesUpdated = vi.fn()
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
+      createAssistantReplyStream('Reply from assistant')
+    )
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat),
+      threadMessageEventsStore: {
+        appendMessagesUpdated
+      }
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-thread-update',
+      channelId,
+      channelType: 'lark',
+      message: {
+        id: 'msg-1',
+        remoteChatId: 'oc_123',
+        senderId: 'ou_user',
+        content: 'hello',
+        timestamp: new Date('2026-03-08T00:00:00.000Z')
+      }
+    })
+
+    expect(appendMessagesUpdated).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assistantId,
+        profileId: 'default-profile',
+        source: 'channel'
+      })
+    )
+  })
+
   it('returns a friendly 404 message for JSON error with statusCode 404', async () => {
     const publishedEvents: unknown[] = []
     const errorJson = JSON.stringify({

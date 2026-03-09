@@ -1,6 +1,7 @@
 {
   "appShell": {
     "nav": {
+      "chats": "Chats",
       "home": "Home",
       "claws": "Claws",
       "team": "Team",

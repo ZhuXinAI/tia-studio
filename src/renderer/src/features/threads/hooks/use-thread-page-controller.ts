@@ -24,7 +24,11 @@ import {
   listThreads,
   type ThreadRecord
 } from '../threads-query'
-import { createThreadChatTransport, listThreadChatMessages } from '../chat-query'
+import {
+  openAssistantMessageEventsStream,
+  createThreadChatTransport,
+  listThreadChatMessages,
+} from '../chat-query'
 import {
   buildAssistantThreadBranches,
   evaluateAssistantReadiness,
@@ -432,6 +436,50 @@ export function useThreadPageController() {
       active = false
     }
   }, [profileId, selectedAssistant?.id, selectedThread?.id])
+
+  useEffect(() => {
+    const assistantId = selectedAssistant?.id
+
+    if (!assistantId) {
+      return
+    }
+
+    const streamHandle = openAssistantMessageEventsStream({
+      assistantId,
+      profileId,
+      onEvent: (event) => {
+        if (
+          event.type !== 'thread-messages-updated' ||
+          event.assistantId !== assistantId ||
+          event.profileId !== profileId
+        ) {
+          return
+        }
+
+        if (selectedThread?.id === event.threadId) {
+          void listThreadChatMessages({
+            assistantId,
+            threadId: selectedThread.id,
+            profileId
+          })
+            .then((messages) => {
+              setMessages(messages)
+            })
+            .catch(() => undefined)
+        }
+
+        void listThreads(assistantId)
+          .then((latestThreads) => {
+            setThreads(sortThreadsByRecentActivity(latestThreads))
+          })
+          .catch(() => undefined)
+      }
+    })
+
+    return () => {
+      streamHandle.close()
+    }
+  }, [profileId, selectedAssistant?.id, selectedThread?.id, setMessages])
 
   const createNewThread = useCallback(
     async (options?: { notify?: boolean }): Promise<ThreadRecord | null> => {
