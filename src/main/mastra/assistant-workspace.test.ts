@@ -29,16 +29,16 @@ describe('assistant workspace', () => {
     )
 
     await expect(readFile(path.join(workspaceRoot, 'IDENTITY.md'), 'utf8')).resolves.toContain(
-      '# IDENTITY.md'
+      '**Name:**'
     )
     await expect(readFile(path.join(workspaceRoot, 'SOUL.md'), 'utf8')).resolves.toContain(
-      '# SOUL.md'
+      'Be genuinely helpful, not performatively helpful.'
     )
     await expect(readFile(path.join(workspaceRoot, 'MEMORY.md'), 'utf8')).resolves.toContain(
-      '# MEMORY.md'
+      'Curated long-term memory'
     )
     await expect(readFile(path.join(workspaceRoot, 'HEARTBEAT.md'), 'utf8')).resolves.toContain(
-      '# HEARTBEAT.md'
+      'skip heartbeat'
     )
   })
 
