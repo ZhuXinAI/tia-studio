@@ -12,6 +12,7 @@ import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import { ChannelEventBus } from '../channels/channel-event-bus'
+import { appendWorkLogEntry } from '../cron/work-log-writer'
 import type { AssistantCronJobsService } from '../cron/assistant-cron-jobs-service'
 import { AssistantRuntimeService } from './assistant-runtime'
 import { createMastraInstance } from './store'
@@ -713,7 +714,7 @@ describe('AssistantRuntimeService', () => {
     )
   })
 
-  it('injects heartbeat request context and omits memory persistence for cron runs', async () => {
+  it('omits heartbeat request context and memory persistence for cron runs', async () => {
     handleChatStreamMock.mockReset()
     toAISdkV5MessagesMock.mockReset()
     toAISdkV5MessagesMock.mockImplementation((messages) => messages)
@@ -776,10 +777,129 @@ describe('AssistantRuntimeService', () => {
       } & Record<string, unknown>
     }
 
-    expect(handleCall.params.requestContext.get(HEARTBEAT_RUN_CONTEXT_KEY)).toEqual(
-      expect.any(String)
-    )
+    expect(handleCall.params.requestContext.get(HEARTBEAT_RUN_CONTEXT_KEY)).toBeUndefined()
     expect('memory' in handleCall.params).toBe(false)
+  })
+
+  it('injects heartbeat request context, omits memory persistence, and adds recent work-log context for heartbeat runs', async () => {
+    handleChatStreamMock.mockReset()
+    toAISdkV5MessagesMock.mockReset()
+    toAISdkV5MessagesMock.mockImplementation((messages) => messages)
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.close()
+        }
+      })
+    )
+
+    const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-heartbeat-runtime-'))
+
+    try {
+      await appendWorkLogEntry({
+        workspaceRootPath: workspaceRoot,
+        assistantName: 'TIA',
+        outputText: 'Recent work entry.',
+        occurredAt: new Date('2026-03-10T00:20:00.000Z')
+      })
+      await appendWorkLogEntry({
+        workspaceRootPath: workspaceRoot,
+        assistantName: 'TIA',
+        outputText: 'Old work entry.',
+        occurredAt: new Date('2026-03-09T22:00:00.000Z')
+      })
+
+      vi.setSystemTime(new Date('2026-03-10T00:30:00.000Z'))
+
+      const assistant = buildAssistant({
+        workspaceConfig: {
+          rootPath: workspaceRoot
+        }
+      })
+      const runtime = new AssistantRuntimeService({
+        mastra: await createMastraInstance(':memory:'),
+        assistantsRepo: {
+          getById: vi.fn(async () => assistant)
+        } as unknown as AssistantsRepository,
+        providersRepo: {
+          getById: vi.fn(async () => buildProvider())
+        } as unknown as ProvidersRepository,
+        threadsRepo: {
+          getById: vi.fn(async () => ({
+            id: 'thread-1',
+            assistantId: assistant.id,
+            resourceId: 'profile-1',
+            title: 'Heartbeat thread',
+            metadata: {
+              system: true,
+              systemType: 'heartbeat'
+            },
+            lastMessageAt: null,
+            createdAt: '2026-03-02T00:00:00.000Z',
+            updatedAt: '2026-03-02T00:00:00.000Z'
+          }))
+        } as unknown as ThreadsRepository,
+        webSearchSettingsRepo: {
+          getDefaultEngine: vi.fn(async () => 'bing'),
+          getKeepBrowserWindowOpen: vi.fn(async () => false)
+        } as unknown as WebSearchSettingsRepository,
+        mcpServersRepo: {
+          getSettings: vi.fn(async () => ({ mcpServers: {} }))
+        } as never
+      })
+      ;(
+        runtime as unknown as {
+          ensureAgentRegistered: () => Promise<void>
+        }
+      ).ensureAgentRegistered = vi.fn(async () => undefined)
+
+      await runtime.runHeartbeat({
+        assistantId: assistant.id,
+        threadId: 'thread-1',
+        prompt: 'Review the recent work and decide whether follow-up is needed.',
+        intervalMinutes: 30
+      })
+
+      const handleCall = handleChatStreamMock.mock.calls[0]?.[0] as {
+        params: {
+          requestContext: {
+            get: (key: string) => unknown
+          }
+          messages: Array<Record<string, unknown>>
+        } & Record<string, unknown>
+      }
+
+      expect(handleCall.params.requestContext.get(HEARTBEAT_RUN_CONTEXT_KEY)).toEqual(
+        expect.any(String)
+      )
+      expect('memory' in handleCall.params).toBe(false)
+      expect(handleCall.params.messages).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            role: 'system',
+            content: expect.stringContaining('Recent work-log context')
+          }),
+          expect.objectContaining({
+            role: 'system',
+            content: expect.stringContaining('Recent work entry.')
+          }),
+          expect.objectContaining({
+            role: 'user',
+            content: 'Review the recent work and decide whether follow-up is needed.'
+          })
+        ])
+      )
+      expect(handleCall.params.messages).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            role: 'system',
+            content: expect.stringContaining('Old work entry.')
+          })
+        ])
+      )
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true })
+    }
   })
 
   it('collects final assistant output text for cron runs', async () => {

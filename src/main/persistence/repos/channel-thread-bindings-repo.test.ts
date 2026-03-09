@@ -80,4 +80,20 @@ describe('ChannelThreadBindingsRepository', () => {
       threadId
     })
   })
+
+  it('lists bindings by thread ids', async () => {
+    await repo.create({
+      channelId,
+      remoteChatId: 'oc_123',
+      threadId
+    })
+
+    await expect(repo.listByThreadIds([threadId, 'missing-thread'])).resolves.toEqual([
+      expect.objectContaining({
+        channelId,
+        remoteChatId: 'oc_123',
+        threadId
+      })
+    ])
+  })
 })

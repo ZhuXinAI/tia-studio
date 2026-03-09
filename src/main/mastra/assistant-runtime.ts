@@ -3,7 +3,7 @@ import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { Agent } from '@mastra/core/agent'
 import type { AgentExecutionOptions, ToolsInput } from '@mastra/core/agent'
-import type { MessageListInput } from '@mastra/core/agent/message-list'
+import type { MessageInput, MessageListInput } from '@mastra/core/agent/message-list'
 import type { MemoryConfig } from '@mastra/core/memory'
 import type { Mastra } from '@mastra/core/mastra'
 import { RequestContext } from '@mastra/core/request-context'
@@ -16,7 +16,10 @@ import type { UIMessage, UIMessageChunk } from 'ai'
 import { ChannelEventBus } from '../channels/channel-event-bus'
 import type { ChannelTarget } from '../channels/types'
 import type { AssistantCronJobsService } from '../cron/assistant-cron-jobs-service'
+import { buildHeartbeatWorklogContext } from '../heartbeat/heartbeat-context'
+import { listRecentConversations } from '../heartbeat/recent-conversations'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
+import type { ChannelThreadBindingsRepository } from '../persistence/repos/channel-thread-bindings-repo'
 import type {
   ManagedRuntimeKind,
   ManagedRuntimeRecord,
@@ -62,6 +65,13 @@ type RunCronJobParams = {
   prompt: string
 }
 
+type RunHeartbeatParams = {
+  assistantId: string
+  threadId: string
+  prompt: string
+  intervalMinutes: number
+}
+
 type CronJobRunResult = {
   outputText: string
 }
@@ -79,6 +89,7 @@ export type AssistantRuntime = {
   streamChat: (params: StreamChatParams) => Promise<ReadableStream<UIMessageChunk>>
   listThreadMessages: (params: ListThreadMessagesParams) => Promise<UIMessage[]>
   runCronJob: (params: RunCronJobParams) => Promise<CronJobRunResult>
+  runHeartbeat: (params: RunHeartbeatParams) => Promise<CronJobRunResult>
 }
 
 type AssistantRuntimeServiceOptions = {
@@ -86,6 +97,7 @@ type AssistantRuntimeServiceOptions = {
   assistantsRepo: AssistantsRepository
   providersRepo: ProvidersRepository
   threadsRepo: ThreadsRepository
+  channelThreadBindingsRepo?: ChannelThreadBindingsRepository
   webSearchSettingsRepo: WebSearchSettingsRepository
   mcpServersRepo: McpServersRepository
   channelEventBus?: ChannelEventBus
@@ -169,25 +181,16 @@ export class AssistantRuntimeService implements AssistantRuntime {
     })
 
     const requestContext = new RequestContext()
-    requestContext.set(HEARTBEAT_RUN_CONTEXT_KEY, randomUUID())
 
     const stream = await handleChatStream({
       mastra: this.options.mastra,
       agentId: assistant.id,
       params: {
-        messages: toAISdkV5Messages([
-          {
-            id: `cron:${params.threadId}:${randomUUID()}`,
-            role: 'user',
-            content: params.prompt,
-            parts: [
-              {
-                type: 'text',
-                text: params.prompt
-              }
-            ]
-          }
-        ]),
+        messages: this.buildScheduledRunMessages({
+          kind: 'cron',
+          threadId: params.threadId,
+          prompt: params.prompt
+        }),
         maxSteps: assistant.maxSteps,
         providerOptions: this.buildProviderOptions(provider.type),
         requestContext
@@ -198,6 +201,84 @@ export class AssistantRuntimeService implements AssistantRuntime {
     return {
       outputText: await this.collectStreamText(stream as ReadableStream<UIMessageChunk>)
     }
+  }
+
+  async runHeartbeat(params: RunHeartbeatParams): Promise<CronJobRunResult> {
+    const { assistant, provider } = await this.getAssistantContext(params.assistantId)
+    await this.getThreadForAssistant({
+      assistantId: params.assistantId,
+      threadId: params.threadId
+    })
+    await this.ensureAgentRegistered(assistant, provider)
+
+    const requestContext = new RequestContext()
+    requestContext.set(HEARTBEAT_RUN_CONTEXT_KEY, randomUUID())
+
+    const workspaceRootPath = this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})
+    const worklogContext = workspaceRootPath
+      ? await buildHeartbeatWorklogContext({
+          workspaceRootPath,
+          intervalMinutes: params.intervalMinutes
+        })
+      : null
+
+    const stream = await handleChatStream({
+      mastra: this.options.mastra,
+      agentId: assistant.id,
+      params: {
+        messages: this.buildScheduledRunMessages({
+          kind: 'heartbeat',
+          threadId: params.threadId,
+          prompt: params.prompt,
+          systemContext: worklogContext
+        }),
+        maxSteps: assistant.maxSteps,
+        providerOptions: this.buildProviderOptions(provider.type),
+        requestContext
+      },
+      sendReasoning: true
+    })
+
+    return {
+      outputText: await this.collectStreamText(stream as ReadableStream<UIMessageChunk>)
+    }
+  }
+
+  private buildScheduledRunMessages(input: {
+    kind: 'cron' | 'heartbeat'
+    threadId: string
+    prompt: string
+    systemContext?: string | null
+  }): ReturnType<typeof toAISdkV5Messages> {
+    const messages: MessageInput[] = []
+
+    if (input.systemContext) {
+      messages.push({
+        id: `${input.kind}:context:${input.threadId}:${randomUUID()}`,
+        role: 'system',
+        content: input.systemContext,
+        parts: [
+          {
+            type: 'text',
+            text: input.systemContext
+          }
+        ]
+      })
+    }
+
+    messages.push({
+      id: `${input.kind}:${input.threadId}:${randomUUID()}`,
+      role: 'user',
+      content: input.prompt,
+      parts: [
+        {
+          type: 'text',
+          text: input.prompt
+        }
+      ]
+    })
+
+    return toAISdkV5Messages(messages)
   }
 
   private streamWithThreadTitleSync(
@@ -536,7 +617,16 @@ export class AssistantRuntimeService implements AssistantRuntime {
         : {}
     const channelTools = createChannelTools({
       bus: this.channelEventBus,
-      workspaceRootPath
+      workspaceRootPath,
+      resolveRecentConversations: this.options.channelThreadBindingsRepo
+        ? async () =>
+            listRecentConversations({
+              assistantId: assistant.id,
+              threadsRepo: this.options.threadsRepo,
+              channelThreadBindingsRepo: this.options.channelThreadBindingsRepo as ChannelThreadBindingsRepository,
+              mastra: this.options.mastra
+            })
+        : undefined
     })
     const tools: ToolsInput = {
       browserSearch: browserSearchTool,

@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { RequestContext } from '@mastra/core/request-context'
 import { afterEach, describe, expect, it } from 'vitest'
 import { ChannelEventBus } from '../../channels/channel-event-bus'
-import { CHANNEL_CONTEXT_KEY } from '../tool-context'
+import { CHANNEL_CONTEXT_KEY, HEARTBEAT_RUN_CONTEXT_KEY } from '../tool-context'
 import { createChannelTools } from './channel-tools'
 
 describe('channel tools', () => {
@@ -149,6 +149,78 @@ describe('channel tools', () => {
           type: 'file',
           filePath: path.join(workspaceRoot, 'report.txt'),
           fileName: 'report.txt'
+        }
+      }
+    ])
+  })
+
+  it('exposes recent conversations only for heartbeat runs and supports explicit send targets', async () => {
+    const bus = new ChannelEventBus()
+    const publishedEvents: unknown[] = []
+    bus.subscribe('channel.message.send-requested', (event) => {
+      publishedEvents.push(event)
+    })
+
+    const requestContext = new RequestContext()
+    requestContext.set(HEARTBEAT_RUN_CONTEXT_KEY, 'heartbeat-run-1')
+
+    const tools = createChannelTools({
+      bus,
+      workspaceRootPath: null,
+      resolveRecentConversations: async () => [
+        {
+          threadId: 'thread-1',
+          channelId: 'channel-1',
+          remoteChatId: 'chat-1',
+          lastUserMessageAt: '2026-03-10T00:20:00.000Z',
+          minutesSinceActivity: 10
+        }
+      ]
+    })
+
+    if (!tools.getRecentConversations?.execute) {
+      throw new Error('Expected getRecentConversations.execute to exist')
+    }
+    if (!tools.sendMessageToChannel.execute) {
+      throw new Error('Expected sendMessageToChannel.execute to exist')
+    }
+
+    await expect(
+      tools.getRecentConversations.execute({}, { requestContext } as never)
+    ).resolves.toEqual({
+      conversations: [
+        {
+          threadId: 'thread-1',
+          channelId: 'channel-1',
+          remoteChatId: 'chat-1',
+          lastUserMessageAt: '2026-03-10T00:20:00.000Z',
+          minutesSinceActivity: 10
+        }
+      ]
+    })
+
+    await tools.sendMessageToChannel.execute(
+      {
+        channelId: 'channel-1',
+        channelType: 'lark',
+        remoteChatId: 'chat-1',
+        message: 'Follow up from heartbeat'
+      },
+      {
+        requestContext: new RequestContext()
+      } as never
+    )
+
+    expect(publishedEvents).toEqual([
+      {
+        eventId: expect.any(String),
+        channelId: 'channel-1',
+        channelType: 'lark',
+        remoteChatId: 'chat-1',
+        content: 'Follow up from heartbeat',
+        payload: {
+          type: 'text',
+          text: 'Follow up from heartbeat'
         }
       }
     ])
