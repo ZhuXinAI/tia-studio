@@ -274,7 +274,7 @@ export function AssistantEditor({
 
   return (
     <form className="py-4" onSubmit={handleSubmit}>
-      <h3 className="text-sm font-medium">{title}</h3>
+      <h3 className="text-sm font-medium mb-2">{title}</h3>
 
       <div className="grid gap-4 md:grid-cols-[176px_minmax(0,1fr)]">
         <aside className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card/40 p-2">
@@ -304,7 +304,7 @@ export function AssistantEditor({
           </button>
         </aside>
 
-        <div data-testid="assistant-editor-panel" className="h-[32rem] overflow-y-auto py-4 pr-1">
+        <div data-testid="assistant-editor-panel" className="h-[32rem] overflow-y-auto py-4 px-1">
           {activeTab === 'essential' ? (
             <div className="space-y-4">
               <Field>
