@@ -6,11 +6,13 @@ import {
   createProvider,
   deleteProvider,
   listProviders,
+  providerKeys,
   testProviderConnection,
   updateProvider,
   type ProviderRecord,
   type SaveProviderInput
 } from '../providers/providers-query'
+import { queryClient } from '../../../lib/query-client'
 import { ProvidersForm } from '../providers/providers-form'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
@@ -164,6 +166,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
     setIsLoading(true)
     try {
       const nextProviders = await listProviders()
+      queryClient.setQueryData(providerKeys.lists(), nextProviders)
       setProviders(nextProviders)
       setSelectedProviderId((currentProviderId) => {
         if (
@@ -202,11 +205,13 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
     try {
       const updatedProvider = await updateProvider(selectedProvider.id, values)
-      setProviders((currentProviders) =>
-        currentProviders.map((provider) =>
+      setProviders((currentProviders) => {
+        const nextProviders = currentProviders.map((provider) =>
           provider.id === updatedProvider.id ? updatedProvider : provider
         )
-      )
+        queryClient.setQueryData(providerKeys.lists(), nextProviders)
+        return nextProviders
+      })
       setSelectedProviderId(updatedProvider.id)
       toast.success(t('settings.providers.toasts.providerSaved'))
     } catch (error) {
@@ -221,7 +226,11 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
     try {
       const createdProvider = await createProvider(values)
-      setProviders((currentProviders) => [createdProvider, ...currentProviders])
+      setProviders((currentProviders) => {
+        const nextProviders = [createdProvider, ...currentProviders]
+        queryClient.setQueryData(providerKeys.lists(), nextProviders)
+        return nextProviders
+      })
       setSelectedProviderId(createdProvider.id)
       setIsCreateDialogOpen(false)
       toast.success(t('settings.providers.toasts.providerCreated'))
@@ -266,6 +275,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
       await deleteProvider(selectedProvider.id)
       setProviders((currentProviders) => {
         const nextProviders = currentProviders.filter((item) => item.id !== selectedProvider.id)
+        queryClient.setQueryData(providerKeys.lists(), nextProviders)
         setSelectedProviderId((currentProviderId) => {
           if (currentProviderId !== selectedProvider.id) {
             return currentProviderId

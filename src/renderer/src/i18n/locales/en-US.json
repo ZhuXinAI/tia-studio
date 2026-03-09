@@ -575,7 +575,8 @@
       "createTitle": "Create Assistant",
       "tabs": {
         "essential": "Essential Settings",
-        "tools": "Tools"
+        "tools": "Tools",
+        "skills": "Skills"
       },
       "fields": {
         "name": "Name",
@@ -612,6 +613,22 @@
         "providerRequired": "Provider is required",
         "maxStepsInvalid": "Max steps must be a positive whole number",
         "workspacePickerFailed": "Unable to pick workspace folder"
+      },
+      "skillSources": {
+        "workspace": "Workspace",
+        "globalClaude": "Global ~/.claude/skills",
+        "globalAgent": "Global ~/.agent/skills"
+      },
+      "skills": {
+        "description": "Skills are loaded from `~/.claude/skills`, `~/.agent/skills`, and `./skills`.",
+        "workspaceRequired": "Set a workspace path first to load workspace skills.",
+        "loading": "Loading skills...",
+        "empty": "No skills found in the configured global or workspace folders.",
+        "noDescription": "No description found in SKILL.md.",
+        "removeAriaLabel": "Remove skill {{name}}",
+        "removingButton": "Removing...",
+        "removeButton": "Remove",
+        "readOnly": "Read-only"
       }
     }
   },

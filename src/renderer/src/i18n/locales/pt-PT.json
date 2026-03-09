@@ -575,7 +575,8 @@
       "createTitle": "Criar assistente",
       "tabs": {
         "essential": "Definições essenciais",
-        "tools": "Ferramentas"
+        "tools": "Ferramentas",
+        "skills": "Skills"
       },
       "fields": {
         "name": "Nome",
@@ -612,6 +613,22 @@
         "providerRequired": "O fornecedor é obrigatório",
         "maxStepsInvalid": "Os passos máximos devem ser um número inteiro positivo",
         "workspacePickerFailed": "Não foi possível escolher a pasta do workspace"
+      },
+      "skillSources": {
+        "workspace": "Workspace",
+        "globalClaude": "Global ~/.claude/skills",
+        "globalAgent": "Global ~/.agent/skills"
+      },
+      "skills": {
+        "description": "Skills are loaded from `~/.claude/skills`, `~/.agent/skills`, and `./skills`.",
+        "workspaceRequired": "Set a workspace path first to load workspace skills.",
+        "loading": "Loading skills...",
+        "empty": "No skills found in the configured global or workspace folders.",
+        "noDescription": "No description found in SKILL.md.",
+        "removeAriaLabel": "Remove skill {{name}}",
+        "removingButton": "Removing...",
+        "removeButton": "Remove",
+        "readOnly": "Read-only"
       }
     }
   },

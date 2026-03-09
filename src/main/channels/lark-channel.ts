@@ -21,6 +21,12 @@ type LarkClientLike = {
           }
         }): Promise<unknown>
       }
+      messageReaction: {
+        create(input: {
+          path: { message_id: string }
+          data: { reaction_type: { emoji_type: string } }
+        }): Promise<unknown>
+      }
     }
   }
 }
@@ -138,6 +144,13 @@ export class LarkChannel extends AbstractChannel {
 
   async stop(): Promise<void> {
     this.wsClient.close()
+  }
+
+  async acknowledgeMessage(messageId: string): Promise<void> {
+    await this.client.im.v1.messageReaction.create({
+      path: { message_id: messageId },
+      data: { reaction_type: { emoji_type: 'Get' } }
+    })
   }
 
   async send(remoteChatId: string, message: string): Promise<void> {

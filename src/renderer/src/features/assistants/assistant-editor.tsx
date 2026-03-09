@@ -17,6 +17,12 @@ import {
   isManagedRuntimeReady,
   type ManagedRuntimesState
 } from '../settings/runtimes/managed-runtimes-query'
+import {
+  listAssistantSkills,
+  removeAssistantWorkspaceSkill,
+  type AssistantSkillRecord,
+  type AssistantSkillSource
+} from './assistant-skills-query'
 
 type AssistantEditorValues = {
   name: string
@@ -28,7 +34,7 @@ type AssistantEditorValues = {
   mcpConfig: Record<string, boolean>
 }
 
-type AssistantEditorTab = 'essential' | 'tools'
+type AssistantEditorTab = 'essential' | 'tools' | 'skills'
 
 type AssistantEditorProps = {
   providers: ProviderRecord[]
@@ -127,6 +133,30 @@ function parseMaxSteps(rawValue: string): number | null {
   return parsed
 }
 
+function toErrorMessage(error: unknown, t: (key: string) => string): string {
+  if (error instanceof Error) {
+    const normalized = error.message.trim()
+    return normalized.length > 0 ? normalized : t('common.errors.unexpectedRequest')
+  }
+
+  return t('common.errors.unexpectedRequest')
+}
+
+function getSkillSourceLabel(
+  source: AssistantSkillSource,
+  t: (key: string) => string
+): string {
+  if (source === 'workspace') {
+    return t('assistants.editor.skillSources.workspace')
+  }
+
+  if (source === 'global-claude') {
+    return t('assistants.editor.skillSources.globalClaude')
+  }
+
+  return t('assistants.editor.skillSources.globalAgent')
+}
+
 function validate(values: AssistantEditorValues, t: (key: string) => string): string | null {
   if (values.name.trim().length === 0) {
     return t('assistants.editor.errors.nameRequired')
@@ -160,6 +190,10 @@ export function AssistantEditor({
   const [isSelectingWorkspacePath, setIsSelectingWorkspacePath] = useState(false)
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false)
   const [managedRuntimeState, setManagedRuntimeState] = useState<ManagedRuntimesState | null>(null)
+  const [skills, setSkills] = useState<AssistantSkillRecord[]>([])
+  const [isSkillsLoading, setIsSkillsLoading] = useState(false)
+  const [skillsError, setSkillsError] = useState<string | null>(null)
+  const [removingSkillId, setRemovingSkillId] = useState<string | null>(null)
 
   const title = useMemo(() => {
     return initialValue ? t('assistants.editor.editTitle') : t('assistants.editor.createTitle')
@@ -191,6 +225,46 @@ export function AssistantEditor({
       return requiredRuntime ? !isManagedRuntimeReady(managedRuntimeState[requiredRuntime]) : false
     })
   }, [managedRuntimeState, runtimeBackedServerEntries])
+
+  useEffect(() => {
+    if (activeTab !== 'skills') {
+      return
+    }
+
+    const workspaceRootPath = values.workspacePath.trim()
+    if (workspaceRootPath.length === 0) {
+      setSkills([])
+      setSkillsError(null)
+      setIsSkillsLoading(false)
+      return
+    }
+
+    let isCancelled = false
+    setIsSkillsLoading(true)
+    setSkillsError(null)
+
+    void listAssistantSkills(workspaceRootPath)
+      .then((loadedSkills) => {
+        if (!isCancelled) {
+          setSkills(loadedSkills)
+        }
+      })
+      .catch((loadError) => {
+        if (!isCancelled) {
+          setSkills([])
+          setSkillsError(toErrorMessage(loadError, t))
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsSkillsLoading(false)
+        }
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [activeTab, t, values.workspacePath])
 
   useEffect(() => {
     let isCancelled = false
@@ -245,9 +319,12 @@ export function AssistantEditor({
       description: values.description.trim(),
       instructions: values.instructions.trim(),
       providerId: values.providerId,
-      workspaceConfig: workspacePath.length > 0 ? {
-        rootPath: workspacePath
-      } : undefined,
+      workspaceConfig:
+        workspacePath.length > 0
+          ? {
+              rootPath: workspacePath
+            }
+          : undefined,
       mcpConfig: nextMcpConfig,
       maxSteps
     })
@@ -276,9 +353,36 @@ export function AssistantEditor({
     }
   }
 
+  const handleRemoveWorkspaceSkill = async (skill: AssistantSkillRecord): Promise<void> => {
+    if (!skill.canDelete || removingSkillId || isSubmitting) {
+      return
+    }
+
+    const workspaceRootPath = values.workspacePath.trim()
+    if (workspaceRootPath.length === 0) {
+      return
+    }
+
+    setSkillsError(null)
+    setRemovingSkillId(skill.id)
+    try {
+      await removeAssistantWorkspaceSkill({
+        workspaceRootPath,
+        relativePath: skill.relativePath
+      })
+
+      const refreshedSkills = await listAssistantSkills(workspaceRootPath)
+      setSkills(refreshedSkills)
+    } catch (removeError) {
+      setSkillsError(toErrorMessage(removeError, t))
+    } finally {
+      setRemovingSkillId(null)
+    }
+  }
+
   return (
     <form className="py-4" onSubmit={handleSubmit}>
-      <h3 className="text-sm font-medium">{title}</h3>
+      <h3 className="text-sm font-medium mb-2">{title}</h3>
 
       <div className="grid gap-4 md:grid-cols-[176px_minmax(0,1fr)]">
         <aside className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card/40 p-2">
@@ -306,9 +410,21 @@ export function AssistantEditor({
           >
             {t('assistants.editor.tabs.tools')}
           </button>
+          <button
+            type="button"
+            className={cn(
+              'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
+              activeTab === 'skills'
+                ? 'bg-secondary text-secondary-foreground'
+                : 'hover:bg-accent/40'
+            )}
+            onClick={() => setActiveTab('skills')}
+          >
+            {t('assistants.editor.tabs.skills')}
+          </button>
         </aside>
 
-        <div data-testid="assistant-editor-panel" className="h-[32rem] overflow-y-auto py-4 pr-1">
+        <div data-testid="assistant-editor-panel" className="h-[32rem] overflow-y-auto py-4 px-1">
           {activeTab === 'essential' ? (
             <div className="space-y-4">
               <Field>
@@ -487,6 +603,87 @@ export function AssistantEditor({
                   )
                 })
               )}
+            </div>
+          ) : null}
+
+          {activeTab === 'skills' ? (
+            <div className="space-y-3">
+              <p className="text-muted-foreground text-sm">
+                {t('assistants.editor.skills.description')}
+              </p>
+
+              {values.workspacePath.trim().length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  {t('assistants.editor.skills.workspaceRequired')}
+                </p>
+              ) : null}
+
+              {isSkillsLoading ? (
+                <p className="text-muted-foreground text-sm">
+                  {t('assistants.editor.skills.loading')}
+                </p>
+              ) : null}
+
+              {skillsError ? (
+                <p role="alert" className="text-destructive text-sm">
+                  {skillsError}
+                </p>
+              ) : null}
+
+              {!isSkillsLoading && values.workspacePath.trim().length > 0 && skills.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  {t('assistants.editor.skills.empty')}
+                </p>
+              ) : null}
+
+              {!isSkillsLoading
+                ? skills.map((skill) => {
+                    const isRemoving = removingSkillId === skill.id
+                    return (
+                      <article
+                        key={skill.id}
+                        className="rounded-xl border border-border/70 bg-card/50 px-4 py-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <h4 className="text-base font-medium">{skill.name}</h4>
+                            {skill.description ? (
+                              <p className="text-muted-foreground text-xs">{skill.description}</p>
+                            ) : (
+                              <p className="text-muted-foreground text-xs">
+                                {t('assistants.editor.skills.noDescription')}
+                              </p>
+                            )}
+                            <p className="text-muted-foreground text-xs">
+                              {getSkillSourceLabel(skill.source, t)} · {skill.relativePath}
+                            </p>
+                          </div>
+
+                          {skill.canDelete ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              aria-label={t('assistants.editor.skills.removeAriaLabel', {
+                                name: skill.name
+                              })}
+                              disabled={isSubmitting || isRemoving || removingSkillId !== null}
+                              onClick={() => void handleRemoveWorkspaceSkill(skill)}
+                            >
+                              {isRemoving
+                                ? t('assistants.editor.skills.removingButton')
+                                : t('assistants.editor.skills.removeButton')}
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">
+                              {t('assistants.editor.skills.readOnly')}
+                            </span>
+                          )}
+                        </div>
+                      </article>
+                    )
+                  })
+                : null}
             </div>
           ) : null}
         </div>
