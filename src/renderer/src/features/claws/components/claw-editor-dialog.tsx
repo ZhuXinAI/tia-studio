@@ -117,7 +117,7 @@ export function ClawEditorDialog({
     } else if (channelAction === 'create') {
       if (channelType === 'telegram') {
         if (channelName.trim().length === 0 || botToken.trim().length === 0) {
-          setErrorMessage('Telegram channel name and bot token are required')
+          setErrorMessage(t('claws.dialog.errors.telegramCredentialsRequired'))
           return
         }
 
@@ -171,9 +171,7 @@ export function ClawEditorDialog({
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
-          <DialogDescription>
-            Connect an assistant to a Telegram or Lark channel from one lightweight setup flow.
-          </DialogDescription>
+          <DialogDescription>{t('claws.dialog.telegramDescription')}</DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
@@ -237,7 +235,7 @@ export function ClawEditorDialog({
                 {claw.channel ? (
                   <option value="keep">{t('claws.dialog.channelActions.keep')}</option>
                 ) : null}
-                <option value="create">Create new channel</option>
+                <option value="create">{t('claws.dialog.channelActions.createGeneric')}</option>
                 {canAttachExisting ? (
                   <option value="attach">{t('claws.dialog.channelActions.attach')}</option>
                 ) : null}
@@ -273,7 +271,7 @@ export function ClawEditorDialog({
             <>
               <div className="grid gap-2">
                 <label htmlFor="claw-channel-type" className="text-sm font-medium">
-                  Channel Type
+                  {t('claws.dialog.fields.channelType')}
                 </label>
                 <select
                   id="claw-channel-type"
@@ -281,14 +279,14 @@ export function ClawEditorDialog({
                   value={channelType}
                   onChange={(event) => setChannelType(event.target.value as CreateChannelType)}
                 >
-                  <option value="lark">Lark</option>
-                  <option value="telegram">Telegram</option>
+                  <option value="lark">{t('claws.dialog.channelTypes.lark')}</option>
+                  <option value="telegram">{t('claws.dialog.channelTypes.telegram')}</option>
                 </select>
               </div>
 
               <div className="grid gap-2">
                 <label htmlFor="claw-channel-name" className="text-sm font-medium">
-                  Channel Name
+                  {t('claws.dialog.fields.channelName')}
                 </label>
                 <Input
                   id="claw-channel-name"
@@ -300,7 +298,7 @@ export function ClawEditorDialog({
               {channelType === 'telegram' ? (
                 <div className="grid gap-2">
                   <label htmlFor="claw-channel-bot-token" className="text-sm font-medium">
-                    Bot Token
+                    {t('claws.dialog.fields.botToken')}
                   </label>
                   <Input
                     id="claw-channel-bot-token"

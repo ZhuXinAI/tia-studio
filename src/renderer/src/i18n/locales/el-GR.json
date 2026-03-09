@@ -349,15 +349,22 @@
     "title": "Claws",
     "description": "Συνδέστε βοηθούς με εξωτερικά κανάλια Lark χωρίς να ψάχνετε ακατέργαστες ρυθμίσεις.",
     "newButton": "Νέο Claw",
+    "telegram": {
+      "description": "Συνδέστε βοηθούς με εξωτερικά κανάλια Telegram ή Lark χωρίς να ψάχνετε στις ακατέργαστες ρυθμίσεις.",
+      "emptyDescription": "Ξεκινήστε με έναν βοηθό, έναν πάροχο και ένα κανάλι Telegram ή Lark για την πιο γρήγορη αρχική ρύθμιση.",
+      "pairingSummary": "{{pairedCount}} σε σύζευξη · {{pendingCount}} σε αναμονή",
+      "managePairingsButton": "Διαχείριση ζευγοποιήσεων",
+      "defaultClawName": "Claw Telegram"
+    },
     "errors": {
-      "loadFailed": "Failed to load claws",
-      "saveFailed": "Failed to save claw",
-      "updateFailed": "Failed to update claw",
-      "deleteFailed": "Failed to delete claw"
+      "loadFailed": "Αποτυχία φόρτωσης των Claws",
+      "saveFailed": "Αποτυχία αποθήκευσης του Claw",
+      "updateFailed": "Αποτυχία ενημέρωσης του Claw",
+      "deleteFailed": "Αποτυχία διαγραφής του Claw"
     },
     "providers": {
-      "noneSelected": "No provider selected",
-      "unknown": "Unknown provider"
+      "noneSelected": "Δεν έχει επιλεγεί πάροχος",
+      "unknown": "Άγνωστος πάροχος"
     },
     "empty": {
       "title": "Ρυθμίστε το πρώτο σας Claw",
@@ -378,30 +385,63 @@
       "saveButton": "Αποθήκευση Claw",
       "createButton": "Δημιουργία Claw",
       "description": "Συνδέστε έναν βοηθό σε κανάλι Lark μέσα από μια απλή ροή ρύθμισης.",
+      "telegramDescription": "Συνδέστε έναν βοηθό με κανάλι Telegram ή Lark μέσα από μία ελαφριά ροή ρύθμισης.",
       "fields": {
         "assistantName": "Όνομα βοηθού",
         "provider": "Πάροχος",
         "instructions": "Οδηγίες",
         "channelAction": "Ενέργεια καναλιού",
         "existingChannel": "Υπάρχον κανάλι",
+        "channelType": "Τύπος καναλιού",
+        "channelName": "Όνομα καναλιού",
+        "botToken": "Διακριτικό bot",
         "larkChannelName": "Όνομα καναλιού Lark",
-        "appId": "App ID",
-        "appSecret": "App Secret"
+        "appId": "ID εφαρμογής",
+        "appSecret": "Μυστικό εφαρμογής"
       },
       "selectProvider": "Επιλέξτε πάροχο",
       "selectChannel": "Επιλέξτε κανάλι",
       "enableAfterSaving": "Ενεργοποίηση αυτού του Claw μετά την αποθήκευση",
+      "channelTypes": {
+        "lark": "Lark",
+        "telegram": "Telegram"
+      },
       "channelActions": {
         "keep": "Διατήρηση τρέχοντος καναλιού",
         "create": "Δημιουργία νέου καναλιού Lark",
+        "createGeneric": "Δημιουργία νέου καναλιού",
         "attach": "Σύνδεση υπάρχοντος καναλιού",
         "detach": "Αποσύνδεση τρέχοντος καναλιού"
       },
       "errors": {
-        "assistantNameRequired": "Assistant name is required",
-        "providerRequired": "Provider is required",
-        "channelRequired": "Pick a channel to attach",
-        "channelCredentialsRequired": "Lark channel name, app ID, and app secret are required"
+        "assistantNameRequired": "Το όνομα βοηθού είναι υποχρεωτικό",
+        "providerRequired": "Ο πάροχος είναι υποχρεωτικός",
+        "channelRequired": "Επιλέξτε κανάλι για σύνδεση",
+        "channelCredentialsRequired": "Απαιτούνται όνομα καναλιού Lark, ID εφαρμογής και μυστικό εφαρμογής",
+        "telegramCredentialsRequired": "Απαιτούνται όνομα καναλιού Telegram και διακριτικό bot"
+      }
+    },
+    "pairings": {
+      "title": "Διαχείριση ζευγοποιήσεων",
+      "description": "Ελέγξτε αιτήματα ζευγοποίησης Telegram για το {{clawName}}.",
+      "loading": "Φόρτωση ζευγοποιήσεων...",
+      "empty": "Δεν υπάρχουν ακόμη ζευγοποιήσεις Telegram.",
+      "senderIds": "Αναγνωριστικό αποστολέα: {{senderId}} · Αναγνωριστικό συνομιλίας: {{chatId}}",
+      "approvalCode": "Κωδικός έγκρισης: {{code}}",
+      "status": {
+        "pending": "Σε αναμονή έγκρισης",
+        "approved": "Εγκρίθηκε",
+        "rejected": "Απορρίφθηκε",
+        "revoked": "Ανακλήθηκε"
+      },
+      "actions": {
+        "approve": "Έγκριση",
+        "reject": "Απόρριψη",
+        "revoke": "Ανάκληση"
+      },
+      "errors": {
+        "loadFailed": "Αποτυχία φόρτωσης ζευγοποιήσεων",
+        "updateFailed": "Αποτυχία ενημέρωσης ζευγοποίησης"
       }
     }
   },

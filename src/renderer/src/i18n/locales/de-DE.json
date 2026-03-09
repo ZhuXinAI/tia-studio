@@ -349,15 +349,22 @@
     "title": "Claws",
     "description": "Verbindet Assistenten mit externen Lark-Kanälen, ohne rohe Einstellungen durchsuchen zu müssen.",
     "newButton": "Neuer Claw",
+    "telegram": {
+      "description": "Verbindet Assistenten mit externen Telegram- oder Lark-Kanälen, ohne rohe Einstellungen durchsuchen zu müssen.",
+      "emptyDescription": "Starte mit einem Assistenten, einem Provider und einem Telegram- oder Lark-Kanal für den schnellsten Einstieg.",
+      "pairingSummary": "{{pairedCount}} gekoppelt · {{pendingCount}} ausstehend",
+      "managePairingsButton": "Kopplungen verwalten",
+      "defaultClawName": "Telegram-Claw"
+    },
     "errors": {
-      "loadFailed": "Failed to load claws",
-      "saveFailed": "Failed to save claw",
-      "updateFailed": "Failed to update claw",
-      "deleteFailed": "Failed to delete claw"
+      "loadFailed": "Claws konnten nicht geladen werden",
+      "saveFailed": "Claw konnte nicht gespeichert werden",
+      "updateFailed": "Claw konnte nicht aktualisiert werden",
+      "deleteFailed": "Claw konnte nicht gelöscht werden"
     },
     "providers": {
-      "noneSelected": "No provider selected",
-      "unknown": "Unknown provider"
+      "noneSelected": "Kein Anbieter ausgewählt",
+      "unknown": "Unbekannter Anbieter"
     },
     "empty": {
       "title": "Richte deinen ersten Claw ein",
@@ -378,12 +385,16 @@
       "saveButton": "Claw speichern",
       "createButton": "Claw erstellen",
       "description": "Verbindet einen Assistenten in einem schlanken Ablauf mit einem Lark-Kanal.",
+      "telegramDescription": "Verbindet einen Assistenten in einem schlanken Ablauf mit einem Telegram- oder Lark-Kanal.",
       "fields": {
         "assistantName": "Assistentenname",
-        "provider": "Provider",
+        "provider": "Anbieter",
         "instructions": "Anweisungen",
         "channelAction": "Kanalaktion",
         "existingChannel": "Vorhandener Kanal",
+        "channelType": "Kanaltyp",
+        "channelName": "Kanalname",
+        "botToken": "Bot-Token",
         "larkChannelName": "Lark-Kanalname",
         "appId": "App-ID",
         "appSecret": "App-Secret"
@@ -391,17 +402,46 @@
       "selectProvider": "Provider auswählen",
       "selectChannel": "Kanal auswählen",
       "enableAfterSaving": "Diesen Claw nach dem Speichern aktivieren",
+      "channelTypes": {
+        "lark": "Lark",
+        "telegram": "Telegram"
+      },
       "channelActions": {
         "keep": "Aktuellen Kanal behalten",
         "create": "Neuen Lark-Kanal erstellen",
+        "createGeneric": "Neuen Kanal erstellen",
         "attach": "Vorhandenen Kanal verbinden",
         "detach": "Aktuellen Kanal trennen"
       },
       "errors": {
-        "assistantNameRequired": "Assistant name is required",
-        "providerRequired": "Provider is required",
-        "channelRequired": "Pick a channel to attach",
-        "channelCredentialsRequired": "Lark channel name, app ID, and app secret are required"
+        "assistantNameRequired": "Der Assistentenname ist erforderlich",
+        "providerRequired": "Ein Anbieter ist erforderlich",
+        "channelRequired": "Wähle einen Kanal zum Verbinden aus",
+        "channelCredentialsRequired": "Lark-Kanalname, App-ID und App-Secret sind erforderlich",
+        "telegramCredentialsRequired": "Telegram-Kanalname und Bot-Token sind erforderlich"
+      }
+    },
+    "pairings": {
+      "title": "Kopplungen verwalten",
+      "description": "Prüfe Telegram-Kopplungsanfragen für {{clawName}}.",
+      "loading": "Kopplungen werden geladen...",
+      "empty": "Noch keine Telegram-Kopplungen.",
+      "senderIds": "Sender-ID: {{senderId}} · Chat-ID: {{chatId}}",
+      "approvalCode": "Freigabecode: {{code}}",
+      "status": {
+        "pending": "Freigabe ausstehend",
+        "approved": "Freigegeben",
+        "rejected": "Abgelehnt",
+        "revoked": "Widerrufen"
+      },
+      "actions": {
+        "approve": "Freigeben",
+        "reject": "Ablehnen",
+        "revoke": "Widerrufen"
+      },
+      "errors": {
+        "loadFailed": "Kopplungen konnten nicht geladen werden",
+        "updateFailed": "Kopplung konnte nicht aktualisiert werden"
       }
     }
   },

@@ -349,6 +349,13 @@
     "title": "Claws",
     "description": "Connect assistants to external Lark channels without digging through raw settings.",
     "newButton": "New Claw",
+    "telegram": {
+      "description": "Connect assistants to external Telegram or Lark channels without digging through raw settings.",
+      "emptyDescription": "Start with one assistant, one provider, and one Telegram or Lark channel for the quickest onboarding path.",
+      "pairingSummary": "{{pairedCount}} paired · {{pendingCount}} pending",
+      "managePairingsButton": "Manage Pairings",
+      "defaultClawName": "Telegram claw"
+    },
     "errors": {
       "loadFailed": "Failed to load claws",
       "saveFailed": "Failed to save claw",
@@ -378,12 +385,16 @@
       "saveButton": "Save Claw",
       "createButton": "Create Claw",
       "description": "Connect an assistant to a Lark channel from one lightweight setup flow.",
+      "telegramDescription": "Connect an assistant to a Telegram or Lark channel from one lightweight setup flow.",
       "fields": {
         "assistantName": "Assistant Name",
         "provider": "Provider",
         "instructions": "Instructions",
         "channelAction": "Channel Action",
         "existingChannel": "Existing Channel",
+        "channelType": "Channel Type",
+        "channelName": "Channel Name",
+        "botToken": "Bot Token",
         "larkChannelName": "Lark Channel Name",
         "appId": "App ID",
         "appSecret": "App Secret"
@@ -391,9 +402,14 @@
       "selectProvider": "Select a provider",
       "selectChannel": "Select a channel",
       "enableAfterSaving": "Enable this claw after saving",
+      "channelTypes": {
+        "lark": "Lark",
+        "telegram": "Telegram"
+      },
       "channelActions": {
         "keep": "Keep current channel",
         "create": "Create new Lark channel",
+        "createGeneric": "Create new channel",
         "attach": "Attach existing channel",
         "detach": "Detach current channel"
       },
@@ -401,7 +417,31 @@
         "assistantNameRequired": "Assistant name is required",
         "providerRequired": "Provider is required",
         "channelRequired": "Pick a channel to attach",
-        "channelCredentialsRequired": "Lark channel name, app ID, and app secret are required"
+        "channelCredentialsRequired": "Lark channel name, app ID, and app secret are required",
+        "telegramCredentialsRequired": "Telegram channel name and bot token are required"
+      }
+    },
+    "pairings": {
+      "title": "Manage Pairings",
+      "description": "Review Telegram pairing requests for {{clawName}}.",
+      "loading": "Loading pairings...",
+      "empty": "No Telegram pairings yet.",
+      "senderIds": "Sender ID: {{senderId}} · Chat ID: {{chatId}}",
+      "approvalCode": "Approval code: {{code}}",
+      "status": {
+        "pending": "Pending approval",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "revoked": "Revoked"
+      },
+      "actions": {
+        "approve": "Approve",
+        "reject": "Reject",
+        "revoke": "Revoke"
+      },
+      "errors": {
+        "loadFailed": "Failed to load pairings",
+        "updateFailed": "Failed to update pairing"
       }
     }
   },

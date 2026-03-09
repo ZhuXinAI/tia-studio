@@ -35,6 +35,16 @@ function emptyClawsResponse(): ClawsResponse {
   }
 }
 
+function upsertClaw(claws: ClawRecord[], savedClaw: ClawRecord): ClawRecord[] {
+  const existingIndex = claws.findIndex((claw) => claw.id === savedClaw.id)
+
+  if (existingIndex === -1) {
+    return [...claws, savedClaw]
+  }
+
+  return claws.map((claw) => (claw.id === savedClaw.id ? savedClaw : claw))
+}
+
 export function ClawsPage(): React.JSX.Element {
   const { t } = useTranslation()
   const [data, setData] = useState<ClawsResponse>(emptyClawsResponse)
@@ -71,8 +81,7 @@ export function ClawsPage(): React.JSX.Element {
     }
 
     return (
-      providers.find((provider) => provider.id === providerId)?.name ??
-      t('claws.providers.unknown')
+      providers.find((provider) => provider.id === providerId)?.name ?? t('claws.providers.unknown')
     )
   }
 
@@ -81,15 +90,24 @@ export function ClawsPage(): React.JSX.Element {
     setErrorMessage(null)
 
     try {
-      if (editingClaw) {
-        await updateClaw(editingClaw.id, input)
-      } else {
-        await createClaw(input)
-      }
+      const savedClaw = editingClaw
+        ? await updateClaw(editingClaw.id, input)
+        : await createClaw(input)
 
-      await refreshPage()
+      setData((current) => ({
+        ...current,
+        claws: upsertClaw(current.claws, savedClaw)
+      }))
       setIsDialogOpen(false)
       setEditingClaw(null)
+
+      if (input.channel?.mode === 'create' && input.channel.type === 'telegram') {
+        await handleOpenPairings(savedClaw)
+      }
+
+      void refreshPage().catch((error) => {
+        setErrorMessage(error instanceof Error ? error.message : t('claws.errors.loadFailed'))
+      })
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : t('claws.errors.saveFailed'))
     } finally {
@@ -143,7 +161,9 @@ export function ClawsPage(): React.JSX.Element {
     try {
       await refreshPairings(claw.id)
     } catch (error) {
-      setPairingsErrorMessage(error instanceof Error ? error.message : 'Failed to load pairings')
+      setPairingsErrorMessage(
+        error instanceof Error ? error.message : t('claws.pairings.errors.loadFailed')
+      )
     } finally {
       setIsPairingsLoading(false)
     }
@@ -164,7 +184,9 @@ export function ClawsPage(): React.JSX.Element {
       await action(pairingsClaw.id, pairingId)
       await Promise.all([refreshPairings(pairingsClaw.id), refreshPage()])
     } catch (error) {
-      setPairingsErrorMessage(error instanceof Error ? error.message : 'Failed to update pairing')
+      setPairingsErrorMessage(
+        error instanceof Error ? error.message : t('claws.pairings.errors.updateFailed')
+      )
     } finally {
       setIsPairingsSubmitting(false)
     }
@@ -179,10 +201,7 @@ export function ClawsPage(): React.JSX.Element {
               {t('claws.eyebrow')}
             </p>
             <h1 className="text-3xl font-semibold">{t('claws.title')}</h1>
-            <p className="text-muted-foreground text-sm">
-              Connect assistants to external Telegram or Lark channels without digging through raw
-              settings.
-            </p>
+            <p className="text-muted-foreground text-sm">{t('claws.telegram.description')}</p>
           </div>
 
           <Button
@@ -201,10 +220,7 @@ export function ClawsPage(): React.JSX.Element {
           <Card>
             <CardHeader>
               <CardTitle>{t('claws.empty.title')}</CardTitle>
-              <CardDescription>
-                Start with one assistant, one provider, and one Telegram or Lark channel for the
-                quickest onboarding path.
-              </CardDescription>
+              <CardDescription>{t('claws.telegram.emptyDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap items-center justify-between gap-4">
               <div className="text-muted-foreground flex items-center gap-2 text-sm">
@@ -244,8 +260,10 @@ export function ClawsPage(): React.JSX.Element {
                       </div>
                       {claw.channel.type === 'telegram' ? (
                         <p className="text-muted-foreground text-xs">
-                          {claw.channel.pairedCount ?? 0} paired ·{' '}
-                          {claw.channel.pendingPairingCount ?? 0} pending
+                          {t('claws.telegram.pairingSummary', {
+                            pairedCount: claw.channel.pairedCount ?? 0,
+                            pendingCount: claw.channel.pendingPairingCount ?? 0
+                          })}
                         </p>
                       ) : null}
                     </div>
@@ -283,7 +301,7 @@ export function ClawsPage(): React.JSX.Element {
                       disabled={isSubmitting || isPairingsSubmitting}
                       onClick={() => void handleOpenPairings(claw)}
                     >
-                      Manage Pairings
+                      {t('claws.telegram.managePairingsButton')}
                     </Button>
                   ) : null}
                   <Button
@@ -319,7 +337,7 @@ export function ClawsPage(): React.JSX.Element {
 
         <ClawPairingsDialog
           isOpen={pairingsClaw !== null}
-          clawName={pairingsClaw?.name ?? 'Telegram claw'}
+          clawName={pairingsClaw?.name ?? t('claws.telegram.defaultClawName')}
           pairings={pairings}
           isLoading={isPairingsLoading}
           isSubmitting={isPairingsSubmitting}

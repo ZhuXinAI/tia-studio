@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '../../../components/ui/dialog'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import type { ClawPairingRecord } from '../claws-query'
 
 type ClawPairingsDialogProps = {
@@ -22,16 +23,19 @@ type ClawPairingsDialogProps = {
   onRevoke: (pairingId: string) => Promise<void> | void
 }
 
-function statusLabel(status: ClawPairingRecord['status']): string {
+function statusLabel(
+  status: ClawPairingRecord['status'],
+  translate: (key: string) => string
+): string {
   switch (status) {
     case 'pending':
-      return 'Pending approval'
+      return translate('claws.pairings.status.pending')
     case 'approved':
-      return 'Approved'
+      return translate('claws.pairings.status.approved')
     case 'rejected':
-      return 'Rejected'
+      return translate('claws.pairings.status.rejected')
     case 'revoked':
-      return 'Revoked'
+      return translate('claws.pairings.status.revoked')
     default:
       return status
   }
@@ -49,18 +53,22 @@ export function ClawPairingsDialog({
   onReject,
   onRevoke
 }: ClawPairingsDialogProps): React.JSX.Element {
+  const { t } = useTranslation()
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Manage Pairings</DialogTitle>
-          <DialogDescription>Review Telegram pairing requests for {clawName}.</DialogDescription>
+          <DialogTitle>{t('claws.pairings.title')}</DialogTitle>
+          <DialogDescription>{t('claws.pairings.description', { clawName })}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
-          {isLoading ? <p className="text-sm text-muted-foreground">Loading pairings...</p> : null}
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">{t('claws.pairings.loading')}</p>
+          ) : null}
           {!isLoading && pairings.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No Telegram pairings yet.</p>
+            <p className="text-sm text-muted-foreground">{t('claws.pairings.empty')}</p>
           ) : null}
           {!isLoading
             ? pairings.map((pairing) => (
@@ -72,16 +80,21 @@ export function ClawPairingsDialog({
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium">{pairing.senderDisplayName}</p>
                       <span className="text-xs text-muted-foreground">
-                        {statusLabel(pairing.status)}
+                        {statusLabel(pairing.status, t)}
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Sender ID: {pairing.senderId} · Chat ID: {pairing.remoteChatId}
+                      {t('claws.pairings.senderIds', {
+                        senderId: pairing.senderId,
+                        chatId: pairing.remoteChatId
+                      })}
                     </p>
                     {pairing.senderUsername ? (
                       <p className="text-sm text-muted-foreground">@{pairing.senderUsername}</p>
                     ) : null}
-                    <p className="text-sm">Approval code: {pairing.code}</p>
+                    <p className="text-sm">
+                      {t('claws.pairings.approvalCode', { code: pairing.code })}
+                    </p>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
@@ -93,7 +106,7 @@ export function ClawPairingsDialog({
                           disabled={isSubmitting}
                           onClick={() => void onApprove(pairing.id)}
                         >
-                          Approve
+                          {t('claws.pairings.actions.approve')}
                         </Button>
                         <Button
                           type="button"
@@ -102,7 +115,7 @@ export function ClawPairingsDialog({
                           disabled={isSubmitting}
                           onClick={() => void onReject(pairing.id)}
                         >
-                          Reject
+                          {t('claws.pairings.actions.reject')}
                         </Button>
                       </>
                     ) : null}
@@ -115,7 +128,7 @@ export function ClawPairingsDialog({
                         disabled={isSubmitting}
                         onClick={() => void onRevoke(pairing.id)}
                       >
-                        Revoke
+                        {t('claws.pairings.actions.revoke')}
                       </Button>
                     ) : null}
                   </div>
@@ -128,7 +141,7 @@ export function ClawPairingsDialog({
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-            Close
+            {t('common.actions.close')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -349,15 +349,22 @@
     "title": "Claws",
     "description": "Ligue assistentes a canais externos do Lark sem ter de procurar em definições brutas.",
     "newButton": "Novo Claw",
+    "telegram": {
+      "description": "Ligue assistentes a canais externos do Telegram ou Lark sem vasculhar definições em bruto.",
+      "emptyDescription": "Comece com um assistente, um fornecedor e um canal do Telegram ou Lark para uma configuração mais rápida.",
+      "pairingSummary": "{{pairedCount}} emparelhados · {{pendingCount}} pendentes",
+      "managePairingsButton": "Gerir emparelhamentos",
+      "defaultClawName": "Claw do Telegram"
+    },
     "errors": {
-      "loadFailed": "Failed to load claws",
-      "saveFailed": "Failed to save claw",
-      "updateFailed": "Failed to update claw",
-      "deleteFailed": "Failed to delete claw"
+      "loadFailed": "Falha ao carregar os Claws",
+      "saveFailed": "Falha ao guardar o Claw",
+      "updateFailed": "Falha ao atualizar o Claw",
+      "deleteFailed": "Falha ao eliminar o Claw"
     },
     "providers": {
-      "noneSelected": "No provider selected",
-      "unknown": "Unknown provider"
+      "noneSelected": "Nenhum fornecedor selecionado",
+      "unknown": "Fornecedor desconhecido"
     },
     "empty": {
       "title": "Configure o seu primeiro Claw",
@@ -378,12 +385,16 @@
       "saveButton": "Guardar Claw",
       "createButton": "Criar Claw",
       "description": "Ligue um assistente a um canal Lark num fluxo simples.",
+      "telegramDescription": "Ligue um assistente a um canal do Telegram ou Lark através de um fluxo de configuração leve.",
       "fields": {
         "assistantName": "Nome do assistente",
         "provider": "Fornecedor",
         "instructions": "Instruções",
         "channelAction": "Ação do canal",
         "existingChannel": "Canal existente",
+        "channelType": "Tipo de canal",
+        "channelName": "Nome do canal",
+        "botToken": "Token do bot",
         "larkChannelName": "Nome do canal Lark",
         "appId": "ID da app",
         "appSecret": "Segredo da app"
@@ -391,17 +402,46 @@
       "selectProvider": "Selecionar fornecedor",
       "selectChannel": "Selecionar canal",
       "enableAfterSaving": "Ativar este Claw após guardar",
+      "channelTypes": {
+        "lark": "Lark",
+        "telegram": "Telegram"
+      },
       "channelActions": {
         "keep": "Manter o canal atual",
         "create": "Criar novo canal Lark",
+        "createGeneric": "Criar novo canal",
         "attach": "Associar canal existente",
         "detach": "Desassociar o canal atual"
       },
       "errors": {
-        "assistantNameRequired": "Assistant name is required",
-        "providerRequired": "Provider is required",
-        "channelRequired": "Pick a channel to attach",
-        "channelCredentialsRequired": "Lark channel name, app ID, and app secret are required"
+        "assistantNameRequired": "O nome do assistente é obrigatório",
+        "providerRequired": "O fornecedor é obrigatório",
+        "channelRequired": "Escolha um canal para associar",
+        "channelCredentialsRequired": "O nome do canal Lark, o ID da app e o segredo da app são obrigatórios",
+        "telegramCredentialsRequired": "O nome do canal do Telegram e o token do bot são obrigatórios"
+      }
+    },
+    "pairings": {
+      "title": "Gerir emparelhamentos",
+      "description": "Reveja os pedidos de emparelhamento do Telegram para {{clawName}}.",
+      "loading": "A carregar emparelhamentos...",
+      "empty": "Ainda não existem emparelhamentos do Telegram.",
+      "senderIds": "ID do remetente: {{senderId}} · ID do chat: {{chatId}}",
+      "approvalCode": "Código de aprovação: {{code}}",
+      "status": {
+        "pending": "Pendente de aprovação",
+        "approved": "Aprovado",
+        "rejected": "Rejeitado",
+        "revoked": "Revogado"
+      },
+      "actions": {
+        "approve": "Aprovar",
+        "reject": "Rejeitar",
+        "revoke": "Revogar"
+      },
+      "errors": {
+        "loadFailed": "Falha ao carregar emparelhamentos",
+        "updateFailed": "Falha ao atualizar emparelhamento"
       }
     }
   },

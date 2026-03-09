@@ -349,15 +349,22 @@
     "title": "Claws",
     "description": "Подключайте ассистентов к внешним каналам Lark без копания в сырых настройках.",
     "newButton": "Новый Claw",
+    "telegram": {
+      "description": "Подключайте ассистентов к внешним каналам Telegram или Lark без необходимости разбираться в сырых настройках.",
+      "emptyDescription": "Для самого быстрого старта начните с одного ассистента, одного провайдера и одного канала Telegram или Lark.",
+      "pairingSummary": "{{pairedCount}} сопряжено · {{pendingCount}} ожидает",
+      "managePairingsButton": "Управлять привязками",
+      "defaultClawName": "Telegram Claw"
+    },
     "errors": {
-      "loadFailed": "Failed to load claws",
-      "saveFailed": "Failed to save claw",
-      "updateFailed": "Failed to update claw",
-      "deleteFailed": "Failed to delete claw"
+      "loadFailed": "Не удалось загрузить Claws",
+      "saveFailed": "Не удалось сохранить Claw",
+      "updateFailed": "Не удалось обновить Claw",
+      "deleteFailed": "Не удалось удалить Claw"
     },
     "providers": {
-      "noneSelected": "No provider selected",
-      "unknown": "Unknown provider"
+      "noneSelected": "Провайдер не выбран",
+      "unknown": "Неизвестный провайдер"
     },
     "empty": {
       "title": "Настройте свой первый Claw",
@@ -378,30 +385,63 @@
       "saveButton": "Сохранить Claw",
       "createButton": "Создать Claw",
       "description": "Подключите ассистента к каналу Lark в одном лёгком процессе.",
+      "telegramDescription": "Подключите ассистента к каналу Telegram или Lark через простой поток настройки.",
       "fields": {
         "assistantName": "Имя ассистента",
         "provider": "Провайдер",
         "instructions": "Инструкции",
         "channelAction": "Действие с каналом",
         "existingChannel": "Существующий канал",
+        "channelType": "Тип канала",
+        "channelName": "Название канала",
+        "botToken": "Токен бота",
         "larkChannelName": "Название канала Lark",
-        "appId": "App ID",
-        "appSecret": "App Secret"
+        "appId": "ID приложения",
+        "appSecret": "Секрет приложения"
       },
       "selectProvider": "Выберите провайдера",
       "selectChannel": "Выберите канал",
       "enableAfterSaving": "Включить этот Claw после сохранения",
+      "channelTypes": {
+        "lark": "Lark",
+        "telegram": "Telegram"
+      },
       "channelActions": {
         "keep": "Оставить текущий канал",
         "create": "Создать новый канал Lark",
+        "createGeneric": "Создать новый канал",
         "attach": "Привязать существующий канал",
         "detach": "Отвязать текущий канал"
       },
       "errors": {
-        "assistantNameRequired": "Assistant name is required",
-        "providerRequired": "Provider is required",
-        "channelRequired": "Pick a channel to attach",
-        "channelCredentialsRequired": "Lark channel name, app ID, and app secret are required"
+        "assistantNameRequired": "Требуется имя ассистента",
+        "providerRequired": "Требуется провайдер",
+        "channelRequired": "Выберите канал для привязки",
+        "channelCredentialsRequired": "Требуются имя канала Lark, ID приложения и секрет приложения",
+        "telegramCredentialsRequired": "Требуются название канала Telegram и токен бота"
+      }
+    },
+    "pairings": {
+      "title": "Управлять привязками",
+      "description": "Проверьте запросы на привязку Telegram для {{clawName}}.",
+      "loading": "Загрузка привязок...",
+      "empty": "Привязок Telegram пока нет.",
+      "senderIds": "ID отправителя: {{senderId}} · ID чата: {{chatId}}",
+      "approvalCode": "Код подтверждения: {{code}}",
+      "status": {
+        "pending": "Ожидает одобрения",
+        "approved": "Одобрено",
+        "rejected": "Отклонено",
+        "revoked": "Отозвано"
+      },
+      "actions": {
+        "approve": "Одобрить",
+        "reject": "Отклонить",
+        "revoke": "Отозвать"
+      },
+      "errors": {
+        "loadFailed": "Не удалось загрузить привязки",
+        "updateFailed": "Не удалось обновить привязку"
       }
     }
   },

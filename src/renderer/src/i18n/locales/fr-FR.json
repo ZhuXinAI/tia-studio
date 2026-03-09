@@ -349,15 +349,22 @@
     "title": "Claws",
     "description": "Connectez des assistants à des canaux Lark externes sans fouiller dans des paramètres bruts.",
     "newButton": "Nouveau Claw",
+    "telegram": {
+      "description": "Connectez des assistants à des canaux Telegram ou Lark externes sans fouiller dans des réglages bruts.",
+      "emptyDescription": "Commencez avec un assistant, un fournisseur et un canal Telegram ou Lark pour une prise en main plus rapide.",
+      "pairingSummary": "{{pairedCount}} appairés · {{pendingCount}} en attente",
+      "managePairingsButton": "Gérer les appairages",
+      "defaultClawName": "Claw Telegram"
+    },
     "errors": {
-      "loadFailed": "Failed to load claws",
-      "saveFailed": "Failed to save claw",
-      "updateFailed": "Failed to update claw",
-      "deleteFailed": "Failed to delete claw"
+      "loadFailed": "Impossible de charger les Claws",
+      "saveFailed": "Impossible d’enregistrer le Claw",
+      "updateFailed": "Impossible de mettre à jour le Claw",
+      "deleteFailed": "Impossible de supprimer le Claw"
     },
     "providers": {
-      "noneSelected": "No provider selected",
-      "unknown": "Unknown provider"
+      "noneSelected": "Aucun fournisseur sélectionné",
+      "unknown": "Fournisseur inconnu"
     },
     "empty": {
       "title": "Configurez votre premier Claw",
@@ -378,12 +385,16 @@
       "saveButton": "Enregistrer le Claw",
       "createButton": "Créer le Claw",
       "description": "Connectez un assistant à un canal Lark via un flux de configuration léger.",
+      "telegramDescription": "Connectez un assistant à un canal Telegram ou Lark via un flux de configuration léger.",
       "fields": {
         "assistantName": "Nom de l’assistant",
         "provider": "Fournisseur",
-        "instructions": "Instructions",
+        "instructions": "Consignes",
         "channelAction": "Action sur le canal",
         "existingChannel": "Canal existant",
+        "channelType": "Type de canal",
+        "channelName": "Nom du canal",
+        "botToken": "Jeton du bot",
         "larkChannelName": "Nom du canal Lark",
         "appId": "ID d’application",
         "appSecret": "Secret de l’application"
@@ -391,17 +402,46 @@
       "selectProvider": "Sélectionner un fournisseur",
       "selectChannel": "Sélectionner un canal",
       "enableAfterSaving": "Activer ce Claw après l’enregistrement",
+      "channelTypes": {
+        "lark": "Lark",
+        "telegram": "Telegram"
+      },
       "channelActions": {
         "keep": "Conserver le canal actuel",
         "create": "Créer un nouveau canal Lark",
+        "createGeneric": "Créer un nouveau canal",
         "attach": "Associer un canal existant",
         "detach": "Dissocier le canal actuel"
       },
       "errors": {
-        "assistantNameRequired": "Assistant name is required",
-        "providerRequired": "Provider is required",
-        "channelRequired": "Pick a channel to attach",
-        "channelCredentialsRequired": "Lark channel name, app ID, and app secret are required"
+        "assistantNameRequired": "Le nom de l’assistant est requis",
+        "providerRequired": "Le fournisseur est requis",
+        "channelRequired": "Choisissez un canal à attacher",
+        "channelCredentialsRequired": "Le nom du canal Lark, l’ID d’application et le secret d’application sont requis",
+        "telegramCredentialsRequired": "Le nom du canal Telegram et le jeton du bot sont requis"
+      }
+    },
+    "pairings": {
+      "title": "Gérer les appairages",
+      "description": "Examinez les demandes d'appairage Telegram pour {{clawName}}.",
+      "loading": "Chargement des appairages...",
+      "empty": "Aucun appairage Telegram pour le moment.",
+      "senderIds": "ID expéditeur : {{senderId}} · ID chat : {{chatId}}",
+      "approvalCode": "Code d'approbation : {{code}}",
+      "status": {
+        "pending": "En attente d'approbation",
+        "approved": "Approuvé",
+        "rejected": "Rejeté",
+        "revoked": "Révoqué"
+      },
+      "actions": {
+        "approve": "Approuver",
+        "reject": "Rejeter",
+        "revoke": "Révoquer"
+      },
+      "errors": {
+        "loadFailed": "Échec du chargement des appairages",
+        "updateFailed": "Échec de la mise à jour de l'appairage"
       }
     }
   },

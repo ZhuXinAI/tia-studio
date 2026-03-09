@@ -422,6 +422,88 @@ describe('ClawsPage', () => {
     })
   })
 
+  it('closes the editor and opens pairings immediately after saving a telegram claw', async () => {
+    const pendingRefresh = new Promise<never>(() => undefined)
+
+    vi.mocked(listClaws)
+      .mockResolvedValueOnce({
+        claws: [],
+        availableChannels: []
+      })
+      .mockImplementationOnce(async () => pendingRefresh)
+    vi.mocked(createClaw).mockResolvedValue({
+      id: 'assistant-telegram',
+      name: 'Telegram Assistant',
+      description: '',
+      instructions: '',
+      providerId: 'provider-1',
+      enabled: true,
+      channel: {
+        id: 'channel-telegram',
+        type: 'telegram',
+        name: 'Telegram Bot',
+        status: 'connected',
+        errorMessage: null,
+        pairedCount: 0,
+        pendingPairingCount: 1
+      }
+    })
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ClawsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const createButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Create Your First Claw')
+    )
+
+    await act(async () => {
+      createButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const body = document.body
+    const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
+    const providerSelect = body.querySelector('select[id="claw-provider"]') as HTMLSelectElement
+    const channelTypeSelect = body.querySelector(
+      'select[id="claw-channel-type"]'
+    ) as HTMLSelectElement
+    const channelNameInput = body.querySelector('input[id="claw-channel-name"]') as HTMLInputElement
+    const saveButton = Array.from(body.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Create Claw')
+    )
+
+    await act(async () => {
+      setElementValue(nameInput, 'Telegram Assistant')
+      setElementValue(providerSelect, 'provider-1')
+      setElementValue(channelTypeSelect, 'telegram')
+      setElementValue(channelNameInput, 'Telegram Bot')
+    })
+    await flushAsyncWork()
+
+    const botTokenInput = body.querySelector(
+      'input[id="claw-channel-bot-token"]'
+    ) as HTMLInputElement
+
+    await act(async () => {
+      setElementValue(botTokenInput, '123456:test-token')
+    })
+
+    await act(async () => {
+      saveButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(listClawPairings).toHaveBeenCalledWith('assistant-telegram')
+    expect(document.body.textContent).toContain('Manage Pairings')
+    expect(document.body.querySelector('input[id="claw-name"]')).toBeNull()
+  })
+
   it('opens telegram pairings and approves a pending request', async () => {
     vi.mocked(listClaws).mockResolvedValue({
       claws: [

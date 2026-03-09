@@ -349,15 +349,22 @@
     "title": "Claws",
     "description": "Conecta asistentes a canales externos de Lark sin rebuscar entre ajustes sin procesar.",
     "newButton": "Nuevo Claw",
+    "telegram": {
+      "description": "Conecta asistentes a canales externos de Telegram o Lark sin rebuscar en ajustes sin procesar.",
+      "emptyDescription": "Empieza con un asistente, un proveedor y un canal de Telegram o Lark para una incorporación más rápida.",
+      "pairingSummary": "{{pairedCount}} vinculados · {{pendingCount}} pendientes",
+      "managePairingsButton": "Gestionar vinculaciones",
+      "defaultClawName": "Claw de Telegram"
+    },
     "errors": {
-      "loadFailed": "Failed to load claws",
-      "saveFailed": "Failed to save claw",
-      "updateFailed": "Failed to update claw",
-      "deleteFailed": "Failed to delete claw"
+      "loadFailed": "No se pudieron cargar los Claws",
+      "saveFailed": "No se pudo guardar el Claw",
+      "updateFailed": "No se pudo actualizar el Claw",
+      "deleteFailed": "No se pudo eliminar el Claw"
     },
     "providers": {
-      "noneSelected": "No provider selected",
-      "unknown": "Unknown provider"
+      "noneSelected": "No se ha seleccionado ningún proveedor",
+      "unknown": "Proveedor desconocido"
     },
     "empty": {
       "title": "Configura tu primer Claw",
@@ -378,12 +385,16 @@
       "saveButton": "Guardar Claw",
       "createButton": "Crear Claw",
       "description": "Conecta un asistente a un canal de Lark en un flujo ligero.",
+      "telegramDescription": "Conecta un asistente a un canal de Telegram o Lark desde un flujo de configuración ligero.",
       "fields": {
         "assistantName": "Nombre del asistente",
         "provider": "Proveedor",
         "instructions": "Instrucciones",
         "channelAction": "Acción del canal",
         "existingChannel": "Canal existente",
+        "channelType": "Tipo de canal",
+        "channelName": "Nombre del canal",
+        "botToken": "Token del bot",
         "larkChannelName": "Nombre del canal de Lark",
         "appId": "ID de la app",
         "appSecret": "Secreto de la app"
@@ -391,17 +402,46 @@
       "selectProvider": "Selecciona un proveedor",
       "selectChannel": "Selecciona un canal",
       "enableAfterSaving": "Activar este Claw después de guardar",
+      "channelTypes": {
+        "lark": "Lark",
+        "telegram": "Telegram"
+      },
       "channelActions": {
         "keep": "Mantener el canal actual",
         "create": "Crear un nuevo canal de Lark",
+        "createGeneric": "Crear nuevo canal",
         "attach": "Vincular canal existente",
         "detach": "Desvincular el canal actual"
       },
       "errors": {
-        "assistantNameRequired": "Assistant name is required",
-        "providerRequired": "Provider is required",
-        "channelRequired": "Pick a channel to attach",
-        "channelCredentialsRequired": "Lark channel name, app ID, and app secret are required"
+        "assistantNameRequired": "El nombre del asistente es obligatorio",
+        "providerRequired": "El proveedor es obligatorio",
+        "channelRequired": "Elige un canal para vincular",
+        "channelCredentialsRequired": "Se requieren el nombre del canal de Lark, el ID de la app y el secreto de la app",
+        "telegramCredentialsRequired": "Se requieren el nombre del canal de Telegram y el token del bot"
+      }
+    },
+    "pairings": {
+      "title": "Gestionar vinculaciones",
+      "description": "Revisa las solicitudes de vinculación de Telegram para {{clawName}}.",
+      "loading": "Cargando vinculaciones...",
+      "empty": "Aún no hay vinculaciones de Telegram.",
+      "senderIds": "ID del remitente: {{senderId}} · ID del chat: {{chatId}}",
+      "approvalCode": "Código de aprobación: {{code}}",
+      "status": {
+        "pending": "Pendiente de aprobación",
+        "approved": "Aprobado",
+        "rejected": "Rechazado",
+        "revoked": "Revocado"
+      },
+      "actions": {
+        "approve": "Aprobar",
+        "reject": "Rechazar",
+        "revoke": "Revocar"
+      },
+      "errors": {
+        "loadFailed": "No se pudieron cargar las vinculaciones",
+        "updateFailed": "No se pudo actualizar la vinculación"
       }
     }
   },

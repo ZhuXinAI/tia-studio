@@ -349,15 +349,22 @@
     "title": "Claws",
     "description": "生の設定を探し回らずに、アシスタントを外部の Lark チャンネルへ接続します。",
     "newButton": "新しい Claw",
+    "telegram": {
+      "description": "生の設定を探し回らずに、アシスタントを外部の Telegram または Lark チャンネルへ接続します。",
+      "emptyDescription": "最短で使い始めるには、アシスタント 1 つ、プロバイダー 1 つ、Telegram または Lark チャンネル 1 つから始めます。",
+      "pairingSummary": "{{pairedCount}} 件ペア済み · {{pendingCount}} 件保留中",
+      "managePairingsButton": "ペアリングを管理",
+      "defaultClawName": "Telegram Claw"
+    },
     "errors": {
-      "loadFailed": "Failed to load claws",
-      "saveFailed": "Failed to save claw",
-      "updateFailed": "Failed to update claw",
-      "deleteFailed": "Failed to delete claw"
+      "loadFailed": "Claws の読み込みに失敗しました",
+      "saveFailed": "Claw の保存に失敗しました",
+      "updateFailed": "Claw の更新に失敗しました",
+      "deleteFailed": "Claw の削除に失敗しました"
     },
     "providers": {
-      "noneSelected": "No provider selected",
-      "unknown": "Unknown provider"
+      "noneSelected": "プロバイダーが選択されていません",
+      "unknown": "不明なプロバイダー"
     },
     "empty": {
       "title": "最初の Claw を設定",
@@ -378,12 +385,16 @@
       "saveButton": "Claw を保存",
       "createButton": "Claw を作成",
       "description": "シンプルな手順でアシスタントを Lark チャンネルに接続します。",
+      "telegramDescription": "シンプルな手順でアシスタントを Telegram または Lark チャンネルに接続します。",
       "fields": {
         "assistantName": "アシスタント名",
         "provider": "プロバイダー",
         "instructions": "指示",
         "channelAction": "チャンネル操作",
         "existingChannel": "既存チャンネル",
+        "channelType": "チャンネル種別",
+        "channelName": "チャンネル名",
+        "botToken": "Bot トークン",
         "larkChannelName": "Lark チャンネル名",
         "appId": "アプリ ID",
         "appSecret": "アプリシークレット"
@@ -391,17 +402,46 @@
       "selectProvider": "プロバイダーを選択",
       "selectChannel": "チャンネルを選択",
       "enableAfterSaving": "保存後にこの Claw を有効化",
+      "channelTypes": {
+        "lark": "Lark",
+        "telegram": "Telegram"
+      },
       "channelActions": {
         "keep": "現在のチャンネルを維持",
         "create": "新しい Lark チャンネルを作成",
+        "createGeneric": "新しいチャンネルを作成",
         "attach": "既存チャンネルを接続",
         "detach": "現在のチャンネルを解除"
       },
       "errors": {
-        "assistantNameRequired": "Assistant name is required",
-        "providerRequired": "Provider is required",
-        "channelRequired": "Pick a channel to attach",
-        "channelCredentialsRequired": "Lark channel name, app ID, and app secret are required"
+        "assistantNameRequired": "アシスタント名は必須です",
+        "providerRequired": "プロバイダーは必須です",
+        "channelRequired": "接続するチャンネルを選択してください",
+        "channelCredentialsRequired": "Lark チャンネル名、App ID、App Secret が必要です",
+        "telegramCredentialsRequired": "Telegram チャンネル名と Bot トークンが必要です"
+      }
+    },
+    "pairings": {
+      "title": "ペアリングを管理",
+      "description": "{{clawName}} の Telegram ペアリング要求を確認します。",
+      "loading": "ペアリングを読み込み中...",
+      "empty": "Telegram ペアリングはまだありません。",
+      "senderIds": "送信者 ID: {{senderId}} · チャット ID: {{chatId}}",
+      "approvalCode": "承認コード: {{code}}",
+      "status": {
+        "pending": "承認待ち",
+        "approved": "承認済み",
+        "rejected": "拒否済み",
+        "revoked": "取り消し済み"
+      },
+      "actions": {
+        "approve": "承認",
+        "reject": "拒否",
+        "revoke": "取り消し"
+      },
+      "errors": {
+        "loadFailed": "ペアリングの読み込みに失敗しました",
+        "updateFailed": "ペアリングの更新に失敗しました"
       }
     }
   },

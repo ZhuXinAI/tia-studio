@@ -349,15 +349,22 @@
     "title": "Claws",
     "description": "Conectează asistenți la canale externe Lark fără să cauți prin setări brute.",
     "newButton": "Claw nou",
+    "telegram": {
+      "description": "Conectează asistenți la canale externe Telegram sau Lark fără să cauți prin setări brute.",
+      "emptyDescription": "Începe cu un asistent, un furnizor și un canal Telegram sau Lark pentru cea mai rapidă configurare.",
+      "pairingSummary": "{{pairedCount}} asociate · {{pendingCount}} în așteptare",
+      "managePairingsButton": "Gestionează asocierile",
+      "defaultClawName": "Claw Telegram"
+    },
     "errors": {
-      "loadFailed": "Failed to load claws",
-      "saveFailed": "Failed to save claw",
-      "updateFailed": "Failed to update claw",
-      "deleteFailed": "Failed to delete claw"
+      "loadFailed": "Nu s-au putut încărca Claws",
+      "saveFailed": "Claw-ul nu a putut fi salvat",
+      "updateFailed": "Claw-ul nu a putut fi actualizat",
+      "deleteFailed": "Claw-ul nu a putut fi șters"
     },
     "providers": {
-      "noneSelected": "No provider selected",
-      "unknown": "Unknown provider"
+      "noneSelected": "Niciun furnizor selectat",
+      "unknown": "Furnizor necunoscut"
     },
     "empty": {
       "title": "Configurează primul tău Claw",
@@ -378,12 +385,16 @@
       "saveButton": "Salvează Claw",
       "createButton": "Creează Claw",
       "description": "Conectează un asistent la un canal Lark printr-un flux simplu.",
+      "telegramDescription": "Conectează un asistent la un canal Telegram sau Lark printr-un flux de configurare ușor.",
       "fields": {
         "assistantName": "Nume asistent",
         "provider": "Furnizor",
         "instructions": "Instrucțiuni",
         "channelAction": "Acțiune canal",
         "existingChannel": "Canal existent",
+        "channelType": "Tip canal",
+        "channelName": "Nume canal",
+        "botToken": "Token bot",
         "larkChannelName": "Nume canal Lark",
         "appId": "ID aplicație",
         "appSecret": "Secret aplicație"
@@ -391,17 +402,46 @@
       "selectProvider": "Selectează furnizor",
       "selectChannel": "Selectează canal",
       "enableAfterSaving": "Activează acest Claw după salvare",
+      "channelTypes": {
+        "lark": "Lark",
+        "telegram": "Telegram"
+      },
       "channelActions": {
         "keep": "Păstrează canalul curent",
         "create": "Creează un canal Lark nou",
+        "createGeneric": "Creează canal nou",
         "attach": "Atașează un canal existent",
         "detach": "Detașează canalul curent"
       },
       "errors": {
-        "assistantNameRequired": "Assistant name is required",
-        "providerRequired": "Provider is required",
-        "channelRequired": "Pick a channel to attach",
-        "channelCredentialsRequired": "Lark channel name, app ID, and app secret are required"
+        "assistantNameRequired": "Numele asistentului este obligatoriu",
+        "providerRequired": "Furnizorul este obligatoriu",
+        "channelRequired": "Alege un canal de atașat",
+        "channelCredentialsRequired": "Numele canalului Lark, ID-ul aplicației și secretul aplicației sunt obligatorii",
+        "telegramCredentialsRequired": "Numele canalului Telegram și tokenul botului sunt obligatorii"
+      }
+    },
+    "pairings": {
+      "title": "Gestionează asocierile",
+      "description": "Revizuiește cererile de asociere Telegram pentru {{clawName}}.",
+      "loading": "Se încarcă asocierile...",
+      "empty": "Nu există încă asocieri Telegram.",
+      "senderIds": "ID expeditor: {{senderId}} · ID chat: {{chatId}}",
+      "approvalCode": "Cod de aprobare: {{code}}",
+      "status": {
+        "pending": "În așteptarea aprobării",
+        "approved": "Aprobat",
+        "rejected": "Respins",
+        "revoked": "Revocat"
+      },
+      "actions": {
+        "approve": "Aprobă",
+        "reject": "Respinge",
+        "revoke": "Revocă"
+      },
+      "errors": {
+        "loadFailed": "Nu s-au putut încărca asocierile",
+        "updateFailed": "Nu s-a putut actualiza asocierea"
       }
     }
   },

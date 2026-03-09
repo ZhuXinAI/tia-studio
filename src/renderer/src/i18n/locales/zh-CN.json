@@ -349,6 +349,13 @@
     "title": "Claws",
     "description": "将助手连接到外部 Lark 频道，无需翻查原始设置。",
     "newButton": "新建 Claw",
+    "telegram": {
+      "description": "将助手连接到外部 Telegram 或 Lark 频道，无需翻查原始设置。",
+      "emptyDescription": "从一个助手、一个提供商和一个 Telegram 或 Lark 频道开始，是最快的接入方式。",
+      "pairingSummary": "已配对 {{pairedCount}} 个 · 待处理 {{pendingCount}} 个",
+      "managePairingsButton": "管理配对",
+      "defaultClawName": "Telegram Claw"
+    },
     "errors": {
       "loadFailed": "加载 Claw 失败",
       "saveFailed": "保存 Claw 失败",
@@ -378,12 +385,16 @@
       "saveButton": "保存 Claw",
       "createButton": "创建 Claw",
       "description": "通过一个轻量流程把助手连接到 Lark 频道。",
+      "telegramDescription": "通过一个轻量流程把助手连接到 Telegram 或 Lark 频道。",
       "fields": {
         "assistantName": "助手名称",
         "provider": "提供商",
         "instructions": "说明",
         "channelAction": "频道操作",
         "existingChannel": "现有频道",
+        "channelType": "频道类型",
+        "channelName": "频道名称",
+        "botToken": "机器人令牌",
         "larkChannelName": "Lark 频道名称",
         "appId": "应用 ID",
         "appSecret": "应用密钥"
@@ -391,9 +402,14 @@
       "selectProvider": "选择提供商",
       "selectChannel": "选择频道",
       "enableAfterSaving": "保存后启用此 Claw",
+      "channelTypes": {
+        "lark": "Lark",
+        "telegram": "Telegram"
+      },
       "channelActions": {
         "keep": "保留当前频道",
         "create": "创建新的 Lark 频道",
+        "createGeneric": "创建新频道",
         "attach": "绑定现有频道",
         "detach": "解除当前频道"
       },
@@ -401,7 +417,31 @@
         "assistantNameRequired": "助手名称为必填项",
         "providerRequired": "提供商为必填项",
         "channelRequired": "请选择要绑定的频道",
-        "channelCredentialsRequired": "Lark 频道名称、应用 ID 和应用密钥均为必填项"
+        "channelCredentialsRequired": "Lark 频道名称、应用 ID 和应用密钥均为必填项",
+        "telegramCredentialsRequired": "Telegram 频道名称和 Bot Token 均为必填项"
+      }
+    },
+    "pairings": {
+      "title": "管理配对",
+      "description": "查看 {{clawName}} 的 Telegram 配对请求。",
+      "loading": "正在加载配对...",
+      "empty": "还没有 Telegram 配对。",
+      "senderIds": "发送者 ID：{{senderId}} · 聊天 ID：{{chatId}}",
+      "approvalCode": "批准码：{{code}}",
+      "status": {
+        "pending": "待批准",
+        "approved": "已批准",
+        "rejected": "已拒绝",
+        "revoked": "已撤销"
+      },
+      "actions": {
+        "approve": "批准",
+        "reject": "拒绝",
+        "revoke": "撤销"
+      },
+      "errors": {
+        "loadFailed": "加载配对失败",
+        "updateFailed": "更新配对失败"
       }
     }
   },

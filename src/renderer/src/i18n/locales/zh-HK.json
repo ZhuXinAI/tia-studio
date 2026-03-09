@@ -349,6 +349,13 @@
     "title": "Claws",
     "description": "將助手連接到外部 Lark 頻道，無需翻查原始設定。",
     "newButton": "新增 Claw",
+    "telegram": {
+      "description": "將助手連接到外部 Telegram 或 Lark 頻道，無需翻查原始設定。",
+      "emptyDescription": "從一個助手、一個供應商和一個 Telegram 或 Lark 頻道開始，是最快的接入方式。",
+      "pairingSummary": "已配對 {{pairedCount}} 個 · 待處理 {{pendingCount}} 個",
+      "managePairingsButton": "管理配對",
+      "defaultClawName": "Telegram Claw"
+    },
     "errors": {
       "loadFailed": "載入 Claw 失敗",
       "saveFailed": "儲存 Claw 失敗",
@@ -378,12 +385,16 @@
       "saveButton": "儲存 Claw",
       "createButton": "建立 Claw",
       "description": "透過一個輕量流程把助手連接到 Lark 頻道。",
+      "telegramDescription": "透過一個輕量流程把助手連接到 Telegram 或 Lark 頻道。",
       "fields": {
         "assistantName": "助手名稱",
         "provider": "供應商",
         "instructions": "指示",
         "channelAction": "頻道操作",
         "existingChannel": "現有頻道",
+        "channelType": "頻道類型",
+        "channelName": "頻道名稱",
+        "botToken": "機器人令牌",
         "larkChannelName": "Lark 頻道名稱",
         "appId": "應用程式 ID",
         "appSecret": "應用程式密鑰"
@@ -391,9 +402,14 @@
       "selectProvider": "選擇供應商",
       "selectChannel": "選擇頻道",
       "enableAfterSaving": "儲存後啟用此 Claw",
+      "channelTypes": {
+        "lark": "Lark",
+        "telegram": "Telegram"
+      },
       "channelActions": {
         "keep": "保留目前頻道",
         "create": "建立新的 Lark 頻道",
+        "createGeneric": "建立新頻道",
         "attach": "綁定現有頻道",
         "detach": "解除目前頻道"
       },
@@ -401,7 +417,31 @@
         "assistantNameRequired": "助手名稱為必填項",
         "providerRequired": "供應商為必填項",
         "channelRequired": "請選擇要綁定的頻道",
-        "channelCredentialsRequired": "Lark 頻道名稱、應用程式 ID 和應用程式密鑰皆為必填項"
+        "channelCredentialsRequired": "Lark 頻道名稱、應用程式 ID 和應用程式密鑰皆為必填項",
+        "telegramCredentialsRequired": "Telegram 頻道名稱和 Bot Token 均為必填項"
+      }
+    },
+    "pairings": {
+      "title": "管理配對",
+      "description": "檢視 {{clawName}} 的 Telegram 配對請求。",
+      "loading": "正在載入配對...",
+      "empty": "還沒有 Telegram 配對。",
+      "senderIds": "傳送者 ID：{{senderId}} · 聊天 ID：{{chatId}}",
+      "approvalCode": "批准碼：{{code}}",
+      "status": {
+        "pending": "待批准",
+        "approved": "已批准",
+        "rejected": "已拒絕",
+        "revoked": "已撤銷"
+      },
+      "actions": {
+        "approve": "批准",
+        "reject": "拒絕",
+        "revoke": "撤銷"
+      },
+      "errors": {
+        "loadFailed": "載入配對失敗",
+        "updateFailed": "更新配對失敗"
       }
     }
   },
