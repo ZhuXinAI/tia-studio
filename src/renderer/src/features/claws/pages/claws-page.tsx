@@ -9,12 +9,16 @@ import {
   CardTitle
 } from '../../../components/ui/card'
 import { useTranslation } from '../../../i18n/use-app-translation'
+import { queryClient } from '../../../lib/query-client'
 import type { ProviderRecord } from '../../settings/providers/providers-query'
 import { listProviders } from '../../settings/providers/providers-query'
+import { assistantKeys } from '../../assistants/assistants-query'
 import {
   approveClawPairing,
   createClaw,
+  createClawChannel,
   deleteClaw,
+  deleteClawChannel,
   listClawPairings,
   listClaws,
   rejectClawPairing,
@@ -23,6 +27,8 @@ import {
   type ClawPairingRecord,
   type ClawRecord,
   type ClawsResponse,
+  type CreateClawChannelInput,
+  type ConfiguredClawChannelRecord,
   type SaveClawInput
 } from '../claws-query'
 import { ClawEditorDialog } from '../components/claw-editor-dialog'
@@ -31,7 +37,7 @@ import { ClawPairingsDialog } from '../components/claw-pairings-dialog'
 function emptyClawsResponse(): ClawsResponse {
   return {
     claws: [],
-    availableChannels: []
+    configuredChannels: []
   }
 }
 
@@ -43,6 +49,10 @@ function upsertClaw(claws: ClawRecord[], savedClaw: ClawRecord): ClawRecord[] {
   }
 
   return claws.map((claw) => (claw.id === savedClaw.id ? savedClaw : claw))
+}
+
+function invalidateAssistantsCache(): void {
+  void queryClient.invalidateQueries({ queryKey: assistantKeys.lists() })
 }
 
 export function ClawsPage(): React.JSX.Element {
@@ -98,10 +108,11 @@ export function ClawsPage(): React.JSX.Element {
         ...current,
         claws: upsertClaw(current.claws, savedClaw)
       }))
+      invalidateAssistantsCache()
       setIsDialogOpen(false)
       setEditingClaw(null)
 
-      if (input.channel?.mode === 'create' && input.channel.type === 'telegram') {
+      if (!editingClaw && savedClaw.channel?.type === 'telegram') {
         await handleOpenPairings(savedClaw)
       }
 
@@ -110,6 +121,49 @@ export function ClawsPage(): React.JSX.Element {
       })
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : t('claws.errors.saveFailed'))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function handleCreateChannel(
+    input: CreateClawChannelInput
+  ): Promise<ConfiguredClawChannelRecord> {
+    setIsSubmitting(true)
+    setErrorMessage(null)
+
+    try {
+      const createdChannel = await createClawChannel(input)
+      setData((current) => ({
+        ...current,
+        configuredChannels: [...current.configuredChannels, createdChannel]
+      }))
+      return createdChannel
+    } catch (error) {
+      const resolvedError =
+        error instanceof Error ? error : new Error(t('claws.errors.saveFailed'))
+      setErrorMessage(resolvedError.message)
+      throw resolvedError
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function handleDeleteChannel(channelId: string): Promise<void> {
+    setIsSubmitting(true)
+    setErrorMessage(null)
+
+    try {
+      await deleteClawChannel(channelId)
+      setData((current) => ({
+        ...current,
+        configuredChannels: current.configuredChannels.filter((channel) => channel.id !== channelId)
+      }))
+    } catch (error) {
+      const resolvedError =
+        error instanceof Error ? error : new Error(t('claws.errors.deleteFailed'))
+      setErrorMessage(resolvedError.message)
+      throw resolvedError
     } finally {
       setIsSubmitting(false)
     }
@@ -125,6 +179,7 @@ export function ClawsPage(): React.JSX.Element {
           enabled: !claw.enabled
         }
       })
+      invalidateAssistantsCache()
       await refreshPage()
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : t('claws.errors.updateFailed'))
@@ -134,11 +189,21 @@ export function ClawsPage(): React.JSX.Element {
   }
 
   async function handleDelete(claw: ClawRecord): Promise<void> {
+    const confirmLabel =
+      claw.name.trim().length > 0 ? claw.name.trim() : t('claws.card.deleteConfirmFallbackLabel')
+    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+      const confirmed = window.confirm(t('claws.card.deleteConfirmPrompt', { name: confirmLabel }))
+      if (!confirmed) {
+        return
+      }
+    }
+
     setIsSubmitting(true)
     setErrorMessage(null)
 
     try {
       await deleteClaw(claw.id)
+      invalidateAssistantsCache()
       await refreshPage()
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : t('claws.errors.deleteFailed'))
@@ -268,8 +333,8 @@ export function ClawsPage(): React.JSX.Element {
                       ) : null}
                     </div>
                   ) : (
-                    <span className="text-muted-foreground">
-                      {t('claws.card.noChannelConnected')}
+                    <span className="text-amber-600">
+                      {t('claws.card.configureChannelFirst')}
                     </span>
                   )}
                 </div>
@@ -278,7 +343,7 @@ export function ClawsPage(): React.JSX.Element {
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || claw.channel === null}
                     onClick={() => void handleToggleEnabled(claw)}
                   >
                     {claw.enabled ? t('claws.card.disableButton') : t('claws.card.enableButton')}
@@ -322,7 +387,7 @@ export function ClawsPage(): React.JSX.Element {
           isOpen={isDialogOpen}
           claw={editingClaw}
           providers={providers}
-          availableChannels={data.availableChannels}
+          configuredChannels={data.configuredChannels}
           isSubmitting={isSubmitting}
           onClose={() => {
             if (isSubmitting) {
@@ -333,6 +398,8 @@ export function ClawsPage(): React.JSX.Element {
             setEditingClaw(null)
           }}
           onSubmit={handleDialogSubmit}
+          onCreateChannel={handleCreateChannel}
+          onDeleteChannel={handleDeleteChannel}
         />
 
         <ClawPairingsDialog

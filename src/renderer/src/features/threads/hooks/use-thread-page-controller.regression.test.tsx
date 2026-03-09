@@ -102,7 +102,11 @@ vi.mock('../threads-query', () => ({
 
 vi.mock('../chat-query', () => ({
   createThreadChatTransport: vi.fn(),
-  listThreadChatMessages: vi.fn()
+  listThreadChatMessages: vi.fn(),
+  openAssistantMessageEventsStream: vi.fn(() => ({
+    close: vi.fn(),
+    done: Promise.resolve()
+  }))
 }))
 
 vi.mock('@ai-sdk/react', () => ({

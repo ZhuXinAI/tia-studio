@@ -22,6 +22,20 @@ function createStream(chunks: UIMessageChunk[] = []): ReadableStream<UIMessageCh
   })
 }
 
+function createAssistantReplyStream(text: string): ReadableStream<UIMessageChunk> {
+  return createStream(
+    text.length === 0
+      ? []
+      : [
+          { type: 'start' } as UIMessageChunk,
+          { type: 'text-start', id: 'text-1' } as UIMessageChunk,
+          { type: 'text-delta', id: 'text-1', delta: text } as UIMessageChunk,
+          { type: 'text-end', id: 'text-1' } as UIMessageChunk,
+          { type: 'finish' } as UIMessageChunk
+        ]
+  )
+}
+
 function createAssistantRuntimeStub(streamChat: AssistantRuntime['streamChat']): AssistantRuntime {
   return {
     streamChat,
@@ -289,6 +303,351 @@ describe('ChannelMessageRouter', () => {
     )
   })
 
+  it('does not publish a send request after the assistant finishes', async () => {
+    const publishedEvents: unknown[] = []
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
+      createAssistantReplyStream('Hello from assistant')
+    )
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat)
+    })
+
+    eventBus.subscribe('channel.message.send-requested', (event) => {
+      publishedEvents.push(event)
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-1',
+      channelId,
+      channelType: 'lark',
+      message: {
+        id: 'msg-1',
+        remoteChatId: 'oc_123',
+        senderId: 'ou_user',
+        content: 'hello',
+        timestamp: new Date('2026-03-08T00:00:00.000Z')
+      }
+    })
+
+    expect(publishedEvents).toEqual([])
+  })
+
+  it('does not publish a send request when the assistant text is empty', async () => {
+    const publishedEvents: unknown[] = []
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
+      createAssistantReplyStream('')
+    )
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat)
+    })
+
+    eventBus.subscribe('channel.message.send-requested', (event) => {
+      publishedEvents.push(event)
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-1',
+      channelId,
+      channelType: 'lark',
+      message: {
+        id: 'msg-1',
+        remoteChatId: 'oc_123',
+        senderId: 'ou_user',
+        content: 'hello',
+        timestamp: new Date('2026-03-08T00:00:00.000Z')
+      }
+    })
+
+    expect(publishedEvents).toEqual([])
+  })
+  it('publishes a thread message updated event after processing inbound channel messages', async () => {
+    const appendMessagesUpdated = vi.fn()
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
+      createAssistantReplyStream('Reply from assistant')
+    )
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat),
+      threadMessageEventsStore: {
+        appendMessagesUpdated
+      }
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-thread-update',
+      channelId,
+      channelType: 'lark',
+      message: {
+        id: 'msg-1',
+        remoteChatId: 'oc_123',
+        senderId: 'ou_user',
+        content: 'hello',
+        timestamp: new Date('2026-03-08T00:00:00.000Z')
+      }
+    })
+
+    expect(appendMessagesUpdated).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assistantId,
+        profileId: 'default-profile',
+        source: 'channel'
+      })
+    )
+  })
+
+  it('returns a friendly 404 message for JSON error with statusCode 404', async () => {
+    const publishedEvents: unknown[] = []
+    const errorJson = JSON.stringify({
+      message: 'Not Found',
+      name: 'AI_APICallError',
+      statusCode: 404,
+      requestBodyValues: { model: 'test', messages: [{ role: 'user', content: 'secret' }] }
+    })
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
+      createStream([{ type: 'error', errorText: errorJson } as UIMessageChunk])
+    )
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat)
+    })
+
+    eventBus.subscribe('channel.message.send-requested', (event) => {
+      publishedEvents.push(event)
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-stream-err',
+      channelId,
+      channelType: 'lark',
+      message: {
+        id: 'msg-stream-err',
+        remoteChatId: 'oc_123',
+        senderId: 'ou_user',
+        content: 'hello',
+        timestamp: new Date('2026-03-08T00:00:00.000Z')
+      }
+    })
+
+    expect(publishedEvents).toHaveLength(1)
+    const sent = publishedEvents[0] as { content: string }
+    expect(sent.content).toBe(
+      '[Error] The configured model or API endpoint was not found. Please check the provider settings.'
+    )
+    expect(sent.content).not.toContain('secret')
+    expect(sent.content).not.toContain('requestBodyValues')
+  })
+
+  it('returns a friendly 401 message for JSON error with statusCode 401', async () => {
+    const publishedEvents: unknown[] = []
+    const errorJson = JSON.stringify({
+      message: 'Unauthorized',
+      name: 'AI_APICallError',
+      statusCode: 401
+    })
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
+      createStream([{ type: 'error', errorText: errorJson } as UIMessageChunk])
+    )
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat)
+    })
+
+    eventBus.subscribe('channel.message.send-requested', (event) => {
+      publishedEvents.push(event)
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-401',
+      channelId,
+      channelType: 'lark',
+      message: {
+        id: 'msg-401',
+        remoteChatId: 'oc_123',
+        senderId: 'ou_user',
+        content: 'hello',
+        timestamp: new Date('2026-03-08T00:00:00.000Z')
+      }
+    })
+
+    expect(publishedEvents).toHaveLength(1)
+    const sent = publishedEvents[0] as { content: string }
+    expect(sent.content).toBe(
+      '[Error] Authentication failed. Please check the API key in provider settings.'
+    )
+  })
+
+  it('returns a friendly 429 message for rate limit errors', async () => {
+    const publishedEvents: unknown[] = []
+    const errorJson = JSON.stringify({
+      message: 'Rate limit exceeded',
+      statusCode: 429
+    })
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
+      createStream([{ type: 'error', errorText: errorJson } as UIMessageChunk])
+    )
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat)
+    })
+
+    eventBus.subscribe('channel.message.send-requested', (event) => {
+      publishedEvents.push(event)
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-429',
+      channelId,
+      channelType: 'lark',
+      message: {
+        id: 'msg-429',
+        remoteChatId: 'oc_123',
+        senderId: 'ou_user',
+        content: 'hello',
+        timestamp: new Date('2026-03-08T00:00:00.000Z')
+      }
+    })
+
+    expect(publishedEvents).toHaveLength(1)
+    const sent = publishedEvents[0] as { content: string }
+    expect(sent.content).toBe(
+      '[Error] Too many requests. Please wait a moment and try again.'
+    )
+  })
+
+  it('returns a friendly 500 message for server errors', async () => {
+    const publishedEvents: unknown[] = []
+    const errorJson = JSON.stringify({
+      message: 'Internal Server Error',
+      statusCode: 500
+    })
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
+      createStream([{ type: 'error', errorText: errorJson } as UIMessageChunk])
+    )
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat)
+    })
+
+    eventBus.subscribe('channel.message.send-requested', (event) => {
+      publishedEvents.push(event)
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-500',
+      channelId,
+      channelType: 'lark',
+      message: {
+        id: 'msg-500',
+        remoteChatId: 'oc_123',
+        senderId: 'ou_user',
+        content: 'hello',
+        timestamp: new Date('2026-03-08T00:00:00.000Z')
+      }
+    })
+
+    expect(publishedEvents).toHaveLength(1)
+    const sent = publishedEvents[0] as { content: string }
+    expect(sent.content).toBe(
+      "[Error] The AI provider's server encountered an error. Please try again later."
+    )
+  })
+
+  it('returns a friendly connection error for ECONNREFUSED / connection refused', async () => {
+    const publishedEvents: unknown[] = []
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
+      createStream([{ type: 'error', errorText: 'Connection refused' } as UIMessageChunk])
+    )
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat)
+    })
+
+    eventBus.subscribe('channel.message.send-requested', (event) => {
+      publishedEvents.push(event)
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-stream-plain-err',
+      channelId,
+      channelType: 'lark',
+      message: {
+        id: 'msg-stream-plain-err',
+        remoteChatId: 'oc_123',
+        senderId: 'ou_user',
+        content: 'hello',
+        timestamp: new Date('2026-03-08T00:00:00.000Z')
+      }
+    })
+
+    expect(publishedEvents).toHaveLength(1)
+    const sent = publishedEvents[0] as { content: string }
+    expect(sent.content).toBe(
+      '[Error] Unable to connect to the AI provider. Please check the network and API host configuration.'
+    )
+  })
+
+  it('returns a generic friendly error when streamChat throws an unclassified error', async () => {
+    const publishedEvents: unknown[] = []
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () => {
+      throw new Error('something went wrong internally')
+    })
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat)
+    })
+
+    eventBus.subscribe('channel.message.send-requested', (event) => {
+      publishedEvents.push(event)
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-err',
+      channelId,
+      channelType: 'lark',
+      message: {
+        id: 'msg-err',
+        remoteChatId: 'oc_123',
+        senderId: 'ou_user',
+        content: 'hello',
+        timestamp: new Date('2026-03-08T00:00:00.000Z')
+      }
+    })
+
+    expect(publishedEvents).toHaveLength(1)
+    const sent = publishedEvents[0] as { content: string }
+    expect(sent.content).toBe(
+      '[Error] Failed to generate a response. Please check the provider configuration.'
+    )
+  })
   it('ignores inbound messages when the attached assistant is disabled', async () => {
     const disabledAssistant = await new AssistantsRepository(db).create({
       name: 'Disabled Assistant',

@@ -7,7 +7,11 @@ import type {
 } from '../../persistence/repos/channel-pairings-repo'
 import type { AppChannel, ChannelsRepository } from '../../persistence/repos/channels-repo'
 import type { ProvidersRepository } from '../../persistence/repos/providers-repo'
-import { createClawSchema, updateClawSchema } from '../validators/claws-validator'
+import {
+  createClawSchema,
+  createConfiguredChannelSchema,
+  updateClawSchema
+} from '../validators/claws-validator'
 
 type ChannelServiceLike = {
   reload(): Promise<void>
@@ -69,6 +73,18 @@ type ClawPairingResponse = {
   lastSeenAt: string
   createdAt: string
   updatedAt: string
+}
+
+type ConfiguredChannelResponse = {
+  id: string
+  type: string
+  name: string
+  assistantId: string | null
+  assistantName: string | null
+  status: 'connected' | 'disconnected' | 'error'
+  errorMessage: string | null
+  pairedCount: number
+  pendingPairingCount: number
 }
 
 function invalidBodyResponse() {
@@ -153,6 +169,48 @@ async function toClawResponse(
         }
       : null
   }
+}
+
+async function listConfiguredChannels(
+  options: RegisterClawsRouteOptions
+): Promise<ConfiguredChannelResponse[]> {
+  const [assistants, channels] = await Promise.all([
+    options.assistantsRepo.list(),
+    options.channelsRepo.list()
+  ])
+  const visibleAssistants = new Map(
+    assistants.filter((assistant) => !isBuiltInAssistant(assistant)).map((assistant) => [
+      assistant.id,
+      assistant
+    ])
+  )
+
+  const configuredChannels = await Promise.all(
+    channels.map(async (channel) => {
+      const assistant = channel.assistantId ? visibleAssistants.get(channel.assistantId) ?? null : null
+      if (channel.assistantId && !assistant) {
+        return null
+      }
+
+      const counts = await getChannelPairingCounts(channel, options)
+
+      return {
+        id: channel.id,
+        type: channel.type,
+        name: channel.name,
+        assistantId: channel.assistantId,
+        assistantName: assistant?.name ?? null,
+        status: toChannelStatus(channel, assistant?.enabled ?? false),
+        errorMessage: channel.lastError,
+        pairedCount: counts.pairedCount,
+        pendingPairingCount: counts.pendingPairingCount
+      }
+    })
+  )
+
+  return configuredChannels.filter(
+    (channel): channel is ConfiguredChannelResponse => channel !== null
+  )
 }
 
 async function listVisibleClaws(options: RegisterClawsRouteOptions): Promise<ClawResponse[]> {
@@ -311,17 +369,65 @@ async function reloadClawServices(options: RegisterClawsRouteOptions): Promise<v
   await options.cronSchedulerService?.reload()
 }
 
+function resolveAssistantEnabledValue(input: {
+  requestedEnabled: boolean | undefined
+  hasChannel: boolean
+  fallbackEnabled: boolean
+}): boolean {
+  if (!input.hasChannel) {
+    return false
+  }
+
+  return input.requestedEnabled ?? input.fallbackEnabled
+}
+
 export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions): void {
   app.get('/v1/claws', async (context) => {
-    const availableChannels = await options.channelsRepo.listUnbound()
     return context.json({
       claws: await listVisibleClaws(options),
-      availableChannels: availableChannels.map((channel) => ({
-        id: channel.id,
-        type: channel.type,
-        name: channel.name
-      }))
+      configuredChannels: await listConfiguredChannels(options)
     })
+  })
+
+  app.post('/v1/claws/channels', async (context) => {
+    let body: unknown
+    try {
+      body = await context.req.json()
+    } catch {
+      return context.json(invalidBodyResponse(), 400)
+    }
+
+    const parsed = createConfiguredChannelSchema.safeParse(body)
+    if (!parsed.success) {
+      return context.json(
+        { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' },
+        400
+      )
+    }
+
+    const createdChannel = await options.channelsRepo.create({
+      type: parsed.data.type,
+      name: parsed.data.name,
+      assistantId: null,
+      enabled: true,
+      config: buildChannelConfig(parsed.data)
+    })
+    const counts = await getChannelPairingCounts(createdChannel, options)
+
+    return context.json(
+      {
+        id: createdChannel.id,
+        type: createdChannel.type,
+        name: createdChannel.name,
+        assistantId: null,
+        assistantName: null,
+        status: 'disconnected',
+        errorMessage: createdChannel.lastError,
+        pairedCount: counts.pairedCount,
+        pendingPairingCount: counts.pendingPairingCount
+      },
+      201
+    )
   })
 
   app.post('/v1/claws', async (context) => {
@@ -359,11 +465,17 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
       }
     }
 
+    const hasChannel = Boolean(parsed.data.channel)
+
     const assistant = await options.assistantsRepo.create({
       name: parsed.data.assistant.name,
       instructions: parsed.data.assistant.instructions,
       providerId: parsed.data.assistant.providerId,
-      enabled: parsed.data.assistant.enabled
+      enabled: resolveAssistantEnabledValue({
+        requestedEnabled: parsed.data.assistant.enabled,
+        hasChannel,
+        fallbackEnabled: false
+      })
     })
 
     if (parsed.data.channel?.mode === 'create') {
@@ -419,10 +531,6 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
       }
     }
 
-    if (parsed.data.assistant) {
-      await options.assistantsRepo.update(assistantId, parsed.data.assistant)
-    }
-
     const currentChannel = await options.channelsRepo.getByAssistantId(assistantId)
 
     if (parsed.data.channel?.mode === 'attach') {
@@ -451,6 +559,27 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
     } else if (parsed.data.channel?.mode === 'detach' && currentChannel) {
       await options.channelsRepo.update(currentChannel.id, {
         assistantId: null
+      })
+    }
+
+    const hasChannelAfterUpdate =
+      parsed.data.channel?.mode === 'attach' ||
+      parsed.data.channel?.mode === 'create' ||
+      parsed.data.channel?.mode === 'keep' ||
+      (!parsed.data.channel && currentChannel !== null)
+
+    if (parsed.data.assistant) {
+      await options.assistantsRepo.update(assistantId, {
+        ...parsed.data.assistant,
+        enabled: resolveAssistantEnabledValue({
+          requestedEnabled: parsed.data.assistant.enabled,
+          hasChannel: hasChannelAfterUpdate,
+          fallbackEnabled: assistant.enabled
+        })
+      })
+    } else if (!hasChannelAfterUpdate) {
+      await options.assistantsRepo.update(assistantId, {
+        enabled: false
       })
     }
 
@@ -527,6 +656,21 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
     }
 
     return context.json(toPairingResponse(updated))
+  })
+
+  app.delete('/v1/claws/channels/:channelId', async (context) => {
+    const channelId = context.req.param('channelId')
+    const channel = await options.channelsRepo.getById(channelId)
+    if (!channel) {
+      return context.json({ ok: false, error: 'Channel not found' }, 404)
+    }
+
+    if (channel.assistantId) {
+      return context.json({ ok: false, error: 'Channel is attached to an assistant' }, 409)
+    }
+
+    await options.channelsRepo.delete(channelId)
+    return context.body(null, 204)
   })
 
   app.delete('/v1/claws/:assistantId', async (context) => {

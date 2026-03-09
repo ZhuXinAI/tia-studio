@@ -9,7 +9,9 @@ import { ClawsPage } from './claws-page'
 import {
   approveClawPairing,
   createClaw,
+  createClawChannel,
   deleteClaw,
+  deleteClawChannel,
   listClawPairings,
   listClaws,
   rejectClawPairing,
@@ -24,8 +26,10 @@ vi.mock('../../settings/providers/providers-query', () => ({
 vi.mock('../claws-query', () => ({
   listClaws: vi.fn(),
   createClaw: vi.fn(),
+  createClawChannel: vi.fn(),
   updateClaw: vi.fn(),
   deleteClaw: vi.fn(),
+  deleteClawChannel: vi.fn(),
   listClawPairings: vi.fn(),
   approveClawPairing: vi.fn(),
   rejectClawPairing: vi.fn(),
@@ -101,6 +105,17 @@ describe('ClawsPage', () => {
         pendingPairingCount: 0
       }
     })
+    vi.mocked(createClawChannel).mockResolvedValue({
+      id: 'channel-created',
+      type: 'lark',
+      name: 'Created Lark',
+      assistantId: null,
+      assistantName: null,
+      status: 'disconnected',
+      errorMessage: null,
+      pairedCount: 0,
+      pendingPairingCount: 0
+    })
     vi.mocked(updateClaw).mockResolvedValue({
       id: 'assistant-1',
       name: 'Ops Assistant',
@@ -119,6 +134,7 @@ describe('ClawsPage', () => {
       }
     })
     vi.mocked(deleteClaw).mockResolvedValue(undefined)
+    vi.mocked(deleteClawChannel).mockResolvedValue(undefined)
     vi.mocked(listClawPairings).mockResolvedValue({
       pairings: [
         {
@@ -223,7 +239,7 @@ describe('ClawsPage', () => {
   it('renders onboarding when no claws are connected yet', async () => {
     vi.mocked(listClaws).mockResolvedValue({
       claws: [],
-      availableChannels: []
+      configuredChannels: []
     })
 
     await act(async () => {
@@ -261,7 +277,7 @@ describe('ClawsPage', () => {
           }
         }
       ],
-      availableChannels: []
+      configuredChannels: []
     })
 
     await act(async () => {
@@ -279,10 +295,42 @@ describe('ClawsPage', () => {
     expect(container.textContent).toContain('New Claw')
   })
 
+  it('shows a warning and disables enable when a claw has no channel', async () => {
+    vi.mocked(listClaws).mockResolvedValue({
+      claws: [
+        {
+          id: 'assistant-1',
+          name: 'Ops Assistant',
+          description: '',
+          instructions: '',
+          providerId: 'provider-1',
+          enabled: false,
+          channel: null
+        }
+      ],
+      configuredChannels: []
+    })
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ClawsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    expect(container.textContent).toContain('Configure a channel first')
+    const enableButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Enable')
+    )
+    expect(enableButton?.hasAttribute('disabled')).toBe(true)
+  })
+
   it('creates a claw from the onboarding dialog', async () => {
     vi.mocked(listClaws).mockResolvedValue({
       claws: [],
-      availableChannels: []
+      configuredChannels: []
     })
 
     await act(async () => {
@@ -310,11 +358,9 @@ describe('ClawsPage', () => {
     const instructionsInput = body.querySelector(
       'textarea[id="claw-instructions"]'
     ) as HTMLTextAreaElement
-    const channelNameInput = body.querySelector('input[id="claw-channel-name"]') as HTMLInputElement
-    const appIdInput = body.querySelector('input[id="claw-channel-app-id"]') as HTMLInputElement
-    const appSecretInput = body.querySelector(
-      'input[id="claw-channel-app-secret"]'
-    ) as HTMLInputElement
+    const openSelectorButton = body.querySelector(
+      'button[id="claw-select-channel-button"]'
+    ) as HTMLButtonElement
     const saveButton = Array.from(body.querySelectorAll('button')).find((button) =>
       button.textContent?.includes('Create Claw')
     )
@@ -323,9 +369,64 @@ describe('ClawsPage', () => {
       setElementValue(nameInput, 'Ops Assistant')
       setElementValue(providerSelect, 'provider-1')
       setElementValue(instructionsInput, 'Handle ops.')
+    })
+
+    await act(async () => {
+      openSelectorButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const addChannelButton = body.querySelector(
+      'button[id="claw-channel-selector-add"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const channelNameInput = body.querySelector(
+      'input[id="claw-channel-create-name"]'
+    ) as HTMLInputElement
+    const appIdInput = body.querySelector(
+      'input[id="claw-channel-create-app-id"]'
+    ) as HTMLInputElement
+    const appSecretInput = body.querySelector(
+      'input[id="claw-channel-create-app-secret"]'
+    ) as HTMLInputElement
+    const createChannelButton = body.querySelector(
+      'button[id="claw-channel-create-save"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
       setElementValue(channelNameInput, 'Ops Lark')
       setElementValue(appIdInput, 'cli_ops')
       setElementValue(appSecretInput, 'secret-ops')
+    })
+
+    vi.mocked(createClawChannel).mockResolvedValueOnce({
+      id: 'channel-created',
+      type: 'lark',
+      name: 'Ops Lark',
+      assistantId: null,
+      assistantName: null,
+      status: 'disconnected',
+      errorMessage: null,
+      pairedCount: 0,
+      pendingPairingCount: 0
+    })
+
+    await act(async () => {
+      createChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const applyChannelButton = body.querySelector(
+      'button[id="claw-channel-selector-apply"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      applyChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
     await act(async () => {
@@ -333,6 +434,12 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
+    expect(createClawChannel).toHaveBeenCalledWith({
+      type: 'lark',
+      name: 'Ops Lark',
+      appId: 'cli_ops',
+      appSecret: 'secret-ops'
+    })
     expect(createClaw).toHaveBeenCalledWith({
       assistant: {
         name: 'Ops Assistant',
@@ -341,11 +448,8 @@ describe('ClawsPage', () => {
         enabled: true
       },
       channel: {
-        mode: 'create',
-        type: 'lark',
-        name: 'Ops Lark',
-        appId: 'cli_ops',
-        appSecret: 'secret-ops'
+        mode: 'attach',
+        channelId: 'channel-created'
       }
     })
   })
@@ -353,7 +457,7 @@ describe('ClawsPage', () => {
   it('creates a telegram claw from the onboarding dialog', async () => {
     vi.mocked(listClaws).mockResolvedValue({
       claws: [],
-      availableChannels: []
+      configuredChannels: []
     })
 
     await act(async () => {
@@ -377,10 +481,9 @@ describe('ClawsPage', () => {
     const body = document.body
     const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
     const providerSelect = body.querySelector('select[id="claw-provider"]') as HTMLSelectElement
-    const channelTypeSelect = body.querySelector(
-      'select[id="claw-channel-type"]'
-    ) as HTMLSelectElement
-    const channelNameInput = body.querySelector('input[id="claw-channel-name"]') as HTMLInputElement
+    const openSelectorButton = body.querySelector(
+      'button[id="claw-select-channel-button"]'
+    ) as HTMLButtonElement
     const saveButton = Array.from(body.querySelectorAll('button')).find((button) =>
       button.textContent?.includes('Create Claw')
     )
@@ -388,17 +491,71 @@ describe('ClawsPage', () => {
     await act(async () => {
       setElementValue(nameInput, 'Telegram Assistant')
       setElementValue(providerSelect, 'provider-1')
-      setElementValue(channelTypeSelect, 'telegram')
-      setElementValue(channelNameInput, 'Telegram Bot')
     })
     await flushAsyncWork()
 
+    await act(async () => {
+      openSelectorButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const addChannelButton = body.querySelector(
+      'button[id="claw-channel-selector-add"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const channelTypeSelect = body.querySelector(
+      'select[id="claw-channel-create-type"]'
+    ) as HTMLSelectElement
+
+    await act(async () => {
+      setElementValue(channelTypeSelect, 'telegram')
+    })
+    await flushAsyncWork()
+
+    const channelNameInput = body.querySelector(
+      'input[id="claw-channel-create-name"]'
+    ) as HTMLInputElement
     const botTokenInput = body.querySelector(
-      'input[id="claw-channel-bot-token"]'
+      'input[id="claw-channel-create-bot-token"]'
     ) as HTMLInputElement
 
     await act(async () => {
+      setElementValue(channelNameInput, 'Telegram Bot')
       setElementValue(botTokenInput, '123456:test-token')
+    })
+
+    vi.mocked(createClawChannel).mockResolvedValueOnce({
+      id: 'channel-telegram-new',
+      type: 'telegram',
+      name: 'Telegram Bot',
+      assistantId: null,
+      assistantName: null,
+      status: 'disconnected',
+      errorMessage: null,
+      pairedCount: 0,
+      pendingPairingCount: 0
+    })
+
+    const createChannelButton = body.querySelector(
+      'button[id="claw-channel-create-save"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      createChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const applyChannelButton = body.querySelector(
+      'button[id="claw-channel-selector-apply"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      applyChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
     await act(async () => {
@@ -406,6 +563,11 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
+    expect(createClawChannel).toHaveBeenCalledWith({
+      type: 'telegram',
+      name: 'Telegram Bot',
+      botToken: '123456:test-token'
+    })
     expect(createClaw).toHaveBeenCalledWith({
       assistant: {
         name: 'Telegram Assistant',
@@ -414,10 +576,8 @@ describe('ClawsPage', () => {
         enabled: true
       },
       channel: {
-        mode: 'create',
-        type: 'telegram',
-        name: 'Telegram Bot',
-        botToken: '123456:test-token'
+        mode: 'attach',
+        channelId: 'channel-telegram-new'
       }
     })
   })
@@ -428,7 +588,7 @@ describe('ClawsPage', () => {
     vi.mocked(listClaws)
       .mockResolvedValueOnce({
         claws: [],
-        availableChannels: []
+        configuredChannels: []
       })
       .mockImplementationOnce(async () => pendingRefresh)
     vi.mocked(createClaw).mockResolvedValue({
@@ -470,10 +630,9 @@ describe('ClawsPage', () => {
     const body = document.body
     const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
     const providerSelect = body.querySelector('select[id="claw-provider"]') as HTMLSelectElement
-    const channelTypeSelect = body.querySelector(
-      'select[id="claw-channel-type"]'
-    ) as HTMLSelectElement
-    const channelNameInput = body.querySelector('input[id="claw-channel-name"]') as HTMLInputElement
+    const openSelectorButton = body.querySelector(
+      'button[id="claw-select-channel-button"]'
+    ) as HTMLButtonElement
     const saveButton = Array.from(body.querySelectorAll('button')).find((button) =>
       button.textContent?.includes('Create Claw')
     )
@@ -481,17 +640,71 @@ describe('ClawsPage', () => {
     await act(async () => {
       setElementValue(nameInput, 'Telegram Assistant')
       setElementValue(providerSelect, 'provider-1')
-      setElementValue(channelTypeSelect, 'telegram')
-      setElementValue(channelNameInput, 'Telegram Bot')
     })
     await flushAsyncWork()
 
+    await act(async () => {
+      openSelectorButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const addChannelButton = body.querySelector(
+      'button[id="claw-channel-selector-add"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const channelTypeSelect = body.querySelector(
+      'select[id="claw-channel-create-type"]'
+    ) as HTMLSelectElement
+
+    await act(async () => {
+      setElementValue(channelTypeSelect, 'telegram')
+    })
+    await flushAsyncWork()
+
+    const channelNameInput = body.querySelector(
+      'input[id="claw-channel-create-name"]'
+    ) as HTMLInputElement
     const botTokenInput = body.querySelector(
-      'input[id="claw-channel-bot-token"]'
+      'input[id="claw-channel-create-bot-token"]'
     ) as HTMLInputElement
 
     await act(async () => {
+      setElementValue(channelNameInput, 'Telegram Bot')
       setElementValue(botTokenInput, '123456:test-token')
+    })
+
+    vi.mocked(createClawChannel).mockResolvedValueOnce({
+      id: 'channel-telegram-new',
+      type: 'telegram',
+      name: 'Telegram Bot',
+      assistantId: null,
+      assistantName: null,
+      status: 'disconnected',
+      errorMessage: null,
+      pairedCount: 0,
+      pendingPairingCount: 0
+    })
+
+    const createChannelButton = body.querySelector(
+      'button[id="claw-channel-create-save"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      createChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const applyChannelButton = body.querySelector(
+      'button[id="claw-channel-selector-apply"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      applyChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
     await act(async () => {
@@ -525,7 +738,7 @@ describe('ClawsPage', () => {
           }
         }
       ],
-      availableChannels: []
+      configuredChannels: []
     })
 
     await act(async () => {
@@ -563,5 +776,66 @@ describe('ClawsPage', () => {
     await flushAsyncWork()
 
     expect(approveClawPairing).toHaveBeenCalledWith('assistant-telegram', 'pairing-pending')
+  })
+
+  it('requires confirmation before deleting a claw', async () => {
+    vi.mocked(listClaws).mockResolvedValue({
+      claws: [
+        {
+          id: 'assistant-1',
+          name: 'Ops Assistant',
+          description: '',
+          instructions: '',
+          providerId: 'provider-1',
+          enabled: true,
+          channel: {
+            id: 'channel-1',
+            type: 'lark',
+            name: 'Ops Lark',
+            status: 'connected',
+            errorMessage: null,
+            pairedCount: 0,
+            pendingPairingCount: 0
+          }
+        }
+      ],
+      configuredChannels: []
+    })
+
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ClawsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const deleteButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Delete')
+    )
+
+    await act(async () => {
+      deleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(confirmSpy).toHaveBeenCalledWith(
+      'Delete "Ops Assistant"? This will also delete all of its threads.'
+    )
+    expect(deleteClaw).not.toHaveBeenCalled()
+
+    confirmSpy.mockReturnValue(true)
+
+    await act(async () => {
+      deleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(deleteClaw).toHaveBeenCalledWith('assistant-1')
+
+    confirmSpy.mockRestore()
   })
 })

@@ -42,6 +42,24 @@ const keepChannelSchema = z.object({
   mode: z.literal('keep')
 })
 
+export const createConfiguredLarkChannelSchema = z.object({
+  type: z.literal('lark'),
+  name: z.string().min(1),
+  appId: z.string().min(1),
+  appSecret: z.string().min(1)
+})
+
+export const createConfiguredTelegramChannelSchema = z.object({
+  type: z.literal('telegram'),
+  name: z.string().min(1),
+  botToken: z.string().min(1)
+})
+
+export const createConfiguredChannelSchema = z.union([
+  createConfiguredLarkChannelSchema,
+  createConfiguredTelegramChannelSchema
+])
+
 export const createClawSchema = z.object({
   assistant: createAssistantForClawSchema,
   channel: z

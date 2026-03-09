@@ -201,4 +201,25 @@ describe('ChannelsRepository', () => {
       lastError: null
     })
   })
+
+  it('deletes an unbound channel by id', async () => {
+    const channel = await repo.create({
+      type: 'lark',
+      name: 'Disposable Lark',
+      assistantId: null,
+      enabled: true,
+      config: {
+        appId: 'cli_disposable',
+        appSecret: 'secret-disposable'
+      }
+    })
+
+    await expect(repo.delete(channel.id)).resolves.toBe(true)
+    await expect(repo.getById(channel.id)).resolves.toBeNull()
+    await expect(repo.list()).resolves.not.toContainEqual(
+      expect.objectContaining({
+        id: channel.id
+      })
+    )
+  })
 })

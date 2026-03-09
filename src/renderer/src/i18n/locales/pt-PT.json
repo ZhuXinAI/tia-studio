@@ -1,6 +1,7 @@
 {
   "appShell": {
     "nav": {
+      "chats": "Chats",
       "home": "Home",
       "claws": "Claws",
       "team": "Team",
@@ -374,6 +375,7 @@
     },
     "card": {
       "noChannelConnected": "Nenhum canal ligado",
+      "configureChannelFirst": "Configure a channel first",
       "enableButton": "Ativar",
       "disableButton": "Desativar",
       "editButton": "Editar",
@@ -419,6 +421,44 @@
         "channelRequired": "Escolha um canal para associar",
         "channelCredentialsRequired": "O nome do canal Lark, o ID da app e o segredo da app são obrigatórios",
         "telegramCredentialsRequired": "O nome do canal do Telegram e o token do bot são obrigatórios"
+      }
+    },
+    "channelSelector": {
+      "title": "Select Channel",
+      "description": "Choose from configured channels, add a new one, or leave this claw without a channel.",
+      "openButton": "Select Channel",
+      "empty": "No configured channels yet.",
+      "available": "Available",
+      "inUseByCurrent": "In use by this claw",
+      "inUseByOther": "In use by {{assistantName}}",
+      "otherAssistantFallback": "another assistant",
+      "actions": {
+        "add": "Add Channel",
+        "remove": "Remove Channel",
+        "clear": "Clear Selection",
+        "cancel": "Cancel",
+        "apply": "Apply"
+      },
+      "create": {
+        "title": "Add Channel",
+        "description": "Create a new Telegram or Lark channel configuration.",
+        "save": "Add Channel",
+        "fields": {
+          "type": "Channel Type"
+        }
+      },
+      "remove": {
+        "title": "Remove Channel",
+        "description": "Remove {{channelName}} from configured channels?",
+        "descriptionFallback": "Remove this channel from configured channels?",
+        "confirm": "Remove Channel"
+      },
+      "errors": {
+        "nameRequired": "Channel name is required",
+        "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
+        "telegramCredentialsRequired": "Bot token is required for Telegram channels",
+        "createFailed": "Failed to create channel",
+        "deleteFailed": "Failed to delete channel"
       }
     },
     "pairings": {

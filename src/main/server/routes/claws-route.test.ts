@@ -56,7 +56,7 @@ describe('claws route', () => {
     db.close()
   })
 
-  it('lists non-built-in claws and available unbound channels', async () => {
+  it('lists non-built-in claws and configured channels with binding metadata', async () => {
     const builtInAssistant = await assistantsRepo.create({
       name: 'Default Agent',
       providerId,
@@ -70,7 +70,7 @@ describe('claws route', () => {
       providerId,
       enabled: true
     })
-    await channelsRepo.create({
+    const boundChannel = await channelsRepo.create({
       type: 'lark',
       name: 'Bound Lark',
       assistantId: visibleAssistant.id,
@@ -116,10 +116,28 @@ describe('claws route', () => {
           })
         })
       ],
-      availableChannels: [
+      configuredChannels: [
+        expect.objectContaining({
+          id: boundChannel.id,
+          type: 'lark',
+          name: 'Bound Lark',
+          assistantId: visibleAssistant.id,
+          assistantName: 'Ops Assistant',
+          status: 'connected',
+          errorMessage: null,
+          pairedCount: 0,
+          pendingPairingCount: 0
+        }),
         expect.objectContaining({
           id: unboundChannel.id,
-          name: 'Extra Lark'
+          type: 'lark',
+          name: 'Extra Lark',
+          assistantId: null,
+          assistantName: null,
+          status: 'disconnected',
+          errorMessage: null,
+          pairedCount: 0,
+          pendingPairingCount: 0
         })
       ]
     })
@@ -187,6 +205,52 @@ describe('claws route', () => {
         pairedCount: 0,
         pendingPairingCount: 0
       }
+    })
+  })
+
+  it('creates an unbound configured channel', async () => {
+    const response = await app.request('http://localhost/v1/claws/channels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'lark',
+        name: 'Configured Lark',
+        appId: 'cli_configured',
+        appSecret: 'secret-configured'
+      })
+    })
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({
+      type: 'lark',
+      name: 'Configured Lark',
+      assistantId: null,
+      assistantName: null,
+      status: 'disconnected',
+      errorMessage: null
+    })
+    expect(channelReloadMock).not.toHaveBeenCalled()
+    expect(cronReloadMock).not.toHaveBeenCalled()
+  })
+
+  it('creates a claw without a channel as disabled even when enabled is requested', async () => {
+    const response = await app.request('http://localhost/v1/claws', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assistant: {
+          name: 'Unconfigured Assistant',
+          providerId,
+          enabled: true
+        }
+      })
+    })
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({
+      name: 'Unconfigured Assistant',
+      enabled: false,
+      channel: null
     })
   })
 
@@ -314,6 +378,55 @@ describe('claws route', () => {
     expect(cronReloadMock).toHaveBeenCalledOnce()
   })
 
+  it('deletes an unbound configured channel', async () => {
+    const channel = await channelsRepo.create({
+      type: 'telegram',
+      name: 'Disposable Telegram',
+      assistantId: null,
+      enabled: true,
+      config: {
+        botToken: '123456:test-disposable'
+      }
+    })
+
+    const response = await app.request(`http://localhost/v1/claws/channels/${channel.id}`, {
+      method: 'DELETE'
+    })
+
+    expect(response.status).toBe(204)
+    await expect(channelsRepo.getById(channel.id)).resolves.toBeNull()
+    expect(channelReloadMock).not.toHaveBeenCalled()
+    expect(cronReloadMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects deleting a configured channel that is still bound', async () => {
+    const assistant = await assistantsRepo.create({
+      name: 'Ops Assistant',
+      providerId,
+      enabled: true
+    })
+    const channel = await channelsRepo.create({
+      type: 'lark',
+      name: 'Claimed Lark',
+      assistantId: assistant.id,
+      enabled: true,
+      config: {
+        appId: 'cli_claimed_delete',
+        appSecret: 'secret-claimed-delete'
+      }
+    })
+
+    const response = await app.request(`http://localhost/v1/claws/channels/${channel.id}`, {
+      method: 'DELETE'
+    })
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: 'Channel is attached to an assistant'
+    })
+  })
+
   it('returns telegram pairing counts in the claw list', async () => {
     const assistant = await assistantsRepo.create({
       name: 'Telegram Assistant',
@@ -365,7 +478,17 @@ describe('claws route', () => {
           })
         })
       ],
-      availableChannels: []
+      configuredChannels: [
+        expect.objectContaining({
+          id: channel.id,
+          type: 'telegram',
+          name: 'Telegram Bot',
+          assistantId: assistant.id,
+          assistantName: 'Telegram Assistant',
+          pairedCount: 1,
+          pendingPairingCount: 1
+        })
+      ]
     })
   })
 
