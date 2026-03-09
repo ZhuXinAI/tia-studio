@@ -13,6 +13,7 @@ import type { WebSearchSettingsRepository } from '../persistence/repos/web-searc
 import type { AssistantRuntime } from '../mastra/assistant-runtime'
 import type { TeamRuntime } from '../mastra/team-runtime'
 import { createBearerAuthMiddleware } from './auth-middleware'
+import type { ThreadMessageEventsStore } from './chat/thread-message-events-store'
 import type { TeamRunStatusStore } from './chat/team-run-status-store'
 import { registerAssistantsRoute } from './routes/assistants-route'
 import { registerChatRoute } from './routes/chat-route'
@@ -44,6 +45,7 @@ type CreateAppOptions = {
   assistantRuntime?: AssistantRuntime
   teamRuntime?: TeamRuntime
   teamRunStatusStore?: TeamRunStatusStore
+  threadMessageEventsStore?: ThreadMessageEventsStore
   channelService?: {
     reload(): Promise<void>
   }
@@ -133,7 +135,8 @@ export function createApp(options: CreateAppOptions): Hono {
 
   if (options.assistantRuntime) {
     registerChatRoute(app, {
-      assistantRuntime: options.assistantRuntime
+      assistantRuntime: options.assistantRuntime,
+      threadMessageEventsStore: options.threadMessageEventsStore
     })
   }
 

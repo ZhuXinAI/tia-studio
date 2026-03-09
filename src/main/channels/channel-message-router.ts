@@ -14,6 +14,14 @@ type ChannelMessageRouterOptions = {
   bindingsRepo: ChannelThreadBindingsRepository
   threadsRepo: ThreadsRepository
   assistantRuntime: AssistantRuntime
+  threadMessageEventsStore?: {
+    appendMessagesUpdated(input: {
+      assistantId: string
+      threadId: string
+      profileId: string
+      source?: 'channel'
+    }): unknown
+  }
 }
 
 const DEFAULT_PROFILE_ID = 'default-profile'
@@ -118,6 +126,13 @@ export class ChannelMessageRouter {
     })
 
     const assistantReplyText = await drainStream(stream)
+
+    this.options.threadMessageEventsStore?.appendMessagesUpdated({
+      assistantId: runtimeChannel.assistantId,
+      threadId,
+      profileId: DEFAULT_PROFILE_ID,
+      source: 'channel'
+    })
 
     if (assistantReplyText.trim().length === 0) {
       return

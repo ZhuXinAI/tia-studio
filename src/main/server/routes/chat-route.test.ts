@@ -3,6 +3,7 @@ import type { UIMessage } from 'ai'
 import { describe, expect, it, vi } from 'vitest'
 import type { AssistantRuntime } from '../../mastra/assistant-runtime'
 import { ChatRouteError } from '../chat/chat-errors'
+import { ThreadMessageEventsStore } from '../chat/thread-message-events-store'
 import { registerChatRoute } from './chat-route'
 
 function createAssistantRuntimeStub(overrides: Partial<AssistantRuntime>): AssistantRuntime {
@@ -228,5 +229,44 @@ describe('chat route', () => {
     await reader!.cancel()
     streamController!.close()
     await streamResponse.body?.cancel()
+  })
+
+  it('streams thread message update events', async () => {
+    const streamChat = vi.fn(async () => new ReadableStream())
+    const listThreadMessages = vi.fn(async () => [])
+    const eventsStore = new ThreadMessageEventsStore()
+    const app = new Hono()
+    registerChatRoute(app, {
+      assistantRuntime: createAssistantRuntimeStub({
+        streamChat,
+        listThreadMessages
+      }),
+      threadMessageEventsStore: eventsStore
+    })
+
+    const responsePromise = app.request(
+      'http://localhost/chat/assistant-1/events?profileId=profile-1'
+    )
+    await Promise.resolve()
+
+    eventsStore.appendMessagesUpdated({
+      assistantId: 'assistant-1',
+      threadId: 'thread-1',
+      profileId: 'profile-1'
+    })
+
+    const response = await responsePromise
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toContain('text/event-stream')
+
+    const reader = response.body?.getReader()
+    expect(reader).toBeDefined()
+
+    const firstChunk = await reader!.read()
+    expect(firstChunk.done).toBe(false)
+    const text = new TextDecoder().decode(firstChunk.value)
+    expect(text).toContain('"type":"thread-messages-updated"')
+
+    await reader!.cancel()
   })
 })

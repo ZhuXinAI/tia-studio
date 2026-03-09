@@ -26,6 +26,7 @@ const mockState = vi.hoisted(() => {
     deleteThreadMock: vi.fn(),
     createThreadChatTransportMock: vi.fn(),
     listThreadChatMessagesMock: vi.fn(),
+    openAssistantMessageEventsStreamMock: vi.fn(),
     useChatMock: vi.fn(),
     sendMessageMock: vi.fn(),
     setMessagesMock: vi.fn(),
@@ -100,7 +101,9 @@ vi.mock('../threads-query', () => ({
 vi.mock('../chat-query', () => ({
   createThreadChatTransport: (...args: unknown[]) =>
     mockState.createThreadChatTransportMock(...args),
-  listThreadChatMessages: (...args: unknown[]) => mockState.listThreadChatMessagesMock(...args)
+  listThreadChatMessages: (...args: unknown[]) => mockState.listThreadChatMessagesMock(...args),
+  openAssistantMessageEventsStream: (...args: unknown[]) =>
+    mockState.openAssistantMessageEventsStreamMock(...args)
 }))
 
 vi.mock('@ai-sdk/react', () => ({
@@ -290,6 +293,12 @@ describe('useThreadPageController', () => {
 
     mockState.listThreadChatMessagesMock.mockReset()
     mockState.listThreadChatMessagesMock.mockResolvedValue([])
+
+    mockState.openAssistantMessageEventsStreamMock.mockReset()
+    mockState.openAssistantMessageEventsStreamMock.mockReturnValue({
+      close: vi.fn(),
+      done: Promise.resolve()
+    })
 
     mockState.createThreadChatTransportMock.mockReset()
     mockState.createThreadChatTransportMock.mockReturnValue({} as object)

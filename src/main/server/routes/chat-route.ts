@@ -20,6 +20,12 @@ const chatHistoryQuerySchema = z.object({
 
 type RegisterChatRouteOptions = {
   assistantRuntime: AssistantRuntime
+  threadMessageEventsStore?: {
+    createAssistantStream(input: {
+      assistantId: string
+      profileId: string
+    }): ReadableStream<string>
+  }
 }
 
 export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions): void {
@@ -83,6 +89,40 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
 
     return new Response(stream.pipeThrough(new TextEncoderStream()), {
       headers: UI_MESSAGE_STREAM_HEADERS
+    })
+  })
+
+  app.get('/chat/:assistantId/events', async (context) => {
+    if (!options.threadMessageEventsStore) {
+      return context.json({ ok: false, error: 'Chat thread events are unavailable' }, 503)
+    }
+
+    const parsed = z
+      .object({
+        profileId: z.string().min(1)
+      })
+      .safeParse({
+        profileId: context.req.query('profileId')
+      })
+
+    if (!parsed.success) {
+      return context.json(
+        { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' },
+        400
+      )
+    }
+
+    const stream = options.threadMessageEventsStore.createAssistantStream({
+      assistantId: context.req.param('assistantId'),
+      profileId: parsed.data.profileId
+    })
+
+    return new Response(stream.pipeThrough(new TextEncoderStream()), {
+      headers: {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive'
+      }
     })
   })
 

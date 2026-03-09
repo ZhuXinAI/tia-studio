@@ -46,6 +46,7 @@ import { ThreadsRepository } from './persistence/repos/threads-repo'
 import { WebSearchSettingsRepository } from './persistence/repos/web-search-settings-repo'
 import { ManagedRuntimeService } from './runtimes/managed-runtime-service'
 import { TeamRunStatusStore } from './server/chat/team-run-status-store'
+import { ThreadMessageEventsStore } from './server/chat/thread-message-events-store'
 import { createApp } from './server/create-app'
 import { listAssistantSkills, removeWorkspaceSkill } from './skills/skills-manager'
 import { bringWindowToFront, buildTrayMenuTemplate } from './tray'
@@ -199,6 +200,7 @@ async function startLocalApiServer(): Promise<void> {
     managedRuntimeResolver: managedRuntimeService
   })
   const teamRunStatusStore = new TeamRunStatusStore()
+  const threadMessageEventsStore = new ThreadMessageEventsStore()
   const teamRuntime = new TeamRuntimeService({
     mastra,
     assistantsRepo,
@@ -234,7 +236,8 @@ async function startLocalApiServer(): Promise<void> {
     channelsRepo,
     bindingsRepo: channelThreadBindingsRepo,
     threadsRepo,
-    assistantRuntime
+    assistantRuntime,
+    threadMessageEventsStore
   })
   cronSchedulerService = new CronSchedulerService({
     cronJobsRepo,
@@ -270,6 +273,7 @@ async function startLocalApiServer(): Promise<void> {
     assistantRuntime,
     teamRuntime,
     teamRunStatusStore,
+    threadMessageEventsStore,
     channelService,
     cronSchedulerService
   })
