@@ -23,14 +23,34 @@ export const BUILT_IN_PROVIDERS: BuiltInProviderConfig[] = [
     supportsVision: true
   },
   {
+    id: 'built-in-minimax-coding-plan',
+    name: 'MiniMax Coding Plan',
+    type: 'anthropic',
+    icon: 'minimax',
+    officialSite: 'https://www.minimaxi.com',
+    apiHost: 'https://api.minimaxi.com/anthropic/v1',
+    defaultModel: 'MiniMax-M2.5',
+    supportsVision: true
+  },
+  {
     id: 'built-in-glm',
     name: 'GLM',
     type: 'anthropic',
     icon: 'glm',
     officialSite: 'https://open.bigmodel.cn',
     apiHost: 'https://open.bigmodel.cn/api/paas/v4',
-    defaultModel: 'glm-4-plus',
-    supportsVision: true
+    defaultModel: 'glm-5',
+    supportsVision: false
+  },
+  {
+    id: 'built-in-glm-coding-plan',
+    name: 'GLM Coding Plan',
+    type: 'anthropic',
+    icon: 'glm',
+    officialSite: 'https://open.bigmodel.cn',
+    apiHost: 'https://open.bigmodel.cn/api/anthropic/v1',
+    defaultModel: 'glm-5',
+    supportsVision: false
   },
   {
     id: 'built-in-ollama',
@@ -76,9 +96,19 @@ export const BUILT_IN_PROVIDERS: BuiltInProviderConfig[] = [
     name: 'Kimi',
     type: 'anthropic',
     icon: 'kimi',
-    officialSite: 'https://platform.moonshot.cn',
+    officialSite: 'https://kimi.com',
     apiHost: 'https://api.moonshot.cn/v1',
     defaultModel: 'moonshot-v1-8k',
+    supportsVision: false
+  },
+  {
+    id: 'built-in-kimi-coding-plan',
+    name: 'Kimi',
+    type: 'anthropic',
+    icon: 'kimi',
+    officialSite: 'https://kimi.com',
+    apiHost: 'https://api.kimi.com/coding/v1',
+    defaultModel: 'kimi-k2.5',
     supportsVision: false
   }
 ]

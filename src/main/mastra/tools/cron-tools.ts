@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { isValidCronExpression } from '../../cron/cron-expression'
 import type { AppCronJob } from '../../persistence/repos/cron-jobs-repo'
 import type { AssistantCronJobsService } from '../../cron/assistant-cron-jobs-service'
+import { createNoArgToolInputSchema } from './tool-schema'
 
 type CronToolsOptions = {
   assistantId: string
@@ -78,7 +79,7 @@ export function createCronTools(options: CronToolsOptions) {
   const listCronJobs = createTool({
     id: 'list-cron-jobs',
     description: 'List recurring cron jobs owned by this assistant.',
-    inputSchema: z.object({}).default({}),
+    inputSchema: createNoArgToolInputSchema(),
     outputSchema: z.object({
       jobs: z.array(cronJobOutputSchema)
     }),
