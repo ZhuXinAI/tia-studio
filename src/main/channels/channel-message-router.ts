@@ -27,9 +27,48 @@ type ChannelMessageRouterOptions = {
 const DEFAULT_PROFILE_ID = 'default-profile'
 const DEFAULT_THREAD_TITLE = 'New Thread'
 
+function toFriendlyErrorMessage(raw: string): string {
+  let statusCode: number | undefined
+  let message = ''
+
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    if (typeof parsed.statusCode === 'number') statusCode = parsed.statusCode
+    if (typeof parsed.message === 'string') message = parsed.message
+  } catch {
+    message = raw
+  }
+
+  if (statusCode === 401 || statusCode === 403) {
+    return 'Authentication failed. Please check the API key in provider settings.'
+  }
+  if (statusCode === 404) {
+    return 'The configured model or API endpoint was not found. Please check the provider settings.'
+  }
+  if (statusCode === 429) {
+    return 'Too many requests. Please wait a moment and try again.'
+  }
+  if (statusCode && statusCode >= 500 && statusCode <= 599) {
+    return "The AI provider's server encountered an error. Please try again later."
+  }
+
+  const lower = message.toLowerCase()
+  if (
+    lower.includes('econnrefused') ||
+    lower.includes('enotfound') ||
+    lower.includes('timeout') ||
+    lower.includes('connection refused')
+  ) {
+    return 'Unable to connect to the AI provider. Please check the network and API host configuration.'
+  }
+
+  return 'Failed to generate a response. Please check the provider configuration.'
+}
+
 async function drainStream(stream: ReadableStream<UIMessageChunk>): Promise<string> {
   const reader = stream.getReader()
   let assistantText = ''
+  let streamError: string | null = null
 
   try {
     while (true) {
@@ -40,10 +79,16 @@ async function drainStream(stream: ReadableStream<UIMessageChunk>): Promise<stri
 
       if (value.type === 'text-delta') {
         assistantText += value.delta
+      } else if (value.type === 'error') {
+        streamError = value.errorText
       }
     }
   } finally {
     reader.releaseLock()
+  }
+
+  if (streamError && assistantText.trim().length === 0) {
+    throw new Error(streamError)
   }
 
   return assistantText
@@ -118,14 +163,30 @@ export class ChannelMessageRouter {
       }
     }
 
-    const stream = await this.options.assistantRuntime.streamChat({
-      assistantId: runtimeChannel.assistantId,
-      threadId,
-      profileId: DEFAULT_PROFILE_ID,
-      messages: [userMessage]
-    })
+    let assistantReplyText: string
+    try {
+      const stream = await this.options.assistantRuntime.streamChat({
+        assistantId: runtimeChannel.assistantId,
+        threadId,
+        profileId: DEFAULT_PROFILE_ID,
+        messages: [userMessage]
+      })
 
-    const assistantReplyText = await drainStream(stream)
+      assistantReplyText = await drainStream(stream)
+    } catch (error) {
+      const rawMessage =
+        error instanceof Error ? error.message : 'An unknown error occurred'
+      console.error(`[ChannelMessageRouter] streamChat failed: ${rawMessage}`)
+
+      await this.options.eventBus.publish('channel.message.send-requested', {
+        eventId: randomUUID(),
+        channelId: event.channelId,
+        channelType: event.channelType,
+        remoteChatId: event.message.remoteChatId,
+        content: `[Error] ${toFriendlyErrorMessage(rawMessage)}`
+      })
+      return
+    }
 
     this.options.threadMessageEventsStore?.appendMessagesUpdated({
       assistantId: runtimeChannel.assistantId,
