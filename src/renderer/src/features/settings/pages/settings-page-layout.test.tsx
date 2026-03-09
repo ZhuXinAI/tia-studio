@@ -33,7 +33,7 @@ describe('settings page layout', () => {
     expect(html).toContain('data-slot="sidebar"')
     expect(html).toContain('border-r border-border/70')
     expect(html).toContain('Model Provider Settings')
-    expect(html).not.toContain('Channels')
+    expect(html).toContain('Channels')
   })
 
   it('renders translated sidebar labels from the active locale', async () => {
@@ -62,6 +62,7 @@ describe('settings page layout', () => {
     expect(html).toContain('设置')
     expect(html).toContain('分类')
     expect(html).toContain('常规')
+    expect(html).toContain('频道')
     expect(html).toContain('显示')
   })
 })

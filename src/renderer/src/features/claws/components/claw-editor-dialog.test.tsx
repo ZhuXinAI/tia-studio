@@ -85,6 +85,9 @@ describe('ClawEditorDialog', () => {
           onCreateChannel={vi.fn(async () => {
             throw new Error('not used')
           })}
+          onUpdateChannel={vi.fn(async () => {
+            throw new Error('not used')
+          })}
           onDeleteChannel={vi.fn(async () => undefined)}
         />
       )
@@ -163,6 +166,9 @@ describe('ClawEditorDialog', () => {
           onClose={() => undefined}
           onSubmit={onSubmit}
           onCreateChannel={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onUpdateChannel={vi.fn(async () => {
             throw new Error('not used')
           })}
           onDeleteChannel={vi.fn(async () => undefined)}
@@ -270,6 +276,9 @@ describe('ClawEditorDialog', () => {
           onClose={() => undefined}
           onSubmit={onSubmit}
           onCreateChannel={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onUpdateChannel={vi.fn(async () => {
             throw new Error('not used')
           })}
           onDeleteChannel={vi.fn(async () => undefined)}

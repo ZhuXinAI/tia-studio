@@ -58,7 +58,8 @@
         "mcpServers": "MCP-серверы",
         "runtimeSetup": "Настройка среды",
         "display": "Отображение",
-        "aboutFeedback": "О приложении и отзывы"
+        "aboutFeedback": "О приложении и отзывы",
+        "channels": "Каналы"
       }
     },
     "general": {
@@ -343,6 +344,18 @@
       "toasts": {
         "saved": "MCP server settings saved."
       }
+    },
+    "channels": {
+      "title": "Каналы",
+      "description": "Управляйте настроенными каналами Telegram и Lark в одном месте.",
+      "configuredTitle": "Настроенные каналы",
+      "configuredDescription": "Редактируйте учётные данные каналов, проверяйте привязки или удаляйте неиспользуемые каналы.",
+      "loading": "Загрузка каналов...",
+      "empty": "Настроенных каналов пока нет.",
+      "available": "Доступен",
+      "boundTo": "Подключен к {{assistantName}}",
+      "removeDisabled": "Сначала отвяжите этот канал от claw, затем удаляйте его.",
+      "loadFailed": "Не удалось загрузить каналы"
     }
   },
   "claws": {
@@ -437,7 +450,8 @@
         "remove": "Remove Channel",
         "clear": "Clear Selection",
         "cancel": "Cancel",
-        "apply": "Apply"
+        "apply": "Apply",
+        "edit": "Редактировать канал"
       },
       "create": {
         "title": "Add Channel",
@@ -458,7 +472,18 @@
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "createFailed": "Failed to create channel",
-        "deleteFailed": "Failed to delete channel"
+        "deleteFailed": "Failed to delete channel",
+        "updateFailed": "Не удалось обновить канал"
+      },
+      "selectedBadge": "Выбран",
+      "edit": {
+        "title": "Редактировать канал",
+        "description": "Обновите конфигурацию этого канала.",
+        "save": "Сохранить изменения",
+        "credentialsOptional": "Оставьте поля учётных данных пустыми, чтобы сохранить текущие значения.",
+        "appIdPlaceholder": "Оставить без изменений",
+        "appSecretPlaceholder": "Оставить без изменений",
+        "botTokenPlaceholder": "Оставить без изменений"
       }
     },
     "pairings": {
@@ -482,6 +507,15 @@
       "errors": {
         "loadFailed": "Не удалось загрузить привязки",
         "updateFailed": "Не удалось обновить привязку"
+      }
+    },
+    "deleteDialog": {
+      "title": "Удалить «{{name}}»?",
+      "description": "Это также удалит всю историю ассистента.",
+      "actions": {
+        "cancel": "Отмена",
+        "disable": "Отключить вместо удаления",
+        "confirmDelete": "Подтвердить удаление"
       }
     }
   },

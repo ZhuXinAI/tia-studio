@@ -106,6 +106,19 @@ export type CreateClawChannelInput =
       botToken: string
     }
 
+export type UpdateClawChannelInput =
+  | {
+      type: 'lark'
+      name: string
+      appId?: string
+      appSecret?: string
+    }
+  | {
+      type: 'telegram'
+      name: string
+      botToken?: string
+    }
+
 const apiClient = createApiClient()
 
 export const clawKeys = {
@@ -126,6 +139,13 @@ export async function createClawChannel(
   input: CreateClawChannelInput
 ): Promise<ConfiguredClawChannelRecord> {
   return apiClient.post<ConfiguredClawChannelRecord>('/v1/claws/channels', input)
+}
+
+export async function updateClawChannel(
+  channelId: string,
+  input: UpdateClawChannelInput
+): Promise<ConfiguredClawChannelRecord> {
+  return apiClient.patch<ConfiguredClawChannelRecord>(`/v1/claws/channels/${channelId}`, input)
 }
 
 export async function updateClaw(assistantId: string, input: SaveClawInput): Promise<ClawRecord> {

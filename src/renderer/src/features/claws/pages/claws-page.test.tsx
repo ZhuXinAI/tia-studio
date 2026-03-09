@@ -778,7 +778,7 @@ describe('ClawsPage', () => {
     expect(approveClawPairing).toHaveBeenCalledWith('assistant-telegram', 'pairing-pending')
   })
 
-  it('requires confirmation before deleting a claw', async () => {
+  it('offers cancel, disable, and confirm delete when removing a claw', async () => {
     vi.mocked(listClaws).mockResolvedValue({
       claws: [
         {
@@ -802,8 +802,6 @@ describe('ClawsPage', () => {
       configuredChannels: []
     })
 
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
-
     await act(async () => {
       root.render(
         <MemoryRouter>
@@ -822,20 +820,56 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    expect(confirmSpy).toHaveBeenCalledWith(
-      'Delete "Ops Assistant"? This will also delete all of its threads.'
-    )
-    expect(deleteClaw).not.toHaveBeenCalled()
+    expect(document.body.textContent).toContain('Delete "Ops Assistant"?')
+    expect(document.body.textContent).toContain('This will also delete all assistant history.')
 
-    confirmSpy.mockReturnValue(true)
+    const cancelButton = document.body.querySelector(
+      'button[id="claw-delete-dialog-cancel"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      cancelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(deleteClaw).not.toHaveBeenCalled()
+    expect(updateClaw).not.toHaveBeenCalled()
 
     await act(async () => {
       deleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
     await flushAsyncWork()
 
-    expect(deleteClaw).toHaveBeenCalledWith('assistant-1')
+    const disableButton = document.body.querySelector(
+      'button[id="claw-delete-dialog-disable"]'
+    ) as HTMLButtonElement
 
-    confirmSpy.mockRestore()
+    await act(async () => {
+      disableButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(updateClaw).toHaveBeenCalledWith('assistant-1', {
+      assistant: {
+        enabled: false
+      }
+    })
+    expect(deleteClaw).not.toHaveBeenCalled()
+
+    await act(async () => {
+      deleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const confirmDeleteButton = document.body.querySelector(
+      'button[id="claw-delete-dialog-confirm"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      confirmDeleteButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(deleteClaw).toHaveBeenCalledWith('assistant-1')
   })
 })

@@ -14,6 +14,7 @@ import { RuntimeSetupPage } from '../features/settings/pages/runtime-setup-page'
 import { SettingsPageLayout } from '../features/settings/pages/settings-page-layout'
 import { RouteError } from '../components/route-error'
 import { TeamPage } from '../features/team/pages/team-page'
+import { ChannelsSettingsPage } from '../features/settings/pages/channels-settings-page'
 
 export const appRoutes: RouteObject[] = [
   {
@@ -63,7 +64,7 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: 'channels',
-            loader: () => redirect('/claws')
+            element: <ChannelsSettingsPage />
           },
           {
             path: 'cron-jobs',

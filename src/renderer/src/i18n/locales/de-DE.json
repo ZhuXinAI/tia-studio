@@ -58,7 +58,8 @@
         "mcpServers": "MCP-Server",
         "runtimeSetup": "Laufzeitumgebung",
         "display": "Anzeige",
-        "aboutFeedback": "Über & Feedback"
+        "aboutFeedback": "Über & Feedback",
+        "channels": "Kanäle"
       }
     },
     "general": {
@@ -343,6 +344,18 @@
       "toasts": {
         "saved": "MCP server settings saved."
       }
+    },
+    "channels": {
+      "title": "Kanäle",
+      "description": "Verwalten Sie konfigurierte Telegram- und Lark-Kanäle an einem Ort.",
+      "configuredTitle": "Konfigurierte Kanäle",
+      "configuredDescription": "Bearbeiten Sie bestehende Zugangsdaten, prüfen Sie Bindungen oder entfernen Sie ungenutzte Kanäle.",
+      "loading": "Kanäle werden geladen...",
+      "empty": "Noch keine Kanäle konfiguriert.",
+      "available": "Verfügbar",
+      "boundTo": "Verbunden mit {{assistantName}}",
+      "removeDisabled": "Trennen Sie diesen Kanal zuerst von seinem Claw, bevor Sie ihn entfernen.",
+      "loadFailed": "Kanäle konnten nicht geladen werden"
     }
   },
   "claws": {
@@ -437,7 +450,8 @@
         "remove": "Remove Channel",
         "clear": "Clear Selection",
         "cancel": "Cancel",
-        "apply": "Apply"
+        "apply": "Apply",
+        "edit": "Kanal bearbeiten"
       },
       "create": {
         "title": "Add Channel",
@@ -458,7 +472,18 @@
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "createFailed": "Failed to create channel",
-        "deleteFailed": "Failed to delete channel"
+        "deleteFailed": "Failed to delete channel",
+        "updateFailed": "Kanal konnte nicht aktualisiert werden"
+      },
+      "selectedBadge": "Ausgewählt",
+      "edit": {
+        "title": "Kanal bearbeiten",
+        "description": "Aktualisieren Sie diese Kanalkonfiguration.",
+        "save": "Änderungen speichern",
+        "credentialsOptional": "Lassen Sie die Zugangsdatenfelder leer, um die aktuellen Werte zu behalten.",
+        "appIdPlaceholder": "Unverändert lassen",
+        "appSecretPlaceholder": "Unverändert lassen",
+        "botTokenPlaceholder": "Unverändert lassen"
       }
     },
     "pairings": {
@@ -482,6 +507,15 @@
       "errors": {
         "loadFailed": "Kopplungen konnten nicht geladen werden",
         "updateFailed": "Kopplung konnte nicht aktualisiert werden"
+      }
+    },
+    "deleteDialog": {
+      "title": "„{{name}}“ löschen?",
+      "description": "Dadurch wird auch der gesamte Assistentenverlauf gelöscht.",
+      "actions": {
+        "cancel": "Abbrechen",
+        "disable": "Stattdessen deaktivieren",
+        "confirmDelete": "Löschen bestätigen"
       }
     }
   },
