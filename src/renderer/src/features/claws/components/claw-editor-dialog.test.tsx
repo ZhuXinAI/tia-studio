@@ -25,10 +25,7 @@ function setElementValue(
 
   setter?.call(element, value)
   element.dispatchEvent(
-    new Event(
-      element instanceof HTMLSelectElement ? 'change' : 'input',
-      { bubbles: true }
-    )
+    new Event(element instanceof HTMLSelectElement ? 'change' : 'input', { bubbles: true })
   )
 }
 
@@ -94,9 +91,7 @@ describe('ClawEditorDialog', () => {
     const instructionsInput = body.querySelector(
       'textarea[id="claw-instructions"]'
     ) as HTMLTextAreaElement
-    const channelNameInput = body.querySelector(
-      'input[id="claw-channel-name"]'
-    ) as HTMLInputElement
+    const channelNameInput = body.querySelector('input[id="claw-channel-name"]') as HTMLInputElement
     const appIdInput = body.querySelector('input[id="claw-channel-app-id"]') as HTMLInputElement
     const appSecretInput = body.querySelector(
       'input[id="claw-channel-app-secret"]'

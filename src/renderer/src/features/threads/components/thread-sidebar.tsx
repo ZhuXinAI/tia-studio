@@ -237,7 +237,9 @@ export function ThreadSidebar({
       <SidebarContent className="space-y-4">
         <SidebarGroup>
           <div className="flex items-center justify-between px-2">
-            <SidebarGroupLabel className="px-0">{t('threads.sidebar.assistants')}</SidebarGroupLabel>
+            <SidebarGroupLabel className="px-0">
+              {t('threads.sidebar.assistants')}
+            </SidebarGroupLabel>
             <Button
               type="button"
               variant="ghost"
@@ -250,7 +252,9 @@ export function ThreadSidebar({
             </Button>
           </div>
           {isLoadingData ? (
-            <p className="text-muted-foreground px-2 text-xs">{t('threads.sidebar.loadingAssistants')}</p>
+            <p className="text-muted-foreground px-2 text-xs">
+              {t('threads.sidebar.loadingAssistants')}
+            </p>
           ) : null}
           {!isLoadingData && assistantsCount === 0 ? (
             <p className="text-muted-foreground px-2 text-xs">
@@ -365,9 +369,12 @@ export function ThreadSidebar({
                                       type="button"
                                       size="sm"
                                       variant="destructive"
-                                      aria-label={t('threads.sidebar.confirmDeleteThreadAriaLabel', {
-                                        title: displayTitle
-                                      })}
+                                      aria-label={t(
+                                        'threads.sidebar.confirmDeleteThreadAriaLabel',
+                                        {
+                                          title: displayTitle
+                                        }
+                                      )}
                                       disabled={isDeleting}
                                       onClick={() => {
                                         setConfirmDeleteThreadId(null)

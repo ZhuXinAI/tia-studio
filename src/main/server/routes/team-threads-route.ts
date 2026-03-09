@@ -18,7 +18,10 @@ function invalidBodyResponse(): { ok: false; error: string } {
   return { ok: false as const, error: 'Invalid JSON body' }
 }
 
-export function registerTeamThreadsRoute(app: Hono, options: RegisterTeamThreadsRouteOptions): void {
+export function registerTeamThreadsRoute(
+  app: Hono,
+  options: RegisterTeamThreadsRouteOptions
+): void {
   app.get('/v1/team/threads', async (context) => {
     const workspaceId = context.req.query('workspaceId')
     if (!workspaceId) {

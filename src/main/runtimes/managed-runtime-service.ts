@@ -31,7 +31,10 @@ type ManagedRuntimeServiceOptions = {
   repository: ManagedRuntimesRepository
   managedRootPath: string
   fetchLatestRelease?: (kind: ManagedRuntimeKind) => Promise<GitHubRelease>
-  downloadReleaseAsset?: (asset: GitHubReleaseAsset, destinationDirectory: string) => Promise<string>
+  downloadReleaseAsset?: (
+    asset: GitHubReleaseAsset,
+    destinationDirectory: string
+  ) => Promise<string>
   installReleaseAsset?: (
     kind: ManagedRuntimeKind,
     archivePath: string,
@@ -97,7 +100,10 @@ function runtimeBinaryName(kind: ManagedRuntimeKind, platform: NodeJS.Platform):
   return `${kind}${suffix}`
 }
 
-function resolveBunxCommand(binaryPath: string, platform: NodeJS.Platform): {
+function resolveBunxCommand(
+  binaryPath: string,
+  platform: NodeJS.Platform
+): {
   command: string
   extraArgs: string[]
 } {
@@ -110,7 +116,10 @@ function resolveBunxCommand(binaryPath: string, platform: NodeJS.Platform): {
   }
 }
 
-function resolveUvxCommand(binaryPath: string, platform: NodeJS.Platform): {
+function resolveUvxCommand(
+  binaryPath: string,
+  platform: NodeJS.Platform
+): {
   command: string
   extraArgs: string[]
 } {
@@ -218,10 +227,7 @@ async function extractArchive(
   await copyFile(archivePath, join(destinationDirectory, basename(archivePath)))
 }
 
-async function findBinaryPath(
-  directory: string,
-  binaryName: string
-): Promise<string | null> {
+async function findBinaryPath(directory: string, binaryName: string): Promise<string | null> {
   const entries = await readdir(directory, { withFileTypes: true })
 
   for (const entry of entries) {
@@ -291,7 +297,9 @@ function createManagedRuntimeEnv(
 
   return {
     ...env,
-    [pathKey]: runtimeDirs.join(process.platform === 'win32' ? ';' : ':') + (existingPath ? `${process.platform === 'win32' ? ';' : ':'}${existingPath}` : '')
+    [pathKey]:
+      runtimeDirs.join(process.platform === 'win32' ? ';' : ':') +
+      (existingPath ? `${process.platform === 'win32' ? ';' : ':'}${existingPath}` : '')
   }
 }
 
@@ -520,7 +528,9 @@ export class ManagedRuntimeService {
     const state = await this.repository.getState()
     const nextEnv = createManagedRuntimeEnv(state, env)
     const bunPath =
-      state.bun.status === 'ready' || state.bun.status === 'custom-ready' ? state.bun.binaryPath : null
+      state.bun.status === 'ready' || state.bun.status === 'custom-ready'
+        ? state.bun.binaryPath
+        : null
     const uvPath =
       state.uv.status === 'ready' || state.uv.status === 'custom-ready' ? state.uv.binaryPath : null
 

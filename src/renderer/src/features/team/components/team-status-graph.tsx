@@ -25,7 +25,9 @@ function formatEventText(event: TeamStatusEvent, assistantNames: Map<string, str
   const defaultMemberLabel = i18n.t('team.status.defaultMember')
   const primitiveId =
     typeof event.data?.primitiveId === 'string' ? event.data.primitiveId : undefined
-  const assistantLabel = primitiveId ? (assistantNames.get(primitiveId) ?? primitiveId) : defaultMemberLabel
+  const assistantLabel = primitiveId
+    ? (assistantNames.get(primitiveId) ?? primitiveId)
+    : defaultMemberLabel
 
   switch (event.type) {
     case 'run-started':

@@ -137,7 +137,11 @@ export function TeamConfigDialog({
             {validationErrors.length > 0 ? (
               <div className="rounded-md border border-amber-300/40 bg-amber-400/10 px-3 py-2">
                 {validationErrors.map((message) => (
-                  <p key={message} role="alert" className="text-sm text-amber-900 dark:text-amber-200">
+                  <p
+                    key={message}
+                    role="alert"
+                    className="text-sm text-amber-900 dark:text-amber-200"
+                  >
                     {message}
                   </p>
                 ))}
@@ -152,7 +156,9 @@ export function TeamConfigDialog({
 
             <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-2 text-sm">
-                <span className="font-medium">{t('team.configDialog.fields.supervisorProvider')}</span>
+                <span className="font-medium">
+                  {t('team.configDialog.fields.supervisorProvider')}
+                </span>
                 <select
                   id="team-supervisor-provider"
                   value={supervisorProviderId}
@@ -191,7 +197,9 @@ export function TeamConfigDialog({
             </label>
 
             <fieldset className="space-y-3">
-              <legend className="text-sm font-medium">{t('team.configDialog.fields.teamMembers')}</legend>
+              <legend className="text-sm font-medium">
+                {t('team.configDialog.fields.teamMembers')}
+              </legend>
               <div className="grid gap-2 sm:grid-cols-2">
                 {sortedAssistants.map((assistant) => (
                   <label

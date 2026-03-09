@@ -100,7 +100,9 @@ export function AssistantConfigDialog({
               <p className="text-muted-foreground text-sm">
                 <Bot className="mr-1 inline size-4" />
                 {t('threads.assistantDialog.addProviderPrefix')}{' '}
-                <Link to="/settings/providers">{t('threads.assistantDialog.providerLinkLabel')}</Link>
+                <Link to="/settings/providers">
+                  {t('threads.assistantDialog.providerLinkLabel')}
+                </Link>
                 .
               </p>
             ) : null}

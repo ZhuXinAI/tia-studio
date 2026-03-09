@@ -28,16 +28,19 @@ export function RuntimeSetupPage(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(true)
   const [busyAction, setBusyAction] = useState<string | null>(null)
 
-  const toErrorMessage = (error: unknown): string => {
-    if (error instanceof Error) {
-      const message = error.message.trim()
-      if (message.length > 0) {
-        return message
+  const toErrorMessage = useCallback(
+    (error: unknown): string => {
+      if (error instanceof Error) {
+        const message = error.message.trim()
+        if (message.length > 0) {
+          return message
+        }
       }
-    }
 
-    return t('settings.runtime.toasts.unexpectedError')
-  }
+      return t('settings.runtime.toasts.unexpectedError')
+    },
+    [t]
+  )
 
   const loadStatus = useCallback(async () => {
     setIsLoading(true)
@@ -49,7 +52,7 @@ export function RuntimeSetupPage(): React.JSX.Element {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [toErrorMessage])
 
   useEffect(() => {
     void loadStatus()
@@ -97,9 +100,7 @@ export function RuntimeSetupPage(): React.JSX.Element {
     <div className="py-4 flex flex-col gap-4">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t('settings.runtime.title')}</h1>
-        <p className="text-muted-foreground text-sm">
-          {t('settings.runtime.description')}
-        </p>
+        <p className="text-muted-foreground text-sm">{t('settings.runtime.description')}</p>
       </header>
 
       <div className="grid gap-4 xl:grid-cols-2">

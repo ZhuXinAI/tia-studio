@@ -80,7 +80,8 @@ export async function syncLocaleFiles(options = {}) {
     options.localesDir ??
     path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/renderer/src/i18n/locales')
   const sourceLocaleCode = options.sourceLocaleCode ?? defaultLocaleCode
-  const localeCodes = options.localeCodes ?? supportedLocaleCodes.filter((code) => code !== sourceLocaleCode)
+  const localeCodes =
+    options.localeCodes ?? supportedLocaleCodes.filter((code) => code !== sourceLocaleCode)
   const sourceFilePath = path.join(localesDir, `${sourceLocaleCode}.json`)
   const sourceCatalog = await readJsonFile(sourceFilePath)
 

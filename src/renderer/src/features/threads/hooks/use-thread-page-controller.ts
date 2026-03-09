@@ -55,8 +55,16 @@ export function useThreadPageController() {
   const navigate = useNavigate()
 
   // TanStack Query hooks for data fetching
-  const { data: assistants = [], isLoading: isLoadingAssistants, error: assistantsError } = useAssistants()
-  const { data: allProviders = [], isLoading: isLoadingProviders, error: providersError } = useProviders()
+  const {
+    data: assistants = [],
+    isLoading: isLoadingAssistants,
+    error: assistantsError
+  } = useAssistants()
+  const {
+    data: allProviders = [],
+    isLoading: isLoadingProviders,
+    error: providersError
+  } = useProviders()
   const createAssistantMutation = useCreateAssistant()
   const updateAssistantMutation = useUpdateAssistant()
   const deleteAssistantMutation = useDeleteAssistant()
@@ -64,7 +72,10 @@ export function useThreadPageController() {
   const deleteThreadMutation = useDeleteThread()
 
   // Filter to only show enabled providers
-  const providers = useMemo(() => allProviders.filter((provider) => provider.enabled), [allProviders])
+  const providers = useMemo(
+    () => allProviders.filter((provider) => provider.enabled),
+    [allProviders]
+  )
 
   // Local state for MCP servers (not yet migrated to TanStack Query)
   const [mcpServers, setMcpServers] = useState<Record<string, McpServerRecord>>({})
@@ -74,7 +85,11 @@ export function useThreadPageController() {
 
   // Derived loading states
   const isLoadingData = isLoadingAssistants || isLoadingProviders
-  const loadError = assistantsError ? toErrorMessage(assistantsError) : providersError ? toErrorMessage(providersError) : null
+  const loadError = assistantsError
+    ? toErrorMessage(assistantsError)
+    : providersError
+      ? toErrorMessage(providersError)
+      : null
 
   // UI state
   const [isLoadingChatHistory, setIsLoadingChatHistory] = useState(false)
@@ -201,15 +216,24 @@ export function useThreadPageController() {
   })
 
   const { sendMessage, setMessages, stop, status: chatStatus, error: chatError } = chat
+  const setMessagesRef = useRef(setMessages)
+  const stopChatRef = useRef(stop)
+  const isChatStreamingRef = useRef(false)
 
   const isChatStreaming = chatStatus === 'submitted' || chatStatus === 'streaming'
   const canAbortGeneration = isChatStreaming
 
+  useEffect(() => {
+    setMessagesRef.current = setMessages
+    stopChatRef.current = stop
+    isChatStreamingRef.current = isChatStreaming
+  }, [isChatStreaming, setMessages, stop])
+
   // Stop any ongoing chat operations when assistant or thread changes
   useEffect(() => {
     return () => {
-      if (isChatStreaming) {
-        stop()
+      if (isChatStreamingRef.current) {
+        stopChatRef.current()
       }
     }
   }, [selectedAssistant?.id, selectedThread?.id])
@@ -231,7 +255,11 @@ export function useThreadPageController() {
     }
 
     const handleEscape = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape' && !createAssistantMutation.isPending && !updateAssistantMutation.isPending) {
+      if (
+        event.key === 'Escape' &&
+        !createAssistantMutation.isPending &&
+        !updateAssistantMutation.isPending
+      ) {
         setIsAssistantDialogOpen(false)
         setAssistantDialogError(null)
       }
@@ -357,9 +385,12 @@ export function useThreadPageController() {
   }, [assistants, isLoadingData, navigate, params.assistantId])
 
   // Use TanStack Query to fetch threads for the selected assistant
-  const { data: threadsData = [], isLoading: isLoadingThreads } = useThreads(selectedAssistant?.id, {
-    enabled: !!selectedAssistant
-  })
+  const { data: threadsData = [], isLoading: isLoadingThreads } = useThreads(
+    selectedAssistant?.id,
+    {
+      enabled: !!selectedAssistant
+    }
+  )
 
   // Keep threads in local state sorted by recent activity
   useEffect(() => {
@@ -393,7 +424,7 @@ export function useThreadPageController() {
 
     if (!assistantId || !threadId) {
       setIsLoadingChatHistory(false)
-      setMessages([])
+      setMessagesRef.current([])
       hasLoadedInitialMessagesRef.current = false
       return
     }
@@ -411,14 +442,14 @@ export function useThreadPageController() {
         if (!active) {
           return
         }
-        setMessages(messages)
+        setMessagesRef.current(messages)
         hasLoadedInitialMessagesRef.current = true
       })
       .catch((error) => {
         if (!active) {
           return
         }
-        setMessages([])
+        setMessagesRef.current([])
         hasLoadedInitialMessagesRef.current = true
         toast.error(toErrorMessage(error))
       })
@@ -733,7 +764,9 @@ export function useThreadPageController() {
     isLoadingThreads,
     isCreatingThread: createThreadMutation.isPending,
     deletingThreadId: deleteThreadMutation.isPending ? deleteThreadMutation.variables : null,
-    deletingAssistantId: deleteAssistantMutation.isPending ? deleteAssistantMutation.variables : null,
+    deletingAssistantId: deleteAssistantMutation.isPending
+      ? deleteAssistantMutation.variables
+      : null,
     isLoadingChatHistory,
     isChatStreaming,
     chatError,
@@ -744,7 +777,8 @@ export function useThreadPageController() {
     assistantDialogMode,
     assistantDialogAssistant,
     isAssistantDialogOpen,
-    isSubmittingAssistantDialog: createAssistantMutation.isPending || updateAssistantMutation.isPending,
+    isSubmittingAssistantDialog:
+      createAssistantMutation.isPending || updateAssistantMutation.isPending,
     assistantDialogError,
     tokenUsage,
     onCreateThread: () => {

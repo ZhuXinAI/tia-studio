@@ -38,7 +38,9 @@ function resolveChannelTarget(
   const channelType = options.channelType ?? context?.channelType ?? 'unknown'
 
   if (!channelId || !remoteChatId) {
-    throw new Error('Missing channel target. Provide channelId and remoteChatId or run inside a channel conversation.')
+    throw new Error(
+      'Missing channel target. Provide channelId and remoteChatId or run inside a channel conversation.'
+    )
   }
 
   return {

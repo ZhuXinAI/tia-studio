@@ -14,9 +14,7 @@ vi.mock('electron', () => ({
   BrowserWindow: undefined
 }))
 
-function createManagedRuntimeState(
-  readyKinds: ManagedRuntimeKind[] = []
-): ManagedRuntimesState {
+function createManagedRuntimeState(readyKinds: ManagedRuntimeKind[] = []): ManagedRuntimesState {
   const isReady = (kind: ManagedRuntimeKind): boolean => readyKinds.includes(kind)
 
   return {

@@ -12,30 +12,36 @@ function mergeDefined<T extends object>(base: T, overrides?: Partial<T>): T {
     return { ...base }
   }
 
-  return Object.entries(overrides).reduce<T>((result, [key, value]) => {
-    if (value !== undefined) {
-      Object.assign(result, { [key]: value })
-    }
-    return result
-  }, { ...base })
+  return Object.entries(overrides).reduce<T>(
+    (result, [key, value]) => {
+      if (value !== undefined) {
+        Object.assign(result, { [key]: value })
+      }
+      return result
+    },
+    { ...base }
+  )
 }
 
 function createCronJob(overrides?: Partial<MutableCronJob>): MutableCronJob {
-  return mergeDefined({
-    id: 'cron-job-1',
-    assistantId: 'assistant-1',
-    threadId: 'thread-1',
-    name: 'Daily summary',
-    prompt: 'Summarize the workspace status',
-    cronExpression: '15 10 * * *',
-    enabled: true,
-    lastRunAt: null,
-    nextRunAt: null,
-    lastRunStatus: null,
-    lastError: null,
-    createdAt: '2026-03-09T09:00:00.000Z',
-    updatedAt: '2026-03-09T09:00:00.000Z'
-  }, overrides)
+  return mergeDefined(
+    {
+      id: 'cron-job-1',
+      assistantId: 'assistant-1',
+      threadId: 'thread-1',
+      name: 'Daily summary',
+      prompt: 'Summarize the workspace status',
+      cronExpression: '15 10 * * *',
+      enabled: true,
+      lastRunAt: null,
+      nextRunAt: null,
+      lastRunStatus: null,
+      lastError: null,
+      createdAt: '2026-03-09T09:00:00.000Z',
+      updatedAt: '2026-03-09T09:00:00.000Z'
+    },
+    overrides
+  )
 }
 
 class InMemoryCronJobsRepo {
@@ -89,21 +95,24 @@ class InMemoryCronJobRunsRepo {
 }
 
 function createAssistant(overrides?: Partial<AppAssistant>): AppAssistant {
-  return mergeDefined({
-    id: 'assistant-1',
-    name: 'TIA',
-    description: 'Handles general assistant requests.',
-    instructions: 'You are helpful.',
-    providerId: 'provider-1',
-    enabled: true,
-    workspaceConfig: { rootPath: '/tmp/workspace-a' },
-    skillsConfig: {},
-    mcpConfig: {},
-    maxSteps: 100,
-    memoryConfig: null,
-    createdAt: '2026-03-02T00:00:00.000Z',
-    updatedAt: '2026-03-02T00:00:00.000Z'
-  }, overrides)
+  return mergeDefined(
+    {
+      id: 'assistant-1',
+      name: 'TIA',
+      description: 'Handles general assistant requests.',
+      instructions: 'You are helpful.',
+      providerId: 'provider-1',
+      enabled: true,
+      workspaceConfig: { rootPath: '/tmp/workspace-a' },
+      skillsConfig: {},
+      mcpConfig: {},
+      maxSteps: 100,
+      memoryConfig: null,
+      createdAt: '2026-03-02T00:00:00.000Z',
+      updatedAt: '2026-03-02T00:00:00.000Z'
+    },
+    overrides
+  )
 }
 
 describe('CronSchedulerService', () => {

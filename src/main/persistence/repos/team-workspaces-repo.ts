@@ -99,7 +99,9 @@ export class TeamWorkspacesRepository {
     }
 
     const supervisorProviderId =
-      'supervisorProviderId' in input ? input.supervisorProviderId ?? null : existing.supervisorProviderId
+      'supervisorProviderId' in input
+        ? (input.supervisorProviderId ?? null)
+        : existing.supervisorProviderId
 
     await this.db.execute(
       `
@@ -145,7 +147,9 @@ export class TeamWorkspacesRepository {
       (assistantId, index) => assistantIds.indexOf(assistantId) === index
     )
 
-    await this.db.execute('DELETE FROM app_team_workspace_members WHERE workspace_id = ?', [workspaceId])
+    await this.db.execute('DELETE FROM app_team_workspace_members WHERE workspace_id = ?', [
+      workspaceId
+    ])
 
     for (const [index, assistantId] of uniqueAssistantIds.entries()) {
       await this.db.execute(

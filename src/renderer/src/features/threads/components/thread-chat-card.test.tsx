@@ -32,7 +32,9 @@ vi.mock('@assistant-ui/react', () => {
     },
     ComposerPrimitive: {
       Root: ({ children }: { children?: React.ReactNode }) => <form>{children}</form>,
-      Input: (props: Record<string, unknown>) => <textarea {...props} />,
+      Input: ({ minRows, ...props }: Record<string, unknown>) => (
+        <textarea rows={typeof minRows === 'number' ? minRows : undefined} {...props} />
+      ),
       Send: ({ children, asChild }: { children?: React.ReactNode; asChild?: boolean }) =>
         asChild ? <>{children}</> : <button type="submit">{children}</button>
     },

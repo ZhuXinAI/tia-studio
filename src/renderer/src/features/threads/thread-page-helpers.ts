@@ -92,7 +92,9 @@ export function resolveVisibleThreads(input: {
   }
 
   const nextThreads = sortThreadsByRecentActivity(input.threads)
-  return areThreadsEquivalent(input.currentThreads, nextThreads) ? input.currentThreads : nextThreads
+  return areThreadsEquivalent(input.currentThreads, nextThreads)
+    ? input.currentThreads
+    : nextThreads
 }
 
 export function buildAssistantThreadBranches(input: {

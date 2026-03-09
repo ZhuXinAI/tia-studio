@@ -1,7 +1,10 @@
 import type { ChannelEventHandler, ChannelEventMap, ChannelEventName } from './types'
 
 export class ChannelEventBus {
-  private readonly handlers = new Map<ChannelEventName, Set<ChannelEventHandler<ChannelEventName>>>()
+  private readonly handlers = new Map<
+    ChannelEventName,
+    Set<ChannelEventHandler<ChannelEventName>>
+  >()
 
   subscribe<TEventName extends ChannelEventName>(
     eventName: TEventName,

@@ -94,9 +94,7 @@ describe('team chat route', () => {
       teamRunStatusStore
     })
 
-    const response = await app.request(
-      'http://localhost/team-chat/team-thread-1/runs/run-1/status'
-    )
+    const response = await app.request('http://localhost/team-chat/team-thread-1/runs/run-1/status')
 
     expect(response.status).toBe(200)
     expect(response.headers.get('content-type')).toContain('text/event-stream')

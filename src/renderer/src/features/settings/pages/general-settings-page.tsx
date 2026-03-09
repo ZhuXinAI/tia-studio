@@ -89,9 +89,7 @@ export function GeneralSettingsPage(): React.JSX.Element {
                 void handleLanguageChange(event)
               }}
             >
-              <option value={systemLanguageValue}>
-                {t('settings.general.systemDefault')}
-              </option>
+              <option value={systemLanguageValue}>{t('settings.general.systemDefault')}</option>
               {localeOptions.map((option) => (
                 <option key={option.code} value={option.code}>
                   {option.flag} {option.label}

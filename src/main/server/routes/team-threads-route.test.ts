@@ -99,16 +99,13 @@ describe('team threads route', () => {
       title: 'Release team'
     })
 
-    const response = await app.request(
-      `http://localhost/v1/team/threads/${thread.id}/members`,
-      {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          assistantIds: ['assistant-2', 'assistant-1', 'assistant-2']
-        })
-      }
-    )
+    const response = await app.request(`http://localhost/v1/team/threads/${thread.id}/members`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assistantIds: ['assistant-2', 'assistant-1', 'assistant-2']
+      })
+    })
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual([

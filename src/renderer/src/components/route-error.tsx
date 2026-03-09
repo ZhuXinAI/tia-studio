@@ -37,7 +37,9 @@ export function RouteError(): React.JSX.Element {
 
           {errorDetails && (
             <details className="rounded-md bg-muted p-3 text-sm">
-              <summary className="cursor-pointer font-medium">{t('common.routeError.details')}</summary>
+              <summary className="cursor-pointer font-medium">
+                {t('common.routeError.details')}
+              </summary>
               <pre className="mt-2 overflow-auto text-xs">{errorDetails}</pre>
             </details>
           )}

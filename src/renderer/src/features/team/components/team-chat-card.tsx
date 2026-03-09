@@ -210,9 +210,7 @@ export function TeamChatCard({
               <div className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 p-6 text-center">
                 <div className="space-y-2">
                   <p className="text-sm font-medium">{t('team.chat.emptyTitle')}</p>
-                  <p className="text-muted-foreground text-sm">
-                    {t('team.chat.emptyDescription')}
-                  </p>
+                  <p className="text-muted-foreground text-sm">{t('team.chat.emptyDescription')}</p>
                 </div>
               </div>
             ) : (

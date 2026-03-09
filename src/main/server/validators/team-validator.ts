@@ -83,7 +83,8 @@ export const updateTeamThreadSchema = z
       input.supervisorProviderId !== undefined && input.supervisorProviderId !== null
     const hasModel = input.supervisorModel !== undefined && input.supervisorModel.trim().length > 0
     const isClearingConfig =
-      input.supervisorProviderId === null && (input.supervisorModel === undefined || input.supervisorModel === '')
+      input.supervisorProviderId === null &&
+      (input.supervisorModel === undefined || input.supervisorModel === '')
 
     if (isClearingConfig) {
       return

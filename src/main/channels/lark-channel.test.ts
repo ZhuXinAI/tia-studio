@@ -23,11 +23,9 @@ function createSdkStub() {
     close: wsClose
   }
   let registeredHandlers: Record<string, (event: unknown) => Promise<void> | void> = {}
-  const register = vi.fn(
-    (handlers: Record<string, (event: unknown) => Promise<void> | void>) => {
-      registeredHandlers = handlers
-    }
-  )
+  const register = vi.fn((handlers: Record<string, (event: unknown) => Promise<void> | void>) => {
+    registeredHandlers = handlers
+  })
   const eventDispatcherInstance = {
     register
   }
