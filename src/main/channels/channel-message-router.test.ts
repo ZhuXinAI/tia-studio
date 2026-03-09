@@ -40,7 +40,8 @@ function createAssistantRuntimeStub(streamChat: AssistantRuntime['streamChat']):
   return {
     streamChat,
     listThreadMessages: vi.fn(async () => []),
-    runCronJob: vi.fn(async () => ({ outputText: '' }))
+    runCronJob: vi.fn(async () => ({ outputText: '' })),
+    runHeartbeat: vi.fn(async () => ({ outputText: '' }))
   }
 }
 

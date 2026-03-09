@@ -5,7 +5,7 @@ import type { InputProcessor } from '@mastra/core/processors'
 import type { ToolExecutionContext } from '@mastra/core/tools'
 import { z } from 'zod'
 import { ensureAssistantWorkspaceFiles } from '../assistant-workspace'
-import { HEARTBEAT_RUN_CONTEXT_KEY } from '../tool-context'
+import { getHeartbeatRunId } from '../tool-context'
 import { createNoArgToolInputSchema } from './tool-schema'
 
 type SoulMemoryToolsOptions = {
@@ -150,8 +150,7 @@ export function assistantWorkspaceContextInputProcessor(
       await ensureAssistantWorkspaceFiles(options.workspaceRootPath)
 
       const fileNames = ['IDENTITY.md', 'SOUL.md', 'MEMORY.md']
-      const shouldIncludeHeartbeat =
-        typeof requestContext?.get(HEARTBEAT_RUN_CONTEXT_KEY) === 'string'
+      const shouldIncludeHeartbeat = getHeartbeatRunId(requestContext) !== null
 
       if (shouldIncludeHeartbeat) {
         fileNames.push('HEARTBEAT.md')

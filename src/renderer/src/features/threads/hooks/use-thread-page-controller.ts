@@ -10,6 +10,10 @@ import {
   useDeleteAssistant,
   type SaveAssistantInput
 } from '../../assistants/assistants-query'
+import {
+  updateAssistantHeartbeat,
+  type SaveAssistantHeartbeatInput
+} from '../../assistants/assistant-heartbeat-query'
 import type { AssistantDialogMode } from '../components/assistant-config-dialog'
 import {
   getMcpServersSettings,
@@ -566,7 +570,10 @@ export function useThreadPageController() {
     return picker()
   }, [])
 
-  const handleSubmitAssistantDialog = async (input: SaveAssistantInput): Promise<void> => {
+  const handleSubmitAssistantDialog = async (
+    input: SaveAssistantInput,
+    heartbeatInput?: SaveAssistantHeartbeatInput | null
+  ): Promise<void> => {
     setAssistantDialogError(null)
 
     try {
@@ -589,6 +596,9 @@ export function useThreadPageController() {
         id: assistantDialogAssistant.id,
         input
       })
+      if (heartbeatInput) {
+        await updateAssistantHeartbeat(assistantDialogAssistant.id, heartbeatInput)
+      }
       toast.success(t('threads.toasts.assistantUpdated'))
       setIsAssistantDialogOpen(false)
       setAssistantDialogAssistantId(null)

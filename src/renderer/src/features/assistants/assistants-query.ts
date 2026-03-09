@@ -36,7 +36,8 @@ const apiClient = createApiClient()
 export const assistantKeys = {
   all: ['assistants'] as const,
   lists: () => [...assistantKeys.all, 'list'] as const,
-  detail: (id: string) => [...assistantKeys.all, 'detail', id] as const
+  detail: (id: string) => [...assistantKeys.all, 'detail', id] as const,
+  heartbeat: (id: string) => [...assistantKeys.detail(id), 'heartbeat'] as const
 }
 
 // Legacy functions (kept for backward compatibility during migration)

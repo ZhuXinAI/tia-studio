@@ -24,10 +24,14 @@ import { ChannelService } from './channels/channel-service'
 import { TelegramChannel } from './channels/telegram-channel'
 import { AssistantCronJobsService } from './cron/assistant-cron-jobs-service'
 import { CronSchedulerService } from './cron/cron-scheduler-service'
+import { AssistantHeartbeatsService } from './heartbeat/assistant-heartbeats-service'
+import { HeartbeatSchedulerService } from './heartbeat/heartbeat-scheduler-service'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
 import { createMastraInstance } from './mastra/store'
 import { TeamRuntimeService } from './mastra/team-runtime'
 import { migrateAppSchema } from './persistence/migrate'
+import { AssistantHeartbeatRunsRepository } from './persistence/repos/assistant-heartbeat-runs-repo'
+import { AssistantHeartbeatsRepository } from './persistence/repos/assistant-heartbeats-repo'
 import { AssistantsRepository } from './persistence/repos/assistants-repo'
 import { ChannelPairingsRepository } from './persistence/repos/channel-pairings-repo'
 import { ChannelThreadBindingsRepository } from './persistence/repos/channel-thread-bindings-repo'
@@ -66,6 +70,7 @@ let managedRuntimeService: ManagedRuntimeService | null = null
 let channelService: ChannelService | null = null
 let channelMessageRouter: ChannelMessageRouter | null = null
 let cronSchedulerService: CronSchedulerService | null = null
+let heartbeatSchedulerService: HeartbeatSchedulerService | null = null
 const searchBrowserPartition = 'persist:tia-browser-search'
 let uiConfigStore: UiConfigStore | null = null
 
@@ -162,6 +167,8 @@ async function startLocalApiServer(): Promise<void> {
   const channelPairingsRepo = new ChannelPairingsRepository(db)
   const cronJobRunsRepo = new CronJobRunsRepository(db)
   const cronJobsRepo = new CronJobsRepository(db)
+  const heartbeatsRepo = new AssistantHeartbeatsRepository(db)
+  const heartbeatRunsRepo = new AssistantHeartbeatRunsRepository(db)
   const channelThreadBindingsRepo = new ChannelThreadBindingsRepository(db)
   const teamWorkspacesRepo = new TeamWorkspacesRepository(db)
   const teamThreadsRepo = new TeamThreadsRepository(db)
@@ -187,12 +194,19 @@ async function startLocalApiServer(): Promise<void> {
     threadsRepo,
     reloadScheduler: async () => cronSchedulerService?.reload()
   })
+  const assistantHeartbeatsService = new AssistantHeartbeatsService({
+    heartbeatsRepo,
+    assistantsRepo,
+    threadsRepo,
+    reloadScheduler: async () => heartbeatSchedulerService?.reload()
+  })
   const mastra = await createMastraInstance(join(app.getPath('userData'), 'mastra.db'))
   const assistantRuntime = new AssistantRuntimeService({
     mastra,
     assistantsRepo,
     providersRepo,
     threadsRepo,
+    channelThreadBindingsRepo,
     webSearchSettingsRepo,
     mcpServersRepo,
     channelEventBus,
@@ -255,6 +269,25 @@ async function startLocalApiServer(): Promise<void> {
       })
     }
   })
+  heartbeatSchedulerService = new HeartbeatSchedulerService({
+    heartbeatsRepo,
+    heartbeatRunsRepo,
+    assistantsRepo,
+    ensureHeartbeatThread: (assistantId, heartbeatId) =>
+      assistantHeartbeatsService.ensureHeartbeatThread(assistantId, heartbeatId),
+    runHeartbeat: async (heartbeat) => {
+      if (!heartbeat.threadId) {
+        throw new Error('Heartbeat thread is missing')
+      }
+
+      return assistantRuntime.runHeartbeat({
+        assistantId: heartbeat.assistantId,
+        threadId: heartbeat.threadId,
+        prompt: heartbeat.prompt,
+        intervalMinutes: heartbeat.intervalMinutes
+      })
+    }
+  })
 
   const apiApp = createApp({
     token: serverConfig.token,
@@ -265,6 +298,7 @@ async function startLocalApiServer(): Promise<void> {
       channels: channelsRepo,
       pairings: channelPairingsRepo,
       cronJobs: cronJobsRepo,
+      heartbeats: heartbeatsRepo,
       teamWorkspaces: teamWorkspacesRepo,
       teamThreads: teamThreadsRepo,
       webSearchSettings: webSearchSettingsRepo,
@@ -275,7 +309,8 @@ async function startLocalApiServer(): Promise<void> {
     teamRunStatusStore,
     threadMessageEventsStore,
     channelService,
-    cronSchedulerService
+    cronSchedulerService,
+    heartbeatSchedulerService
   })
 
   localApiServer = serve(
@@ -297,6 +332,7 @@ async function startLocalApiServer(): Promise<void> {
   await channelMessageRouter.start()
   await channelService.start()
   await cronSchedulerService.start()
+  await heartbeatSchedulerService.start()
 }
 
 function stopLocalApiServer(): void {
@@ -313,6 +349,11 @@ function stopLocalApiServer(): void {
   if (cronSchedulerService) {
     void cronSchedulerService.stop()
     cronSchedulerService = null
+  }
+
+  if (heartbeatSchedulerService) {
+    void heartbeatSchedulerService.stop()
+    heartbeatSchedulerService = null
   }
 
   if (!localApiServer) {
