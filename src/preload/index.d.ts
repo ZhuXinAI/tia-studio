@@ -24,6 +24,10 @@ type ManagedRuntimeRecord = {
   errorMessage: string | null
 }
 type ManagedRuntimesState = Record<ManagedRuntimeKind, ManagedRuntimeRecord>
+type UiConfig = {
+  transparent?: boolean
+  language?: string | null
+}
 
 interface TiaDesktopAPI {
   listAssistantSkills?: (workspaceRootPath: string) => Promise<
@@ -48,6 +52,9 @@ interface TiaDesktopAPI {
     name: string
     version: string
   }>
+  getUiConfig?: () => Promise<UiConfig>
+  setUiConfig?: (config: UiConfig) => Promise<UiConfig>
+  getSystemLocale?: () => Promise<string>
   getAutoUpdateState?: () => Promise<{
     enabled: boolean
     status: 'idle' | 'checking' | 'update-available' | 'up-to-date' | 'unsupported' | 'error'

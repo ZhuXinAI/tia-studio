@@ -1,0 +1,646 @@
+{
+  "appShell": {
+    "nav": {
+      "home": "Home",
+      "claws": "Claws",
+      "team": "Team",
+      "openSettings": "Open settings"
+    },
+    "legacySidebar": {
+      "title": "TIA Studio",
+      "subtitle": "Control Center",
+      "workspace": "Workspace",
+      "settings": "Settings",
+      "chat": "Chat",
+      "modelProviders": "Model Providers",
+      "notes": "TIA Studio Notes"
+    }
+  },
+  "common": {
+    "routeError": {
+      "title": "Something went wrong",
+      "details": "Error details",
+      "refreshApp": "Refresh App",
+      "goHome": "Go Home"
+    },
+    "errorBoundary": {
+      "title": "Something went wrong",
+      "description": "The application encountered an unexpected error. You can try refreshing the app or resetting the current view.",
+      "details": "Error details",
+      "refreshApp": "Refresh App",
+      "tryAgain": "Try Again"
+    },
+    "actions": {
+      "cancel": "キャンセル",
+      "close": "閉じる",
+      "configure": "設定",
+      "delete": "削除",
+      "edit": "編集",
+      "browse": "参照",
+      "send": "送信",
+      "stop": "停止"
+    },
+    "errors": {
+      "unexpectedRequest": "予期しないリクエストエラー"
+    }
+  },
+  "settings": {
+    "sidebar": {
+      "title": "設定",
+      "subtitle": "構成",
+      "categories": "カテゴリ",
+      "items": {
+        "general": "一般",
+        "providers": "モデルプロバイダー",
+        "cronJobs": "Cronジョブ",
+        "webSearch": "ウェブ検索",
+        "mcpServers": "MCPサーバー",
+        "runtimeSetup": "ランタイム設定",
+        "display": "表示",
+        "aboutFeedback": "情報とフィードバック"
+      }
+    },
+    "general": {
+      "title": "一般設定",
+      "description": "言語とアプリの基本設定を管理します。",
+      "languageLabel": "言語",
+      "languageDescription": "TIA Studio の UI テキストの表示言語を選択します。",
+      "systemDefault": "システム設定",
+      "currentSystemLanguage": "現在、システム設定に基づいて {{language}} を使用しています。"
+    },
+    "display": {
+      "title": "表示設定",
+      "description": "TIA Studio の見た目を調整します",
+      "themeLabel": "テーマ",
+      "themeOptions": {
+        "light": "ライト",
+        "dark": "ダーク",
+        "system": "システム設定"
+      },
+      "transparentTitle": "透明ウィンドウ",
+      "transparentDescription": "透明感のあるウィンドウ背景を有効にします（再起動が必要です）"
+    },
+    "about": {
+      "title": "About & Feedback",
+      "description": "App metadata, update controls, and helpful links for TIA Studio.",
+      "cardTitle": "About",
+      "repositoryAriaLabel": "Open source repository",
+      "appDescription": "A local-first AI workspace for assistants, providers, and tool integrations.",
+      "autoUpdate": {
+        "label": "Auto Update",
+        "enabledDescription": "Automatically download the latest release in the background.",
+        "disabledDescription": "Disable background downloads and check manually.",
+        "loadError": "Failed to load auto update state.",
+        "saveError": "Failed to save auto update setting.",
+        "checkError": "Failed to check for updates."
+      },
+      "links": {
+        "docs": {
+          "title": "Docs",
+          "description": "Read setup guides and integration notes.",
+          "action": "Website"
+        },
+        "releaseNotes": {
+          "title": "Release Notes",
+          "description": "Track changelog details for each published build.",
+          "action": "Releases"
+        },
+        "officialWebsite": {
+          "title": "Official Website",
+          "description": "Open the public landing page for project updates.",
+          "action": "Website"
+        },
+        "feedback": {
+          "title": "Feedback",
+          "description": "Report issues and share product suggestions.",
+          "action": "Feedback"
+        }
+      },
+      "buttons": {
+        "checkUpdate": "Check Update",
+        "checking": "Checking..."
+      }
+    },
+    "runtime": {
+      "title": "Runtime Setup",
+      "description": "Install managed bun and uv runtimes for MCP servers and runtime-backed tools, or point TIA Studio at a binary you already downloaded.",
+      "kindDescription": {
+        "bun": "Used for bun, bunx, and npx-backed MCP server launches.",
+        "uv": "Used for uv and uvx-backed MCP server launches."
+      },
+      "labels": {
+        "status": "Status:",
+        "source": "Source:",
+        "version": "Version:",
+        "binary": "Binary:"
+      },
+      "values": {
+        "notInstalled": "Not installed",
+        "noBinary": "No active binary selected",
+        "loading": "Loading runtime status..."
+      },
+      "buttons": {
+        "installLatest": "Install latest",
+        "installing": "Installing...",
+        "useDownloadedBinary": "Use downloaded binary",
+        "checkAgain": "Check again",
+        "checking": "Checking...",
+        "clearCustom": "Clear custom"
+      },
+      "toasts": {
+        "installSuccess": "Installed latest {{kind}} runtime.",
+        "pickSuccess": "Activated custom {{kind}} runtime.",
+        "checkSuccess": "Checked {{kind}} runtime status.",
+        "clearSuccess": "Cleared {{kind}} runtime selection.",
+        "unexpectedError": "Unexpected managed runtime error"
+      }
+    },
+    "webSearch": {
+      "title": "Web Search",
+      "description": "Choose one default engine and every browser search tool call will use it.",
+      "defaultEngine": {
+        "title": "Default Search Engine",
+        "description": "Google, Bing, and Baidu are supported.",
+        "loading": "Loading search settings...",
+        "empty": "No engines available."
+      },
+      "buttons": {
+        "saving": "Saving...",
+        "default": "Default",
+        "setDefault": "Set Default",
+        "openSettings": "Open {{engine}} Settings"
+      },
+      "browserBehavior": {
+        "title": "Browser Window Behavior",
+        "description": "Keep an isolated browser window in the background for future search tasks.",
+        "loading": "Loading browser window behavior...",
+        "backgroundTitle": "Background Browser Window",
+        "backgroundEnabled": "Reuses one hidden BrowserWindow for web search.",
+        "backgroundDisabled": "Creates and closes a BrowserWindow per search request.",
+        "showBrowserTitle": "Show Browser",
+        "showBrowserVisible": "Browser window is visible during search.",
+        "showBrowserHidden": "Browser window is hidden during search."
+      },
+      "engines": {
+        "google": {
+          "label": "Google",
+          "description": "Wide global index with broad results coverage."
+        },
+        "bing": {
+          "label": "Bing",
+          "description": "More consistent for direct fetch-based search pages."
+        },
+        "baidu": {
+          "label": "Baidu",
+          "description": "Useful when you prefer Chinese-language search ranking."
+        }
+      },
+      "toasts": {
+        "defaultSet": "{{engine}} is now the default web search engine.",
+        "backgroundWindow": "Background browser window is now {{state}}.",
+        "backgroundEnabled": "enabled",
+        "backgroundDisabled": "disabled",
+        "browserVisibility": "Browser window is now {{state}}.",
+        "browserVisible": "visible",
+        "browserHidden": "hidden",
+        "openSettingsError": "Failed to open {{engine}} settings: {{message}}",
+        "unexpectedError": "Unexpected request error"
+      }
+    },
+    "cronJobs": {
+      "title": "Cron Jobs",
+      "description": "Review scheduler status, next runs, and the latest runtime errors for workspace cron jobs.",
+      "cardTitle": "Scheduled Jobs",
+      "cardDescription": "Hidden cron threads stay out of normal chat history while their runtime status is persisted here.",
+      "loading": "Loading cron jobs…",
+      "empty": "No cron jobs configured yet. Create one through the cron job API to start scheduling runs.",
+      "assistantLabel": "Assistant: {{assistant}}",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "fields": {
+        "cronExpression": "Cron Expression",
+        "nextRun": "Next Run",
+        "lastStatus": "Last Status",
+        "lastRun": "Last Run",
+        "lastError": "Last Error"
+      },
+      "fallbacks": {
+        "notScheduled": "Not scheduled",
+        "never": "Never",
+        "none": "None"
+      },
+      "status": {
+        "success": "success",
+        "failed": "failed",
+        "neverRun": "never run"
+      },
+      "toasts": {
+        "unexpectedError": "Unexpected request error"
+      }
+    },
+    "providers": {
+      "sidebarTitle": "PROVIDERS",
+      "newButton": "+ New",
+      "searchPlaceholder": "Search providers...",
+      "loading": "Loading providers...",
+      "empty": "No providers yet. Create one to get started.",
+      "emptySearch": "No providers match your search.",
+      "builtInProvider": "Built-in provider.",
+      "visitOfficialSite": "Visit official site",
+      "deleteAriaLabel": "Delete provider {{name}}",
+      "deleteButton": "Delete Provider",
+      "deletingButton": "Deleting...",
+      "selectPrompt": "Select a provider in the sidebar to edit its model configuration.",
+      "createDialog": {
+        "title": "New Model Provider",
+        "description": "Create a provider profile and save credentials locally.",
+        "closeAriaLabel": "Close provider dialog",
+        "closeButtonAriaLabel": "Close dialog"
+      },
+      "toasts": {
+        "providerNotFound": "Provider not found.",
+        "providerSaved": "Provider saved locally.",
+        "providerCreated": "Provider created locally.",
+        "connectionSuccess": "Connection successful for {{type}} ({{model}}).",
+        "builtInDeleteBlocked": "Cannot delete built-in provider.",
+        "providerDeleted": "Provider deleted.",
+        "unexpectedError": "Unexpected request error"
+      },
+      "typeLabels": {
+        "openai": "OpenAI Compatible",
+        "openai-response": "OpenAI Responses",
+        "gemini": "Gemini",
+        "anthropic": "Anthropic",
+        "ollama": "Ollama"
+      },
+      "form": {
+        "errors": {
+          "selectedModelRequired": "Selected model is required"
+        },
+        "enableProvider": "Enable Provider",
+        "enableProviderDescription": "Show this provider in model selection",
+        "providerName": "Provider Name",
+        "type": "Type",
+        "apiKey": "API Key",
+        "apiHost": "API Host",
+        "selectedModel": "Selected Model",
+        "includeModelPresets": "Include optional provider model presets",
+        "providerModels": "Provider Models (optional)",
+        "providerModelsDescription": "Enter model names separated by commas or new lines",
+        "supportsVision": "Supports Vision",
+        "supportsVisionDescription": "Enable image attachments for this provider",
+        "buttons": {
+          "testing": "Testing...",
+          "testConnection": "Test Connection",
+          "saving": "Saving...",
+          "saveProvider": "Save Provider"
+        }
+      }
+    },
+    "mcp": {
+      "title": "MCP Server Settings",
+      "description": "Manage your local mcp.json source-of-truth and control global MCP activation.",
+      "buttons": {
+        "addServer": "Add MCP Server",
+        "editJson": "Edit JSON",
+        "saving": "Saving...",
+        "save": "Save",
+        "cancel": "Cancel",
+        "applyJson": "Apply JSON"
+      },
+      "cardTitle": "MCP Servers",
+      "cardDescription": "These servers are shared globally and can be toggled per assistant later in the Tools tab.",
+      "loading": "Loading MCP servers...",
+      "empty": "No MCP servers yet. Add one to create your local mcp.json list.",
+      "serverDescription": "Global status controls whether assistants can use this server.",
+      "toggleAriaLabel": "Toggle {{id}}",
+      "deleteAriaLabel": "Delete {{id}}",
+      "managedRuntimeTitle": "This command can use TIA Studio managed runtimes.",
+      "managedRuntimeDescriptionPrefix": "Finish {{runtime}} setup in",
+      "fields": {
+        "displayName": "Display Name",
+        "transportType": "Transport Type",
+        "command": "Command",
+        "installSource": "Install Source",
+        "url": "URL (for HTTP/SSE servers)",
+        "arguments": "Arguments (one per line)",
+        "environmentVariables": "Environment Variables (KEY=VALUE)"
+      },
+      "jsonDialog": {
+        "title": "Edit MCP JSON",
+        "description": "This is a snapshot of your local MCP settings. Changes apply only after validation.",
+        "fieldLabel": "MCP Settings JSON",
+        "helper": "JSON parsing and MCP field rules are checked when you apply changes."
+      },
+      "validation": {
+        "unexpectedError": "Unexpected request error",
+        "invalidPayload": "Invalid MCP settings payload.",
+        "rawJsonInvalid": "Raw JSON is invalid.",
+        "commandRequired": "command is required when type is stdio",
+        "urlRequired": "url is required for non-stdio MCP servers unless command is provided"
+      },
+      "toasts": {
+        "saved": "MCP server settings saved."
+      }
+    }
+  },
+  "claws": {
+    "eyebrow": "Claws",
+    "title": "Claws",
+    "description": "生の設定を探し回らずに、アシスタントを外部の Lark チャンネルへ接続します。",
+    "newButton": "新しい Claw",
+    "errors": {
+      "loadFailed": "Failed to load claws",
+      "saveFailed": "Failed to save claw",
+      "updateFailed": "Failed to update claw",
+      "deleteFailed": "Failed to delete claw"
+    },
+    "providers": {
+      "noneSelected": "No provider selected",
+      "unknown": "Unknown provider"
+    },
+    "empty": {
+      "title": "最初の Claw を設定",
+      "description": "最短で使い始めるには、アシスタント 1 つ、プロバイダー 1 つ、Lark チャンネル 1 つから始めます。",
+      "note": "アシスタントの識別情報、ハートビート、今後の cron は引き続きアシスタント側で管理されます。",
+      "createButton": "最初の Claw を作成"
+    },
+    "card": {
+      "noChannelConnected": "チャンネルが接続されていません",
+      "enableButton": "有効化",
+      "disableButton": "無効化",
+      "editButton": "編集",
+      "deleteButton": "削除"
+    },
+    "dialog": {
+      "editTitle": "Claw を編集",
+      "createTitle": "Claw を作成",
+      "saveButton": "Claw を保存",
+      "createButton": "Claw を作成",
+      "description": "シンプルな手順でアシスタントを Lark チャンネルに接続します。",
+      "fields": {
+        "assistantName": "アシスタント名",
+        "provider": "プロバイダー",
+        "instructions": "指示",
+        "channelAction": "チャンネル操作",
+        "existingChannel": "既存チャンネル",
+        "larkChannelName": "Lark チャンネル名",
+        "appId": "アプリ ID",
+        "appSecret": "アプリシークレット"
+      },
+      "selectProvider": "プロバイダーを選択",
+      "selectChannel": "チャンネルを選択",
+      "enableAfterSaving": "保存後にこの Claw を有効化",
+      "channelActions": {
+        "keep": "現在のチャンネルを維持",
+        "create": "新しい Lark チャンネルを作成",
+        "attach": "既存チャンネルを接続",
+        "detach": "現在のチャンネルを解除"
+      },
+      "errors": {
+        "assistantNameRequired": "Assistant name is required",
+        "providerRequired": "Provider is required",
+        "channelRequired": "Pick a channel to attach",
+        "channelCredentialsRequired": "Lark channel name, app ID, and app secret are required"
+      }
+    }
+  },
+  "team": {
+    "sidebar": {
+      "eyebrow": "Team",
+      "title": "Team ワークスペース",
+      "defaultWorkspaceName": "Team Workspace",
+      "createWorkspaceAriaLabel": "Create team workspace",
+      "creatingWorkspace": "ワークスペースを作成中...",
+      "newWorkspace": "新しいワークスペース",
+      "workspaces": "ワークスペース",
+      "createThreadAriaLabel": "Create team thread",
+      "newThread": "新しいスレッド",
+      "loadingWorkspaces": "Team ワークスペースを読み込み中...",
+      "emptyWorkspaces": "ワークスペースがまだありません。まず作成して Team スレッドを開始してください。",
+      "loadingThreads": "Team スレッドを読み込み中...",
+      "emptyThreads": "Team スレッドはまだありません。",
+      "untitledThread": "無題の Team スレッド",
+      "deleteThreadAriaLabel": "Delete team thread {{title}}",
+      "deleteThreadPrompt": "スレッドを削除しますか？",
+      "confirmDeleteThreadAriaLabel": "Confirm delete team thread {{title}}",
+      "deletingThread": "削除中..."
+    },
+    "chat": {
+      "defaultTitle": "Team チャット",
+      "noWorkspaceSelected": "ワークスペース未選択",
+      "membersLabel_one": "{{count}} 人のメンバー",
+      "membersLabel_other": "{{count}} 人のメンバー",
+      "newThread": "新しい Team スレッド",
+      "configureTeam": "Team を設定",
+      "setupIncompleteTitle": "Team の設定が不完全です。",
+      "setupIncompleteDescription": "送信前に、スーパーバイザのプロバイダー/モデルを設定し、少なくとも 1 人のメンバーを選択してください。",
+      "emptyTitle": "Team スレッドが選択されていません",
+      "emptyDescription": "既存のスレッドを選択するか、新しい Team スレッドを作成して共同作業を始めてください。",
+      "supervisorName": "Team Supervisor",
+      "composer": {
+        "placeholderSelected": "チームにタスクの調整を依頼する...",
+        "placeholderEmpty": "チャットを始めるには Team スレッドを作成または選択してください。",
+        "ariaLabel": "Team message composer",
+        "helperSelected": "メッセージは Team スーパーバイザと選択されたメンバーを通じて処理されます。",
+        "helperEmpty": "まずワークスペースを選択し、Team スレッドを作成してください。",
+        "openStatus": "Team ステータスを開く"
+      }
+    },
+    "configDialog": {
+      "closeAriaLabel": "Close team config dialog",
+      "title": "Team を設定",
+      "description": "スーパーバイザモデルを選択し、このチームに参加するアシスタントを指定します。",
+      "fields": {
+        "supervisorProvider": "スーパーバイザ プロバイダー",
+        "teamDescription": "Team の説明",
+        "supervisorModel": "スーパーバイザ モデル",
+        "teamMembers": "Team メンバー"
+      },
+      "validation": {
+        "supervisorProvider": "スーパーバイザのプロバイダーを選択してください。",
+        "supervisorModel": "スーパーバイザのモデルを入力してください。",
+        "members": "少なくとも 1 人の Team メンバーを選択してください。"
+      },
+      "selectProvider": "プロバイダーを選択",
+      "saveButton": "Team を保存"
+    },
+    "status": {
+      "title": "Team ステータス",
+      "supervisor": "スーパーバイザ",
+      "eventLogTitle": "イベントログ",
+      "emptyEventLog": "ステータスイベントはまだありません。",
+      "defaultMember": "メンバー",
+      "events": {
+        "runStarted": "実行を開始しました。",
+        "delegationStarted": "{{assistant}} が実行中です。",
+        "delegationFinished": "{{assistant}} が完了しました。",
+        "iterationComplete": "反復 {{iteration}} が完了しました。",
+        "runFinished": "実行が完了しました。",
+        "runFailed": "実行に失敗しました。"
+      }
+    },
+    "readiness": {
+      "threadSelected": "Team thread is selected",
+      "workspaceConfigured": "Workspace path is configured",
+      "providerConfigured": "Supervisor provider is configured",
+      "modelConfigured": "Supervisor model is configured",
+      "membersSelected": "At least one live team member is selected"
+    }
+  },
+  "threads": {
+    "sidebar": {
+      "eyebrow": "メインチャット",
+      "title": "会話",
+      "creatingThread": "スレッドを作成中...",
+      "newThread": "新しいスレッド",
+      "assistants": "アシスタント",
+      "createAssistantAriaLabel": "Create assistant",
+      "assistantActionsAriaLabel": "Assistant actions for {{name}}",
+      "deleteAssistantAriaLabel": "Delete assistant {{name}}",
+      "loadingAssistants": "アシスタントを読み込み中...",
+      "emptyAssistants": "アシスタントがまだありません。Assistants で作成してください。",
+      "loadingThreads": "スレッドを読み込み中...",
+      "emptyThreads": "スレッドはまだありません。",
+      "untitledThread": "無題のスレッド",
+      "deleteThreadAriaLabel": "Delete thread {{title}}",
+      "deleteThreadPrompt": "スレッドを削除しますか？",
+      "cancelDeleteThreadAriaLabel": "Cancel delete thread {{title}}",
+      "confirmDeleteThreadAriaLabel": "Confirm delete thread {{title}}"
+    },
+    "chat": {
+      "defaultAssistantName": "アシスタント",
+      "titleWithAssistant": "{{name}} とチャット",
+      "tokens": "トークン",
+      "tokenInput": "{{value}} 入力",
+      "tokenOutput": "{{value}} 出力",
+      "modeLabel": "デフォルトのアシスタントチャット",
+      "newThread": "新しいスレッド",
+      "setupIncomplete": "アシスタントの設定が不完全です。メッセージを送る前に「設定」を開いてプロバイダーとモデルを設定してください。",
+      "composer": {
+        "placeholderSelectedThread": "このスレッドにメッセージを入力...",
+        "placeholderSelectedAssistant": "新しいスレッドを作成するメッセージを入力...",
+        "placeholderEmpty": "チャットを始めるにはアシスタントを選択してください。",
+        "helperSelectedThread": "メッセージは選択したアシスタントのスレッドに送信されます。",
+        "helperSelectedAssistant": "スレッドが選択されていません。Enter で作成して送信します。",
+        "helperEmpty": "開始するにはアシスタントを選択してください。",
+        "ariaLabel": "Message composer"
+      }
+    },
+    "messageList": {
+      "untitledFile": "無題のファイル",
+      "you": "あなた",
+      "copyMessage": "メッセージをコピー",
+      "reloadMessage": "再読み込み",
+      "moreActions": "その他の操作",
+      "exportMarkdown": "Markdown をエクスポート",
+      "empty": "まだメッセージはありません。",
+      "loadingHistory": "スレッド履歴を読み込み中...",
+      "responding": "アシスタントが応答中..."
+    },
+    "assistantDialog": {
+      "closeCreateAriaLabel": "Close create assistant dialog",
+      "closeEditAriaLabel": "Close assistant config dialog",
+      "createTitle": "アシスタントを作成",
+      "editTitle": "{{name}} を設定",
+      "createDescription": "チャットを始める前に、ワークスペースパスとプロバイダーを設定してください。",
+      "editDescription": "チャットを離れずに、プロバイダー、ワークスペース、プロンプトを更新できます。",
+      "addProviderPrefix": "先にこちらでプロバイダーを追加してください:",
+      "providerLinkLabel": "モデルプロバイダー",
+      "notFound": "アシスタントが見つかりません。"
+    },
+    "toasts": {
+      "threadCreated": "スレッドを作成しました。",
+      "threadRemoved": "スレッドを削除しました。",
+      "assistantCreated": "アシスタントを作成しました。",
+      "assistantUpdated": "アシスタント設定を更新しました。",
+      "builtInDeleteBlocked": "組み込みのデフォルトアシスタントは削除できません。",
+      "assistantDeleteFallbackLabel": "このアシスタント",
+      "confirmAssistantDelete": "「{{name}}」を削除しますか？関連するすべてのスレッドも削除されます。",
+      "assistantDeleted": "アシスタントを削除しました。"
+    },
+    "readiness": {
+      "providerAssigned": "Provider is assigned to this assistant",
+      "providerModelSelected": "Provider has one selected model"
+    }
+  },
+  "assistants": {
+    "modelPicker": {
+      "title": "モデルを選択",
+      "searchPlaceholder": "モデルを検索...",
+      "empty": "検索条件に一致するモデルがありません。"
+    },
+    "editor": {
+      "editTitle": "アシスタントを編集",
+      "createTitle": "アシスタントを作成",
+      "tabs": {
+        "essential": "基本設定",
+        "tools": "ツール"
+      },
+      "fields": {
+        "name": "名前",
+        "provider": "プロバイダー",
+        "description": "説明",
+        "prompt": "プロンプト",
+        "workspacePath": "ワークスペースパス（任意）",
+        "maxSteps": "最大ステップ数"
+      },
+      "placeholders": {
+        "name": "Research Copilot",
+        "description": "事実の調査、ソース検索、主張の検証を行います。",
+        "prompt": "簡潔で実用的な手順で回答する、役立つアシスタントです。",
+        "workspacePath": "/Users/name/workspace",
+        "maxSteps": "100"
+      },
+      "selectProvider": "プロバイダーを選択",
+      "descriptionHelp": "Team スーパーバイザが適切なタスクにこのアシスタントを選べるようにします。",
+      "workspacePathHelp": "より複雑な作業を行わせる場合は、ワークスペースを選択してください。",
+      "openingButton": "開いています...",
+      "runtimeNoteTitle": "一部の MCP ツールは管理ランタイムを使用します。",
+      "runtimeNotePrefix": "必要に応じて",
+      "runtimeNoteLinkLabel": "ランタイム設定",
+      "runtimeNoteSuffix": "を完了してください。npx、bun、または uv ベースのツールに依存する場合に必要です。",
+      "noMcpServersPrefix": "MCP サーバーはまだ設定されていません。",
+      "noMcpServersLinkLabel": "MCP サーバー設定",
+      "mcpGloballyDisabled": "MCP サーバー設定でグローバルに無効化されています。",
+      "toggleMcpAriaLabel": "Toggle {{serverId}} for this assistant",
+      "savingButton": "保存中...",
+      "updateButton": "アシスタントを更新",
+      "createButton": "アシスタントを作成",
+      "errors": {
+        "nameRequired": "アシスタント名は必須です",
+        "providerRequired": "プロバイダーは必須です",
+        "maxStepsInvalid": "最大ステップ数は 1 以上の整数である必要があります",
+        "workspacePickerFailed": "ワークスペースフォルダーを選択できませんでした"
+      }
+    }
+  },
+  "assistantUi": {
+    "markdown": {
+      "copyCode": "コピー"
+    },
+    "attachment": {
+      "imagePreviewAlt": "Image preview",
+      "dialogTitle": "Image Attachment Preview",
+      "previewAlt": "Attachment preview",
+      "attachmentAriaLabel": "{{type}} attachment",
+      "removeFile": "ファイルを削除",
+      "addAttachment": "添付を追加",
+      "typeLabels": {
+        "image": "Image",
+        "document": "Document",
+        "file": "File"
+      }
+    },
+    "toolGroup": {
+      "label_one": "{{count}} 件のツール呼び出し",
+      "label_other": "{{count}} 件のツール呼び出し"
+    },
+    "image": {
+      "contentAlt": "Image content",
+      "previewAlt": "Image preview",
+      "zoomAriaLabel": "クリックして画像を拡大",
+      "closeZoomAriaLabel": "拡大した画像を閉じる"
+    }
+  }
+}

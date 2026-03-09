@@ -13,6 +13,7 @@ import { useEffect } from 'react'
 import type { AssistantRecord } from '../../assistants/assistants-query'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import type { AssistantReadiness } from '../thread-page-helpers'
 import type { ThreadRecord } from '../threads-query'
 import { ThreadChatMessageList } from './thread-chat-message-list'
@@ -82,6 +83,7 @@ function ThreadChatComposer({
   onSubmitMessage,
   onAbortGeneration
 }: ThreadChatComposerProps): React.JSX.Element {
+  const { t } = useTranslation()
   const aui = useAui()
   const composerText = useAuiState((state) => (state.composer.isEditing ? state.composer.text : ''))
 
@@ -92,16 +94,16 @@ function ThreadChatComposer({
     canCompose
 
   const placeholder = selectedThread
-    ? 'Type a message for this thread...'
+    ? t('threads.chat.composer.placeholderSelectedThread')
     : selectedAssistant
-      ? 'Type a message to create a new thread...'
-      : 'Select an assistant to start chatting.'
+      ? t('threads.chat.composer.placeholderSelectedAssistant')
+      : t('threads.chat.composer.placeholderEmpty')
 
   const helperText = selectedThread
-    ? 'Messages stream from the selected assistant thread.'
+    ? t('threads.chat.composer.helperSelectedThread')
     : selectedAssistant
-      ? 'No thread selected. Press Enter to create one and send.'
-      : 'Pick an assistant to begin.'
+      ? t('threads.chat.composer.helperSelectedAssistant')
+      : t('threads.chat.composer.helperEmpty')
 
   return (
     <div className="border-t border-border/70 p-4">
@@ -126,7 +128,7 @@ function ThreadChatComposer({
           minRows={3}
           disabled={!canCompose || !readiness.canChat}
           placeholder={placeholder}
-          aria-label="Message composer"
+          aria-label={t('threads.chat.composer.ariaLabel')}
           className="border-input placeholder:text-muted-foreground focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive flex w-full rounded-md border bg-transparent px-3 py-2 text-base shadow-xs outline-none transition-[color,box-shadow] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:ring-[3px]"
         />
 
@@ -137,12 +139,12 @@ function ThreadChatComposer({
 
             {isChatStreaming ? (
               <Button type="button" disabled={!canAbortGeneration} onClick={onAbortGeneration}>
-                Stop
+                {t('common.actions.stop')}
               </Button>
             ) : (
               <ComposerPrimitive.Send asChild>
                 <Button type="submit" disabled={!canSendMessage}>
-                  Send
+                  {t('common.actions.send')}
                 </Button>
               </ComposerPrimitive.Send>
             )}
@@ -170,6 +172,7 @@ export function ThreadChatCard({
   onOpenAssistantConfig,
   onCreateThread
 }: ThreadChatCardProps): React.JSX.Element {
+  const { t, i18n } = useTranslation()
   const runtime = useAISDKRuntime(chat)
 
   const canCompose =
@@ -185,26 +188,35 @@ export function ThreadChatCard({
         <CardHeader className="border-b border-border/70 py-2">
           <div className="flex h-full flex-nowrap items-center justify-between gap-3 overflow-hidden">
             <CardTitle className="min-w-0 flex-1 truncate text-base">
-              {selectedThread?.title ?? `Chat with ${selectedAssistant?.name ?? 'Assistant'}`}
+              {selectedThread?.title ??
+                t('threads.chat.titleWithAssistant', {
+                  name: selectedAssistant?.name ?? t('threads.chat.defaultAssistantName')
+                })}
             </CardTitle>
             <div className="flex shrink-0 items-center gap-2">
               {tokenUsage && (
                 <div className="bg-muted/50 text-muted-foreground inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs">
-                  <span className="font-medium">{tokenUsage.totalTokens.toLocaleString()}</span>
-                  <span className="text-muted-foreground/70">tokens</span>
+                  <span className="font-medium">
+                    {tokenUsage.totalTokens.toLocaleString(i18n.resolvedLanguage)}
+                  </span>
+                  <span className="text-muted-foreground/70">{t('threads.chat.tokens')}</span>
                   <span className="text-muted-foreground/50">•</span>
                   <span className="text-muted-foreground/70">
-                    {tokenUsage.inputTokens.toLocaleString()} in
+                    {t('threads.chat.tokenInput', {
+                      value: tokenUsage.inputTokens.toLocaleString(i18n.resolvedLanguage)
+                    })}
                   </span>
                   <span className="text-muted-foreground/50">•</span>
                   <span className="text-muted-foreground/70">
-                    {tokenUsage.outputTokens.toLocaleString()} out
+                    {t('threads.chat.tokenOutput', {
+                      value: tokenUsage.outputTokens.toLocaleString(i18n.resolvedLanguage)
+                    })}
                   </span>
                 </div>
               )}
               <div className="bg-muted/50 text-muted-foreground inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs">
                 <Sparkles className="size-3.5" />
-                Default assistant chat
+                {t('threads.chat.modeLabel')}
               </div>
               <Button
                 type="button"
@@ -214,7 +226,7 @@ export function ThreadChatCard({
                 onClick={onCreateThread}
               >
                 <Plus className="size-4" />
-                New thread
+                {t('threads.chat.newThread')}
               </Button>
               <Button
                 type="button"
@@ -224,7 +236,7 @@ export function ThreadChatCard({
                 onClick={onOpenAssistantConfig}
               >
                 <Settings2 className="size-4" />
-                Configure
+                {t('common.actions.configure')}
               </Button>
             </div>
           </div>
@@ -234,13 +246,12 @@ export function ThreadChatCard({
           <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden py-5">
             {!readiness.canChat && selectedAssistant ? (
               <p className="text-muted-foreground mb-4 rounded-md border border-amber-300/40 bg-amber-400/10 px-3 py-2 text-xs">
-                Assistant setup is incomplete. Open Configure to set provider and model before
-                sending messages.
+                {t('threads.chat.setupIncomplete')}
               </p>
             ) : null}
 
             <ThreadChatMessageList
-              assistantName={selectedAssistant?.name ?? 'Assistant'}
+              assistantName={selectedAssistant?.name ?? t('threads.chat.defaultAssistantName')}
               isLoadingChatHistory={isLoadingChatHistory}
               isChatStreaming={isChatStreaming}
               loadError={loadError}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Bot, Link2, Plus } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import type { ProviderRecord } from '../../settings/providers/providers-query'
 import { listProviders } from '../../settings/providers/providers-query'
 import {
@@ -22,15 +23,8 @@ function emptyClawsResponse(): ClawsResponse {
   }
 }
 
-function providerLabel(providerId: string | null, providers: ProviderRecord[]): string {
-  if (!providerId) {
-    return 'No provider selected'
-  }
-
-  return providers.find((provider) => provider.id === providerId)?.name ?? 'Unknown provider'
-}
-
 export function ClawsPage(): React.JSX.Element {
+  const { t } = useTranslation()
   const [data, setData] = useState<ClawsResponse>(emptyClawsResponse)
   const [providers, setProviders] = useState<ProviderRecord[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -46,13 +40,24 @@ export function ClawsPage(): React.JSX.Element {
 
   useEffect(() => {
     void refreshPage().catch((error) => {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to load claws')
+      setErrorMessage(error instanceof Error ? error.message : t('claws.errors.loadFailed'))
     })
-  }, [])
+  }, [t])
 
   const hasConnectedClaw = useMemo(() => {
     return data.claws.some((claw) => claw.channel !== null)
   }, [data.claws])
+
+  function providerLabel(providerId: string | null): string {
+    if (!providerId) {
+      return t('claws.providers.noneSelected')
+    }
+
+    return (
+      providers.find((provider) => provider.id === providerId)?.name ??
+      t('claws.providers.unknown')
+    )
+  }
 
   async function handleDialogSubmit(input: SaveClawInput): Promise<void> {
     setIsSubmitting(true)
@@ -69,7 +74,7 @@ export function ClawsPage(): React.JSX.Element {
       setIsDialogOpen(false)
       setEditingClaw(null)
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to save claw')
+      setErrorMessage(error instanceof Error ? error.message : t('claws.errors.saveFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -87,7 +92,7 @@ export function ClawsPage(): React.JSX.Element {
       })
       await refreshPage()
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to update claw')
+      setErrorMessage(error instanceof Error ? error.message : t('claws.errors.updateFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -101,7 +106,7 @@ export function ClawsPage(): React.JSX.Element {
       await deleteClaw(claw.id)
       await refreshPage()
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to delete claw')
+      setErrorMessage(error instanceof Error ? error.message : t('claws.errors.deleteFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -112,11 +117,11 @@ export function ClawsPage(): React.JSX.Element {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-1">
-            <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">Claws</p>
-            <h1 className="text-3xl font-semibold">Claws</h1>
-            <p className="text-muted-foreground text-sm">
-              Connect assistants to external Lark channels without digging through raw settings.
+            <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
+              {t('claws.eyebrow')}
             </p>
+            <h1 className="text-3xl font-semibold">{t('claws.title')}</h1>
+            <p className="text-muted-foreground text-sm">{t('claws.description')}</p>
           </div>
 
           <Button
@@ -127,22 +132,20 @@ export function ClawsPage(): React.JSX.Element {
             }}
           >
             <Plus className="size-4" />
-            <span>New Claw</span>
+            <span>{t('claws.newButton')}</span>
           </Button>
         </div>
 
         {!hasConnectedClaw ? (
           <Card>
             <CardHeader>
-              <CardTitle>Set up your first claw</CardTitle>
-              <CardDescription>
-                Start with one assistant, one provider, and one Lark channel for the quickest onboarding path.
-              </CardDescription>
+              <CardTitle>{t('claws.empty.title')}</CardTitle>
+              <CardDescription>{t('claws.empty.description')}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap items-center justify-between gap-4">
               <div className="text-muted-foreground flex items-center gap-2 text-sm">
                 <Bot className="size-4" />
-                <span>Assistant identity, heartbeat, and future cron stay assistant-owned.</span>
+                <span>{t('claws.empty.note')}</span>
               </div>
               <Button
                 type="button"
@@ -151,7 +154,7 @@ export function ClawsPage(): React.JSX.Element {
                   setIsDialogOpen(true)
                 }}
               >
-                Create Your First Claw
+                {t('claws.empty.createButton')}
               </Button>
             </CardContent>
           </Card>
@@ -164,7 +167,7 @@ export function ClawsPage(): React.JSX.Element {
             <Card key={claw.id}>
               <CardHeader>
                 <CardTitle>{claw.name}</CardTitle>
-                <CardDescription>{providerLabel(claw.providerId, providers)}</CardDescription>
+                <CardDescription>{providerLabel(claw.providerId)}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="text-sm">
@@ -175,7 +178,9 @@ export function ClawsPage(): React.JSX.Element {
                       <span className="text-muted-foreground">({claw.channel.status})</span>
                     </div>
                   ) : (
-                    <span className="text-muted-foreground">No channel connected</span>
+                    <span className="text-muted-foreground">
+                      {t('claws.card.noChannelConnected')}
+                    </span>
                   )}
                 </div>
 
@@ -186,7 +191,7 @@ export function ClawsPage(): React.JSX.Element {
                     disabled={isSubmitting}
                     onClick={() => void handleToggleEnabled(claw)}
                   >
-                    {claw.enabled ? 'Disable' : 'Enable'}
+                    {claw.enabled ? t('claws.card.disableButton') : t('claws.card.enableButton')}
                   </Button>
                   <Button
                     type="button"
@@ -197,7 +202,7 @@ export function ClawsPage(): React.JSX.Element {
                       setIsDialogOpen(true)
                     }}
                   >
-                    Edit
+                    {t('claws.card.editButton')}
                   </Button>
                   <Button
                     type="button"
@@ -205,7 +210,7 @@ export function ClawsPage(): React.JSX.Element {
                     disabled={isSubmitting}
                     onClick={() => void handleDelete(claw)}
                   >
-                    Delete
+                    {t('claws.card.deleteButton')}
                   </Button>
                 </div>
               </CardContent>

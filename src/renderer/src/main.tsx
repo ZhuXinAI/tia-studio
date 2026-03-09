@@ -13,21 +13,28 @@ import { Toaster } from './components/ui/sonner'
 import { ErrorBoundary } from './components/error-boundary'
 import { TooltipProvider } from './components/ui/tooltip'
 import { queryClient } from './lib/query-client'
+import { applyResolvedLanguage } from './i18n'
 
 const appRouter = createAppRouter()
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <TooltipProvider>
-            <RouterProvider router={appRouter} />
-            <Toaster />
-          </TooltipProvider>
-        </ThemeProvider>
-        <ReactQueryDevtools initialIsOpen={false} />
-      </QueryClientProvider>
-    </ErrorBoundary>
-  </StrictMode>
-)
+async function renderApp(): Promise<void> {
+  await applyResolvedLanguage()
+
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider>
+            <TooltipProvider>
+              <RouterProvider router={appRouter} />
+              <Toaster />
+            </TooltipProvider>
+          </ThemeProvider>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </QueryClientProvider>
+      </ErrorBoundary>
+    </StrictMode>
+  )
+}
+
+void renderApp()

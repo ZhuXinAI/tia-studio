@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Textarea } from '../../../components/ui/textarea'
@@ -21,11 +22,14 @@ export type ProviderFormErrors = {
   selectedModel?: string
 }
 
-export function validateProviderForm(values: ProviderFormValues): ProviderFormErrors {
+export function validateProviderForm(
+  values: ProviderFormValues,
+  selectedModelRequiredMessage: string
+): ProviderFormErrors {
   const errors: ProviderFormErrors = {}
 
   if (values.selectedModel.trim().length === 0) {
-    errors.selectedModel = 'Selected model is required'
+    errors.selectedModel = selectedModelRequiredMessage
   }
 
   return errors
@@ -79,6 +83,7 @@ export function ProvidersForm({
   onSubmit,
   onTestConnection
 }: ProvidersFormProps): React.JSX.Element {
+  const { t } = useTranslation()
   const [values, setValues] = useState<ProviderFormValues>({
     name: initialValue?.name ?? '',
     type: initialValue?.type ?? 'openai',
@@ -107,7 +112,7 @@ export function ProvidersForm({
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const formErrors = validateProviderForm(values)
+    const formErrors = validateProviderForm(values, t('settings.providers.form.errors.selectedModelRequired'))
     setErrors(formErrors)
 
     if (Object.keys(formErrors).length > 0) {
@@ -122,7 +127,7 @@ export function ProvidersForm({
       return
     }
 
-    const formErrors = validateProviderForm(values)
+    const formErrors = validateProviderForm(values, t('settings.providers.form.errors.selectedModelRequired'))
     setErrors(formErrors)
     if (Object.keys(formErrors).length > 0) {
       return
@@ -137,8 +142,12 @@ export function ProvidersForm({
         <Field>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <FieldLabel htmlFor="provider-enabled">Enable Provider</FieldLabel>
-              <FieldDescription>Show this provider in model selection</FieldDescription>
+              <FieldLabel htmlFor="provider-enabled">
+                {t('settings.providers.form.enableProvider')}
+              </FieldLabel>
+              <FieldDescription>
+                {t('settings.providers.form.enableProviderDescription')}
+              </FieldDescription>
             </div>
             <Switch
               id="provider-enabled"
@@ -152,7 +161,7 @@ export function ProvidersForm({
       ) : null}
 
       <Field>
-        <FieldLabel htmlFor="provider-name">Provider Name</FieldLabel>
+        <FieldLabel htmlFor="provider-name">{t('settings.providers.form.providerName')}</FieldLabel>
         <Input
           id="provider-name"
           value={values.name}
@@ -163,7 +172,7 @@ export function ProvidersForm({
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="provider-type">Type</FieldLabel>
+        <FieldLabel htmlFor="provider-type">{t('settings.providers.form.type')}</FieldLabel>
         <select
           id="provider-type"
           className="border-input file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-[3px] focus-visible:ring-ring/50"
@@ -180,7 +189,7 @@ export function ProvidersForm({
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="provider-api-key">API Key</FieldLabel>
+        <FieldLabel htmlFor="provider-api-key">{t('settings.providers.form.apiKey')}</FieldLabel>
         <Input
           id="provider-api-key"
           value={values.apiKey}
@@ -190,7 +199,7 @@ export function ProvidersForm({
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="provider-api-host">API Host</FieldLabel>
+        <FieldLabel htmlFor="provider-api-host">{t('settings.providers.form.apiHost')}</FieldLabel>
         <Input
           id="provider-api-host"
           value={values.apiHost}
@@ -200,7 +209,9 @@ export function ProvidersForm({
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="provider-selected-model">Selected Model</FieldLabel>
+        <FieldLabel htmlFor="provider-selected-model">
+          {t('settings.providers.form.selectedModel')}
+        </FieldLabel>
         <Input
           id="provider-selected-model"
           value={values.selectedModel}
@@ -217,13 +228,17 @@ export function ProvidersForm({
           checked={hasProviderModels}
           onChange={(event) => setHasProviderModels(event.target.checked)}
         />
-        Include optional provider model presets
+        {t('settings.providers.form.includeModelPresets')}
       </label>
 
       {showProviderModels ? (
         <Field>
-          <FieldLabel htmlFor="provider-models-list">Provider Models (optional)</FieldLabel>
-          <FieldDescription>Enter model names separated by commas or new lines</FieldDescription>
+          <FieldLabel htmlFor="provider-models-list">
+            {t('settings.providers.form.providerModels')}
+          </FieldLabel>
+          <FieldDescription>
+            {t('settings.providers.form.providerModelsDescription')}
+          </FieldDescription>
           <Textarea
             id="provider-models-list"
             value={values.providerModelsText}
@@ -236,8 +251,12 @@ export function ProvidersForm({
       <Field>
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <FieldLabel htmlFor="supports-vision">Supports Vision</FieldLabel>
-            <FieldDescription>Enable image attachments for this provider</FieldDescription>
+            <FieldLabel htmlFor="supports-vision">
+              {t('settings.providers.form.supportsVision')}
+            </FieldLabel>
+            <FieldDescription>
+              {t('settings.providers.form.supportsVisionDescription')}
+            </FieldDescription>
           </div>
           <Switch
             id="supports-vision"
@@ -257,11 +276,15 @@ export function ProvidersForm({
             onClick={() => void handleTestConnection()}
             disabled={isSubmitting || isTestingConnection}
           >
-            {isTestingConnection ? 'Testing...' : 'Test Connection'}
+            {isTestingConnection
+              ? t('settings.providers.form.buttons.testing')
+              : t('settings.providers.form.buttons.testConnection')}
           </Button>
         ) : null}
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : 'Save Provider'}
+          {isSubmitting
+            ? t('settings.providers.form.buttons.saving')
+            : t('settings.providers.form.buttons.saveProvider')}
         </Button>
       </div>
     </form>

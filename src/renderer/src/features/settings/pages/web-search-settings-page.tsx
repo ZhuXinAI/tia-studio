@@ -1,5 +1,6 @@
 import { ExternalLink, Search } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import { toast } from 'sonner'
 import { Button } from '../../../components/ui/button'
 import {
@@ -42,23 +43,42 @@ const enginePresentation: Record<WebSearchEngine, EnginePresentation> = {
   }
 }
 
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    const message = error.message.trim()
-    if (message.length > 0) {
-      return message
-    }
-  }
-
-  return 'Unexpected request error'
-}
-
 export function WebSearchSettingsPage(): React.JSX.Element {
+  const { t } = useTranslation()
   const [settings, setSettings] = useState<WebSearchSettings | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [savingEngine, setSavingEngine] = useState<WebSearchEngine | null>(null)
   const [isSavingWindowBehavior, setIsSavingWindowBehavior] = useState(false)
   const [isSavingShowBrowser, setIsSavingShowBrowser] = useState(false)
+
+  const localizedEnginePresentation: Record<WebSearchEngine, EnginePresentation> = {
+    google: {
+      ...enginePresentation.google,
+      label: t('settings.webSearch.engines.google.label'),
+      description: t('settings.webSearch.engines.google.description')
+    },
+    bing: {
+      ...enginePresentation.bing,
+      label: t('settings.webSearch.engines.bing.label'),
+      description: t('settings.webSearch.engines.bing.description')
+    },
+    baidu: {
+      ...enginePresentation.baidu,
+      label: t('settings.webSearch.engines.baidu.label'),
+      description: t('settings.webSearch.engines.baidu.description')
+    }
+  }
+
+  const toErrorMessage = (error: unknown): string => {
+    if (error instanceof Error) {
+      const message = error.message.trim()
+      if (message.length > 0) {
+        return message
+      }
+    }
+
+    return t('settings.webSearch.toasts.unexpectedError')
+  }
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true)
@@ -90,7 +110,11 @@ export function WebSearchSettingsPage(): React.JSX.Element {
         defaultEngine: engine
       })
       setSettings(nextSettings)
-      toast.success(`${enginePresentation[engine].label} is now the default web search engine.`)
+      toast.success(
+        t('settings.webSearch.toasts.defaultSet', {
+          engine: localizedEnginePresentation[engine].label
+        })
+      )
     } catch (error) {
       toast.error(toErrorMessage(error))
     } finally {
@@ -111,7 +135,11 @@ export function WebSearchSettingsPage(): React.JSX.Element {
       })
       setSettings(nextSettings)
       toast.success(
-        `Background browser window is now ${keepBrowserWindowOpen ? 'enabled' : 'disabled'}.`
+        t('settings.webSearch.toasts.backgroundWindow', {
+          state: keepBrowserWindowOpen
+            ? t('settings.webSearch.toasts.backgroundEnabled')
+            : t('settings.webSearch.toasts.backgroundDisabled')
+        })
       )
     } catch (error) {
       toast.error(toErrorMessage(error))
@@ -132,7 +160,13 @@ export function WebSearchSettingsPage(): React.JSX.Element {
         showBrowser
       })
       setSettings(nextSettings)
-      toast.success(`Browser window is now ${showBrowser ? 'visible' : 'hidden'}.`)
+      toast.success(
+        t('settings.webSearch.toasts.browserVisibility', {
+          state: showBrowser
+            ? t('settings.webSearch.toasts.browserVisible')
+            : t('settings.webSearch.toasts.browserHidden')
+        })
+      )
     } catch (error) {
       toast.error(toErrorMessage(error))
     } finally {
@@ -141,7 +175,7 @@ export function WebSearchSettingsPage(): React.JSX.Element {
   }
 
   const openEngineSettings = async (engine: WebSearchEngine): Promise<void> => {
-    const details = enginePresentation[engine]
+    const details = localizedEnginePresentation[engine]
     const openInSearchContext = window.tiaDesktop?.openWebSearchSettings
 
     if (!openInSearchContext) {
@@ -152,35 +186,44 @@ export function WebSearchSettingsPage(): React.JSX.Element {
     try {
       await openInSearchContext(details.settingsUrl)
     } catch (error) {
-      toast.error(`Failed to open ${details.label} settings: ${toErrorMessage(error)}`)
+      toast.error(
+        t('settings.webSearch.toasts.openSettingsError', {
+          engine: details.label,
+          message: toErrorMessage(error)
+        })
+      )
     }
   }
 
   return (
     <div className="py-4 flex flex-col gap-4">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Web Search</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('settings.webSearch.title')}</h1>
         <p className="text-muted-foreground text-sm">
-          Choose one default engine and every browser search tool call will use it.
+          {t('settings.webSearch.description')}
         </p>
       </header>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>Default Search Engine</CardTitle>
-          <CardDescription>Google, Bing, and Baidu are supported.</CardDescription>
+          <CardTitle>{t('settings.webSearch.defaultEngine.title')}</CardTitle>
+          <CardDescription>{t('settings.webSearch.defaultEngine.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {isLoading ? (
-            <p className="text-muted-foreground text-sm">Loading search settings...</p>
+            <p className="text-muted-foreground text-sm">
+              {t('settings.webSearch.defaultEngine.loading')}
+            </p>
           ) : null}
 
           {!isLoading && availableEngines.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No engines available.</p>
+            <p className="text-muted-foreground text-sm">
+              {t('settings.webSearch.defaultEngine.empty')}
+            </p>
           ) : null}
 
           {availableEngines.map((engine) => {
-            const details = enginePresentation[engine]
+            const details = localizedEnginePresentation[engine]
             const isDefault = settings?.defaultEngine === engine
             const isSaving = savingEngine === engine
 
@@ -211,7 +254,11 @@ export function WebSearchSettingsPage(): React.JSX.Element {
                       void setDefaultEngine(engine)
                     }}
                   >
-                    {isSaving ? 'Saving...' : isDefault ? 'Default' : 'Set Default'}
+                    {isSaving
+                      ? t('settings.webSearch.buttons.saving')
+                      : isDefault
+                        ? t('settings.webSearch.buttons.default')
+                        : t('settings.webSearch.buttons.setDefault')}
                   </Button>
                 </div>
 
@@ -231,7 +278,7 @@ export function WebSearchSettingsPage(): React.JSX.Element {
                     }}
                   >
                     <Search className="size-4" />
-                    Open {details.label} Settings
+                    {t('settings.webSearch.buttons.openSettings', { engine: details.label })}
                     <ExternalLink className="size-3.5" />
                   </Button>
                 </div>
@@ -243,23 +290,27 @@ export function WebSearchSettingsPage(): React.JSX.Element {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>Browser Window Behavior</CardTitle>
+          <CardTitle>{t('settings.webSearch.browserBehavior.title')}</CardTitle>
           <CardDescription>
-            Keep an isolated browser window in the background for future search tasks.
+            {t('settings.webSearch.browserBehavior.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {isLoading ? (
-            <p className="text-muted-foreground text-sm">Loading browser window behavior...</p>
+            <p className="text-muted-foreground text-sm">
+              {t('settings.webSearch.browserBehavior.loading')}
+            </p>
           ) : (
             <>
               <div className="flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-card/60 px-4 py-3">
                 <div className="space-y-1 flex-1">
-                  <h2 className="text-base font-medium">Background Browser Window</h2>
+                  <h2 className="text-base font-medium">
+                    {t('settings.webSearch.browserBehavior.backgroundTitle')}
+                  </h2>
                   <p className="text-muted-foreground text-sm">
                     {settings?.keepBrowserWindowOpen
-                      ? 'Reuses one hidden BrowserWindow for web search.'
-                      : 'Creates and closes a BrowserWindow per search request.'}
+                      ? t('settings.webSearch.browserBehavior.backgroundEnabled')
+                      : t('settings.webSearch.browserBehavior.backgroundDisabled')}
                   </p>
                 </div>
                 <Switch
@@ -278,11 +329,13 @@ export function WebSearchSettingsPage(): React.JSX.Element {
 
               <div className="flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-card/60 px-4 py-3">
                 <div className="space-y-1 flex-1">
-                  <h2 className="text-base font-medium">Show Browser</h2>
+                  <h2 className="text-base font-medium">
+                    {t('settings.webSearch.browserBehavior.showBrowserTitle')}
+                  </h2>
                   <p className="text-muted-foreground text-sm">
                     {settings?.showBrowser
-                      ? 'Browser window is visible during search.'
-                      : 'Browser window is hidden during search.'}
+                      ? t('settings.webSearch.browserBehavior.showBrowserVisible')
+                      : t('settings.webSearch.browserBehavior.showBrowserHidden')}
                   </p>
                 </div>
                 <Switch

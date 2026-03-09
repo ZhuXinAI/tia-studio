@@ -12,6 +12,7 @@ import { useAISDKRuntime } from '@assistant-ui/react-ai-sdk'
 import { useEffect } from 'react'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import { ThreadChatMessageList } from '../../threads/components/thread-chat-message-list'
 import type { AssistantRecord } from '../../assistants/assistants-query'
 import type { TeamThreadRecord } from '../team-threads-query'
@@ -65,6 +66,7 @@ function TeamChatComposer({
   | 'onAbortGeneration'
   | 'onOpenStatusDialog'
 > & { canCompose: boolean }): React.JSX.Element {
+  const { t } = useTranslation()
   const aui = useAui()
   const composerText = useAuiState((state) => (state.composer.isEditing ? state.composer.text : ''))
 
@@ -94,31 +96,31 @@ function TeamChatComposer({
           disabled={!canCompose || !readiness.canChat}
           placeholder={
             selectedThread
-              ? 'Ask the team to coordinate a task...'
-              : 'Create or select a Team thread to start chatting.'
+              ? t('team.chat.composer.placeholderSelected')
+              : t('team.chat.composer.placeholderEmpty')
           }
-          aria-label="Team message composer"
+          aria-label={t('team.chat.composer.ariaLabel')}
           className="border-input placeholder:text-muted-foreground focus-visible:ring-ring/50 flex w-full rounded-md border bg-transparent px-3 py-2 text-base shadow-xs outline-none transition-[color,box-shadow] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:ring-[3px]"
         />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-muted-foreground text-xs">
             {selectedThread
-              ? 'Messages stream through the Team supervisor and selected members.'
-              : 'Pick a workspace and create a Team thread first.'}
+              ? t('team.chat.composer.helperSelected')
+              : t('team.chat.composer.helperEmpty')}
           </p>
           <div className="flex items-center gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={onOpenStatusDialog}>
-              Open Team Status
+              {t('team.chat.composer.openStatus')}
             </Button>
             {isChatStreaming ? (
               <Button type="button" disabled={!canAbortGeneration} onClick={onAbortGeneration}>
-                Stop
+                {t('common.actions.stop')}
               </Button>
             ) : (
               <ComposerPrimitive.Send asChild>
                 <Button type="submit" disabled={!canSendMessage}>
-                  Send
+                  {t('common.actions.send')}
                 </Button>
               </ComposerPrimitive.Send>
             )}
@@ -146,6 +148,7 @@ export function TeamChatCard({
   onOpenTeamConfig,
   onCreateThread
 }: TeamChatCardProps): React.JSX.Element {
+  const { t } = useTranslation()
   const runtime = useAISDKRuntime(chat)
 
   const canCompose = Boolean(selectedThread && readiness.canChat) && !isLoadingChatHistory
@@ -158,15 +161,15 @@ export function TeamChatCard({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <CardTitle className="truncate text-base">
-                {selectedThread?.title || 'Team Chat'}
+                {selectedThread?.title || t('team.chat.defaultTitle')}
               </CardTitle>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <div className="bg-muted/50 text-muted-foreground inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs">
                   <Users className="size-3.5" />
-                  {selectedWorkspace?.name ?? 'No workspace selected'}
+                  {selectedWorkspace?.name ?? t('team.chat.noWorkspaceSelected')}
                 </div>
                 <div className="bg-muted/50 text-muted-foreground inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs">
-                  {selectedMembers.length} member{selectedMembers.length === 1 ? '' : 's'}
+                  {t('team.chat.membersLabel', { count: selectedMembers.length })}
                 </div>
               </div>
             </div>
@@ -174,7 +177,7 @@ export function TeamChatCard({
             <div className="flex shrink-0 items-center gap-2">
               <Button type="button" variant="outline" size="sm" onClick={onCreateThread}>
                 <Plus className="size-4" />
-                New Team Thread
+                {t('team.chat.newThread')}
               </Button>
               <Button
                 type="button"
@@ -184,7 +187,7 @@ export function TeamChatCard({
                 onClick={onOpenTeamConfig}
               >
                 <Settings2 className="size-4" />
-                Configure Team
+                {t('team.chat.configureTeam')}
               </Button>
             </div>
           </div>
@@ -195,10 +198,10 @@ export function TeamChatCard({
             {!readiness.canChat && selectedThread ? (
               <div className="mb-4 rounded-md border border-amber-300/40 bg-amber-400/10 px-3 py-2">
                 <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-                  Team setup is incomplete.
+                  {t('team.chat.setupIncompleteTitle')}
                 </p>
                 <p className="text-sm text-amber-900/80 dark:text-amber-200/80">
-                  Add a supervisor provider/model and select at least one member before sending.
+                  {t('team.chat.setupIncompleteDescription')}
                 </p>
               </div>
             ) : null}
@@ -206,15 +209,15 @@ export function TeamChatCard({
             {!selectedThread ? (
               <div className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 p-6 text-center">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">No Team thread selected</p>
+                  <p className="text-sm font-medium">{t('team.chat.emptyTitle')}</p>
                   <p className="text-muted-foreground text-sm">
-                    Choose an existing thread or create a new Team thread to start collaborating.
+                    {t('team.chat.emptyDescription')}
                   </p>
                 </div>
               </div>
             ) : (
               <ThreadChatMessageList
-                assistantName="Team Supervisor"
+                assistantName={t('team.chat.supervisorName')}
                 isLoadingChatHistory={isLoadingChatHistory}
                 isChatStreaming={isChatStreaming}
                 loadError={loadError}

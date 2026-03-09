@@ -2,12 +2,14 @@ import {
   AlarmClock,
   Cable,
   Cloud,
+  Languages,
   Info,
   Monitor,
   Search,
   Wrench
 } from 'lucide-react'
 import type { ComponentType } from 'react'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   Sidebar,
@@ -21,44 +23,49 @@ import {
 } from '../../../components/ui/sidebar'
 
 type SettingsNavItem = {
-  title: string
+  titleKey: string
   to: string
   icon: ComponentType<{ className?: string }>
 }
 
 const settingsNavItems: SettingsNavItem[] = [
   {
-    title: 'Model Provider',
+    titleKey: 'settings.sidebar.items.general',
+    icon: Languages,
+    to: '/settings/general'
+  },
+  {
+    titleKey: 'settings.sidebar.items.providers',
     icon: Cloud,
     to: '/settings/providers'
   },
   {
-    title: 'Cron Jobs',
+    titleKey: 'settings.sidebar.items.cronJobs',
     icon: AlarmClock,
     to: '/settings/cron-jobs'
   },
   {
-    title: 'Web Search',
+    titleKey: 'settings.sidebar.items.webSearch',
     icon: Search,
     to: '/settings/web-search'
   },
   {
-    title: 'MCP Servers',
+    titleKey: 'settings.sidebar.items.mcpServers',
     icon: Cable,
     to: '/settings/mcp-servers'
   },
   {
-    title: 'Runtime Setup',
+    titleKey: 'settings.sidebar.items.runtimeSetup',
     icon: Wrench,
     to: '/settings/runtimes'
   },
   {
-    title: 'Display',
+    titleKey: 'settings.sidebar.items.display',
     icon: Monitor,
     to: '/settings/display'
   },
   {
-    title: 'About & Feedback',
+    titleKey: 'settings.sidebar.items.aboutFeedback',
     icon: Info,
     to: '/settings/about'
   }
@@ -66,17 +73,20 @@ const settingsNavItems: SettingsNavItem[] = [
 
 export function SettingsSidebarNav(): React.JSX.Element {
   const location = useLocation()
+  const { t } = useTranslation()
 
   return (
     <Sidebar className="h-full border-b-0 border-r border-border/70">
       <SidebarHeader className="space-y-1">
-        <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">Settings</p>
-        <h1 className="text-lg font-semibold">Configuration</h1>
+        <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
+          {t('settings.sidebar.title')}
+        </p>
+        <h1 className="text-lg font-semibold">{t('settings.sidebar.subtitle')}</h1>
       </SidebarHeader>
 
       <SidebarContent className="py-4">
         <SidebarGroup>
-          <SidebarGroupLabel>Categories</SidebarGroupLabel>
+          <SidebarGroupLabel>{t('settings.sidebar.categories')}</SidebarGroupLabel>
           <SidebarMenu>
             {settingsNavItems.map((item) => {
               const isActive = location.pathname === item.to
@@ -85,7 +95,7 @@ export function SettingsSidebarNav(): React.JSX.Element {
                   <SidebarMenuButton asChild variant={isActive ? 'active' : 'default'}>
                     <NavLink to={item.to}>
                       <item.icon className="size-4" />
-                      <span>{item.title}</span>
+                      <span>{t(item.titleKey)}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

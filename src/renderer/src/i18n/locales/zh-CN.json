@@ -1,0 +1,646 @@
+{
+  "appShell": {
+    "nav": {
+      "home": "主页",
+      "claws": "Claws",
+      "team": "团队",
+      "openSettings": "打开设置"
+    },
+    "legacySidebar": {
+      "title": "TIA Studio",
+      "subtitle": "控制中心",
+      "workspace": "工作区",
+      "settings": "设置",
+      "chat": "聊天",
+      "modelProviders": "模型提供商",
+      "notes": "TIA Studio 说明"
+    }
+  },
+  "common": {
+    "routeError": {
+      "title": "出了点问题",
+      "details": "错误详情",
+      "refreshApp": "刷新应用",
+      "goHome": "返回主页"
+    },
+    "errorBoundary": {
+      "title": "出了点问题",
+      "description": "应用遇到了一个意外错误。你可以尝试刷新应用，或重置当前视图。",
+      "details": "错误详情",
+      "refreshApp": "刷新应用",
+      "tryAgain": "重试"
+    },
+    "actions": {
+      "cancel": "取消",
+      "close": "关闭",
+      "configure": "配置",
+      "delete": "删除",
+      "edit": "编辑",
+      "browse": "浏览",
+      "send": "发送",
+      "stop": "停止"
+    },
+    "errors": {
+      "unexpectedRequest": "请求发生意外错误"
+    }
+  },
+  "settings": {
+    "sidebar": {
+      "title": "设置",
+      "subtitle": "配置",
+      "categories": "分类",
+      "items": {
+        "general": "常规",
+        "providers": "模型提供商",
+        "cronJobs": "定时任务",
+        "webSearch": "网络搜索",
+        "mcpServers": "MCP 服务器",
+        "runtimeSetup": "运行时设置",
+        "display": "显示",
+        "aboutFeedback": "关于与反馈"
+      }
+    },
+    "general": {
+      "title": "常规设置",
+      "description": "管理语言和核心应用偏好设置。",
+      "languageLabel": "语言",
+      "languageDescription": "选择 TIA Studio 界面文本的显示语言。",
+      "systemDefault": "跟随系统",
+      "currentSystemLanguage": "当前根据系统设置使用 {{language}}。"
+    },
+    "display": {
+      "title": "显示设置",
+      "description": "调整 TIA Studio 的外观",
+      "themeLabel": "主题",
+      "themeOptions": {
+        "light": "浅色",
+        "dark": "深色",
+        "system": "跟随系统"
+      },
+      "transparentTitle": "透明窗口",
+      "transparentDescription": "启用通透的透明窗口背景（需要重启）"
+    },
+    "about": {
+      "title": "关于与反馈",
+      "description": "查看 TIA Studio 的应用信息、更新控制和常用链接。",
+      "cardTitle": "关于",
+      "repositoryAriaLabel": "打开开源仓库",
+      "appDescription": "一个以本地优先为核心的 AI 工作区，可用于助手、模型提供商和工具集成。",
+      "autoUpdate": {
+        "label": "自动更新",
+        "enabledDescription": "在后台自动下载最新版本。",
+        "disabledDescription": "关闭后台下载，并手动检查更新。",
+        "loadError": "加载自动更新状态失败。",
+        "saveError": "保存自动更新设置失败。",
+        "checkError": "检查更新失败。"
+      },
+      "links": {
+        "docs": {
+          "title": "文档",
+          "description": "阅读安装指南和集成说明。",
+          "action": "网站"
+        },
+        "releaseNotes": {
+          "title": "发行说明",
+          "description": "查看每个发布版本的更新日志。",
+          "action": "版本"
+        },
+        "officialWebsite": {
+          "title": "官方网站",
+          "description": "打开项目更新的公开主页。",
+          "action": "网站"
+        },
+        "feedback": {
+          "title": "反馈",
+          "description": "报告问题并分享产品建议。",
+          "action": "反馈"
+        }
+      },
+      "buttons": {
+        "checkUpdate": "检查更新",
+        "checking": "检查中..."
+      }
+    },
+    "runtime": {
+      "title": "运行时设置",
+      "description": "为 MCP 服务器和依赖运行时的工具安装托管的 bun 与 uv，或指定你已经下载好的二进制文件。",
+      "kindDescription": {
+        "bun": "用于 bun、bunx 和基于 npx 的 MCP 服务启动。",
+        "uv": "用于 uv 和基于 uvx 的 MCP 服务启动。"
+      },
+      "labels": {
+        "status": "状态：",
+        "source": "来源：",
+        "version": "版本：",
+        "binary": "二进制："
+      },
+      "values": {
+        "notInstalled": "未安装",
+        "noBinary": "尚未选择活动二进制文件",
+        "loading": "正在加载运行时状态..."
+      },
+      "buttons": {
+        "installLatest": "安装最新版本",
+        "installing": "安装中...",
+        "useDownloadedBinary": "使用已下载二进制",
+        "checkAgain": "再次检查",
+        "checking": "检查中...",
+        "clearCustom": "清除自定义"
+      },
+      "toasts": {
+        "installSuccess": "已安装最新 {{kind}} 运行时。",
+        "pickSuccess": "已启用自定义 {{kind}} 运行时。",
+        "checkSuccess": "已检查 {{kind}} 运行时状态。",
+        "clearSuccess": "已清除 {{kind}} 运行时选择。",
+        "unexpectedError": "运行时请求发生意外错误"
+      }
+    },
+    "webSearch": {
+      "title": "网络搜索",
+      "description": "选择一个默认搜索引擎，所有浏览器搜索工具调用都会使用它。",
+      "defaultEngine": {
+        "title": "默认搜索引擎",
+        "description": "支持 Google、Bing 和 Baidu。",
+        "loading": "正在加载搜索设置...",
+        "empty": "暂无可用搜索引擎。"
+      },
+      "buttons": {
+        "saving": "保存中...",
+        "default": "默认",
+        "setDefault": "设为默认",
+        "openSettings": "打开 {{engine}} 设置"
+      },
+      "browserBehavior": {
+        "title": "浏览器窗口行为",
+        "description": "为后续搜索任务在后台保留一个独立浏览器窗口。",
+        "loading": "正在加载浏览器窗口行为...",
+        "backgroundTitle": "后台浏览器窗口",
+        "backgroundEnabled": "复用一个隐藏的 BrowserWindow 进行网页搜索。",
+        "backgroundDisabled": "每次搜索请求都创建并关闭一个 BrowserWindow。",
+        "showBrowserTitle": "显示浏览器",
+        "showBrowserVisible": "搜索过程中浏览器窗口可见。",
+        "showBrowserHidden": "搜索过程中浏览器窗口隐藏。"
+      },
+      "engines": {
+        "google": {
+          "label": "Google",
+          "description": "覆盖范围广、全球索引全面。"
+        },
+        "bing": {
+          "label": "Bing",
+          "description": "更适合直接抓取式搜索页面。"
+        },
+        "baidu": {
+          "label": "Baidu",
+          "description": "适合偏好中文搜索排序的场景。"
+        }
+      },
+      "toasts": {
+        "defaultSet": "{{engine}} 现已设为默认网络搜索引擎。",
+        "backgroundWindow": "后台浏览器窗口现已{{state}}。",
+        "backgroundEnabled": "启用",
+        "backgroundDisabled": "禁用",
+        "browserVisibility": "浏览器窗口现已{{state}}。",
+        "browserVisible": "显示",
+        "browserHidden": "隐藏",
+        "openSettingsError": "打开 {{engine}} 设置失败：{{message}}",
+        "unexpectedError": "请求发生意外错误"
+      }
+    },
+    "cronJobs": {
+      "title": "定时任务",
+      "description": "查看工作区定时任务的调度状态、下次运行时间和最近的运行错误。",
+      "cardTitle": "已计划任务",
+      "cardDescription": "隐藏的 cron 线程不会出现在常规聊天记录中，但它们的运行状态会保存在这里。",
+      "loading": "正在加载定时任务…",
+      "empty": "尚未配置任何定时任务。请通过 cron job API 创建任务以开始调度运行。",
+      "assistantLabel": "助手：{{assistant}}",
+      "enabled": "已启用",
+      "disabled": "已禁用",
+      "fields": {
+        "cronExpression": "Cron 表达式",
+        "nextRun": "下次运行",
+        "lastStatus": "最近状态",
+        "lastRun": "最近运行",
+        "lastError": "最近错误"
+      },
+      "fallbacks": {
+        "notScheduled": "未安排",
+        "never": "从未",
+        "none": "无"
+      },
+      "status": {
+        "success": "成功",
+        "failed": "失败",
+        "neverRun": "从未运行"
+      },
+      "toasts": {
+        "unexpectedError": "请求发生意外错误"
+      }
+    },
+    "providers": {
+      "sidebarTitle": "PROVIDERS",
+      "newButton": "+ New",
+      "searchPlaceholder": "Search providers...",
+      "loading": "Loading providers...",
+      "empty": "No providers yet. Create one to get started.",
+      "emptySearch": "No providers match your search.",
+      "builtInProvider": "Built-in provider.",
+      "visitOfficialSite": "Visit official site",
+      "deleteAriaLabel": "Delete provider {{name}}",
+      "deleteButton": "Delete Provider",
+      "deletingButton": "Deleting...",
+      "selectPrompt": "Select a provider in the sidebar to edit its model configuration.",
+      "createDialog": {
+        "title": "New Model Provider",
+        "description": "Create a provider profile and save credentials locally.",
+        "closeAriaLabel": "Close provider dialog",
+        "closeButtonAriaLabel": "Close dialog"
+      },
+      "toasts": {
+        "providerNotFound": "Provider not found.",
+        "providerSaved": "Provider saved locally.",
+        "providerCreated": "Provider created locally.",
+        "connectionSuccess": "Connection successful for {{type}} ({{model}}).",
+        "builtInDeleteBlocked": "Cannot delete built-in provider.",
+        "providerDeleted": "Provider deleted.",
+        "unexpectedError": "Unexpected request error"
+      },
+      "typeLabels": {
+        "openai": "OpenAI Compatible",
+        "openai-response": "OpenAI Responses",
+        "gemini": "Gemini",
+        "anthropic": "Anthropic",
+        "ollama": "Ollama"
+      },
+      "form": {
+        "errors": {
+          "selectedModelRequired": "Selected model is required"
+        },
+        "enableProvider": "Enable Provider",
+        "enableProviderDescription": "Show this provider in model selection",
+        "providerName": "Provider Name",
+        "type": "Type",
+        "apiKey": "API Key",
+        "apiHost": "API Host",
+        "selectedModel": "Selected Model",
+        "includeModelPresets": "Include optional provider model presets",
+        "providerModels": "Provider Models (optional)",
+        "providerModelsDescription": "Enter model names separated by commas or new lines",
+        "supportsVision": "Supports Vision",
+        "supportsVisionDescription": "Enable image attachments for this provider",
+        "buttons": {
+          "testing": "Testing...",
+          "testConnection": "Test Connection",
+          "saving": "Saving...",
+          "saveProvider": "Save Provider"
+        }
+      }
+    },
+    "mcp": {
+      "title": "MCP Server Settings",
+      "description": "Manage your local mcp.json source-of-truth and control global MCP activation.",
+      "buttons": {
+        "addServer": "Add MCP Server",
+        "editJson": "Edit JSON",
+        "saving": "Saving...",
+        "save": "Save",
+        "cancel": "Cancel",
+        "applyJson": "Apply JSON"
+      },
+      "cardTitle": "MCP Servers",
+      "cardDescription": "These servers are shared globally and can be toggled per assistant later in the Tools tab.",
+      "loading": "Loading MCP servers...",
+      "empty": "No MCP servers yet. Add one to create your local mcp.json list.",
+      "serverDescription": "Global status controls whether assistants can use this server.",
+      "toggleAriaLabel": "Toggle {{id}}",
+      "deleteAriaLabel": "Delete {{id}}",
+      "managedRuntimeTitle": "This command can use TIA Studio managed runtimes.",
+      "managedRuntimeDescriptionPrefix": "Finish {{runtime}} setup in",
+      "fields": {
+        "displayName": "Display Name",
+        "transportType": "Transport Type",
+        "command": "Command",
+        "installSource": "Install Source",
+        "url": "URL (for HTTP/SSE servers)",
+        "arguments": "Arguments (one per line)",
+        "environmentVariables": "Environment Variables (KEY=VALUE)"
+      },
+      "jsonDialog": {
+        "title": "Edit MCP JSON",
+        "description": "This is a snapshot of your local MCP settings. Changes apply only after validation.",
+        "fieldLabel": "MCP Settings JSON",
+        "helper": "JSON parsing and MCP field rules are checked when you apply changes."
+      },
+      "validation": {
+        "unexpectedError": "Unexpected request error",
+        "invalidPayload": "Invalid MCP settings payload.",
+        "rawJsonInvalid": "Raw JSON is invalid.",
+        "commandRequired": "command is required when type is stdio",
+        "urlRequired": "url is required for non-stdio MCP servers unless command is provided"
+      },
+      "toasts": {
+        "saved": "MCP server settings saved."
+      }
+    }
+  },
+  "claws": {
+    "eyebrow": "Claws",
+    "title": "Claws",
+    "description": "将助手连接到外部 Lark 频道，无需翻查原始设置。",
+    "newButton": "新建 Claw",
+    "errors": {
+      "loadFailed": "加载 Claw 失败",
+      "saveFailed": "保存 Claw 失败",
+      "updateFailed": "更新 Claw 失败",
+      "deleteFailed": "删除 Claw 失败"
+    },
+    "providers": {
+      "noneSelected": "未选择提供商",
+      "unknown": "未知提供商"
+    },
+    "empty": {
+      "title": "设置你的第一个 Claw",
+      "description": "从一个助手、一个提供商和一个 Lark 频道开始，是最快的接入方式。",
+      "note": "助手身份、心跳以及后续 cron 仍由助手自身管理。",
+      "createButton": "创建第一个 Claw"
+    },
+    "card": {
+      "noChannelConnected": "未连接频道",
+      "enableButton": "启用",
+      "disableButton": "禁用",
+      "editButton": "编辑",
+      "deleteButton": "删除"
+    },
+    "dialog": {
+      "editTitle": "编辑 Claw",
+      "createTitle": "创建 Claw",
+      "saveButton": "保存 Claw",
+      "createButton": "创建 Claw",
+      "description": "通过一个轻量流程把助手连接到 Lark 频道。",
+      "fields": {
+        "assistantName": "助手名称",
+        "provider": "提供商",
+        "instructions": "说明",
+        "channelAction": "频道操作",
+        "existingChannel": "现有频道",
+        "larkChannelName": "Lark 频道名称",
+        "appId": "应用 ID",
+        "appSecret": "应用密钥"
+      },
+      "selectProvider": "选择提供商",
+      "selectChannel": "选择频道",
+      "enableAfterSaving": "保存后启用此 Claw",
+      "channelActions": {
+        "keep": "保留当前频道",
+        "create": "创建新的 Lark 频道",
+        "attach": "绑定现有频道",
+        "detach": "解除当前频道"
+      },
+      "errors": {
+        "assistantNameRequired": "助手名称为必填项",
+        "providerRequired": "提供商为必填项",
+        "channelRequired": "请选择要绑定的频道",
+        "channelCredentialsRequired": "Lark 频道名称、应用 ID 和应用密钥均为必填项"
+      }
+    }
+  },
+  "team": {
+    "sidebar": {
+      "eyebrow": "Team",
+      "title": "Team 工作区",
+      "defaultWorkspaceName": "Team 工作区",
+      "createWorkspaceAriaLabel": "Create team workspace",
+      "creatingWorkspace": "正在创建工作区...",
+      "newWorkspace": "新建工作区",
+      "workspaces": "工作区",
+      "createThreadAriaLabel": "Create team thread",
+      "newThread": "新建线程",
+      "loadingWorkspaces": "正在加载 Team 工作区...",
+      "emptyWorkspaces": "还没有工作区。先创建一个，再开始 Team 线程。",
+      "loadingThreads": "正在加载 Team 线程...",
+      "emptyThreads": "还没有 Team 线程。",
+      "untitledThread": "未命名 Team 线程",
+      "deleteThreadAriaLabel": "Delete team thread {{title}}",
+      "deleteThreadPrompt": "删除线程？",
+      "confirmDeleteThreadAriaLabel": "Confirm delete team thread {{title}}",
+      "deletingThread": "正在删除..."
+    },
+    "chat": {
+      "defaultTitle": "Team 聊天",
+      "noWorkspaceSelected": "未选择工作区",
+      "membersLabel_one": "{{count}} 名成员",
+      "membersLabel_other": "{{count}} 名成员",
+      "newThread": "新建 Team 线程",
+      "configureTeam": "配置 Team",
+      "setupIncompleteTitle": "Team 设置未完成。",
+      "setupIncompleteDescription": "发送前请先添加主管提供商/模型，并至少选择一名成员。",
+      "emptyTitle": "未选择 Team 线程",
+      "emptyDescription": "选择现有线程，或新建一个 Team 线程开始协作。",
+      "supervisorName": "Team Supervisor",
+      "composer": {
+        "placeholderSelected": "让团队协同完成一项任务...",
+        "placeholderEmpty": "创建或选择一个 Team 线程以开始聊天。",
+        "ariaLabel": "Team 消息输入框",
+        "helperSelected": "消息会通过 Team 主管和所选成员流转。",
+        "helperEmpty": "请先选择工作区并创建一个 Team 线程。",
+        "openStatus": "打开 Team 状态"
+      }
+    },
+    "configDialog": {
+      "closeAriaLabel": "关闭 Team 配置对话框",
+      "title": "配置 Team",
+      "description": "选择主管模型，并决定哪些助手加入此团队。",
+      "fields": {
+        "supervisorProvider": "主管提供商",
+        "teamDescription": "Team 描述",
+        "supervisorModel": "主管模型",
+        "teamMembers": "Team 成员"
+      },
+      "validation": {
+        "supervisorProvider": "请选择主管提供商。",
+        "supervisorModel": "请输入主管模型。",
+        "members": "请至少选择一名 Team 成员。"
+      },
+      "selectProvider": "选择提供商",
+      "saveButton": "保存 Team"
+    },
+    "status": {
+      "title": "Team 状态",
+      "supervisor": "主管",
+      "eventLogTitle": "事件日志",
+      "emptyEventLog": "还没有状态事件。",
+      "defaultMember": "某位成员",
+      "events": {
+        "runStarted": "运行已开始。",
+        "delegationStarted": "{{assistant}} 正在运行。",
+        "delegationFinished": "{{assistant}} 已完成。",
+        "iterationComplete": "第 {{iteration}} 轮已完成。",
+        "runFinished": "运行已完成。",
+        "runFailed": "运行失败。"
+      }
+    },
+    "readiness": {
+      "threadSelected": "Team thread is selected",
+      "workspaceConfigured": "Workspace path is configured",
+      "providerConfigured": "Supervisor provider is configured",
+      "modelConfigured": "Supervisor model is configured",
+      "membersSelected": "At least one live team member is selected"
+    }
+  },
+  "threads": {
+    "sidebar": {
+      "eyebrow": "主聊天",
+      "title": "会话",
+      "creatingThread": "正在创建线程...",
+      "newThread": "新建线程",
+      "assistants": "助手",
+      "createAssistantAriaLabel": "Create assistant",
+      "assistantActionsAriaLabel": "Assistant actions for {{name}}",
+      "deleteAssistantAriaLabel": "Delete assistant {{name}}",
+      "loadingAssistants": "正在加载助手...",
+      "emptyAssistants": "还没有助手。请先在 Assistants 中创建一个。",
+      "loadingThreads": "正在加载线程...",
+      "emptyThreads": "还没有线程。",
+      "untitledThread": "未命名线程",
+      "deleteThreadAriaLabel": "Delete thread {{title}}",
+      "deleteThreadPrompt": "删除线程？",
+      "cancelDeleteThreadAriaLabel": "Cancel delete thread {{title}}",
+      "confirmDeleteThreadAriaLabel": "Confirm delete thread {{title}}"
+    },
+    "chat": {
+      "defaultAssistantName": "助手",
+      "titleWithAssistant": "与 {{name}} 对话",
+      "tokens": "令牌",
+      "tokenInput": "{{value}} 输入",
+      "tokenOutput": "{{value}} 输出",
+      "modeLabel": "默认助手聊天",
+      "newThread": "新建线程",
+      "setupIncomplete": "助手设置未完成。请先打开“配置”设置提供商和模型，再发送消息。",
+      "composer": {
+        "placeholderSelectedThread": "为此线程输入消息...",
+        "placeholderSelectedAssistant": "输入消息以创建新线程...",
+        "placeholderEmpty": "选择一个助手开始聊天。",
+        "helperSelectedThread": "消息将通过当前助手线程发送。",
+        "helperSelectedAssistant": "尚未选择线程。按 Enter 可创建线程并发送。",
+        "helperEmpty": "请选择一个助手开始。",
+        "ariaLabel": "消息输入框"
+      }
+    },
+    "messageList": {
+      "untitledFile": "未命名文件",
+      "you": "你",
+      "copyMessage": "复制消息",
+      "reloadMessage": "重新生成",
+      "moreActions": "更多操作",
+      "exportMarkdown": "导出 Markdown",
+      "empty": "还没有消息。",
+      "loadingHistory": "正在加载线程历史...",
+      "responding": "助手正在回复..."
+    },
+    "assistantDialog": {
+      "closeCreateAriaLabel": "关闭创建助手对话框",
+      "closeEditAriaLabel": "关闭助手配置对话框",
+      "createTitle": "创建助手",
+      "editTitle": "配置 {{name}}",
+      "createDescription": "开始聊天前先配置工作区路径和提供商。",
+      "editDescription": "无需离开聊天即可更新提供商、工作区和提示词。",
+      "addProviderPrefix": "请先在这里添加提供商：",
+      "providerLinkLabel": "模型提供商",
+      "notFound": "未找到助手。"
+    },
+    "toasts": {
+      "threadCreated": "线程已创建。",
+      "threadRemoved": "线程已删除。",
+      "assistantCreated": "助手已创建。",
+      "assistantUpdated": "助手配置已更新。",
+      "builtInDeleteBlocked": "不能删除内置默认助手。",
+      "assistantDeleteFallbackLabel": "这个助手",
+      "confirmAssistantDelete": "删除“{{name}}”？这也会删除它的所有线程。",
+      "assistantDeleted": "助手已删除。"
+    },
+    "readiness": {
+      "providerAssigned": "Provider is assigned to this assistant",
+      "providerModelSelected": "Provider has one selected model"
+    }
+  },
+  "assistants": {
+    "modelPicker": {
+      "title": "选择模型",
+      "searchPlaceholder": "搜索模型...",
+      "empty": "没有匹配搜索条件的模型。"
+    },
+    "editor": {
+      "editTitle": "编辑助手",
+      "createTitle": "创建助手",
+      "tabs": {
+        "essential": "基本设置",
+        "tools": "工具"
+      },
+      "fields": {
+        "name": "名称",
+        "provider": "提供商",
+        "description": "描述",
+        "prompt": "提示词",
+        "workspacePath": "工作区路径（可选）",
+        "maxSteps": "最大步数"
+      },
+      "placeholders": {
+        "name": "研究副驾",
+        "description": "负责检索事实、查找来源并核验结论。",
+        "prompt": "你是一名乐于助人的助手，请用简洁、实用的步骤作答。",
+        "workspacePath": "/Users/name/workspace",
+        "maxSteps": "100"
+      },
+      "selectProvider": "选择提供商",
+      "descriptionHelp": "帮助 Team 主管为合适的任务选择这个助手。",
+      "workspacePathHelp": "若要让助手执行更复杂的任务，请选择一个工作区。",
+      "openingButton": "正在打开...",
+      "runtimeNoteTitle": "部分 MCP 工具使用托管运行时。",
+      "runtimeNotePrefix": "请先在",
+      "runtimeNoteLinkLabel": "运行时设置",
+      "runtimeNoteSuffix": "完成配置；如果此助手依赖 npx、bun 或 uv 支持的工具，就需要这一步。",
+      "noMcpServersPrefix": "尚未配置 MCP 服务器。请前往",
+      "noMcpServersLinkLabel": "MCP 服务器设置",
+      "mcpGloballyDisabled": "已在 MCP 服务器设置中全局禁用。",
+      "toggleMcpAriaLabel": "Toggle {{serverId}} for this assistant",
+      "savingButton": "正在保存...",
+      "updateButton": "更新助手",
+      "createButton": "创建助手",
+      "errors": {
+        "nameRequired": "助手名称为必填项",
+        "providerRequired": "提供商为必填项",
+        "maxStepsInvalid": "最大步数必须是正整数",
+        "workspacePickerFailed": "无法选择工作区文件夹"
+      }
+    }
+  },
+  "assistantUi": {
+    "markdown": {
+      "copyCode": "复制"
+    },
+    "attachment": {
+      "imagePreviewAlt": "图片预览",
+      "dialogTitle": "图片附件预览",
+      "previewAlt": "附件预览",
+      "attachmentAriaLabel": "{{type}} 附件",
+      "removeFile": "移除文件",
+      "addAttachment": "添加附件",
+      "typeLabels": {
+        "image": "图片",
+        "document": "文档",
+        "file": "文件"
+      }
+    },
+    "toolGroup": {
+      "label_one": "{{count}} 次工具调用",
+      "label_other": "{{count}} 次工具调用"
+    },
+    "image": {
+      "contentAlt": "图片内容",
+      "previewAlt": "图片预览",
+      "zoomAriaLabel": "点击放大图片",
+      "closeZoomAriaLabel": "关闭放大后的图片"
+    }
+  }
+}

@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { ImageIcon, ImageOffIcon } from 'lucide-react'
 import type { ImageMessagePartComponent } from '@assistant-ui/react'
+import { useTranslation } from '../../i18n/use-app-translation'
 import { cn } from '../../lib/utils'
 
 const imageVariants = cva('aui-image-root relative overflow-hidden rounded-lg', {
@@ -52,10 +53,11 @@ function ImagePreview({
   containerClassName,
   onLoad,
   onError,
-  alt = 'Image content',
+  alt,
   src,
   ...props
 }: ImagePreviewProps) {
+  const { t } = useTranslation()
   const imgRef = useRef<HTMLImageElement>(null)
   const [loadedSrc, setLoadedSrc] = useState<string | undefined>(undefined)
   const [errorSrc, setErrorSrc] = useState<string | undefined>(undefined)
@@ -90,7 +92,7 @@ function ImagePreview({
         <img
           ref={imgRef}
           src={src}
-          alt={alt}
+          alt={alt ?? t('assistantUi.image.contentAlt')}
           className={cn('block h-auto w-full object-contain', !loaded && 'invisible', className)}
           onLoad={(e) => {
             if (typeof src === 'string') setLoadedSrc(src)
@@ -126,7 +128,8 @@ type ImageZoomProps = PropsWithChildren<{
   alt?: string
 }>
 
-function ImageZoom({ src, alt = 'Image preview', children }: ImageZoomProps) {
+function ImageZoom({ src, alt, children }: ImageZoomProps) {
+  const { t } = useTranslation()
   const [isMounted, setIsMounted] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
 
@@ -163,7 +166,7 @@ function ImageZoom({ src, alt = 'Image preview', children }: ImageZoomProps) {
         role="button"
         tabIndex={0}
         className="aui-image-zoom-trigger cursor-zoom-in"
-        aria-label="Click to zoom image"
+        aria-label={t('assistantUi.image.zoomAriaLabel')}
       >
         {children}
       </div>
@@ -177,12 +180,12 @@ function ImageZoom({ src, alt = 'Image preview', children }: ImageZoomProps) {
             className="aui-image-zoom-overlay fade-in fixed inset-0 z-50 flex animate-in items-center justify-center bg-black/80 duration-200"
             onClick={handleClose}
             onKeyDown={(e) => e.key === 'Enter' && handleClose()}
-            aria-label="Close zoomed image"
+            aria-label={t('assistantUi.image.closeZoomAriaLabel')}
           >
             <img
               data-slot="image-zoom-content"
               src={src}
-              alt={alt}
+              alt={alt ?? t('assistantUi.image.previewAlt')}
               className="aui-image-zoom-content fade-in zoom-in-95 max-h-[90vh] max-w-[90vw] animate-in cursor-zoom-out object-contain duration-200"
               onClick={(e) => {
                 e.stopPropagation()
@@ -197,10 +200,11 @@ function ImageZoom({ src, alt = 'Image preview', children }: ImageZoomProps) {
 }
 
 const ImageImpl: ImageMessagePartComponent = ({ image, filename }) => {
+  const { t } = useTranslation()
   return (
     <ImageRoot>
-      <ImageZoom src={image} alt={filename || 'Image content'}>
-        <ImagePreview src={image} alt={filename || 'Image content'} />
+      <ImageZoom src={image} alt={filename || t('assistantUi.image.contentAlt')}>
+        <ImagePreview src={image} alt={filename || t('assistantUi.image.contentAlt')} />
       </ImageZoom>
       <ImageFilename>{filename}</ImageFilename>
     </ImageRoot>

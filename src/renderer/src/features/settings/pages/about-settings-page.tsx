@@ -1,6 +1,7 @@
 import { BookOpen, Download, ExternalLink, Github, Globe, MessageSquare } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { cn } from '../../../lib/utils'
@@ -42,37 +43,6 @@ const fallbackAutoUpdateState: AutoUpdateState = {
   lastCheckedAt: null,
   message: null
 }
-
-const aboutLinks: AboutLinkItem[] = [
-  {
-    title: 'Docs',
-    description: 'Read setup guides and integration notes.',
-    actionLabel: 'Website',
-    href: 'https://deepwiki.com/CherryHQ/cherry-studio',
-    icon: BookOpen
-  },
-  {
-    title: 'Release Notes',
-    description: 'Track changelog details for each published build.',
-    actionLabel: 'Releases',
-    href: 'https://github.com/CherryHQ/cherry-studio/releases',
-    icon: Download
-  },
-  {
-    title: 'Official Website',
-    description: 'Open the public landing page for project updates.',
-    actionLabel: 'Website',
-    href: 'https://electron-vite.org',
-    icon: Globe
-  },
-  {
-    title: 'Feedback',
-    description: 'Report issues and share product suggestions.',
-    actionLabel: 'Feedback',
-    href: 'https://github.com/CherryHQ/cherry-studio/issues',
-    icon: MessageSquare
-  }
-]
 
 function AboutToggleRow({
   label,
@@ -157,10 +127,41 @@ function AboutLinkRow({
 }
 
 export function AboutSettingsPage(): React.JSX.Element {
+  const { t } = useTranslation()
   const [appInfo, setAppInfo] = useState<DesktopAppInfo>(fallbackAppInfo)
   const [autoUpdateState, setAutoUpdateState] = useState<AutoUpdateState>(fallbackAutoUpdateState)
   const [isSavingAutoUpdate, setIsSavingAutoUpdate] = useState(false)
   const [isCheckingForUpdates, setIsCheckingForUpdates] = useState(false)
+  const aboutLinks: AboutLinkItem[] = [
+    {
+      title: t('settings.about.links.docs.title'),
+      description: t('settings.about.links.docs.description'),
+      actionLabel: t('settings.about.links.docs.action'),
+      href: 'https://github.com/ZhuXinAI/tia-studio',
+      icon: BookOpen
+    },
+    {
+      title: t('settings.about.links.releaseNotes.title'),
+      description: t('settings.about.links.releaseNotes.description'),
+      actionLabel: t('settings.about.links.releaseNotes.action'),
+      href: 'https://github.com/ZhuXinAI/tia-studio/releases',
+      icon: Download
+    },
+    {
+      title: t('settings.about.links.officialWebsite.title'),
+      description: t('settings.about.links.officialWebsite.description'),
+      actionLabel: t('settings.about.links.officialWebsite.action'),
+      href: 'https://buildmind.ai',
+      icon: Globe
+    },
+    {
+      title: t('settings.about.links.feedback.title'),
+      description: t('settings.about.links.feedback.description'),
+      actionLabel: t('settings.about.links.feedback.action'),
+      href: 'https://github.com/ZhuXinAI/tia-studio/issues',
+      icon: MessageSquare
+    }
+  ]
 
   useEffect(() => {
     let cancelled = false
@@ -195,7 +196,7 @@ export function AboutSettingsPage(): React.JSX.Element {
           setAutoUpdateState((current) => ({
             ...current,
             status: 'error',
-            message: 'Failed to load auto update state.'
+            message: t('settings.about.autoUpdate.loadError')
           }))
         }
       })
@@ -225,7 +226,7 @@ export function AboutSettingsPage(): React.JSX.Element {
       setAutoUpdateState((current) => ({
         ...current,
         status: 'error',
-        message: 'Failed to save auto update setting.'
+        message: t('settings.about.autoUpdate.saveError')
       }))
     } finally {
       setIsSavingAutoUpdate(false)
@@ -246,7 +247,7 @@ export function AboutSettingsPage(): React.JSX.Element {
       setAutoUpdateState((current) => ({
         ...current,
         status: 'error',
-        message: 'Failed to check for updates.'
+        message: t('settings.about.autoUpdate.checkError')
       }))
     } finally {
       setIsCheckingForUpdates(false)
@@ -256,9 +257,9 @@ export function AboutSettingsPage(): React.JSX.Element {
   return (
     <div className="py-4 flex flex-col gap-4">
       <header className="py-1">
-        <h1 className="text-2xl font-semibold tracking-tight">About &amp; Feedback</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('settings.about.title')}</h1>
         <p className="text-muted-foreground text-sm">
-          App metadata, update controls, and helpful links for TIA Studio.
+          {t('settings.about.description')}
         </p>
       </header>
 
@@ -279,13 +280,13 @@ export function AboutSettingsPage(): React.JSX.Element {
       <Card className="border-border/70 bg-card/80 gap-0 overflow-hidden py-0">
         <CardHeader className="border-border/60 border-b py-4">
           <div className="flex items-center justify-between gap-3">
-            <CardTitle>About</CardTitle>
+            <CardTitle>{t('settings.about.cardTitle')}</CardTitle>
             <Button asChild variant="ghost" size="icon">
               <a
-                href="https://github.com/CherryHQ/cherry-studio"
+                href="https://github.com/ZhuXinAI/tia-studio"
                 target="_blank"
                 rel="noreferrer"
-                aria-label="Open source repository"
+                aria-label={t('settings.about.repositoryAriaLabel')}
               >
                 <Github className="size-4" />
               </a>
@@ -307,7 +308,7 @@ export function AboutSettingsPage(): React.JSX.Element {
                   </span>
                 </div>
                 <p className="text-muted-foreground text-sm">
-                  A local-first AI workspace for assistants, providers, and tool integrations.
+                  {t('settings.about.appDescription')}
                 </p>
               </div>
             </div>
@@ -322,17 +323,19 @@ export function AboutSettingsPage(): React.JSX.Element {
                 void checkForUpdates()
               }}
             >
-              {isCheckingForUpdates ? 'Checking...' : 'Check Update'}
+              {isCheckingForUpdates
+                ? t('settings.about.buttons.checking')
+                : t('settings.about.buttons.checkUpdate')}
               <ExternalLink className="size-3.5" />
             </Button>
           </div>
 
           <AboutToggleRow
-            label="Auto Update"
+            label={t('settings.about.autoUpdate.label')}
             description={
               autoUpdateState.enabled
-                ? 'Automatically download the latest release in the background.'
-                : 'Disable background downloads and check manually.'
+                ? t('settings.about.autoUpdate.enabledDescription')
+                : t('settings.about.autoUpdate.disabledDescription')
             }
             checked={autoUpdateState.enabled}
             onToggle={() => {

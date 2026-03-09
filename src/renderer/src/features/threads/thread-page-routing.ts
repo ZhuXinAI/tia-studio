@@ -1,11 +1,12 @@
 import type { ThreadRecord } from './threads-query'
+import { i18n } from '../../i18n'
 
 export function toErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message
   }
 
-  return 'Unexpected request error'
+  return i18n.t('common.errors.unexpectedRequest')
 }
 
 export function routeToAssistantThreads(assistantId: string, threadId?: string): string {
@@ -22,11 +23,11 @@ export function createThreadTitle(): string {
 
 export function getThreadDisplayTitle(title: string | null | undefined): string {
   if (typeof title !== 'string') {
-    return 'Untitled Thread'
+    return i18n.t('threads.sidebar.untitledThread')
   }
 
   const normalizedTitle = title.trim()
-  return normalizedTitle.length > 0 ? normalizedTitle : 'Untitled Thread'
+  return normalizedTitle.length > 0 ? normalizedTitle : i18n.t('threads.sidebar.untitledThread')
 }
 
 export function sortThreadsByRecentActivity(threads: ThreadRecord[]): ThreadRecord[] {

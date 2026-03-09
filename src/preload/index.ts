@@ -34,6 +34,10 @@ type ManagedRuntimeRecord = {
   errorMessage: string | null
 }
 type ManagedRuntimesState = Record<ManagedRuntimeKind, ManagedRuntimeRecord>
+type UiConfig = {
+  transparent?: boolean
+  language?: string | null
+}
 
 const tiaDesktop = {
   getConfig: () =>
@@ -46,6 +50,9 @@ const tiaDesktop = {
       name: string
       version: string
     }>,
+  getUiConfig: () => ipcRenderer.invoke('tia:get-ui-config') as Promise<UiConfig>,
+  setUiConfig: (config: UiConfig) => ipcRenderer.invoke('tia:set-ui-config', config) as Promise<UiConfig>,
+  getSystemLocale: () => ipcRenderer.invoke('tia:get-system-locale') as Promise<string>,
   getAutoUpdateState: () =>
     ipcRenderer.invoke('tia:get-auto-update-state') as Promise<AutoUpdateState>,
   setAutoUpdateEnabled: (enabled: boolean) =>

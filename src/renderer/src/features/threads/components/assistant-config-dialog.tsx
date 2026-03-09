@@ -6,6 +6,7 @@ import type { McpServerRecord } from '../../settings/mcp-servers/mcp-servers-que
 import type { ProviderRecord } from '../../settings/providers/providers-query'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { useTranslation } from '../../../i18n/use-app-translation'
 
 export type AssistantDialogMode = 'create' | 'edit'
 
@@ -34,6 +35,7 @@ export function AssistantConfigDialog({
   onSelectWorkspacePath,
   onSubmit
 }: AssistantConfigDialogProps): React.JSX.Element | null {
+  const { t } = useTranslation()
   if (!isOpen) {
     return null
   }
@@ -50,7 +52,9 @@ export function AssistantConfigDialog({
       <button
         type="button"
         aria-label={
-          isCreateMode ? 'Close create assistant dialog' : 'Close assistant config dialog'
+          isCreateMode
+            ? t('threads.assistantDialog.closeCreateAriaLabel')
+            : t('threads.assistantDialog.closeEditAriaLabel')
         }
         className="absolute inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
@@ -66,12 +70,16 @@ export function AssistantConfigDialog({
           <div className="flex items-start justify-between gap-2">
             <div className="space-y-1">
               <CardTitle id={titleId}>
-                {isCreateMode ? 'Create Assistant' : `Configure ${assistant?.name ?? 'Assistant'}`}
+                {isCreateMode
+                  ? t('threads.assistantDialog.createTitle')
+                  : t('threads.assistantDialog.editTitle', {
+                      name: assistant?.name ?? t('threads.chat.defaultAssistantName')
+                    })}
               </CardTitle>
               <p className="text-muted-foreground text-sm">
                 {isCreateMode
-                  ? 'Configure workspace path and provider before starting chat.'
-                  : 'Update provider, workspace, and prompt without leaving chat.'}
+                  ? t('threads.assistantDialog.createDescription')
+                  : t('threads.assistantDialog.editDescription')}
               </p>
             </div>
             <Button
@@ -80,7 +88,7 @@ export function AssistantConfigDialog({
               size="icon"
               onClick={onClose}
               disabled={isSaving}
-              aria-label="Close dialog"
+              aria-label={t('common.actions.close')}
             >
               <X className="size-4" />
             </Button>
@@ -91,7 +99,9 @@ export function AssistantConfigDialog({
             {providers.length === 0 ? (
               <p className="text-muted-foreground text-sm">
                 <Bot className="mr-1 inline size-4" />
-                Add a provider first in <Link to="/settings/providers">Model Provider</Link>.
+                {t('threads.assistantDialog.addProviderPrefix')}{' '}
+                <Link to="/settings/providers">{t('threads.assistantDialog.providerLinkLabel')}</Link>
+                .
               </p>
             ) : null}
             {errorMessage ? (

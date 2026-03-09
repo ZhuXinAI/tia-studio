@@ -1,0 +1,646 @@
+{
+  "appShell": {
+    "nav": {
+      "home": "Home",
+      "claws": "Claws",
+      "team": "Team",
+      "openSettings": "Open settings"
+    },
+    "legacySidebar": {
+      "title": "TIA Studio",
+      "subtitle": "Control Center",
+      "workspace": "Workspace",
+      "settings": "Settings",
+      "chat": "Chat",
+      "modelProviders": "Model Providers",
+      "notes": "TIA Studio Notes"
+    }
+  },
+  "common": {
+    "routeError": {
+      "title": "Something went wrong",
+      "details": "Error details",
+      "refreshApp": "Refresh App",
+      "goHome": "Go Home"
+    },
+    "errorBoundary": {
+      "title": "Something went wrong",
+      "description": "The application encountered an unexpected error. You can try refreshing the app or resetting the current view.",
+      "details": "Error details",
+      "refreshApp": "Refresh App",
+      "tryAgain": "Try Again"
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "close": "Schließen",
+      "configure": "Konfigurieren",
+      "delete": "Löschen",
+      "edit": "Bearbeiten",
+      "browse": "Durchsuchen",
+      "send": "Senden",
+      "stop": "Stopp"
+    },
+    "errors": {
+      "unexpectedRequest": "Unerwarteter Anfragefehler"
+    }
+  },
+  "settings": {
+    "sidebar": {
+      "title": "Einstellungen",
+      "subtitle": "Konfiguration",
+      "categories": "Kategorien",
+      "items": {
+        "general": "Allgemein",
+        "providers": "Modellanbieter",
+        "cronJobs": "Cron-Jobs",
+        "webSearch": "Websuche",
+        "mcpServers": "MCP-Server",
+        "runtimeSetup": "Laufzeitumgebung",
+        "display": "Anzeige",
+        "aboutFeedback": "Über & Feedback"
+      }
+    },
+    "general": {
+      "title": "Allgemeine Einstellungen",
+      "description": "Sprache und zentrale App-Einstellungen verwalten.",
+      "languageLabel": "Sprache",
+      "languageDescription": "Wählen Sie aus, in welcher Sprache TIA Studio die Benutzeroberfläche anzeigt.",
+      "systemDefault": "Systemstandard",
+      "currentSystemLanguage": "Derzeit wird {{language}} aus Ihren Systemeinstellungen verwendet."
+    },
+    "display": {
+      "title": "Anzeigeeinstellungen",
+      "description": "Passen Sie das Erscheinungsbild von TIA Studio an",
+      "themeLabel": "Design",
+      "themeOptions": {
+        "light": "Hell",
+        "dark": "Dunkel",
+        "system": "System"
+      },
+      "transparentTitle": "Transparentes Fenster",
+      "transparentDescription": "Aktiviert einen lebendigen transparenten Fensterhintergrund (Neustart erforderlich)"
+    },
+    "about": {
+      "title": "About & Feedback",
+      "description": "App metadata, update controls, and helpful links for TIA Studio.",
+      "cardTitle": "About",
+      "repositoryAriaLabel": "Open source repository",
+      "appDescription": "A local-first AI workspace for assistants, providers, and tool integrations.",
+      "autoUpdate": {
+        "label": "Auto Update",
+        "enabledDescription": "Automatically download the latest release in the background.",
+        "disabledDescription": "Disable background downloads and check manually.",
+        "loadError": "Failed to load auto update state.",
+        "saveError": "Failed to save auto update setting.",
+        "checkError": "Failed to check for updates."
+      },
+      "links": {
+        "docs": {
+          "title": "Docs",
+          "description": "Read setup guides and integration notes.",
+          "action": "Website"
+        },
+        "releaseNotes": {
+          "title": "Release Notes",
+          "description": "Track changelog details for each published build.",
+          "action": "Releases"
+        },
+        "officialWebsite": {
+          "title": "Official Website",
+          "description": "Open the public landing page for project updates.",
+          "action": "Website"
+        },
+        "feedback": {
+          "title": "Feedback",
+          "description": "Report issues and share product suggestions.",
+          "action": "Feedback"
+        }
+      },
+      "buttons": {
+        "checkUpdate": "Check Update",
+        "checking": "Checking..."
+      }
+    },
+    "runtime": {
+      "title": "Runtime Setup",
+      "description": "Install managed bun and uv runtimes for MCP servers and runtime-backed tools, or point TIA Studio at a binary you already downloaded.",
+      "kindDescription": {
+        "bun": "Used for bun, bunx, and npx-backed MCP server launches.",
+        "uv": "Used for uv and uvx-backed MCP server launches."
+      },
+      "labels": {
+        "status": "Status:",
+        "source": "Source:",
+        "version": "Version:",
+        "binary": "Binary:"
+      },
+      "values": {
+        "notInstalled": "Not installed",
+        "noBinary": "No active binary selected",
+        "loading": "Loading runtime status..."
+      },
+      "buttons": {
+        "installLatest": "Install latest",
+        "installing": "Installing...",
+        "useDownloadedBinary": "Use downloaded binary",
+        "checkAgain": "Check again",
+        "checking": "Checking...",
+        "clearCustom": "Clear custom"
+      },
+      "toasts": {
+        "installSuccess": "Installed latest {{kind}} runtime.",
+        "pickSuccess": "Activated custom {{kind}} runtime.",
+        "checkSuccess": "Checked {{kind}} runtime status.",
+        "clearSuccess": "Cleared {{kind}} runtime selection.",
+        "unexpectedError": "Unexpected managed runtime error"
+      }
+    },
+    "webSearch": {
+      "title": "Web Search",
+      "description": "Choose one default engine and every browser search tool call will use it.",
+      "defaultEngine": {
+        "title": "Default Search Engine",
+        "description": "Google, Bing, and Baidu are supported.",
+        "loading": "Loading search settings...",
+        "empty": "No engines available."
+      },
+      "buttons": {
+        "saving": "Saving...",
+        "default": "Default",
+        "setDefault": "Set Default",
+        "openSettings": "Open {{engine}} Settings"
+      },
+      "browserBehavior": {
+        "title": "Browser Window Behavior",
+        "description": "Keep an isolated browser window in the background for future search tasks.",
+        "loading": "Loading browser window behavior...",
+        "backgroundTitle": "Background Browser Window",
+        "backgroundEnabled": "Reuses one hidden BrowserWindow for web search.",
+        "backgroundDisabled": "Creates and closes a BrowserWindow per search request.",
+        "showBrowserTitle": "Show Browser",
+        "showBrowserVisible": "Browser window is visible during search.",
+        "showBrowserHidden": "Browser window is hidden during search."
+      },
+      "engines": {
+        "google": {
+          "label": "Google",
+          "description": "Wide global index with broad results coverage."
+        },
+        "bing": {
+          "label": "Bing",
+          "description": "More consistent for direct fetch-based search pages."
+        },
+        "baidu": {
+          "label": "Baidu",
+          "description": "Useful when you prefer Chinese-language search ranking."
+        }
+      },
+      "toasts": {
+        "defaultSet": "{{engine}} is now the default web search engine.",
+        "backgroundWindow": "Background browser window is now {{state}}.",
+        "backgroundEnabled": "enabled",
+        "backgroundDisabled": "disabled",
+        "browserVisibility": "Browser window is now {{state}}.",
+        "browserVisible": "visible",
+        "browserHidden": "hidden",
+        "openSettingsError": "Failed to open {{engine}} settings: {{message}}",
+        "unexpectedError": "Unexpected request error"
+      }
+    },
+    "cronJobs": {
+      "title": "Cron Jobs",
+      "description": "Review scheduler status, next runs, and the latest runtime errors for workspace cron jobs.",
+      "cardTitle": "Scheduled Jobs",
+      "cardDescription": "Hidden cron threads stay out of normal chat history while their runtime status is persisted here.",
+      "loading": "Loading cron jobs…",
+      "empty": "No cron jobs configured yet. Create one through the cron job API to start scheduling runs.",
+      "assistantLabel": "Assistant: {{assistant}}",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "fields": {
+        "cronExpression": "Cron Expression",
+        "nextRun": "Next Run",
+        "lastStatus": "Last Status",
+        "lastRun": "Last Run",
+        "lastError": "Last Error"
+      },
+      "fallbacks": {
+        "notScheduled": "Not scheduled",
+        "never": "Never",
+        "none": "None"
+      },
+      "status": {
+        "success": "success",
+        "failed": "failed",
+        "neverRun": "never run"
+      },
+      "toasts": {
+        "unexpectedError": "Unexpected request error"
+      }
+    },
+    "providers": {
+      "sidebarTitle": "PROVIDERS",
+      "newButton": "+ New",
+      "searchPlaceholder": "Search providers...",
+      "loading": "Loading providers...",
+      "empty": "No providers yet. Create one to get started.",
+      "emptySearch": "No providers match your search.",
+      "builtInProvider": "Built-in provider.",
+      "visitOfficialSite": "Visit official site",
+      "deleteAriaLabel": "Delete provider {{name}}",
+      "deleteButton": "Delete Provider",
+      "deletingButton": "Deleting...",
+      "selectPrompt": "Select a provider in the sidebar to edit its model configuration.",
+      "createDialog": {
+        "title": "New Model Provider",
+        "description": "Create a provider profile and save credentials locally.",
+        "closeAriaLabel": "Close provider dialog",
+        "closeButtonAriaLabel": "Close dialog"
+      },
+      "toasts": {
+        "providerNotFound": "Provider not found.",
+        "providerSaved": "Provider saved locally.",
+        "providerCreated": "Provider created locally.",
+        "connectionSuccess": "Connection successful for {{type}} ({{model}}).",
+        "builtInDeleteBlocked": "Cannot delete built-in provider.",
+        "providerDeleted": "Provider deleted.",
+        "unexpectedError": "Unexpected request error"
+      },
+      "typeLabels": {
+        "openai": "OpenAI Compatible",
+        "openai-response": "OpenAI Responses",
+        "gemini": "Gemini",
+        "anthropic": "Anthropic",
+        "ollama": "Ollama"
+      },
+      "form": {
+        "errors": {
+          "selectedModelRequired": "Selected model is required"
+        },
+        "enableProvider": "Enable Provider",
+        "enableProviderDescription": "Show this provider in model selection",
+        "providerName": "Provider Name",
+        "type": "Type",
+        "apiKey": "API Key",
+        "apiHost": "API Host",
+        "selectedModel": "Selected Model",
+        "includeModelPresets": "Include optional provider model presets",
+        "providerModels": "Provider Models (optional)",
+        "providerModelsDescription": "Enter model names separated by commas or new lines",
+        "supportsVision": "Supports Vision",
+        "supportsVisionDescription": "Enable image attachments for this provider",
+        "buttons": {
+          "testing": "Testing...",
+          "testConnection": "Test Connection",
+          "saving": "Saving...",
+          "saveProvider": "Save Provider"
+        }
+      }
+    },
+    "mcp": {
+      "title": "MCP Server Settings",
+      "description": "Manage your local mcp.json source-of-truth and control global MCP activation.",
+      "buttons": {
+        "addServer": "Add MCP Server",
+        "editJson": "Edit JSON",
+        "saving": "Saving...",
+        "save": "Save",
+        "cancel": "Cancel",
+        "applyJson": "Apply JSON"
+      },
+      "cardTitle": "MCP Servers",
+      "cardDescription": "These servers are shared globally and can be toggled per assistant later in the Tools tab.",
+      "loading": "Loading MCP servers...",
+      "empty": "No MCP servers yet. Add one to create your local mcp.json list.",
+      "serverDescription": "Global status controls whether assistants can use this server.",
+      "toggleAriaLabel": "Toggle {{id}}",
+      "deleteAriaLabel": "Delete {{id}}",
+      "managedRuntimeTitle": "This command can use TIA Studio managed runtimes.",
+      "managedRuntimeDescriptionPrefix": "Finish {{runtime}} setup in",
+      "fields": {
+        "displayName": "Display Name",
+        "transportType": "Transport Type",
+        "command": "Command",
+        "installSource": "Install Source",
+        "url": "URL (for HTTP/SSE servers)",
+        "arguments": "Arguments (one per line)",
+        "environmentVariables": "Environment Variables (KEY=VALUE)"
+      },
+      "jsonDialog": {
+        "title": "Edit MCP JSON",
+        "description": "This is a snapshot of your local MCP settings. Changes apply only after validation.",
+        "fieldLabel": "MCP Settings JSON",
+        "helper": "JSON parsing and MCP field rules are checked when you apply changes."
+      },
+      "validation": {
+        "unexpectedError": "Unexpected request error",
+        "invalidPayload": "Invalid MCP settings payload.",
+        "rawJsonInvalid": "Raw JSON is invalid.",
+        "commandRequired": "command is required when type is stdio",
+        "urlRequired": "url is required for non-stdio MCP servers unless command is provided"
+      },
+      "toasts": {
+        "saved": "MCP server settings saved."
+      }
+    }
+  },
+  "claws": {
+    "eyebrow": "Claws",
+    "title": "Claws",
+    "description": "Verbindet Assistenten mit externen Lark-Kanälen, ohne rohe Einstellungen durchsuchen zu müssen.",
+    "newButton": "Neuer Claw",
+    "errors": {
+      "loadFailed": "Failed to load claws",
+      "saveFailed": "Failed to save claw",
+      "updateFailed": "Failed to update claw",
+      "deleteFailed": "Failed to delete claw"
+    },
+    "providers": {
+      "noneSelected": "No provider selected",
+      "unknown": "Unknown provider"
+    },
+    "empty": {
+      "title": "Richte deinen ersten Claw ein",
+      "description": "Starte mit einem Assistenten, einem Provider und einem Lark-Kanal für den schnellsten Einstieg.",
+      "note": "Assistenten-Identität, Heartbeat und zukünftige Cron-Jobs bleiben beim Assistenten.",
+      "createButton": "Ersten Claw erstellen"
+    },
+    "card": {
+      "noChannelConnected": "Kein Kanal verbunden",
+      "enableButton": "Aktivieren",
+      "disableButton": "Deaktivieren",
+      "editButton": "Bearbeiten",
+      "deleteButton": "Löschen"
+    },
+    "dialog": {
+      "editTitle": "Claw bearbeiten",
+      "createTitle": "Claw erstellen",
+      "saveButton": "Claw speichern",
+      "createButton": "Claw erstellen",
+      "description": "Verbindet einen Assistenten in einem schlanken Ablauf mit einem Lark-Kanal.",
+      "fields": {
+        "assistantName": "Assistentenname",
+        "provider": "Provider",
+        "instructions": "Anweisungen",
+        "channelAction": "Kanalaktion",
+        "existingChannel": "Vorhandener Kanal",
+        "larkChannelName": "Lark-Kanalname",
+        "appId": "App-ID",
+        "appSecret": "App-Secret"
+      },
+      "selectProvider": "Provider auswählen",
+      "selectChannel": "Kanal auswählen",
+      "enableAfterSaving": "Diesen Claw nach dem Speichern aktivieren",
+      "channelActions": {
+        "keep": "Aktuellen Kanal behalten",
+        "create": "Neuen Lark-Kanal erstellen",
+        "attach": "Vorhandenen Kanal verbinden",
+        "detach": "Aktuellen Kanal trennen"
+      },
+      "errors": {
+        "assistantNameRequired": "Assistant name is required",
+        "providerRequired": "Provider is required",
+        "channelRequired": "Pick a channel to attach",
+        "channelCredentialsRequired": "Lark channel name, app ID, and app secret are required"
+      }
+    }
+  },
+  "team": {
+    "sidebar": {
+      "eyebrow": "Team",
+      "title": "Team-Arbeitsbereiche",
+      "defaultWorkspaceName": "Team-Arbeitsbereich",
+      "createWorkspaceAriaLabel": "Create team workspace",
+      "creatingWorkspace": "Arbeitsbereich wird erstellt...",
+      "newWorkspace": "Neuer Arbeitsbereich",
+      "workspaces": "Arbeitsbereiche",
+      "createThreadAriaLabel": "Create team thread",
+      "newThread": "Neuer Thread",
+      "loadingWorkspaces": "Team-Arbeitsbereiche werden geladen...",
+      "emptyWorkspaces": "Noch keine Arbeitsbereiche. Erstelle einen, um einen Team-Thread zu starten.",
+      "loadingThreads": "Team-Threads werden geladen...",
+      "emptyThreads": "Noch keine Team-Threads.",
+      "untitledThread": "Unbenannter Team-Thread",
+      "deleteThreadAriaLabel": "Delete team thread {{title}}",
+      "deleteThreadPrompt": "Thread löschen?",
+      "confirmDeleteThreadAriaLabel": "Confirm delete team thread {{title}}",
+      "deletingThread": "Wird gelöscht..."
+    },
+    "chat": {
+      "defaultTitle": "Team-Chat",
+      "noWorkspaceSelected": "Kein Arbeitsbereich ausgewählt",
+      "membersLabel_one": "{{count}} Mitglied",
+      "membersLabel_other": "{{count}} Mitglieder",
+      "newThread": "Neuer Team-Thread",
+      "configureTeam": "Team konfigurieren",
+      "setupIncompleteTitle": "Die Team-Einrichtung ist unvollständig.",
+      "setupIncompleteDescription": "Füge vor dem Senden einen Supervisor-Provider/-Modell hinzu und wähle mindestens ein Mitglied aus.",
+      "emptyTitle": "Kein Team-Thread ausgewählt",
+      "emptyDescription": "Wähle einen vorhandenen Thread oder erstelle einen neuen Team-Thread, um loszulegen.",
+      "supervisorName": "Team Supervisor",
+      "composer": {
+        "placeholderSelected": "Bitte das Team, eine Aufgabe zu koordinieren...",
+        "placeholderEmpty": "Erstelle oder wähle einen Team-Thread, um zu chatten.",
+        "ariaLabel": "Team message composer",
+        "helperSelected": "Nachrichten laufen über den Team-Supervisor und die ausgewählten Mitglieder.",
+        "helperEmpty": "Wähle zuerst einen Arbeitsbereich und erstelle einen Team-Thread.",
+        "openStatus": "Team-Status öffnen"
+      }
+    },
+    "configDialog": {
+      "closeAriaLabel": "Close team config dialog",
+      "title": "Team konfigurieren",
+      "description": "Wähle ein Supervisor-Modell und lege fest, welche Assistenten diesem Team beitreten.",
+      "fields": {
+        "supervisorProvider": "Supervisor-Provider",
+        "teamDescription": "Team-Beschreibung",
+        "supervisorModel": "Supervisor-Modell",
+        "teamMembers": "Team-Mitglieder"
+      },
+      "validation": {
+        "supervisorProvider": "Wähle einen Supervisor-Provider aus.",
+        "supervisorModel": "Gib ein Supervisor-Modell ein.",
+        "members": "Wähle mindestens ein Team-Mitglied aus."
+      },
+      "selectProvider": "Provider auswählen",
+      "saveButton": "Team speichern"
+    },
+    "status": {
+      "title": "Team-Status",
+      "supervisor": "Supervisor",
+      "eventLogTitle": "Ereignisprotokoll",
+      "emptyEventLog": "Noch keine Statusereignisse.",
+      "defaultMember": "Ein Mitglied",
+      "events": {
+        "runStarted": "Ausführung gestartet.",
+        "delegationStarted": "{{assistant}} wird ausgeführt.",
+        "delegationFinished": "{{assistant}} ist fertig.",
+        "iterationComplete": "Iteration {{iteration}} abgeschlossen.",
+        "runFinished": "Ausführung abgeschlossen.",
+        "runFailed": "Ausführung fehlgeschlagen."
+      }
+    },
+    "readiness": {
+      "threadSelected": "Team thread is selected",
+      "workspaceConfigured": "Workspace path is configured",
+      "providerConfigured": "Supervisor provider is configured",
+      "modelConfigured": "Supervisor model is configured",
+      "membersSelected": "At least one live team member is selected"
+    }
+  },
+  "threads": {
+    "sidebar": {
+      "eyebrow": "Hauptchat",
+      "title": "Unterhaltungen",
+      "creatingThread": "Thread wird erstellt...",
+      "newThread": "Neuer Thread",
+      "assistants": "Assistenten",
+      "createAssistantAriaLabel": "Create assistant",
+      "assistantActionsAriaLabel": "Assistant actions for {{name}}",
+      "deleteAssistantAriaLabel": "Delete assistant {{name}}",
+      "loadingAssistants": "Assistenten werden geladen...",
+      "emptyAssistants": "Noch keine Assistenten. Erstelle einen unter Assistants.",
+      "loadingThreads": "Threads werden geladen...",
+      "emptyThreads": "Noch keine Threads.",
+      "untitledThread": "Unbenannter Thread",
+      "deleteThreadAriaLabel": "Delete thread {{title}}",
+      "deleteThreadPrompt": "Thread löschen?",
+      "cancelDeleteThreadAriaLabel": "Cancel delete thread {{title}}",
+      "confirmDeleteThreadAriaLabel": "Confirm delete thread {{title}}"
+    },
+    "chat": {
+      "defaultAssistantName": "Assistent",
+      "titleWithAssistant": "Chat mit {{name}}",
+      "tokens": "Token",
+      "tokenInput": "{{value}} eingehend",
+      "tokenOutput": "{{value}} ausgehend",
+      "modeLabel": "Standard-Assistentenchat",
+      "newThread": "Neuer Thread",
+      "setupIncomplete": "Die Assistenteneinrichtung ist unvollständig. Öffne „Konfigurieren“, um Provider und Modell festzulegen, bevor du Nachrichten sendest.",
+      "composer": {
+        "placeholderSelectedThread": "Nachricht für diesen Thread eingeben...",
+        "placeholderSelectedAssistant": "Nachricht eingeben, um einen neuen Thread zu erstellen...",
+        "placeholderEmpty": "Wähle einen Assistenten, um zu chatten.",
+        "helperSelectedThread": "Nachrichten laufen über den ausgewählten Assistenten-Thread.",
+        "helperSelectedAssistant": "Kein Thread ausgewählt. Mit Enter wird einer erstellt und gesendet.",
+        "helperEmpty": "Wähle einen Assistenten, um zu beginnen.",
+        "ariaLabel": "Message composer"
+      }
+    },
+    "messageList": {
+      "untitledFile": "Unbenannte Datei",
+      "you": "Du",
+      "copyMessage": "Nachricht kopieren",
+      "reloadMessage": "Neu laden",
+      "moreActions": "Weitere Aktionen",
+      "exportMarkdown": "Markdown exportieren",
+      "empty": "Noch keine Nachrichten.",
+      "loadingHistory": "Thread-Verlauf wird geladen...",
+      "responding": "Assistent antwortet..."
+    },
+    "assistantDialog": {
+      "closeCreateAriaLabel": "Close create assistant dialog",
+      "closeEditAriaLabel": "Close assistant config dialog",
+      "createTitle": "Assistent erstellen",
+      "editTitle": "{{name}} konfigurieren",
+      "createDescription": "Konfiguriere Arbeitsbereichspfad und Provider, bevor du den Chat startest.",
+      "editDescription": "Aktualisiere Provider, Arbeitsbereich und Prompt, ohne den Chat zu verlassen.",
+      "addProviderPrefix": "Füge zuerst hier einen Provider hinzu:",
+      "providerLinkLabel": "Modell-Provider",
+      "notFound": "Assistent nicht gefunden."
+    },
+    "toasts": {
+      "threadCreated": "Thread erstellt.",
+      "threadRemoved": "Thread entfernt.",
+      "assistantCreated": "Assistent erstellt.",
+      "assistantUpdated": "Assistentenkonfiguration aktualisiert.",
+      "builtInDeleteBlocked": "Der integrierte Standard-Assistent kann nicht gelöscht werden.",
+      "assistantDeleteFallbackLabel": "dieser Assistent",
+      "confirmAssistantDelete": "„{{name}}“ löschen? Dadurch werden auch alle zugehörigen Threads gelöscht.",
+      "assistantDeleted": "Assistent gelöscht."
+    },
+    "readiness": {
+      "providerAssigned": "Provider is assigned to this assistant",
+      "providerModelSelected": "Provider has one selected model"
+    }
+  },
+  "assistants": {
+    "modelPicker": {
+      "title": "Modell auswählen",
+      "searchPlaceholder": "Modelle suchen...",
+      "empty": "Keine Modelle entsprechen deiner Suche."
+    },
+    "editor": {
+      "editTitle": "Assistent bearbeiten",
+      "createTitle": "Assistent erstellen",
+      "tabs": {
+        "essential": "Grundlegende Einstellungen",
+        "tools": "Tools"
+      },
+      "fields": {
+        "name": "Name",
+        "provider": "Provider",
+        "description": "Beschreibung",
+        "prompt": "Prompt",
+        "workspacePath": "Arbeitsbereichspfad (optional)",
+        "maxSteps": "Maximale Schritte"
+      },
+      "placeholders": {
+        "name": "Research Copilot",
+        "description": "Recherchiert Fakten, findet Quellen und validiert Behauptungen.",
+        "prompt": "Du bist ein hilfreicher Assistent und antwortest mit knappen, praktischen Schritten.",
+        "workspacePath": "/Users/name/workspace",
+        "maxSteps": "100"
+      },
+      "selectProvider": "Provider auswählen",
+      "descriptionHelp": "Hilft dem Team-Supervisor, diesen Assistenten für die passende Aufgabe auszuwählen.",
+      "workspacePathHelp": "Wähle einen Arbeitsbereich aus, damit der Agent komplexere Aufgaben ausführen kann.",
+      "openingButton": "Wird geöffnet...",
+      "runtimeNoteTitle": "Einige MCP-Tools verwenden verwaltete Laufzeitumgebungen.",
+      "runtimeNotePrefix": "Schließe die Einrichtung unter",
+      "runtimeNoteLinkLabel": "Runtime Setup",
+      "runtimeNoteSuffix": "ab, wenn dieser Assistent von npx-, bun- oder uv-basierten Tools abhängt.",
+      "noMcpServersPrefix": "Noch keine MCP-Server konfiguriert. Füge Server unter",
+      "noMcpServersLinkLabel": "MCP Server Settings",
+      "mcpGloballyDisabled": "Global in den MCP-Server-Einstellungen deaktiviert.",
+      "toggleMcpAriaLabel": "Toggle {{serverId}} for this assistant",
+      "savingButton": "Wird gespeichert...",
+      "updateButton": "Assistent aktualisieren",
+      "createButton": "Assistent erstellen",
+      "errors": {
+        "nameRequired": "Assistentenname ist erforderlich",
+        "providerRequired": "Provider ist erforderlich",
+        "maxStepsInvalid": "Die maximale Schrittzahl muss eine positive ganze Zahl sein",
+        "workspacePickerFailed": "Arbeitsbereichsordner konnte nicht ausgewählt werden"
+      }
+    }
+  },
+  "assistantUi": {
+    "markdown": {
+      "copyCode": "Kopieren"
+    },
+    "attachment": {
+      "imagePreviewAlt": "Image preview",
+      "dialogTitle": "Image Attachment Preview",
+      "previewAlt": "Attachment preview",
+      "attachmentAriaLabel": "{{type}} attachment",
+      "removeFile": "Datei entfernen",
+      "addAttachment": "Anhang hinzufügen",
+      "typeLabels": {
+        "image": "Image",
+        "document": "Document",
+        "file": "File"
+      }
+    },
+    "toolGroup": {
+      "label_one": "{{count}} Tool-Aufruf",
+      "label_other": "{{count}} Tool-Aufrufe"
+    },
+    "image": {
+      "contentAlt": "Image content",
+      "previewAlt": "Image preview",
+      "zoomAriaLabel": "Zum Vergrößern klicken",
+      "closeZoomAriaLabel": "Vergrößertes Bild schließen"
+    }
+  }
+}

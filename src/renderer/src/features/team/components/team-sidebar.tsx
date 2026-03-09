@@ -14,6 +14,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem
 } from '../../../components/ui/sidebar'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import type { TeamThreadRecord } from '../team-threads-query'
 import type { TeamWorkspaceRecord } from '../team-workspaces-query'
 
@@ -34,9 +35,9 @@ type TeamSidebarProps = {
   onDeleteThread: (thread: TeamThreadRecord) => void
 }
 
-function getTeamThreadDisplayTitle(title: string): string {
+function getTeamThreadDisplayTitle(title: string, fallbackTitle: string): string {
   const normalizedTitle = title.trim()
-  return normalizedTitle.length > 0 ? normalizedTitle : 'Untitled Team Thread'
+  return normalizedTitle.length > 0 ? normalizedTitle : fallbackTitle
 }
 
 export function TeamSidebar({
@@ -55,6 +56,7 @@ export function TeamSidebar({
   onSelectThread,
   onDeleteThread
 }: TeamSidebarProps): React.JSX.Element {
+  const { t } = useTranslation()
   const [confirmDeleteThreadId, setConfirmDeleteThreadId] = useState<string | null>(null)
   const confirmDeleteContainerRef = useRef<HTMLDivElement | null>(null)
 
@@ -100,49 +102,53 @@ export function TeamSidebar({
     <Sidebar className="h-full border-b-0">
       <SidebarHeader className="space-y-3">
         <div className="space-y-1">
-          <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">Team</p>
-          <h1 className="text-lg font-semibold">Team Workspaces</h1>
+          <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
+            {t('team.sidebar.eyebrow')}
+          </p>
+          <h1 className="text-lg font-semibold">{t('team.sidebar.title')}</h1>
         </div>
         <Button
           type="button"
           size="sm"
           className="w-full justify-start"
-          aria-label="Create team workspace"
+          aria-label={t('team.sidebar.createWorkspaceAriaLabel')}
           disabled={isCreatingWorkspace}
           onClick={onCreateWorkspace}
         >
           <FolderPlus className="size-4" />
-          {isCreatingWorkspace ? 'Creating workspace...' : 'New Workspace'}
+          {isCreatingWorkspace
+            ? t('team.sidebar.creatingWorkspace')
+            : t('team.sidebar.newWorkspace')}
         </Button>
       </SidebarHeader>
 
       <SidebarContent className="space-y-4">
         <SidebarGroup>
           <div className="flex items-center justify-between px-2">
-            <SidebarGroupLabel className="px-0">Workspaces</SidebarGroupLabel>
+            <SidebarGroupLabel className="px-0">{t('team.sidebar.workspaces')}</SidebarGroupLabel>
             <Button
               type="button"
               variant="ghost"
               size="sm"
               className="h-7 px-2 text-xs"
-              aria-label="Create team thread"
+              aria-label={t('team.sidebar.createThreadAriaLabel')}
               disabled={!selectedWorkspaceId || isCreatingThread}
               onClick={onCreateThread}
             >
               <MessageSquarePlus className="size-3.5" />
-              New Thread
+              {t('team.sidebar.newThread')}
             </Button>
           </div>
 
           {isLoadingData ? (
             <p role="status" className="text-muted-foreground px-2 text-xs">
-              Loading team workspaces...
+              {t('team.sidebar.loadingWorkspaces')}
             </p>
           ) : null}
 
           {!isLoadingData && workspaces.length === 0 ? (
             <p className="text-muted-foreground px-2 text-xs">
-              No workspaces yet. Create one to start a Team thread.
+              {t('team.sidebar.emptyWorkspaces')}
             </p>
           ) : null}
 
@@ -176,7 +182,7 @@ export function TeamSidebar({
                       {isLoadingThreads ? (
                         <SidebarMenuSubItem>
                           <p className="text-muted-foreground px-2 py-1 text-xs">
-                            Loading team threads...
+                            {t('team.sidebar.loadingThreads')}
                           </p>
                         </SidebarMenuSubItem>
                       ) : null}
@@ -184,13 +190,16 @@ export function TeamSidebar({
                       {!isLoadingThreads && threads.length === 0 ? (
                         <SidebarMenuSubItem>
                           <p className="text-muted-foreground px-2 py-1 text-xs">
-                            No Team threads yet.
+                            {t('team.sidebar.emptyThreads')}
                           </p>
                         </SidebarMenuSubItem>
                       ) : null}
 
                       {threads.map((thread) => {
-                        const displayTitle = getTeamThreadDisplayTitle(thread.title)
+                        const displayTitle = getTeamThreadDisplayTitle(
+                          thread.title,
+                          t('team.sidebar.untitledThread')
+                        )
                         const isConfirmingDelete = confirmDeleteThreadId === thread.id
                         const isDeletingThread = deletingThreadId === thread.id
 
@@ -211,7 +220,9 @@ export function TeamSidebar({
                                   size="icon"
                                   variant="ghost"
                                   className="size-7 shrink-0"
-                                  aria-label={`Delete team thread ${displayTitle}`}
+                                  aria-label={t('team.sidebar.deleteThreadAriaLabel', {
+                                    title: displayTitle
+                                  })}
                                   disabled={Boolean(deletingThreadId)}
                                   onClick={() => {
                                     setConfirmDeleteThreadId((currentThreadId) =>
@@ -228,7 +239,9 @@ export function TeamSidebar({
                                   ref={confirmDeleteContainerRef}
                                   className="bg-card border-border flex items-center justify-between gap-2 rounded-md border px-2 py-2"
                                 >
-                                  <span className="text-xs font-medium">Delete thread?</span>
+                                  <span className="text-xs font-medium">
+                                    {t('team.sidebar.deleteThreadPrompt')}
+                                  </span>
                                   <div className="flex items-center gap-1">
                                     <Button
                                       type="button"
@@ -237,18 +250,22 @@ export function TeamSidebar({
                                       className="h-7 px-2 text-xs"
                                       onClick={() => setConfirmDeleteThreadId(null)}
                                     >
-                                      Cancel
+                                      {t('common.actions.cancel')}
                                     </Button>
                                     <Button
                                       type="button"
                                       size="sm"
                                       variant="destructive"
                                       className="h-7 px-2 text-xs"
-                                      aria-label={`Confirm delete team thread ${displayTitle}`}
+                                      aria-label={t('team.sidebar.confirmDeleteThreadAriaLabel', {
+                                        title: displayTitle
+                                      })}
                                       disabled={isDeletingThread}
                                       onClick={() => onDeleteThread(thread)}
                                     >
-                                      {isDeletingThread ? 'Deleting...' : 'Delete'}
+                                      {isDeletingThread
+                                        ? t('team.sidebar.deletingThread')
+                                        : t('common.actions.delete')}
                                     </Button>
                                   </div>
                                 </div>

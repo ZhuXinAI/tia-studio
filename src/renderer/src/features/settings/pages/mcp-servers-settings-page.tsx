@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { z } from 'zod'
 import { toast } from 'sonner'
+import { i18n } from '../../../i18n'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import { Button } from '../../../components/ui/button'
 import {
   Card,
@@ -42,14 +44,14 @@ const mcpServerSchema = z
     if (transportType === 'stdio' && !value.command) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'command is required when type is stdio'
+        message: i18n.t('settings.mcp.validation.commandRequired')
       })
     }
 
     if (transportType !== 'stdio' && !value.url && !value.command) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'url is required for non-stdio MCP servers unless command is provided'
+        message: i18n.t('settings.mcp.validation.urlRequired')
       })
     }
   })
@@ -66,7 +68,7 @@ function toErrorMessage(error: unknown): string {
     }
   }
 
-  return 'Unexpected request error'
+  return i18n.t('settings.mcp.validation.unexpectedError')
 }
 
 function toUniqueServerId(existingIds: Set<string>): string {
@@ -139,7 +141,7 @@ function createDefaultServer(serverId: string): McpServerRecord {
 function formatSchemaError(error: z.ZodError): string {
   const issue = error.issues[0]
   if (!issue) {
-    return 'Invalid MCP settings payload.'
+    return i18n.t('settings.mcp.validation.invalidPayload')
   }
 
   const path = issue.path.length > 0 ? issue.path.join('.') : 'mcpServers'
@@ -152,7 +154,7 @@ function parseRawJsonInput(value: string): McpServersSettings {
   try {
     parsedValue = JSON.parse(value) as unknown
   } catch {
-    throw new Error('Raw JSON is invalid.')
+    throw new Error(i18n.t('settings.mcp.validation.rawJsonInvalid'))
   }
 
   const parsed = mcpServersSettingsSchema.safeParse(parsedValue)
@@ -182,6 +184,7 @@ function formatRawJsonInput(value: McpServersSettings): string {
 }
 
 export function McpServersSettingsPage(): React.JSX.Element {
+  const { t } = useTranslation()
   const [settings, setSettings] = useState<McpServersSettings | null>(null)
   const [draft, setDraft] = useState<McpServersSettings | null>(null)
   const [isJsonDialogOpen, setIsJsonDialogOpen] = useState(false)
@@ -344,7 +347,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
       setSettings(saved)
       setDraft(saved)
       setEnvInputByServerId({})
-      toast.success('MCP server settings saved.')
+      toast.success(t('settings.mcp.toasts.saved'))
     } catch (error) {
       toast.error(toErrorMessage(error))
     } finally {
@@ -357,10 +360,9 @@ export function McpServersSettingsPage(): React.JSX.Element {
       <div className="py-4 flex flex-col gap-4">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight">MCP Server Settings</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{t('settings.mcp.title')}</h1>
             <p className="text-muted-foreground text-sm">
-              Manage your local <code>mcp.json</code> source-of-truth and control global MCP
-              activation.
+              {t('settings.mcp.description')}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -371,7 +373,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
               disabled={isLoading || isSaving}
             >
               <Plus className="size-4" />
-              Add MCP Server
+              {t('settings.mcp.buttons.addServer')}
             </Button>
             <Button
               type="button"
@@ -379,7 +381,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
               onClick={openJsonDialog}
               disabled={isLoading || isSaving}
             >
-              Edit JSON
+              {t('settings.mcp.buttons.editJson')}
             </Button>
             <Button
               type="button"
@@ -387,27 +389,24 @@ export function McpServersSettingsPage(): React.JSX.Element {
               disabled={!isDirty || isSaving || isLoading}
             >
               <Save className="size-4" />
-              {isSaving ? 'Saving...' : 'Save'}
+              {isSaving ? t('settings.mcp.buttons.saving') : t('settings.mcp.buttons.save')}
             </Button>
           </div>
         </header>
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle>MCP Servers</CardTitle>
-            <CardDescription>
-              These servers are shared globally and can be toggled per assistant later in the Tools
-              tab.
-            </CardDescription>
+            <CardTitle>{t('settings.mcp.cardTitle')}</CardTitle>
+            <CardDescription>{t('settings.mcp.cardDescription')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {isLoading ? (
-              <p className="text-muted-foreground text-sm">Loading MCP servers...</p>
+              <p className="text-muted-foreground text-sm">{t('settings.mcp.loading')}</p>
             ) : null}
 
             {!isLoading && serverEntries.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                No MCP servers yet. Add one to create your local <code>mcp.json</code> list.
+                {t('settings.mcp.empty')}
               </p>
             ) : null}
 
@@ -427,7 +426,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
                           {serverId}
                         </h2>
                         <p className="text-muted-foreground text-sm">
-                          Global status controls whether assistants can use this server.
+                          {t('settings.mcp.serverDescription')}
                         </p>
                       </div>
 
@@ -435,7 +434,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
                         <button
                           type="button"
                           role="switch"
-                          aria-label={`Toggle ${serverId}`}
+                          aria-label={t('settings.mcp.toggleAriaLabel', { id: serverId })}
                           aria-checked={server.isActive}
                           className={cn(
                             'relative inline-flex h-6 w-11 items-center rounded-full border transition-colors',
@@ -462,7 +461,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          aria-label={`Delete ${serverId}`}
+                          aria-label={t('settings.mcp.deleteAriaLabel', { id: serverId })}
                           onClick={() => removeServer(serverId)}
                           disabled={isSaving}
                         >
@@ -474,12 +473,14 @@ export function McpServersSettingsPage(): React.JSX.Element {
                     {requiredRuntime ? (
                       <div className="rounded-md border border-amber-300/40 bg-amber-400/10 px-3 py-2">
                         <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-                          This command can use TIA Studio managed runtimes.
+                          {t('settings.mcp.managedRuntimeTitle')}
                         </p>
                         <p className="text-sm text-amber-900/80 dark:text-amber-200/80">
-                          Finish {requiredRuntime} setup in{' '}
+                          {t('settings.mcp.managedRuntimeDescriptionPrefix', {
+                            runtime: requiredRuntime
+                          })}{' '}
                           <Link className="underline underline-offset-2" to="/settings/runtimes">
-                            Runtime Setup
+                            {t('settings.sidebar.items.runtimeSetup')}
                           </Link>
                           .
                         </p>
@@ -488,7 +489,9 @@ export function McpServersSettingsPage(): React.JSX.Element {
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       <Field>
-                        <FieldLabel htmlFor={`mcp-name-${serverId}`}>Display Name</FieldLabel>
+                        <FieldLabel htmlFor={`mcp-name-${serverId}`}>
+                          {t('settings.mcp.fields.displayName')}
+                        </FieldLabel>
                         <Input
                           id={`mcp-name-${serverId}`}
                           value={server.name}
@@ -502,7 +505,9 @@ export function McpServersSettingsPage(): React.JSX.Element {
                         />
                       </Field>
                       <Field>
-                        <FieldLabel htmlFor={`mcp-type-${serverId}`}>Transport Type</FieldLabel>
+                        <FieldLabel htmlFor={`mcp-type-${serverId}`}>
+                          {t('settings.mcp.fields.transportType')}
+                        </FieldLabel>
                         <Input
                           id={`mcp-type-${serverId}`}
                           value={server.type}
@@ -519,7 +524,9 @@ export function McpServersSettingsPage(): React.JSX.Element {
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       <Field>
-                        <FieldLabel htmlFor={`mcp-command-${serverId}`}>Command</FieldLabel>
+                        <FieldLabel htmlFor={`mcp-command-${serverId}`}>
+                          {t('settings.mcp.fields.command')}
+                        </FieldLabel>
                         <Input
                           id={`mcp-command-${serverId}`}
                           value={server.command ?? ''}
@@ -536,7 +543,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
                       </Field>
                       <Field>
                         <FieldLabel htmlFor={`mcp-install-source-${serverId}`}>
-                          Install Source
+                          {t('settings.mcp.fields.installSource')}
                         </FieldLabel>
                         <Input
                           id={`mcp-install-source-${serverId}`}
@@ -554,7 +561,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
 
                     <Field>
                       <FieldLabel htmlFor={`mcp-url-${serverId}`}>
-                        URL (for HTTP/SSE servers)
+                        {t('settings.mcp.fields.url')}
                       </FieldLabel>
                       <Input
                         id={`mcp-url-${serverId}`}
@@ -574,7 +581,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
                     <div className="grid gap-3 sm:grid-cols-2">
                       <Field>
                         <FieldLabel htmlFor={`mcp-args-${serverId}`}>
-                          Arguments (one per line)
+                          {t('settings.mcp.fields.arguments')}
                         </FieldLabel>
                         <Textarea
                           id={`mcp-args-${serverId}`}
@@ -591,7 +598,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
                       </Field>
                       <Field>
                         <FieldLabel htmlFor={`mcp-env-${serverId}`}>
-                          Environment Variables (KEY=VALUE)
+                          {t('settings.mcp.fields.environmentVariables')}
                         </FieldLabel>
                         <Textarea
                           id={`mcp-env-${serverId}`}
@@ -630,15 +637,17 @@ export function McpServersSettingsPage(): React.JSX.Element {
           >
             <div className="border-border/70 border-b px-5 py-4">
               <h2 id="mcp-json-dialog-title" className="text-lg font-semibold">
-                Edit MCP JSON
+                {t('settings.mcp.jsonDialog.title')}
               </h2>
               <p className="text-muted-foreground mt-1 text-sm">
-                This is a snapshot of your local MCP settings. Changes apply only after validation.
+                {t('settings.mcp.jsonDialog.description')}
               </p>
             </div>
             <div className="space-y-3 p-5">
               <Field>
-                <FieldLabel htmlFor="mcp-json-dialog-textarea">MCP Settings JSON</FieldLabel>
+                <FieldLabel htmlFor="mcp-json-dialog-textarea">
+                  {t('settings.mcp.jsonDialog.fieldLabel')}
+                </FieldLabel>
                 <Textarea
                   id="mcp-json-dialog-textarea"
                   rows={16}
@@ -654,15 +663,15 @@ export function McpServersSettingsPage(): React.JSX.Element {
                 </p>
               ) : (
                 <p className="text-muted-foreground text-xs">
-                  JSON parsing and MCP field rules are checked when you apply changes.
+                  {t('settings.mcp.jsonDialog.helper')}
                 </p>
               )}
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={closeJsonDialog}>
-                  Cancel
+                  {t('settings.mcp.buttons.cancel')}
                 </Button>
                 <Button type="button" onClick={applyJsonDialog}>
-                  Apply JSON
+                  {t('settings.mcp.buttons.applyJson')}
                 </Button>
               </div>
             </div>

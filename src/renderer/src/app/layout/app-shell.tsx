@@ -1,9 +1,11 @@
 import { Bot, Home, Settings, Users } from 'lucide-react'
+import { useTranslation } from '../../i18n/use-app-translation'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { cn } from '../../lib/utils'
 
 export function AppShell(): React.JSX.Element {
+  const { t } = useTranslation()
   const location = useLocation()
   const isChatRoute = location.pathname.startsWith('/chat')
   const isClawsRoute = location.pathname.startsWith('/claws')
@@ -23,7 +25,7 @@ export function AppShell(): React.JSX.Element {
             >
               <NavLink to="/chat" className="no-drag inline-flex items-center gap-2">
                 <Home className="size-4" />
-                <span className="text-sm font-medium">Home</span>
+                <span className="text-sm font-medium">{t('appShell.nav.home')}</span>
               </NavLink>
             </Button>
 
@@ -35,7 +37,7 @@ export function AppShell(): React.JSX.Element {
             >
               <NavLink to="/claws" className="no-drag inline-flex items-center gap-2">
                 <Bot className="size-4" />
-                <span className="text-sm font-medium">Claws</span>
+                <span className="text-sm font-medium">{t('appShell.nav.claws')}</span>
               </NavLink>
             </Button>
 
@@ -47,7 +49,7 @@ export function AppShell(): React.JSX.Element {
             >
               <NavLink to="/team" className="no-drag inline-flex items-center gap-2">
                 <Users className="size-4" />
-                <span className="text-sm font-medium">Team</span>
+                <span className="text-sm font-medium">{t('appShell.nav.team')}</span>
               </NavLink>
             </Button>
           </div>
@@ -60,7 +62,7 @@ export function AppShell(): React.JSX.Element {
           >
             <NavLink
               to="/settings/about"
-              aria-label="Open settings"
+              aria-label={t('appShell.nav.openSettings')}
               className={cn('no-drag inline-flex items-center justify-center')}
             >
               <Settings className="size-4" />

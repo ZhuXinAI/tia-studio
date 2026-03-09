@@ -10,6 +10,7 @@ import {
 import { Input } from '../../components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { cn } from '../../lib/utils'
+import { useTranslation } from '../../i18n/use-app-translation'
 import minimaxLogo from '../../assets/providers/minimax.png'
 import glmLogo from '../../assets/providers/glm.png'
 import ollamaLogo from '../../assets/providers/ollama.png'
@@ -60,6 +61,7 @@ export function ModelPickerDialog({
   onSelect,
   onOpenChange
 }: ModelPickerDialogProps): React.JSX.Element {
+  const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
 
   const filteredProviders = useMemo(() => {
@@ -84,14 +86,14 @@ export function ModelPickerDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[600px] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-4">
-          <DialogTitle>Select Model</DialogTitle>
+          <DialogTitle>{t('assistants.modelPicker.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="px-6 pb-4">
           <div className="relative">
             <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
             <Input
-              placeholder="Search models..."
+              placeholder={t('assistants.modelPicker.searchPlaceholder')}
               className="h-9 pl-9"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
@@ -103,7 +105,7 @@ export function ModelPickerDialog({
         <div className="flex-1 overflow-y-auto px-6 pb-6">
           {filteredProviders.length === 0 ? (
             <p className="text-muted-foreground text-sm text-center py-8">
-              No models match your search.
+              {t('assistants.modelPicker.empty')}
             </p>
           ) : (
             <div className="space-y-1">
