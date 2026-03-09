@@ -777,4 +777,65 @@ describe('ClawsPage', () => {
 
     expect(approveClawPairing).toHaveBeenCalledWith('assistant-telegram', 'pairing-pending')
   })
+
+  it('requires confirmation before deleting a claw', async () => {
+    vi.mocked(listClaws).mockResolvedValue({
+      claws: [
+        {
+          id: 'assistant-1',
+          name: 'Ops Assistant',
+          description: '',
+          instructions: '',
+          providerId: 'provider-1',
+          enabled: true,
+          channel: {
+            id: 'channel-1',
+            type: 'lark',
+            name: 'Ops Lark',
+            status: 'connected',
+            errorMessage: null,
+            pairedCount: 0,
+            pendingPairingCount: 0
+          }
+        }
+      ],
+      availableChannels: []
+    })
+
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ClawsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const deleteButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Delete')
+    )
+
+    await act(async () => {
+      deleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(confirmSpy).toHaveBeenCalledWith(
+      'Delete "Ops Assistant"? This will also delete all of its threads.'
+    )
+    expect(deleteClaw).not.toHaveBeenCalled()
+
+    confirmSpy.mockReturnValue(true)
+
+    await act(async () => {
+      deleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(deleteClaw).toHaveBeenCalledWith('assistant-1')
+
+    confirmSpy.mockRestore()
+  })
 })

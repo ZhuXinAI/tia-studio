@@ -379,7 +379,9 @@
       "enableButton": "Enable",
       "disableButton": "Disable",
       "editButton": "Edit",
-      "deleteButton": "Delete"
+      "deleteButton": "Delete",
+      "deleteConfirmPrompt": "Delete \"{{name}}\"? This will also delete all of its threads.",
+      "deleteConfirmFallbackLabel": "Unnamed claw"
     },
     "dialog": {
       "editTitle": "Edit Claw",
