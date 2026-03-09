@@ -3,11 +3,15 @@ import { LarkChannel } from './lark-channel'
 
 function createSdkStub() {
   const messageCreate = vi.fn(async () => undefined)
+  const messageReactionCreate = vi.fn(async () => undefined)
   const clientInstance = {
     im: {
       v1: {
         message: {
           create: messageCreate
+        },
+        messageReaction: {
+          create: messageReactionCreate
         }
       }
     }
@@ -53,6 +57,7 @@ function createSdkStub() {
     wsStart,
     wsClose,
     messageCreate,
+    messageReactionCreate,
     getRegisteredHandlers: () => registeredHandlers
   }
 }
@@ -164,6 +169,49 @@ describe('LarkChannel', () => {
         })
       }
     })
+  })
+
+  it('adds a reaction immediately when a message is received', async () => {
+    const sdkStub = createSdkStub()
+    const handler = vi.fn()
+    const channel = new LarkChannel({
+      id: 'channel-lark',
+      appId: 'cli_xxx',
+      appSecret: 'secret',
+      sdk: sdkStub.sdk
+    })
+    channel.onMessage = handler
+
+    await channel.start()
+
+    const receiveHandler = sdkStub.getRegisteredHandlers()['im.message.receive_v1']
+    await receiveHandler?.(createMessageEvent())
+
+    expect(sdkStub.messageReactionCreate).toHaveBeenCalledWith({
+      path: { message_id: 'om_456' },
+      data: { reaction_type: { emoji_type: 'Get' } }
+    })
+    expect(handler).toHaveBeenCalled()
+  })
+
+  it('still emits the message even if addReaction fails', async () => {
+    const sdkStub = createSdkStub()
+    sdkStub.messageReactionCreate.mockRejectedValue(new Error('reaction failed'))
+    const handler = vi.fn()
+    const channel = new LarkChannel({
+      id: 'channel-lark',
+      appId: 'cli_xxx',
+      appSecret: 'secret',
+      sdk: sdkStub.sdk
+    })
+    channel.onMessage = handler
+
+    await channel.start()
+
+    const receiveHandler = sdkStub.getRegisteredHandlers()['im.message.receive_v1']
+    await receiveHandler?.(createMessageEvent())
+
+    expect(handler).toHaveBeenCalled()
   })
 
   it('ignores unsupported non-text inbound payloads', async () => {

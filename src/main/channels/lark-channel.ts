@@ -21,6 +21,12 @@ type LarkClientLike = {
           }
         }): Promise<unknown>
       }
+      messageReaction: {
+        create(input: {
+          path: { message_id: string }
+          data: { reaction_type: { emoji_type: string } }
+        }): Promise<unknown>
+      }
     }
   }
 }
@@ -127,6 +133,7 @@ export class LarkChannel extends AbstractChannel {
           return
         }
 
+        this.addReaction(message.id, 'Get').catch(() => {})
         await this.emitMessage(message)
       }
     })
@@ -138,6 +145,13 @@ export class LarkChannel extends AbstractChannel {
 
   async stop(): Promise<void> {
     this.wsClient.close()
+  }
+
+  async addReaction(messageId: string, emojiType: string): Promise<void> {
+    await this.client.im.v1.messageReaction.create({
+      path: { message_id: messageId },
+      data: { reaction_type: { emoji_type: emojiType } }
+    })
   }
 
   async send(remoteChatId: string, message: string): Promise<void> {
