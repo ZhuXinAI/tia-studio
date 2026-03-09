@@ -9,14 +9,26 @@ import type {
   ChannelType
 } from './types'
 
+const DEFAULT_CHANNEL_START_TIMEOUT_MS = 8000
+
 type ChannelsRepositoryLike = {
   listRuntimeEnabled(): Promise<AppChannel[]>
+  setLastError(id: string, message: string | null): Promise<unknown>
 }
 
 type ChannelServiceOptions = {
   channelsRepo: ChannelsRepositoryLike
   eventBus: ChannelEventBus
   adapterFactories?: ChannelAdapterFactoryRegistry
+  startTimeoutMs?: number
+}
+
+function toErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return typeof error === 'string' ? error : 'Unknown error'
 }
 
 export class ChannelService {
@@ -39,9 +51,7 @@ export class ChannelService {
 
     const channels = await this.options.channelsRepo.listRuntimeEnabled()
 
-    for (const channel of channels) {
-      await this.registerChannel(channel)
-    }
+    await Promise.all(channels.map(async (channel) => this.registerChannel(channel)))
   }
 
   async reload(): Promise<void> {
@@ -65,22 +75,36 @@ export class ChannelService {
   }
 
   private async registerChannel(channel: AppChannel): Promise<void> {
-    const adapter = await this.buildAdapter(channel)
-    if (!adapter) {
-      return
-    }
+    let adapter: ChannelAdapter | null = null
 
-    adapter.onMessage = async (message) => {
-      await this.options.eventBus.publish('channel.message.received', {
-        eventId: randomUUID(),
-        channelId: channel.id,
-        channelType: adapter.type,
-        message
-      })
-    }
+    try {
+      adapter = await this.buildAdapter(channel)
+      if (!adapter) {
+        await this.recordLastError(channel.id, `Unsupported channel type: ${channel.type}`)
+        return
+      }
 
-    this.adapters.set(channel.id, adapter)
-    await adapter.start()
+      const activeAdapter = adapter
+      activeAdapter.onMessage = async (message) => {
+        await this.options.eventBus.publish('channel.message.received', {
+          eventId: randomUUID(),
+          channelId: channel.id,
+          channelType: activeAdapter.type,
+          message
+        })
+      }
+
+      await this.startAdapter(activeAdapter)
+      this.adapters.set(channel.id, activeAdapter)
+      await this.recordLastError(channel.id, null)
+    } catch (error) {
+      if (adapter) {
+        adapter.onMessage = undefined
+        void adapter.stop().catch(() => undefined)
+      }
+
+      await this.recordLastError(channel.id, toErrorMessage(error))
+    }
   }
 
   private async handleSendRequested(event: ChannelMessageSendRequestedEvent): Promise<void> {
@@ -118,6 +142,35 @@ export class ChannelService {
     }
 
     return null
+  }
+
+  private async startAdapter(adapter: ChannelAdapter): Promise<void> {
+    const timeoutMs = this.options.startTimeoutMs ?? DEFAULT_CHANNEL_START_TIMEOUT_MS
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+    try {
+      await Promise.race([
+        adapter.start(),
+        new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error(`Channel startup timed out after ${timeoutMs}ms.`))
+          }, timeoutMs)
+        })
+      ])
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+    }
+  }
+
+  private async recordLastError(channelId: string, message: string | null): Promise<void> {
+    try {
+      await this.options.channelsRepo.setLastError(channelId, message)
+    } catch (error) {
+      console.error(`Failed to update channel health for ${channelId}:`, error)
+    }
   }
 
   private getRequiredConfigString(channel: AppChannel, key: string): string {

@@ -40,6 +40,7 @@ export type TelegramChannelOptions = {
   client?: TelegramClientLike
   now?: () => Date
   generateCode?: () => string
+  onFatalError?: (error: unknown) => Promise<void> | void
 }
 
 function buildDisplayName(input: {
@@ -95,7 +96,13 @@ function createTelegramClient(botToken: string): TelegramClientLike {
       await bot.launch()
     },
     stop(reason?: string) {
-      bot.stop(reason)
+      try {
+        bot.stop(reason)
+      } catch (error) {
+        if (!(error instanceof Error) || error.message !== 'Bot is not running!') {
+          throw error
+        }
+      }
     },
     async sendMessage(chatId: string, text: string) {
       await bot.telegram.sendMessage(chatId, text)
@@ -131,6 +138,7 @@ export class TelegramChannel extends AbstractChannel {
   private readonly now: () => Date
   private readonly generateCode: () => string
   private started = false
+  private stopping = false
 
   constructor(private readonly options: TelegramChannelOptions) {
     super(options.id, 'telegram')
@@ -145,11 +153,27 @@ export class TelegramChannel extends AbstractChannel {
       return
     }
 
+    this.stopping = false
     this.client.onText(async (message) => {
       await this.handleInboundMessage(message)
     })
-    await this.client.launch()
     this.started = true
+
+    void Promise.resolve()
+      .then(() => this.client.launch())
+      .catch(async (error) => {
+        if (this.stopping) {
+          return
+        }
+
+        this.started = false
+        try {
+          this.client.stop('telegram-channel-failed')
+        } catch {
+          // Ignore stop failures while handling transport startup errors.
+        }
+        await this.options.onFatalError?.(error)
+      })
   }
 
   async stop(): Promise<void> {
@@ -157,6 +181,7 @@ export class TelegramChannel extends AbstractChannel {
       return
     }
 
+    this.stopping = true
     this.client.stop('telegram-channel-stopped')
     this.started = false
   }

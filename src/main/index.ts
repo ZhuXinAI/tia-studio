@@ -220,7 +220,11 @@ async function startLocalApiServer(): Promise<void> {
         return new TelegramChannel({
           id: channel.id,
           botToken,
-          pairingsRepo: channelPairingsRepo
+          pairingsRepo: channelPairingsRepo,
+          onFatalError: async (error) => {
+            const message = error instanceof Error ? error.message : 'Unknown error'
+            await channelsRepo.setLastError(channel.id, message)
+          }
         })
       }
     }

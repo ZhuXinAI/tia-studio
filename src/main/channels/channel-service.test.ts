@@ -57,10 +57,12 @@ describe('ChannelService', () => {
     const channel = createChannelRecord()
     const adapter = new FakeChannel(channel.id, channel.type as ChannelType)
     const listRuntimeEnabled = vi.fn(async () => [channel])
+    const setLastError = vi.fn(async () => null)
     const buildLarkChannel = vi.fn(async () => adapter)
     const service = new ChannelService({
       channelsRepo: {
-        listRuntimeEnabled
+        listRuntimeEnabled,
+        setLastError
       },
       eventBus: bus,
       adapterFactories: {
@@ -110,13 +112,15 @@ describe('ChannelService', () => {
     const firstAdapter = new FakeChannel(channel.id, channel.type as ChannelType)
     const secondAdapter = new FakeChannel(channel.id, channel.type as ChannelType)
     const listRuntimeEnabled = vi.fn(async () => [channel])
+    const setLastError = vi.fn(async () => null)
     const buildLarkChannel = vi
       .fn<(_: AppChannel) => Promise<FakeChannel>>()
       .mockResolvedValueOnce(firstAdapter)
       .mockResolvedValueOnce(secondAdapter)
     const service = new ChannelService({
       channelsRepo: {
-        listRuntimeEnabled
+        listRuntimeEnabled,
+        setLastError
       },
       eventBus: bus,
       adapterFactories: {
@@ -133,5 +137,110 @@ describe('ChannelService', () => {
     expect(firstAdapter.stopMock).toHaveBeenCalledOnce()
     expect(secondAdapter.startMock).toHaveBeenCalledOnce()
     expect(secondAdapter.stopMock).toHaveBeenCalledOnce()
+  })
+
+  it('continues startup when one adapter fails and records channel health', async () => {
+    const bus = new ChannelEventBus()
+    const failedChannel = createChannelRecord({
+      id: 'channel-failed',
+      type: 'telegram',
+      lastError: 'Stale error'
+    })
+    const healthyChannel = createChannelRecord({
+      id: 'channel-healthy',
+      type: 'lark',
+      lastError: 'Previous outage'
+    })
+    const failedAdapter = new FakeChannel(failedChannel.id, 'telegram')
+    const healthyAdapter = new FakeChannel(healthyChannel.id, 'lark')
+    failedAdapter.startMock.mockRejectedValue(new Error('Bad credentials'))
+
+    const listRuntimeEnabled = vi.fn(async () => [failedChannel, healthyChannel])
+    const setLastError = vi.fn(async () => null)
+    const service = new ChannelService({
+      channelsRepo: {
+        listRuntimeEnabled,
+        setLastError
+      },
+      eventBus: bus,
+      adapterFactories: {
+        telegram: async () => failedAdapter,
+        lark: async () => healthyAdapter
+      },
+      startTimeoutMs: 50
+    })
+
+    await service.start()
+
+    await bus.publish('channel.message.send-requested', {
+      eventId: 'evt-failed',
+      channelId: failedChannel.id,
+      channelType: 'telegram',
+      remoteChatId: 'chat-failed',
+      content: 'reply'
+    })
+    await bus.publish('channel.message.send-requested', {
+      eventId: 'evt-healthy',
+      channelId: healthyChannel.id,
+      channelType: 'lark',
+      remoteChatId: 'chat-healthy',
+      content: 'reply'
+    })
+
+    expect(failedAdapter.startMock).toHaveBeenCalledOnce()
+    expect(healthyAdapter.startMock).toHaveBeenCalledOnce()
+    expect(setLastError).toHaveBeenCalledWith(failedChannel.id, 'Bad credentials')
+    expect(setLastError).toHaveBeenCalledWith(healthyChannel.id, null)
+    expect(failedAdapter.sendMock).not.toHaveBeenCalled()
+    expect(healthyAdapter.sendMock).toHaveBeenCalledWith('chat-healthy', 'reply')
+  })
+
+  it('times out a hanging adapter startup instead of hanging the app', async () => {
+    vi.useFakeTimers()
+
+    try {
+      const bus = new ChannelEventBus()
+      const hangingChannel = createChannelRecord({
+        id: 'channel-hanging',
+        type: 'telegram'
+      })
+      const healthyChannel = createChannelRecord({
+        id: 'channel-healthy',
+        type: 'lark'
+      })
+      const hangingAdapter = new FakeChannel(hangingChannel.id, 'telegram')
+      const healthyAdapter = new FakeChannel(healthyChannel.id, 'lark')
+      hangingAdapter.startMock.mockImplementation(() => new Promise(() => undefined))
+
+      const listRuntimeEnabled = vi.fn(async () => [hangingChannel, healthyChannel])
+      const setLastError = vi.fn(async () => null)
+      const service = new ChannelService({
+        channelsRepo: {
+          listRuntimeEnabled,
+          setLastError
+        },
+        eventBus: bus,
+        adapterFactories: {
+          telegram: async () => hangingAdapter,
+          lark: async () => healthyAdapter
+        },
+        startTimeoutMs: 50
+      })
+
+      const startPromise = service.start().then(() => 'resolved')
+
+      await vi.advanceTimersByTimeAsync(50)
+
+      await expect(Promise.race([startPromise, Promise.resolve('pending')])).resolves.toBe(
+        'resolved'
+      )
+      expect(setLastError).toHaveBeenCalledWith(
+        hangingChannel.id,
+        expect.stringContaining('timed out')
+      )
+      expect(healthyAdapter.startMock).toHaveBeenCalledOnce()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

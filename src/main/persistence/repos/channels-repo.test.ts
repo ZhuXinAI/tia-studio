@@ -167,4 +167,38 @@ describe('ChannelsRepository', () => {
       ])
     )
   })
+
+  it('updates channel startup health without rewriting the full record', async () => {
+    const created = await repo.create({
+      type: 'lark',
+      name: 'Lark',
+      assistantId,
+      enabled: true,
+      config: {
+        appId: 'cli_xxx',
+        appSecret: 'secret'
+      }
+    })
+
+    const failed = await repo.setLastError(created.id, 'Channel startup timed out.')
+    const recovered = await repo.clearLastError(created.id)
+
+    expect(failed).toMatchObject({
+      id: created.id,
+      lastError: 'Channel startup timed out.'
+    })
+    expect(recovered).toMatchObject({
+      id: created.id,
+      lastError: null
+    })
+    await expect(repo.getById(created.id)).resolves.toMatchObject({
+      id: created.id,
+      name: 'Lark',
+      config: {
+        appId: 'cli_xxx',
+        appSecret: 'secret'
+      },
+      lastError: null
+    })
+  })
 })

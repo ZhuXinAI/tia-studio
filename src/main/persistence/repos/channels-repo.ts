@@ -204,9 +204,8 @@ export class ChannelsRepository {
       return null
     }
 
-    const assistantId =
-      'assistantId' in input ? input.assistantId ?? null : existing.assistantId
-    const lastError = 'lastError' in input ? input.lastError ?? null : existing.lastError
+    const assistantId = 'assistantId' in input ? (input.assistantId ?? null) : existing.assistantId
+    const lastError = 'lastError' in input ? (input.lastError ?? null) : existing.lastError
 
     await this.db.execute(
       `
@@ -226,12 +225,36 @@ export class ChannelsRepository {
         input.name ?? existing.name,
         assistantId,
         input.enabled === undefined ? (existing.enabled ? 1 : 0) : input.enabled ? 1 : 0,
-        JSON.stringify('config' in input ? input.config ?? {} : existing.config),
+        JSON.stringify('config' in input ? (input.config ?? {}) : existing.config),
         lastError,
         id
       ]
     )
 
     return this.getById(id)
+  }
+
+  async setLastError(id: string, message: string | null): Promise<AppChannel | null> {
+    const existing = await this.getById(id)
+    if (!existing) {
+      return null
+    }
+
+    await this.db.execute(
+      `
+        UPDATE app_channels
+        SET
+          last_error = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `,
+      [message, id]
+    )
+
+    return this.getById(id)
+  }
+
+  async clearLastError(id: string): Promise<AppChannel | null> {
+    return this.setLastError(id, null)
   }
 }

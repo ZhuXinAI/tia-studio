@@ -239,6 +239,24 @@ describe('TelegramChannel', () => {
     expect(client.stop).toHaveBeenCalledOnce()
   })
 
+  it('resolves startup without waiting for the polling lifetime promise', async () => {
+    const client = new TelegramClientStub()
+    client.launch.mockImplementation(() => new Promise(() => undefined))
+    const channel = new TelegramChannel({
+      id: 'channel-telegram',
+      botToken: '123456:test-token',
+      client,
+      pairingsRepo: new PairingsRepoStub()
+    })
+
+    await expect(
+      Promise.race([
+        channel.start().then(() => 'started'),
+        new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 0))
+      ])
+    ).resolves.toBe('started')
+  })
+
   it('creates a pending pairing for an unknown dm and replies with its code', async () => {
     const client = new TelegramClientStub()
     const pairingsRepo = new PairingsRepoStub()
