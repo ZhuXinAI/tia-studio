@@ -21,12 +21,14 @@ import { ensureBuiltInProviders } from './default-agent/built-in-providers-boots
 import { ChannelEventBus } from './channels/channel-event-bus'
 import { ChannelMessageRouter } from './channels/channel-message-router'
 import { ChannelService } from './channels/channel-service'
+import { TelegramChannel } from './channels/telegram-channel'
 import { CronSchedulerService } from './cron/cron-scheduler-service'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
 import { createMastraInstance } from './mastra/store'
 import { TeamRuntimeService } from './mastra/team-runtime'
 import { migrateAppSchema } from './persistence/migrate'
 import { AssistantsRepository } from './persistence/repos/assistants-repo'
+import { ChannelPairingsRepository } from './persistence/repos/channel-pairings-repo'
 import { ChannelThreadBindingsRepository } from './persistence/repos/channel-thread-bindings-repo'
 import { ChannelsRepository } from './persistence/repos/channels-repo'
 import { CronJobRunsRepository } from './persistence/repos/cron-job-runs-repo'
@@ -155,6 +157,7 @@ async function startLocalApiServer(): Promise<void> {
   const assistantsRepo = new AssistantsRepository(db)
   const threadsRepo = new ThreadsRepository(db)
   const channelsRepo = new ChannelsRepository(db)
+  const channelPairingsRepo = new ChannelPairingsRepository(db)
   const cronJobRunsRepo = new CronJobRunsRepository(db)
   const cronJobsRepo = new CronJobsRepository(db)
   const channelThreadBindingsRepo = new ChannelThreadBindingsRepository(db)
@@ -198,7 +201,21 @@ async function startLocalApiServer(): Promise<void> {
   })
   channelService = new ChannelService({
     channelsRepo,
-    eventBus: channelEventBus
+    eventBus: channelEventBus,
+    adapterFactories: {
+      telegram: async (channel) => {
+        const botToken = channel.config.botToken
+        if (typeof botToken !== 'string' || botToken.trim().length === 0) {
+          throw new Error(`Channel ${channel.id} is missing required config: botToken`)
+        }
+
+        return new TelegramChannel({
+          id: channel.id,
+          botToken,
+          pairingsRepo: channelPairingsRepo
+        })
+      }
+    }
   })
   channelMessageRouter = new ChannelMessageRouter({
     eventBus: channelEventBus,
@@ -231,6 +248,7 @@ async function startLocalApiServer(): Promise<void> {
       assistants: assistantsRepo,
       threads: threadsRepo,
       channels: channelsRepo,
+      pairings: channelPairingsRepo,
       cronJobs: cronJobsRepo,
       teamWorkspaces: teamWorkspacesRepo,
       teamThreads: teamThreadsRepo,

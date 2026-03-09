@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createClaw, listClaws } from './claws-query'
+import { approveClawPairing, createClaw, listClawPairings, listClaws } from './claws-query'
 
 describe('claws query api client', () => {
   beforeEach(() => {
@@ -83,6 +83,63 @@ describe('claws query api client', () => {
 
     expect(fetchSpy).toHaveBeenCalledWith(
       'http://127.0.0.1:4769/v1/claws',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer test-token'
+        })
+      })
+    )
+  })
+
+  it('lists claw pairings through backend api', async () => {
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            pairings: []
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
+    )
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await listClawPairings('assistant-1')
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'http://127.0.0.1:4769/v1/claws/assistant-1/pairings',
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer test-token'
+        })
+      })
+    )
+  })
+
+  it('approves a claw pairing through backend api', async () => {
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            id: 'pairing-1',
+            status: 'approved'
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
+    )
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await approveClawPairing('assistant-1', 'pairing-1')
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'http://127.0.0.1:4769/v1/claws/assistant-1/pairings/pairing-1/approve',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({

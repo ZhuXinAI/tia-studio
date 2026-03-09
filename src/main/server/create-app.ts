@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { ChannelsRepository } from '../persistence/repos/channels-repo'
+import type { ChannelPairingsRepository } from '../persistence/repos/channel-pairings-repo'
 import type { CronJobsRepository } from '../persistence/repos/cron-jobs-repo'
 import type { McpServersRepository } from '../persistence/repos/mcp-servers-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
@@ -37,6 +38,7 @@ type CreateAppOptions = {
     webSearchSettings: WebSearchSettingsRepository
     mcpServers: McpServersRepository
     channels: ChannelsRepository
+    pairings: ChannelPairingsRepository
     cronJobs: CronJobsRepository
   }
   assistantRuntime?: AssistantRuntime
@@ -96,6 +98,7 @@ export function createApp(options: CreateAppOptions): Hono {
         assistantsRepo: options.repositories.assistants,
         providersRepo: options.repositories.providers,
         channelsRepo: options.repositories.channels,
+        pairingsRepo: options.repositories.pairings,
         channelService: options.channelService,
         cronSchedulerService: options.cronSchedulerService
       })

@@ -38,6 +38,10 @@ it('creates core app tables', async () => {
   const channelThreadBindingColumns = channelThreadBindingColumnsResult.rows.map((row) =>
     String((row as Record<string, unknown>).name)
   )
+  const channelPairingColumnsResult = await db.execute("PRAGMA table_info('app_channel_pairings')")
+  const channelPairingColumns = channelPairingColumnsResult.rows.map((row) =>
+    String((row as Record<string, unknown>).name)
+  )
   const teamWorkspaceColumnsResult = await db.execute("PRAGMA table_info('app_team_workspaces')")
   const teamWorkspaceColumns = teamWorkspaceColumnsResult.rows.map((row) =>
     String((row as Record<string, unknown>).name)
@@ -49,6 +53,7 @@ it('creates core app tables', async () => {
   expect(tableNames).toContain('app_threads')
   expect(tableNames).toContain('app_channels')
   expect(tableNames).toContain('app_channel_thread_bindings')
+  expect(tableNames).toContain('app_channel_pairings')
   expect(tableNames).toContain('app_team_workspaces')
   expect(tableNames).toContain('app_team_workspace_members')
   expect(tableNames).toContain('app_preferences')
@@ -60,6 +65,11 @@ it('creates core app tables', async () => {
   expect(channelColumns).toContain('last_error')
   expect(channelThreadBindingColumns).toContain('remote_chat_id')
   expect(channelThreadBindingColumns).toContain('thread_id')
+  expect(channelPairingColumns).toContain('remote_chat_id')
+  expect(channelPairingColumns).toContain('sender_id')
+  expect(channelPairingColumns).toContain('code')
+  expect(channelPairingColumns).toContain('status')
+  expect(channelPairingColumns).toContain('expires_at')
   expect(teamWorkspaceColumns).toContain('team_description')
   expect(teamWorkspaceColumns).toContain('supervisor_provider_id')
   expect(teamWorkspaceColumns).toContain('supervisor_model')
@@ -67,9 +77,7 @@ it('creates core app tables', async () => {
   await db.close()
 })
 
-it(
-  'backfills workspace-owned team config from legacy thread-owned records',
-  async () => {
+it('backfills workspace-owned team config from legacy thread-owned records', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'tia-team-migrate-'))
   tempPaths.push(tempDir)
   const dbPath = path.join(tempDir, 'app.db')
@@ -169,10 +177,11 @@ it(
     'INSERT INTO app_providers (id, name, type, api_key, selected_model) VALUES (?, ?, ?, ?, ?)',
     ['provider-1', 'OpenAI', 'openai', 'secret', 'gpt-5']
   )
-  await legacyDb.execute(
-    'INSERT INTO app_team_workspaces (id, name, root_path) VALUES (?, ?, ?)',
-    ['workspace-1', 'Docs Workspace', '/Users/demo/project']
-  )
+  await legacyDb.execute('INSERT INTO app_team_workspaces (id, name, root_path) VALUES (?, ?, ?)', [
+    'workspace-1',
+    'Docs Workspace',
+    '/Users/demo/project'
+  ])
   await legacyDb.execute(
     'INSERT INTO app_team_threads (id, workspace_id, resource_id, title, team_description, supervisor_provider_id, supervisor_model, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     [
@@ -228,9 +237,7 @@ it(
   expect(assistantColumns).toContain('description')
 
   await migratedDb.close()
-  },
-  15_000
-)
+}, 15_000)
 
 it('backfills assistant activation from legacy channel bindings', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'tia-assistant-enabled-migrate-'))

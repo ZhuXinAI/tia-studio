@@ -22,6 +22,13 @@ const createLarkChannelSchema = z.object({
   appSecret: z.string().min(1)
 })
 
+const createTelegramChannelSchema = z.object({
+  mode: z.literal('create'),
+  type: z.literal('telegram'),
+  name: z.string().min(1),
+  botToken: z.string().min(1)
+})
+
 const attachExistingChannelSchema = z.object({
   mode: z.literal('attach'),
   channelId: z.string().min(1)
@@ -37,12 +44,20 @@ const keepChannelSchema = z.object({
 
 export const createClawSchema = z.object({
   assistant: createAssistantForClawSchema,
-  channel: z.union([createLarkChannelSchema, attachExistingChannelSchema]).optional()
+  channel: z
+    .union([createLarkChannelSchema, createTelegramChannelSchema, attachExistingChannelSchema])
+    .optional()
 })
 
 export const updateClawSchema = z.object({
   assistant: updateAssistantForClawSchema.optional(),
   channel: z
-    .union([createLarkChannelSchema, attachExistingChannelSchema, detachChannelSchema, keepChannelSchema])
+    .union([
+      createLarkChannelSchema,
+      createTelegramChannelSchema,
+      attachExistingChannelSchema,
+      detachChannelSchema,
+      keepChannelSchema
+    ])
     .optional()
 })

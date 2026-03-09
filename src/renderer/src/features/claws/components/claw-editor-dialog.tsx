@@ -15,6 +15,7 @@ import type { ProviderRecord } from '../../settings/providers/providers-query'
 import type { AvailableClawChannelRecord, ClawRecord, SaveClawInput } from '../claws-query'
 
 type ChannelAction = 'create' | 'attach' | 'keep' | 'detach'
+type CreateChannelType = 'lark' | 'telegram'
 
 type ClawEditorDialogProps = {
   isOpen: boolean
@@ -34,6 +35,10 @@ function getInitialChannelAction(claw: ClawRecord | null): ChannelAction {
   return claw.channel ? 'keep' : 'create'
 }
 
+function getInitialCreateChannelType(claw: ClawRecord | null): CreateChannelType {
+  return claw?.channel?.type === 'telegram' ? 'telegram' : 'lark'
+}
+
 export function ClawEditorDialog({
   isOpen,
   claw,
@@ -48,11 +53,17 @@ export function ClawEditorDialog({
   const [providerId, setProviderId] = useState(claw?.providerId ?? '')
   const [instructions, setInstructions] = useState(claw?.instructions ?? '')
   const [enabled, setEnabled] = useState(claw?.enabled ?? true)
-  const [channelAction, setChannelAction] = useState<ChannelAction>(() => getInitialChannelAction(claw))
+  const [channelAction, setChannelAction] = useState<ChannelAction>(() =>
+    getInitialChannelAction(claw)
+  )
+  const [channelType, setChannelType] = useState<CreateChannelType>(() =>
+    getInitialCreateChannelType(claw)
+  )
   const [existingChannelId, setExistingChannelId] = useState(availableChannels[0]?.id ?? '')
   const [channelName, setChannelName] = useState(claw?.channel?.name ?? '')
   const [appId, setAppId] = useState('')
   const [appSecret, setAppSecret] = useState('')
+  const [botToken, setBotToken] = useState('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
@@ -61,10 +72,12 @@ export function ClawEditorDialog({
     setInstructions(claw?.instructions ?? '')
     setEnabled(claw?.enabled ?? true)
     setChannelAction(getInitialChannelAction(claw))
+    setChannelType(getInitialCreateChannelType(claw))
     setExistingChannelId(availableChannels[0]?.id ?? '')
     setChannelName(claw?.channel?.name ?? '')
     setAppId('')
     setAppSecret('')
+    setBotToken('')
     setErrorMessage(null)
   }, [availableChannels, claw, isOpen])
 
@@ -102,21 +115,35 @@ export function ClawEditorDialog({
         channelId: existingChannelId
       }
     } else if (channelAction === 'create') {
-      if (
-        channelName.trim().length === 0 ||
-        appId.trim().length === 0 ||
-        appSecret.trim().length === 0
-      ) {
-        setErrorMessage(t('claws.dialog.errors.channelCredentialsRequired'))
-        return
-      }
+      if (channelType === 'telegram') {
+        if (channelName.trim().length === 0 || botToken.trim().length === 0) {
+          setErrorMessage('Telegram channel name and bot token are required')
+          return
+        }
 
-      channel = {
-        mode: 'create',
-        type: 'lark',
-        name: channelName.trim(),
-        appId: appId.trim(),
-        appSecret: appSecret.trim()
+        channel = {
+          mode: 'create',
+          type: 'telegram',
+          name: channelName.trim(),
+          botToken: botToken.trim()
+        }
+      } else {
+        if (
+          channelName.trim().length === 0 ||
+          appId.trim().length === 0 ||
+          appSecret.trim().length === 0
+        ) {
+          setErrorMessage(t('claws.dialog.errors.channelCredentialsRequired'))
+          return
+        }
+
+        channel = {
+          mode: 'create',
+          type: 'lark',
+          name: channelName.trim(),
+          appId: appId.trim(),
+          appSecret: appSecret.trim()
+        }
       }
     } else if (channelAction === 'detach') {
       channel = {
@@ -144,7 +171,9 @@ export function ClawEditorDialog({
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
-          <DialogDescription>{t('claws.dialog.description')}</DialogDescription>
+          <DialogDescription>
+            Connect an assistant to a Telegram or Lark channel from one lightweight setup flow.
+          </DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
@@ -208,7 +237,7 @@ export function ClawEditorDialog({
                 {claw.channel ? (
                   <option value="keep">{t('claws.dialog.channelActions.keep')}</option>
                 ) : null}
-                <option value="create">{t('claws.dialog.channelActions.create')}</option>
+                <option value="create">Create new channel</option>
                 {canAttachExisting ? (
                   <option value="attach">{t('claws.dialog.channelActions.attach')}</option>
                 ) : null}
@@ -243,8 +272,23 @@ export function ClawEditorDialog({
           {channelAction === 'create' ? (
             <>
               <div className="grid gap-2">
+                <label htmlFor="claw-channel-type" className="text-sm font-medium">
+                  Channel Type
+                </label>
+                <select
+                  id="claw-channel-type"
+                  className="border-input bg-background rounded-md border px-3 py-2 text-sm"
+                  value={channelType}
+                  onChange={(event) => setChannelType(event.target.value as CreateChannelType)}
+                >
+                  <option value="lark">Lark</option>
+                  <option value="telegram">Telegram</option>
+                </select>
+              </div>
+
+              <div className="grid gap-2">
                 <label htmlFor="claw-channel-name" className="text-sm font-medium">
-                  {t('claws.dialog.fields.larkChannelName')}
+                  Channel Name
                 </label>
                 <Input
                   id="claw-channel-name"
@@ -253,30 +297,44 @@ export function ClawEditorDialog({
                 />
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-2">
+              {channelType === 'telegram' ? (
                 <div className="grid gap-2">
-                  <label htmlFor="claw-channel-app-id" className="text-sm font-medium">
-                    {t('claws.dialog.fields.appId')}
+                  <label htmlFor="claw-channel-bot-token" className="text-sm font-medium">
+                    Bot Token
                   </label>
                   <Input
-                    id="claw-channel-app-id"
-                    value={appId}
-                    onChange={(event) => setAppId(event.target.value)}
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <label htmlFor="claw-channel-app-secret" className="text-sm font-medium">
-                    {t('claws.dialog.fields.appSecret')}
-                  </label>
-                  <Input
-                    id="claw-channel-app-secret"
+                    id="claw-channel-bot-token"
                     type="password"
-                    value={appSecret}
-                    onChange={(event) => setAppSecret(event.target.value)}
+                    value={botToken}
+                    onChange={(event) => setBotToken(event.target.value)}
                   />
                 </div>
-              </div>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <label htmlFor="claw-channel-app-id" className="text-sm font-medium">
+                      {t('claws.dialog.fields.appId')}
+                    </label>
+                    <Input
+                      id="claw-channel-app-id"
+                      value={appId}
+                      onChange={(event) => setAppId(event.target.value)}
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <label htmlFor="claw-channel-app-secret" className="text-sm font-medium">
+                      {t('claws.dialog.fields.appSecret')}
+                    </label>
+                    <Input
+                      id="claw-channel-app-secret"
+                      type="password"
+                      value={appSecret}
+                      onChange={(event) => setAppSecret(event.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
             </>
           ) : null}
 

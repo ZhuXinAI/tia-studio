@@ -7,6 +7,8 @@ export type ClawChannelRecord = {
   name: string
   status: 'connected' | 'disconnected' | 'error'
   errorMessage: string | null
+  pairedCount?: number
+  pendingPairingCount?: number
 }
 
 export type ClawRecord = {
@@ -30,6 +32,28 @@ export type ClawsResponse = {
   availableChannels: AvailableClawChannelRecord[]
 }
 
+export type ClawPairingRecord = {
+  id: string
+  channelId: string
+  remoteChatId: string
+  senderId: string
+  senderDisplayName: string
+  senderUsername: string | null
+  code: string
+  status: 'pending' | 'approved' | 'rejected' | 'revoked'
+  expiresAt: string | null
+  approvedAt: string | null
+  rejectedAt: string | null
+  revokedAt: string | null
+  lastSeenAt: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type ClawPairingsResponse = {
+  pairings: ClawPairingRecord[]
+}
+
 export type SaveClawInput = {
   assistant: {
     name?: string
@@ -44,6 +68,12 @@ export type SaveClawInput = {
         name: string
         appId: string
         appSecret: string
+      }
+    | {
+        mode: 'create'
+        type: 'telegram'
+        name: string
+        botToken: string
       }
     | {
         mode: 'attach'
@@ -79,6 +109,31 @@ export async function updateClaw(assistantId: string, input: SaveClawInput): Pro
 
 export async function deleteClaw(assistantId: string): Promise<void> {
   await apiClient.delete(`/v1/claws/${assistantId}`)
+}
+
+export async function listClawPairings(assistantId: string): Promise<ClawPairingsResponse> {
+  return apiClient.get<ClawPairingsResponse>(`/v1/claws/${assistantId}/pairings`)
+}
+
+export async function approveClawPairing(
+  assistantId: string,
+  pairingId: string
+): Promise<ClawPairingRecord> {
+  return apiClient.post<ClawPairingRecord>(`/v1/claws/${assistantId}/pairings/${pairingId}/approve`)
+}
+
+export async function rejectClawPairing(
+  assistantId: string,
+  pairingId: string
+): Promise<ClawPairingRecord> {
+  return apiClient.post<ClawPairingRecord>(`/v1/claws/${assistantId}/pairings/${pairingId}/reject`)
+}
+
+export async function revokeClawPairing(
+  assistantId: string,
+  pairingId: string
+): Promise<ClawPairingRecord> {
+  return apiClient.post<ClawPairingRecord>(`/v1/claws/${assistantId}/pairings/${pairingId}/revoke`)
 }
 
 export function useClaws() {

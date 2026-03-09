@@ -100,12 +100,13 @@ export class ChannelMessageRouter {
       role: 'user',
       parts: [{ type: 'text', text: event.message.content }],
       metadata: {
-        fromChannel: 'lark',
+        fromChannel: event.channelType,
         channelId: event.channelId,
         channelType: event.channelType,
         remoteChatId: event.message.remoteChatId,
         remoteMessageId: event.message.id,
-        senderId: event.message.senderId
+        senderId: event.message.senderId,
+        ...(event.message.metadata ?? {})
       }
     }
 

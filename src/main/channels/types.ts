@@ -1,6 +1,6 @@
 import type { AppChannel } from '../persistence/repos/channels-repo'
 
-export type ChannelType = 'lark'
+export type ChannelType = 'lark' | 'telegram'
 
 export interface ChannelMessage {
   id: string
