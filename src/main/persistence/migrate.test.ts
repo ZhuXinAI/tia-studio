@@ -46,6 +46,18 @@ it('creates core app tables', async () => {
   const teamWorkspaceColumns = teamWorkspaceColumnsResult.rows.map((row) =>
     String((row as Record<string, unknown>).name)
   )
+  const assistantHeartbeatColumnsResult = await db.execute(
+    "PRAGMA table_info('app_assistant_heartbeats')"
+  )
+  const assistantHeartbeatColumns = assistantHeartbeatColumnsResult.rows.map((row) =>
+    String((row as Record<string, unknown>).name)
+  )
+  const assistantHeartbeatRunColumnsResult = await db.execute(
+    "PRAGMA table_info('app_assistant_heartbeat_runs')"
+  )
+  const assistantHeartbeatRunColumns = assistantHeartbeatRunColumnsResult.rows.map((row) =>
+    String((row as Record<string, unknown>).name)
+  )
 
   expect(tableNames).toContain('app_profiles')
   expect(tableNames).toContain('app_providers')
@@ -54,6 +66,8 @@ it('creates core app tables', async () => {
   expect(tableNames).toContain('app_channels')
   expect(tableNames).toContain('app_channel_thread_bindings')
   expect(tableNames).toContain('app_channel_pairings')
+  expect(tableNames).toContain('app_assistant_heartbeats')
+  expect(tableNames).toContain('app_assistant_heartbeat_runs')
   expect(tableNames).toContain('app_team_workspaces')
   expect(tableNames).toContain('app_team_workspace_members')
   expect(tableNames).toContain('app_preferences')
@@ -70,6 +84,23 @@ it('creates core app tables', async () => {
   expect(channelPairingColumns).toContain('code')
   expect(channelPairingColumns).toContain('status')
   expect(channelPairingColumns).toContain('expires_at')
+  expect(assistantHeartbeatColumns).toContain('assistant_id')
+  expect(assistantHeartbeatColumns).toContain('enabled')
+  expect(assistantHeartbeatColumns).toContain('interval_minutes')
+  expect(assistantHeartbeatColumns).toContain('prompt')
+  expect(assistantHeartbeatColumns).toContain('thread_id')
+  expect(assistantHeartbeatColumns).toContain('last_run_at')
+  expect(assistantHeartbeatColumns).toContain('next_run_at')
+  expect(assistantHeartbeatColumns).toContain('last_run_status')
+  expect(assistantHeartbeatColumns).toContain('last_error')
+  expect(assistantHeartbeatRunColumns).toContain('heartbeat_id')
+  expect(assistantHeartbeatRunColumns).toContain('status')
+  expect(assistantHeartbeatRunColumns).toContain('scheduled_for')
+  expect(assistantHeartbeatRunColumns).toContain('started_at')
+  expect(assistantHeartbeatRunColumns).toContain('finished_at')
+  expect(assistantHeartbeatRunColumns).toContain('output_text')
+  expect(assistantHeartbeatRunColumns).toContain('error')
+  expect(assistantHeartbeatRunColumns).toContain('work_log_path')
   expect(teamWorkspaceColumns).toContain('team_description')
   expect(teamWorkspaceColumns).toContain('supervisor_provider_id')
   expect(teamWorkspaceColumns).toContain('supervisor_model')

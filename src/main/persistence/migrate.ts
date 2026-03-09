@@ -435,6 +435,86 @@ async function ensureCronTables(db: AppDatabase): Promise<void> {
   )
 }
 
+async function ensureAssistantHeartbeatTables(db: AppDatabase): Promise<void> {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_assistant_heartbeats (
+      id TEXT PRIMARY KEY,
+      assistant_id TEXT NOT NULL UNIQUE,
+      enabled INTEGER NOT NULL DEFAULT 0,
+      interval_minutes INTEGER NOT NULL,
+      prompt TEXT NOT NULL,
+      thread_id TEXT,
+      last_run_at TEXT,
+      next_run_at TEXT,
+      last_run_status TEXT,
+      last_error TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (assistant_id) REFERENCES app_assistants(id) ON DELETE CASCADE,
+      FOREIGN KEY (thread_id) REFERENCES app_threads(id) ON DELETE SET NULL
+    )
+  `)
+
+  const heartbeatsTableInfo = await db.execute("PRAGMA table_info('app_assistant_heartbeats')")
+  const heartbeatColumns = heartbeatsTableInfo.rows.map((row) =>
+    String((row as Record<string, unknown>).name)
+  )
+
+  if (!heartbeatColumns.includes('thread_id')) {
+    await db.execute(
+      'ALTER TABLE app_assistant_heartbeats ADD COLUMN thread_id TEXT REFERENCES app_threads(id) ON DELETE SET NULL'
+    )
+  }
+
+  if (!heartbeatColumns.includes('last_run_at')) {
+    await db.execute('ALTER TABLE app_assistant_heartbeats ADD COLUMN last_run_at TEXT')
+  }
+
+  if (!heartbeatColumns.includes('next_run_at')) {
+    await db.execute('ALTER TABLE app_assistant_heartbeats ADD COLUMN next_run_at TEXT')
+  }
+
+  if (!heartbeatColumns.includes('last_run_status')) {
+    await db.execute('ALTER TABLE app_assistant_heartbeats ADD COLUMN last_run_status TEXT')
+  }
+
+  if (!heartbeatColumns.includes('last_error')) {
+    await db.execute('ALTER TABLE app_assistant_heartbeats ADD COLUMN last_error TEXT')
+  }
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_assistant_heartbeat_runs (
+      id TEXT PRIMARY KEY,
+      heartbeat_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      scheduled_for TEXT NOT NULL,
+      started_at TEXT NOT NULL,
+      finished_at TEXT,
+      output_text TEXT,
+      error TEXT,
+      work_log_path TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (heartbeat_id) REFERENCES app_assistant_heartbeats(id) ON DELETE CASCADE
+    )
+  `)
+
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_assistant_heartbeats_assistant_id ON app_assistant_heartbeats(assistant_id)'
+  )
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_assistant_heartbeats_enabled ON app_assistant_heartbeats(enabled)'
+  )
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_assistant_heartbeats_next_run_at ON app_assistant_heartbeats(next_run_at)'
+  )
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_assistant_heartbeat_runs_heartbeat_id ON app_assistant_heartbeat_runs(heartbeat_id)'
+  )
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_assistant_heartbeat_runs_scheduled_for ON app_assistant_heartbeat_runs(scheduled_for)'
+  )
+}
+
 async function backfillAssistantEnabledFromChannels(db: AppDatabase): Promise<void> {
   await db.execute(`
     UPDATE app_assistants
@@ -486,6 +566,7 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   await backfillAssistantEnabledFromChannels(db)
   await ensureThreadMetadataColumn(db)
   await ensureCronTables(db)
+  await ensureAssistantHeartbeatTables(db)
 
   return db
 }

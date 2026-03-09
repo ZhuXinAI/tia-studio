@@ -192,7 +192,7 @@ describe('threads route', () => {
     expect(listBody).toEqual([])
   })
 
-  it('excludes cron-owned hidden threads by default and includes them on demand', async () => {
+  it('excludes hidden system threads by default and includes them on demand', async () => {
     const provider = await providersRepo.create({
       name: 'OpenAI',
       type: 'openai',
@@ -214,8 +214,19 @@ describe('threads route', () => {
       resourceId: 'profile-default',
       title: 'Daily cron',
       metadata: {
-        cron: true,
+        system: true,
+        systemType: 'cron',
         cronJobId: 'cron-job-1'
+      }
+    })
+    const hiddenHeartbeatThread = await threadsRepo.create({
+      assistantId: assistant.id,
+      resourceId: 'profile-default',
+      title: 'Heartbeat',
+      metadata: {
+        system: true,
+        systemType: 'heartbeat',
+        heartbeatId: 'heartbeat-1'
       }
     })
 
@@ -237,14 +248,23 @@ describe('threads route', () => {
 
     expect(includeHiddenResponse.status).toBe(200)
     const includeHiddenBody = await includeHiddenResponse.json()
-    expect(includeHiddenBody).toHaveLength(2)
+    expect(includeHiddenBody).toHaveLength(3)
     expect(includeHiddenBody).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: hiddenCronThread.id,
           metadata: {
-            cron: true,
+            system: true,
+            systemType: 'cron',
             cronJobId: 'cron-job-1'
+          }
+        }),
+        expect.objectContaining({
+          id: hiddenHeartbeatThread.id,
+          metadata: {
+            system: true,
+            systemType: 'heartbeat',
+            heartbeatId: 'heartbeat-1'
           }
         }),
         expect.objectContaining({
