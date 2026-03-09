@@ -21,15 +21,21 @@ export type ClawRecord = {
   channel: ClawChannelRecord | null
 }
 
-export type AvailableClawChannelRecord = {
+export type ConfiguredClawChannelRecord = {
   id: string
   type: string
   name: string
+  assistantId: string | null
+  assistantName: string | null
+  status: 'connected' | 'disconnected' | 'error'
+  errorMessage: string | null
+  pairedCount: number
+  pendingPairingCount: number
 }
 
 export type ClawsResponse = {
   claws: ClawRecord[]
-  availableChannels: AvailableClawChannelRecord[]
+  configuredChannels: ConfiguredClawChannelRecord[]
 }
 
 export type ClawPairingRecord = {
@@ -87,6 +93,19 @@ export type SaveClawInput = {
       }
 }
 
+export type CreateClawChannelInput =
+  | {
+      type: 'lark'
+      name: string
+      appId: string
+      appSecret: string
+    }
+  | {
+      type: 'telegram'
+      name: string
+      botToken: string
+    }
+
 const apiClient = createApiClient()
 
 export const clawKeys = {
@@ -103,12 +122,22 @@ export async function createClaw(input: SaveClawInput): Promise<ClawRecord> {
   return apiClient.post<ClawRecord>('/v1/claws', input)
 }
 
+export async function createClawChannel(
+  input: CreateClawChannelInput
+): Promise<ConfiguredClawChannelRecord> {
+  return apiClient.post<ConfiguredClawChannelRecord>('/v1/claws/channels', input)
+}
+
 export async function updateClaw(assistantId: string, input: SaveClawInput): Promise<ClawRecord> {
   return apiClient.patch<ClawRecord>(`/v1/claws/${assistantId}`, input)
 }
 
 export async function deleteClaw(assistantId: string): Promise<void> {
   await apiClient.delete(`/v1/claws/${assistantId}`)
+}
+
+export async function deleteClawChannel(channelId: string): Promise<void> {
+  await apiClient.delete(`/v1/claws/channels/${channelId}`)
 }
 
 export async function listClawPairings(assistantId: string): Promise<ClawPairingsResponse> {

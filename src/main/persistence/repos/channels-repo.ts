@@ -234,6 +234,16 @@ export class ChannelsRepository {
     return this.getById(id)
   }
 
+  async delete(id: string): Promise<boolean> {
+    const existing = await this.getById(id)
+    if (!existing) {
+      return false
+    }
+
+    await this.db.execute('DELETE FROM app_channels WHERE id = ?', [id])
+    return true
+  }
+
   async setLastError(id: string, message: string | null): Promise<AppChannel | null> {
     const existing = await this.getById(id)
     if (!existing) {
