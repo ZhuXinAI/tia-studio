@@ -11,6 +11,7 @@ import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import { ChannelEventBus } from '../channels/channel-event-bus'
+import type { AssistantCronJobsService } from '../cron/assistant-cron-jobs-service'
 import { AssistantRuntimeService } from './assistant-runtime'
 import { createMastraInstance } from './store'
 import { HEARTBEAT_RUN_CONTEXT_KEY } from './tool-context'
@@ -209,7 +210,15 @@ describe('AssistantRuntimeService', () => {
         mcpServersRepo: {
           getSettings: vi.fn(async () => ({ mcpServers: {} }))
         } as never,
-        channelEventBus: new ChannelEventBus()
+        channelEventBus: new ChannelEventBus(),
+        cronJobService: {
+          createCronJob: vi.fn(),
+          listAssistantCronJobs: vi.fn(async () => []),
+          removeAssistantCronJob: vi.fn(async () => true)
+        } as unknown as Pick<
+          AssistantCronJobsService,
+          'createCronJob' | 'listAssistantCronJobs' | 'removeAssistantCronJob'
+        >
       })
 
       await (
@@ -229,6 +238,9 @@ describe('AssistantRuntimeService', () => {
           'listWorkLogs',
           'readWorkLog',
           'searchWorkLogs',
+          'createCronJob',
+          'listCronJobs',
+          'removeCronJob',
           'sendMessageToChannel',
           'sendImage',
           'sendFile'
@@ -255,7 +267,15 @@ describe('AssistantRuntimeService', () => {
       mcpServersRepo: {
         getSettings: vi.fn(async () => ({ mcpServers: {} }))
       } as never,
-      channelEventBus: new ChannelEventBus()
+      channelEventBus: new ChannelEventBus(),
+      cronJobService: {
+        createCronJob: vi.fn(),
+        listAssistantCronJobs: vi.fn(async () => []),
+        removeAssistantCronJob: vi.fn(async () => true)
+      } as unknown as Pick<
+        AssistantCronJobsService,
+        'createCronJob' | 'listAssistantCronJobs' | 'removeAssistantCronJob'
+      >
     })
 
     await (
@@ -268,7 +288,14 @@ describe('AssistantRuntimeService', () => {
     const tools = await agent.listTools()
 
     expect(Object.keys(tools)).not.toEqual(
-      expect.arrayContaining(['listWorkLogs', 'readWorkLog', 'searchWorkLogs'])
+      expect.arrayContaining([
+        'listWorkLogs',
+        'readWorkLog',
+        'searchWorkLogs',
+        'createCronJob',
+        'listCronJobs',
+        'removeCronJob'
+      ])
     )
   })
 

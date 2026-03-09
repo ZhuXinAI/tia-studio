@@ -22,6 +22,7 @@ import { ChannelEventBus } from './channels/channel-event-bus'
 import { ChannelMessageRouter } from './channels/channel-message-router'
 import { ChannelService } from './channels/channel-service'
 import { TelegramChannel } from './channels/telegram-channel'
+import { AssistantCronJobsService } from './cron/assistant-cron-jobs-service'
 import { CronSchedulerService } from './cron/cron-scheduler-service'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
 import { createMastraInstance } from './mastra/store'
@@ -179,6 +180,12 @@ async function startLocalApiServer(): Promise<void> {
     userDataPath: app.getPath('userData')
   })
   const channelEventBus = new ChannelEventBus()
+  const assistantCronJobsService = new AssistantCronJobsService({
+    cronJobsRepo,
+    assistantsRepo,
+    threadsRepo,
+    reloadScheduler: async () => cronSchedulerService?.reload()
+  })
   const mastra = await createMastraInstance(join(app.getPath('userData'), 'mastra.db'))
   const assistantRuntime = new AssistantRuntimeService({
     mastra,
@@ -188,6 +195,7 @@ async function startLocalApiServer(): Promise<void> {
     webSearchSettingsRepo,
     mcpServersRepo,
     channelEventBus,
+    cronJobService: assistantCronJobsService,
     managedRuntimeResolver: managedRuntimeService
   })
   const teamRunStatusStore = new TeamRunStatusStore()
