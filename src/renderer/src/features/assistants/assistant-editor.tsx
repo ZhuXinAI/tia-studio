@@ -16,6 +16,12 @@ import {
   isManagedRuntimeReady,
   type ManagedRuntimesState
 } from '../settings/runtimes/managed-runtimes-query'
+import {
+  listAssistantSkills,
+  removeAssistantWorkspaceSkill,
+  type AssistantSkillRecord,
+  type AssistantSkillSource
+} from './assistant-skills-query'
 
 type AssistantEditorValues = {
   name: string
@@ -27,7 +33,7 @@ type AssistantEditorValues = {
   mcpConfig: Record<string, boolean>
 }
 
-type AssistantEditorTab = 'essential' | 'tools'
+type AssistantEditorTab = 'essential' | 'tools' | 'skills'
 
 type AssistantEditorProps = {
   providers: ProviderRecord[]
@@ -126,6 +132,27 @@ function parseMaxSteps(rawValue: string): number | null {
   return parsed
 }
 
+function toErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    const normalized = error.message.trim()
+    return normalized.length > 0 ? normalized : 'Unexpected request error'
+  }
+
+  return 'Unexpected request error'
+}
+
+function getSkillSourceLabel(source: AssistantSkillSource): string {
+  if (source === 'workspace') {
+    return 'Workspace'
+  }
+
+  if (source === 'global-claude') {
+    return 'Global ~/.claude/skills'
+  }
+
+  return 'Global ~/.agent/skills'
+}
+
 function validate(values: AssistantEditorValues): string | null {
   if (values.name.trim().length === 0) {
     return 'Assistant name is required'
@@ -158,6 +185,10 @@ export function AssistantEditor({
   const [isSelectingWorkspacePath, setIsSelectingWorkspacePath] = useState(false)
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false)
   const [managedRuntimeState, setManagedRuntimeState] = useState<ManagedRuntimesState | null>(null)
+  const [skills, setSkills] = useState<AssistantSkillRecord[]>([])
+  const [isSkillsLoading, setIsSkillsLoading] = useState(false)
+  const [skillsError, setSkillsError] = useState<string | null>(null)
+  const [removingSkillId, setRemovingSkillId] = useState<string | null>(null)
 
   const title = useMemo(() => {
     return initialValue ? 'Edit Assistant' : 'Create Assistant'
@@ -189,6 +220,46 @@ export function AssistantEditor({
       return requiredRuntime ? !isManagedRuntimeReady(managedRuntimeState[requiredRuntime]) : false
     })
   }, [managedRuntimeState, runtimeBackedServerEntries])
+
+  useEffect(() => {
+    if (activeTab !== 'skills') {
+      return
+    }
+
+    const workspaceRootPath = values.workspacePath.trim()
+    if (workspaceRootPath.length === 0) {
+      setSkills([])
+      setSkillsError(null)
+      setIsSkillsLoading(false)
+      return
+    }
+
+    let isCancelled = false
+    setIsSkillsLoading(true)
+    setSkillsError(null)
+
+    void listAssistantSkills(workspaceRootPath)
+      .then((loadedSkills) => {
+        if (!isCancelled) {
+          setSkills(loadedSkills)
+        }
+      })
+      .catch((loadError) => {
+        if (!isCancelled) {
+          setSkills([])
+          setSkillsError(toErrorMessage(loadError))
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsSkillsLoading(false)
+        }
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [activeTab, values.workspacePath])
 
   useEffect(() => {
     let isCancelled = false
@@ -243,8 +314,10 @@ export function AssistantEditor({
       description: values.description.trim(),
       instructions: values.instructions.trim(),
       providerId: values.providerId,
-      workspaceConfig: workspacePath.length > 0 ? {
-        rootPath: workspacePath
+      workspaceConfig:
+        workspacePath.length > 0
+          ? {
+              rootPath: workspacePath
       } : undefined,
       mcpConfig: nextMcpConfig,
       maxSteps
@@ -269,6 +342,33 @@ export function AssistantEditor({
       )
     } finally {
       setIsSelectingWorkspacePath(false)
+    }
+  }
+
+  const handleRemoveWorkspaceSkill = async (skill: AssistantSkillRecord): Promise<void> => {
+    if (!skill.canDelete || removingSkillId || isSubmitting) {
+      return
+    }
+
+    const workspaceRootPath = values.workspacePath.trim()
+    if (workspaceRootPath.length === 0) {
+      return
+    }
+
+    setSkillsError(null)
+    setRemovingSkillId(skill.id)
+    try {
+      await removeAssistantWorkspaceSkill({
+        workspaceRootPath,
+        relativePath: skill.relativePath
+      })
+
+      const refreshedSkills = await listAssistantSkills(workspaceRootPath)
+      setSkills(refreshedSkills)
+    } catch (removeError) {
+      setSkillsError(toErrorMessage(removeError))
+    } finally {
+      setRemovingSkillId(null)
     }
   }
 
@@ -301,6 +401,18 @@ export function AssistantEditor({
             onClick={() => setActiveTab('tools')}
           >
             Tools
+          </button>
+          <button
+            type="button"
+            className={cn(
+              'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
+              activeTab === 'skills'
+                ? 'bg-secondary text-secondary-foreground'
+                : 'hover:bg-accent/40'
+            )}
+            onClick={() => setActiveTab('skills')}
+          >
+            Skills
           </button>
         </aside>
 
@@ -476,6 +588,79 @@ export function AssistantEditor({
                   )
                 })
               )}
+            </div>
+          ) : null}
+
+          {activeTab === 'skills' ? (
+            <div className="space-y-3">
+              <p className="text-muted-foreground text-sm">
+                Skills are loaded from `~/.claude/skills`, `~/.agent/skills`, and `./skills`.
+              </p>
+
+              {values.workspacePath.trim().length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  Set a workspace path first to load workspace skills.
+                </p>
+              ) : null}
+
+              {isSkillsLoading ? (
+                <p className="text-muted-foreground text-sm">Loading skills...</p>
+              ) : null}
+
+              {skillsError ? (
+                <p role="alert" className="text-destructive text-sm">
+                  {skillsError}
+                </p>
+              ) : null}
+
+              {!isSkillsLoading && values.workspacePath.trim().length > 0 && skills.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  No skills found in the configured global or workspace folders.
+                </p>
+              ) : null}
+
+              {!isSkillsLoading
+                ? skills.map((skill) => {
+                    const isRemoving = removingSkillId === skill.id
+                    return (
+                      <article
+                        key={skill.id}
+                        className="rounded-xl border border-border/70 bg-card/50 px-4 py-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <h4 className="text-base font-medium">{skill.name}</h4>
+                            {skill.description ? (
+                              <p className="text-muted-foreground text-xs">{skill.description}</p>
+                            ) : (
+                              <p className="text-muted-foreground text-xs">
+                                No description found in SKILL.md.
+                              </p>
+                            )}
+                            <p className="text-muted-foreground text-xs">
+                              {getSkillSourceLabel(skill.source)} · {skill.relativePath}
+                            </p>
+                          </div>
+
+                          {skill.canDelete ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              aria-label={`Remove skill ${skill.name}`}
+                              disabled={isSubmitting || isRemoving || removingSkillId !== null}
+                              onClick={() => void handleRemoveWorkspaceSkill(skill)}
+                            >
+                              {isRemoving ? 'Removing...' : 'Remove'}
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">Read-only</span>
+                          )}
+                        </div>
+                      </article>
+                    )
+                  })
+                : null}
             </div>
           ) : null}
         </div>
