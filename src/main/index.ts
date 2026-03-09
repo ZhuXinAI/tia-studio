@@ -298,6 +298,7 @@ async function startLocalApiServer(): Promise<void> {
       channels: channelsRepo,
       pairings: channelPairingsRepo,
       cronJobs: cronJobsRepo,
+      heartbeats: heartbeatsRepo,
       teamWorkspaces: teamWorkspacesRepo,
       teamThreads: teamThreadsRepo,
       webSearchSettings: webSearchSettingsRepo,
@@ -308,7 +309,8 @@ async function startLocalApiServer(): Promise<void> {
     teamRunStatusStore,
     threadMessageEventsStore,
     channelService,
-    cronSchedulerService
+    cronSchedulerService,
+    heartbeatSchedulerService
   })
 
   localApiServer = serve(

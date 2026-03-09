@@ -1,6 +1,7 @@
 import { Bot, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { AssistantEditor } from '../../assistants/assistant-editor'
+import type { SaveAssistantHeartbeatInput } from '../../assistants/assistant-heartbeat-query'
 import type { AssistantRecord, SaveAssistantInput } from '../../assistants/assistants-query'
 import type { McpServerRecord } from '../../settings/mcp-servers/mcp-servers-query'
 import type { ProviderRecord } from '../../settings/providers/providers-query'
@@ -20,7 +21,10 @@ type AssistantConfigDialogProps = {
   errorMessage: string | null
   onClose: () => void
   onSelectWorkspacePath: () => Promise<string | null>
-  onSubmit: (input: SaveAssistantInput) => Promise<void>
+  onSubmit: (
+    input: SaveAssistantInput,
+    heartbeatInput?: SaveAssistantHeartbeatInput | null
+  ) => Promise<void>
 }
 
 export function AssistantConfigDialog({

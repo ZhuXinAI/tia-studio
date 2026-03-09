@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronDown } from 'lucide-react'
 import type { SaveAssistantInput, AssistantRecord } from './assistants-query'
+import {
+  DEFAULT_ASSISTANT_HEARTBEAT_INTERVAL_MINUTES,
+  DEFAULT_ASSISTANT_HEARTBEAT_PROMPT,
+  getAssistantHeartbeat,
+  type AssistantHeartbeatRecord,
+  type SaveAssistantHeartbeatInput
+} from './assistant-heartbeat-query'
 import type { ProviderRecord } from '../settings/providers/providers-query'
 import type { McpServerRecord } from '../settings/mcp-servers/mcp-servers-query'
 import { Button } from '../../components/ui/button'
@@ -34,6 +41,12 @@ type AssistantEditorValues = {
   mcpConfig: Record<string, boolean>
 }
 
+type AssistantHeartbeatValues = {
+  enabled: boolean
+  intervalMinutes: string
+  prompt: string
+}
+
 type AssistantEditorTab = 'essential' | 'tools' | 'skills'
 
 type AssistantEditorProps = {
@@ -42,7 +55,10 @@ type AssistantEditorProps = {
   initialValue?: AssistantRecord | null
   isSubmitting?: boolean
   onSelectWorkspacePath?: () => Promise<string | null> | string | null
-  onSubmit: (input: SaveAssistantInput) => Promise<void> | void
+  onSubmit: (
+    input: SaveAssistantInput,
+    heartbeatInput?: SaveAssistantHeartbeatInput | null
+  ) => Promise<void> | void
 }
 
 function toBooleanMap(value: unknown): Record<string, boolean> {
@@ -133,6 +149,32 @@ function parseMaxSteps(rawValue: string): number | null {
   return parsed
 }
 
+function toInitialHeartbeatValues(
+  heartbeat: AssistantHeartbeatRecord | null | undefined
+): AssistantHeartbeatValues {
+  return {
+    enabled: heartbeat?.enabled ?? false,
+    intervalMinutes: String(
+      heartbeat?.intervalMinutes ?? DEFAULT_ASSISTANT_HEARTBEAT_INTERVAL_MINUTES
+    ),
+    prompt: heartbeat?.prompt ?? DEFAULT_ASSISTANT_HEARTBEAT_PROMPT
+  }
+}
+
+function parseHeartbeatIntervalMinutes(rawValue: string): number | null {
+  const normalized = rawValue.trim()
+  if (normalized.length === 0) {
+    return null
+  }
+
+  const parsed = Number(normalized)
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return null
+  }
+
+  return parsed
+}
+
 function toErrorMessage(error: unknown, t: (key: string) => string): string {
   if (error instanceof Error) {
     const normalized = error.message.trim()
@@ -154,7 +196,11 @@ function getSkillSourceLabel(source: AssistantSkillSource, t: (key: string) => s
   return t('assistants.editor.skillSources.globalAgent')
 }
 
-function validate(values: AssistantEditorValues, t: (key: string) => string): string | null {
+function validate(
+  values: AssistantEditorValues,
+  heartbeatValues: AssistantHeartbeatValues | null,
+  t: (key: string) => string
+): string | null {
   if (values.name.trim().length === 0) {
     return t('assistants.editor.errors.nameRequired')
   }
@@ -165,6 +211,16 @@ function validate(values: AssistantEditorValues, t: (key: string) => string): st
 
   if (!parseMaxSteps(values.maxSteps)) {
     return t('assistants.editor.errors.maxStepsInvalid')
+  }
+
+  if (heartbeatValues) {
+    if (!parseHeartbeatIntervalMinutes(heartbeatValues.intervalMinutes)) {
+      return t('assistants.editor.heartbeat.errors.intervalInvalid')
+    }
+
+    if (heartbeatValues.prompt.trim().length === 0) {
+      return t('assistants.editor.heartbeat.errors.promptRequired')
+    }
   }
 
   return null
@@ -191,6 +247,14 @@ export function AssistantEditor({
   const [isSkillsLoading, setIsSkillsLoading] = useState(false)
   const [skillsError, setSkillsError] = useState<string | null>(null)
   const [removingSkillId, setRemovingSkillId] = useState<string | null>(null)
+  const [heartbeatValues, setHeartbeatValues] = useState<AssistantHeartbeatValues>(() =>
+    toInitialHeartbeatValues(null)
+  )
+  const [initialHeartbeatValues, setInitialHeartbeatValues] = useState<AssistantHeartbeatValues>(() =>
+    toInitialHeartbeatValues(null)
+  )
+  const [isHeartbeatLoading, setIsHeartbeatLoading] = useState(false)
+  const [heartbeatError, setHeartbeatError] = useState<string | null>(null)
 
   const title = useMemo(() => {
     return initialValue ? t('assistants.editor.editTitle') : t('assistants.editor.createTitle')
@@ -279,8 +343,78 @@ export function AssistantEditor({
     }
   }, [])
 
+  useEffect(() => {
+    let isCancelled = false
+
+    if (!initialValue) {
+      const nextValues = toInitialHeartbeatValues(null)
+      setHeartbeatValues(nextValues)
+      setInitialHeartbeatValues(nextValues)
+      setHeartbeatError(null)
+      setIsHeartbeatLoading(false)
+      return
+    }
+
+    const workspaceRootPath =
+      typeof initialValue.workspaceConfig?.rootPath === 'string'
+        ? initialValue.workspaceConfig.rootPath.trim()
+        : ''
+
+    if (workspaceRootPath.length === 0) {
+      const nextValues = toInitialHeartbeatValues(null)
+      setHeartbeatValues(nextValues)
+      setInitialHeartbeatValues(nextValues)
+      setHeartbeatError(null)
+      setIsHeartbeatLoading(false)
+      return
+    }
+
+    setHeartbeatError(null)
+    setIsHeartbeatLoading(true)
+
+    void getAssistantHeartbeat(initialValue.id)
+      .then((heartbeat) => {
+        if (isCancelled) {
+          return
+        }
+
+        const nextValues = toInitialHeartbeatValues(heartbeat)
+        setHeartbeatValues(nextValues)
+        setInitialHeartbeatValues(nextValues)
+      })
+      .catch((loadError) => {
+        if (isCancelled) {
+          return
+        }
+
+        const nextValues = toInitialHeartbeatValues(null)
+        setHeartbeatValues(nextValues)
+        setInitialHeartbeatValues(nextValues)
+        setHeartbeatError(toErrorMessage(loadError, t))
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsHeartbeatLoading(false)
+        }
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [initialValue, t])
+
   const handleInput = (key: keyof AssistantEditorValues, value: string): void => {
     setValues((current) => ({ ...current, [key]: value }))
+  }
+
+  const handleHeartbeatInput = <K extends keyof AssistantHeartbeatValues>(
+    key: K,
+    value: AssistantHeartbeatValues[K]
+  ): void => {
+    setHeartbeatValues((current) => ({
+      ...current,
+      [key]: value
+    }))
   }
 
   const handleMcpToggle = (serverId: string): void => {
@@ -295,7 +429,7 @@ export function AssistantEditor({
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault()
-    const validationError = validate(values, t)
+    const validationError = validate(values, initialValue ? heartbeatValues : null, t)
     setError(validationError)
     if (validationError) {
       return
@@ -310,6 +444,28 @@ export function AssistantEditor({
     }
 
     const workspacePath = values.workspacePath.trim()
+    const initialHeartbeatInput = {
+      enabled: initialHeartbeatValues.enabled,
+      intervalMinutes:
+        parseHeartbeatIntervalMinutes(initialHeartbeatValues.intervalMinutes) ??
+        DEFAULT_ASSISTANT_HEARTBEAT_INTERVAL_MINUTES,
+      prompt: initialHeartbeatValues.prompt.trim()
+    }
+    const nextHeartbeatInput =
+      initialValue && parseHeartbeatIntervalMinutes(heartbeatValues.intervalMinutes)
+        ? {
+            enabled: heartbeatValues.enabled,
+            intervalMinutes: parseHeartbeatIntervalMinutes(heartbeatValues.intervalMinutes) ?? 0,
+            prompt: heartbeatValues.prompt.trim()
+          }
+        : null
+    const heartbeatInput =
+      nextHeartbeatInput &&
+      (nextHeartbeatInput.enabled !== initialHeartbeatInput.enabled ||
+        nextHeartbeatInput.intervalMinutes !== initialHeartbeatInput.intervalMinutes ||
+        nextHeartbeatInput.prompt !== initialHeartbeatInput.prompt)
+        ? nextHeartbeatInput
+        : null
 
     await onSubmit({
       name: values.name.trim(),
@@ -324,7 +480,7 @@ export function AssistantEditor({
           : undefined,
       mcpConfig: nextMcpConfig,
       maxSteps
-    })
+    }, heartbeatInput)
   }
 
   const handleSelectWorkspacePath = async (): Promise<void> => {
@@ -525,6 +681,101 @@ export function AssistantEditor({
                   placeholder={t('assistants.editor.placeholders.maxSteps')}
                 />
               </Field>
+
+              {initialValue ? (
+                <section className="space-y-3 rounded-xl border border-border/70 bg-card/50 p-4">
+                  <div className="space-y-1">
+                    <h3 className="text-base font-medium">
+                      {t('assistants.editor.heartbeat.title')}
+                    </h3>
+                    <p className="text-muted-foreground text-sm">
+                      {t('assistants.editor.heartbeat.description')}
+                    </p>
+                  </div>
+
+                  {values.workspacePath.trim().length === 0 ? (
+                    <p className="text-muted-foreground text-sm">
+                      {t('assistants.editor.heartbeat.workspaceRequired')}
+                    </p>
+                  ) : null}
+
+                  {isHeartbeatLoading ? (
+                    <p className="text-muted-foreground text-sm">
+                      {t('assistants.editor.heartbeat.loading')}
+                    </p>
+                  ) : null}
+
+                  {heartbeatError ? (
+                    <p role="alert" className="text-destructive text-sm">
+                      {heartbeatError}
+                    </p>
+                  ) : null}
+
+                  <div className="flex items-start justify-between gap-3 rounded-lg border border-border/60 px-3 py-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">
+                        {t('assistants.editor.heartbeat.enableLabel')}
+                      </p>
+                      <p className="text-muted-foreground text-sm">
+                        {t('assistants.editor.heartbeat.enableDescription')}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-label={t('assistants.editor.heartbeat.toggleAriaLabel')}
+                      aria-checked={heartbeatValues.enabled}
+                      className={cn(
+                        'relative inline-flex h-6 w-11 items-center rounded-full border transition-colors',
+                        heartbeatValues.enabled
+                          ? 'border-emerald-400/80 bg-emerald-500/30'
+                          : 'border-border/80 bg-background/80'
+                      )}
+                      onClick={() => handleHeartbeatInput('enabled', !heartbeatValues.enabled)}
+                      disabled={isSubmitting || isHeartbeatLoading}
+                    >
+                      <span
+                        className={cn(
+                          'inline-block size-4 rounded-full bg-foreground/90 transition-transform',
+                          heartbeatValues.enabled ? 'translate-x-6' : 'translate-x-1'
+                        )}
+                      />
+                    </button>
+                  </div>
+
+                  <Field>
+                    <FieldLabel htmlFor="assistant-heartbeat-interval">
+                      {t('assistants.editor.heartbeat.intervalLabel')}
+                    </FieldLabel>
+                    <Input
+                      id="assistant-heartbeat-interval"
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={heartbeatValues.intervalMinutes}
+                      onChange={(event) =>
+                        handleHeartbeatInput('intervalMinutes', event.target.value)
+                      }
+                      placeholder={t('assistants.editor.heartbeat.intervalPlaceholder')}
+                      disabled={isSubmitting || isHeartbeatLoading}
+                    />
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="assistant-heartbeat-prompt">
+                      {t('assistants.editor.heartbeat.promptLabel')}
+                    </FieldLabel>
+                    <Textarea
+                      id="assistant-heartbeat-prompt"
+                      rows={4}
+                      value={heartbeatValues.prompt}
+                      onChange={(event) => handleHeartbeatInput('prompt', event.target.value)}
+                      placeholder={t('assistants.editor.heartbeat.promptPlaceholder')}
+                      disabled={isSubmitting || isHeartbeatLoading}
+                    />
+                  </Field>
+                </section>
+              ) : null}
             </div>
           ) : null}
 

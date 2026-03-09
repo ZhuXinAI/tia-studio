@@ -5,8 +5,17 @@ import { createRoot, type Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AssistantEditor } from './assistant-editor'
+import { getAssistantHeartbeat } from './assistant-heartbeat-query'
 import type { ProviderRecord } from '../settings/providers/providers-query'
 import type { ManagedRuntimesState } from '../settings/runtimes/managed-runtimes-query'
+
+vi.mock('./assistant-heartbeat-query', () => ({
+  getAssistantHeartbeat: vi.fn(),
+  updateAssistantHeartbeat: vi.fn(),
+  DEFAULT_ASSISTANT_HEARTBEAT_INTERVAL_MINUTES: 30,
+  DEFAULT_ASSISTANT_HEARTBEAT_PROMPT:
+    'Review recent work logs and recent conversations. Follow up only if needed.'
+}))
 
 function findButtonByText(container: HTMLElement, text: string): HTMLButtonElement {
   const button = Array.from(container.querySelectorAll('button')).find((candidate) =>
@@ -20,6 +29,26 @@ function findButtonByText(container: HTMLElement, text: string): HTMLButtonEleme
   return button
 }
 
+async function flushAsyncWork(): Promise<void> {
+  await act(async () => {
+    await Promise.resolve()
+  })
+}
+
+function setInputValue(
+  element: HTMLInputElement | HTMLTextAreaElement,
+  value: string
+): void {
+  const prototype =
+    element instanceof HTMLTextAreaElement
+      ? HTMLTextAreaElement.prototype
+      : HTMLInputElement.prototype
+  const valueSetter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set
+
+  valueSetter?.call(element, value)
+  element.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
 describe('assistant editor', () => {
   let container: HTMLDivElement
   let root: Root
@@ -29,6 +58,7 @@ describe('assistant editor', () => {
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
+    vi.mocked(getAssistantHeartbeat).mockResolvedValue(null)
   })
 
   afterEach(() => {
@@ -195,7 +225,71 @@ describe('assistant editor', () => {
       expect.objectContaining({
         description: 'Routes travel bookings and itinerary work.',
         instructions: 'Original prompt'
-      })
+      }),
+      null
+    )
+  })
+
+  it('loads heartbeat config for the selected assistant', async () => {
+    vi.mocked(getAssistantHeartbeat).mockResolvedValue({
+      id: 'heartbeat-1',
+      assistantId: 'assistant-1',
+      enabled: true,
+      intervalMinutes: 30,
+      prompt: 'Review recent work and recent conversations every 30 minutes.',
+      threadId: 'thread-1',
+      lastRunAt: null,
+      nextRunAt: null,
+      lastRunStatus: null,
+      lastError: null,
+      createdAt: '2026-03-10T00:00:00.000Z',
+      updatedAt: '2026-03-10T00:00:00.000Z'
+    })
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <AssistantEditor
+            providers={[provider]}
+            mcpServers={{}}
+            initialValue={{
+              id: 'assistant-1',
+              name: 'Planner',
+              description: '',
+              instructions: '',
+              enabled: true,
+              providerId: 'provider-1',
+              workspaceConfig: { rootPath: '/Users/windht/Dev/tia-studio' },
+              skillsConfig: {},
+              mcpConfig: {},
+              maxSteps: 100,
+              memoryConfig: null,
+              createdAt: '2026-03-02T00:00:00.000Z',
+              updatedAt: '2026-03-02T00:00:00.000Z'
+            }}
+            onSubmit={() => undefined}
+          />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    expect(getAssistantHeartbeat).toHaveBeenCalledWith('assistant-1')
+
+    const heartbeatToggle = container.querySelector(
+      '[aria-label="Enable heartbeat"]'
+    ) as HTMLButtonElement | null
+    const intervalInput = container.querySelector(
+      '#assistant-heartbeat-interval'
+    ) as HTMLInputElement | null
+    const promptTextarea = container.querySelector(
+      '#assistant-heartbeat-prompt'
+    ) as HTMLTextAreaElement | null
+
+    expect(heartbeatToggle?.getAttribute('aria-checked')).toBe('true')
+    expect(intervalInput?.value).toBe('30')
+    expect(promptTextarea?.value).toBe(
+      'Review recent work and recent conversations every 30 minutes.'
     )
   })
 
@@ -339,7 +433,89 @@ describe('assistant editor', () => {
           docs: true,
           github: false
         }
-      })
+      }),
+      null
+    )
+  })
+
+  it('submits heartbeat edits while preserving existing assistant fields', async () => {
+    const onSubmit = vi.fn(async () => undefined)
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <AssistantEditor
+            providers={[provider]}
+            mcpServers={{}}
+            initialValue={{
+              id: 'assistant-1',
+              name: 'Planner',
+              description: 'Routes travel bookings and itinerary work.',
+              instructions: 'Original prompt',
+              enabled: true,
+              providerId: 'provider-1',
+              workspaceConfig: { rootPath: '/Users/windht/Dev' },
+              skillsConfig: {},
+              mcpConfig: {},
+              maxSteps: 100,
+              memoryConfig: null,
+              createdAt: '2026-03-02T00:00:00.000Z',
+              updatedAt: '2026-03-02T00:00:00.000Z'
+            }}
+            onSubmit={onSubmit}
+          />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const heartbeatToggle = container.querySelector(
+      '[aria-label="Enable heartbeat"]'
+    ) as HTMLButtonElement | null
+    const intervalInput = container.querySelector(
+      '#assistant-heartbeat-interval'
+    ) as HTMLInputElement | null
+    const promptTextarea = container.querySelector(
+      '#assistant-heartbeat-prompt'
+    ) as HTMLTextAreaElement | null
+
+    await act(async () => {
+      heartbeatToggle?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    await act(async () => {
+      if (intervalInput) {
+        setInputValue(intervalInput, '45')
+      }
+
+      if (promptTextarea) {
+        setInputValue(
+          promptTextarea,
+          'Review recent work and recent conversations every 45 minutes.'
+        )
+      }
+    })
+
+    const submitButton = findButtonByText(container, 'Update Assistant')
+    await act(async () => {
+      submitButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Planner',
+        description: 'Routes travel bookings and itinerary work.',
+        instructions: 'Original prompt',
+        providerId: 'provider-1',
+        workspaceConfig: {
+          rootPath: '/Users/windht/Dev'
+        }
+      }),
+      {
+        enabled: true,
+        intervalMinutes: 45,
+        prompt: 'Review recent work and recent conversations every 45 minutes.'
+      }
     )
   })
 

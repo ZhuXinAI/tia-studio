@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import type { AssistantHeartbeatsRepository } from '../persistence/repos/assistant-heartbeats-repo'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { ChannelsRepository } from '../persistence/repos/channels-repo'
 import type { ChannelPairingsRepository } from '../persistence/repos/channel-pairings-repo'
@@ -15,6 +16,7 @@ import type { TeamRuntime } from '../mastra/team-runtime'
 import { createBearerAuthMiddleware } from './auth-middleware'
 import type { ThreadMessageEventsStore } from './chat/thread-message-events-store'
 import type { TeamRunStatusStore } from './chat/team-run-status-store'
+import { registerAssistantHeartbeatRoute } from './routes/assistant-heartbeat-route'
 import { registerAssistantsRoute } from './routes/assistants-route'
 import { registerChatRoute } from './routes/chat-route'
 import { registerClawsRoute } from './routes/claws-route'
@@ -41,6 +43,7 @@ type CreateAppOptions = {
     channels: ChannelsRepository
     pairings: ChannelPairingsRepository
     cronJobs: CronJobsRepository
+    heartbeats: AssistantHeartbeatsRepository
   }
   assistantRuntime?: AssistantRuntime
   teamRuntime?: TeamRuntime
@@ -50,6 +53,9 @@ type CreateAppOptions = {
     reload(): Promise<void>
   }
   cronSchedulerService?: {
+    reload(): Promise<void>
+  }
+  heartbeatSchedulerService?: {
     reload(): Promise<void>
   }
 }
@@ -105,6 +111,12 @@ export function createApp(options: CreateAppOptions): Hono {
         cronSchedulerService: options.cronSchedulerService
       })
     }
+    registerAssistantHeartbeatRoute(app, {
+      assistantsRepo: options.repositories.assistants,
+      threadsRepo: options.repositories.threads,
+      heartbeatsRepo: options.repositories.heartbeats,
+      heartbeatSchedulerService: options.heartbeatSchedulerService
+    })
     registerThreadsRoute(app, {
       threadsRepo: options.repositories.threads,
       assistantsRepo: options.repositories.assistants
