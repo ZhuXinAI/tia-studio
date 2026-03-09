@@ -189,6 +189,15 @@ export function ClawsPage(): React.JSX.Element {
   }
 
   async function handleDelete(claw: ClawRecord): Promise<void> {
+    const confirmLabel =
+      claw.name.trim().length > 0 ? claw.name.trim() : t('claws.card.deleteConfirmFallbackLabel')
+    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+      const confirmed = window.confirm(t('claws.card.deleteConfirmPrompt', { name: confirmLabel }))
+      if (!confirmed) {
+        return
+      }
+    }
+
     setIsSubmitting(true)
     setErrorMessage(null)
 
