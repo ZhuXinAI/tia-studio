@@ -136,7 +136,7 @@ describe('app router', () => {
     const html = renderRouter(['/chat'])
 
     expect(html).toContain('aria-label="Open settings"')
-    expect(html).toContain('Home')
+    expect(html).toContain('Chats')
     expect(html).toContain('Claws')
     expect(html).toContain('Team')
     expect(html).not.toContain('Control Center')
@@ -145,7 +145,7 @@ describe('app router', () => {
   it('renders the team route from the top nav', () => {
     const html = renderRouter(['/team'])
 
-    expect(html).toContain('Home')
+    expect(html).toContain('Chats')
     expect(html).toContain('Team')
     expect(html).toContain('Team Workspaces')
     expect(html).toContain('Team Chat')
