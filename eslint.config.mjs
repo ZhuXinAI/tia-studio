@@ -33,5 +33,11 @@ export default defineConfig(
       'react-hooks/set-state-in-effect': 'off'
     }
   },
+  {
+    files: ['**/*.{js,mjs,cjs}'],
+    rules: {
+      '@typescript-eslint/explicit-function-return-type': 'off'
+    }
+  },
   eslintConfigPrettier
 )

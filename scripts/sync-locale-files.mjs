@@ -17,10 +17,19 @@ const supportedLocaleCodes = [
   'ro-RO'
 ]
 
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
 function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+/**
+ * @param {unknown} sourceValue
+ * @param {unknown} targetValue
+ * @returns {unknown}
+ */
 function mergeLocaleValue(sourceValue, targetValue) {
   if (Array.isArray(sourceValue)) {
     return Array.isArray(targetValue) ? targetValue : sourceValue
@@ -40,15 +49,32 @@ function mergeLocaleValue(sourceValue, targetValue) {
   return nextValue
 }
 
+/**
+ * @param {string} filePath
+ * @returns {Promise<unknown>}
+ */
 async function readJsonFile(filePath) {
   const rawValue = await readFile(filePath, 'utf8')
   return JSON.parse(rawValue)
 }
 
+/**
+ * @param {string} filePath
+ * @param {unknown} value
+ * @returns {Promise<void>}
+ */
 async function writeJsonFile(filePath, value) {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8')
 }
 
+/**
+ * @param {{
+ *   localesDir?: string
+ *   sourceLocaleCode?: string
+ *   localeCodes?: string[]
+ * }} [options={}]
+ * @returns {Promise<void>}
+ */
 export async function syncLocaleFiles(options = {}) {
   const localesDir =
     options.localesDir ??

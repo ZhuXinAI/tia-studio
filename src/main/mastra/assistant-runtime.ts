@@ -71,6 +71,10 @@ type AssistantContext = {
   provider: NonNullable<Awaited<ReturnType<ProvidersRepository['getById']>>>
 }
 
+const CHANNEL_BREAK_TAG = '[[BR]]'
+const CHANNEL_SPLITTER_INSTRUCTION =
+  'When you want to split a reply into multiple channel messages, insert [[BR]] between chunks.'
+
 export type AssistantRuntime = {
   streamChat: (params: StreamChatParams) => Promise<ReadableStream<UIMessageChunk>>
   listThreadMessages: (params: ListThreadMessagesParams) => Promise<UIMessage[]>
@@ -123,7 +127,9 @@ export class AssistantRuntimeService implements AssistantRuntime {
     if (thread.resourceId !== params.profileId) {
       throw new ChatRouteError(404, 'thread_not_found', 'Thread not found')
     }
-    await this.ensureAgentRegistered(assistant, provider)
+    await this.ensureAgentRegistered(assistant, provider, {
+      channelDeliveryEnabled: Boolean(params.channelTarget)
+    })
 
     const stream = await handleChatStream({
       mastra: this.options.mastra,
@@ -158,7 +164,9 @@ export class AssistantRuntimeService implements AssistantRuntime {
       assistantId: params.assistantId,
       threadId: params.threadId
     })
-    await this.ensureAgentRegistered(assistant, provider)
+    await this.ensureAgentRegistered(assistant, provider, {
+      channelDeliveryEnabled: false
+    })
 
     const requestContext = new RequestContext()
     requestContext.set(HEARTBEAT_RUN_CONTEXT_KEY, randomUUID())
@@ -202,7 +210,34 @@ export class AssistantRuntimeService implements AssistantRuntime {
   ): ReadableStream<UIMessageChunk> {
     const reader = stream.getReader()
     let isSynced = false
-    const responseTextParts: string[] = []
+    let channelTextBuffer = ''
+
+    const publishCompletedChannelChunks = async (): Promise<void> => {
+      if (!params.channelTarget || !channelTextBuffer.includes(CHANNEL_BREAK_TAG)) {
+        return
+      }
+
+      const chunks = channelTextBuffer.split(CHANNEL_BREAK_TAG)
+      for (let index = 0; index < chunks.length - 1; index += 1) {
+        await this.publishChannelReplyChunk({
+          channelTarget: params.channelTarget,
+          text: chunks[index] ?? ''
+        })
+      }
+      channelTextBuffer = chunks[chunks.length - 1] ?? ''
+    }
+
+    const flushFinalChannelChunk = async (): Promise<void> => {
+      if (!params.channelTarget) {
+        return
+      }
+
+      await this.publishChannelReplyChunk({
+        channelTarget: params.channelTarget,
+        text: channelTextBuffer
+      })
+      channelTextBuffer = ''
+    }
 
     return new ReadableStream<UIMessageChunk>({
       pull: async (controller) => {
@@ -211,11 +246,8 @@ export class AssistantRuntimeService implements AssistantRuntime {
           if (done) {
             if (!isSynced) {
               isSynced = true
+              await flushFinalChannelChunk()
               await this.syncThreadAfterStreaming(params)
-              await this.publishChannelReplyEvent({
-                channelTarget: params.channelTarget,
-                text: responseTextParts.join('')
-              })
             }
             controller.close()
             reader.releaseLock()
@@ -223,7 +255,8 @@ export class AssistantRuntimeService implements AssistantRuntime {
           }
 
           if (value.type === 'text-delta' && typeof value.delta === 'string') {
-            responseTextParts.push(value.delta)
+            channelTextBuffer += value.delta
+            await publishCompletedChannelChunks()
           }
 
           // Capture usage from finish chunk and add to message metadata
@@ -274,7 +307,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
     await this.syncGeneratedThreadTitle(params).catch(() => undefined)
   }
 
-  private async publishChannelReplyEvent(input: {
+  private async publishChannelReplyChunk(input: {
     channelTarget?: ChannelTarget
     text: string
   }): Promise<void> {
@@ -443,7 +476,12 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
   private async ensureAgentRegistered(
     assistant: AssistantContext['assistant'],
-    provider: AssistantContext['provider']
+    provider: AssistantContext['provider'],
+    options: {
+      channelDeliveryEnabled: boolean
+    } = {
+      channelDeliveryEnabled: false
+    }
   ): Promise<void> {
     const enabledMcpServers = await this.resolveEnabledMcpServers(assistant.mcpConfig ?? {})
     const mcpServersSignature = JSON.stringify(enabledMcpServers)
@@ -461,7 +499,8 @@ export class AssistantRuntimeService implements AssistantRuntime {
       JSON.stringify(assistant.mcpConfig ?? {}),
       assistant.maxSteps,
       JSON.stringify(assistant.memoryConfig ?? {}),
-      mcpServersSignature
+      mcpServersSignature,
+      options.channelDeliveryEnabled ? 'channel-delivery:on' : 'channel-delivery:off'
     ].join('|')
 
     if (this.registeredAgentSignatures.get(assistant.id) === nextSignature) {
@@ -519,7 +558,10 @@ export class AssistantRuntimeService implements AssistantRuntime {
       timeZoneName: 'short'
     })
     const baseInstructions = assistant.instructions || 'You are a helpful assistant.'
-    const agentInstructions = `${baseInstructions}\n\nCurrent date and time: ${currentDateTime}\n\n`
+    const channelInstructions = options.channelDeliveryEnabled
+      ? `\nChannel delivery guidelines:\n- ${CHANNEL_SPLITTER_INSTRUCTION}\n- Keep channel replies short and natural.\n- Do not mention [[BR]] to the user.\n`
+      : ''
+    const agentInstructions = `${baseInstructions}\n\nCurrent date and time: ${currentDateTime}\n${channelInstructions}\n`
 
     const storage = this.options.mastra.getStorage()
     const memory = new Memory({

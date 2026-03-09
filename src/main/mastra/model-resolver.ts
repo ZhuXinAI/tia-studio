@@ -1,6 +1,7 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
+import type { MastraLanguageModel, MastraLegacyLanguageModel } from '@mastra/core/agent'
 import { createOllama } from 'ollama-ai-provider'
 
 export type ProviderModelConfig = {
@@ -35,7 +36,7 @@ const defaultFactories: ModelResolverFactories = {
 export function resolveModel(
   provider: ProviderModelConfig,
   factories: Partial<ModelResolverFactories> = {}
-): unknown {
+): MastraLanguageModel | MastraLegacyLanguageModel {
   const mergedFactories = {
     ...defaultFactories,
     ...factories
@@ -47,7 +48,9 @@ export function resolveModel(
       baseURL: provider.apiHost ?? undefined
     })
 
-    return openaiProvider.chat(provider.selectedModel)
+    return openaiProvider.chat(provider.selectedModel) as
+      | MastraLanguageModel
+      | MastraLegacyLanguageModel
   }
 
   if (provider.type === 'openai-response') {
@@ -56,7 +59,9 @@ export function resolveModel(
       baseURL: provider.apiHost ?? undefined
     })
 
-    return openaiProvider.responses(provider.selectedModel)
+    return openaiProvider.responses(provider.selectedModel) as
+      | MastraLanguageModel
+      | MastraLegacyLanguageModel
   }
 
   if (provider.type === 'gemini') {
@@ -65,7 +70,7 @@ export function resolveModel(
       baseURL: provider.apiHost ?? undefined
     })
 
-    return googleProvider(provider.selectedModel)
+    return googleProvider(provider.selectedModel) as MastraLanguageModel | MastraLegacyLanguageModel
   }
 
   if (provider.type === 'anthropic') {
@@ -74,7 +79,9 @@ export function resolveModel(
       baseURL: provider.apiHost ?? undefined
     })
 
-    return anthropicProvider(provider.selectedModel)
+    return anthropicProvider(provider.selectedModel) as
+      | MastraLanguageModel
+      | MastraLegacyLanguageModel
   }
 
   if (provider.type === 'ollama') {
@@ -82,7 +89,7 @@ export function resolveModel(
       baseURL: provider.apiHost ?? undefined
     })
 
-    return ollamaProvider(provider.selectedModel)
+    return ollamaProvider(provider.selectedModel) as MastraLanguageModel | MastraLegacyLanguageModel
   }
 
   throw new Error(`Unsupported provider type: ${provider.type}`)

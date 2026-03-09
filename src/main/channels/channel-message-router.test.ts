@@ -22,20 +22,6 @@ function createStream(chunks: UIMessageChunk[] = []): ReadableStream<UIMessageCh
   })
 }
 
-function createAssistantReplyStream(text: string): ReadableStream<UIMessageChunk> {
-  return createStream(
-    text.length === 0
-      ? []
-      : [
-          { type: 'start' } as UIMessageChunk,
-          { type: 'text-start', id: 'text-1' } as UIMessageChunk,
-          { type: 'text-delta', id: 'text-1', delta: text } as UIMessageChunk,
-          { type: 'text-end', id: 'text-1' } as UIMessageChunk,
-          { type: 'finish' } as UIMessageChunk
-        ]
-  )
-}
-
 function createAssistantRuntimeStub(streamChat: AssistantRuntime['streamChat']): AssistantRuntime {
   return {
     streamChat,
@@ -267,21 +253,14 @@ describe('ChannelMessageRouter', () => {
     )
   })
 
-  it('publishes a send request after the assistant finishes', async () => {
-    const publishedEvents: unknown[] = []
-    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
-      createAssistantReplyStream('Hello from assistant')
-    )
+  it('passes channel target metadata to the runtime for progressive outbound delivery', async () => {
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () => createStream())
     const router = new ChannelMessageRouter({
       eventBus,
       channelsRepo,
       bindingsRepo,
       threadsRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat)
-    })
-
-    eventBus.subscribe('channel.message.send-requested', (event) => {
-      publishedEvents.push(event)
     })
 
     await router.handleInboundEvent({
@@ -297,46 +276,17 @@ describe('ChannelMessageRouter', () => {
       }
     })
 
-    expect(publishedEvents).toContainEqual(
+    expect(streamChat).toHaveBeenCalledWith(
       expect.objectContaining({
-        channelId,
-        remoteChatId: 'oc_123',
-        content: 'Hello from assistant'
+        assistantId,
+        profileId: 'default-profile',
+        channelTarget: {
+          channelId,
+          channelType: 'lark',
+          remoteChatId: 'oc_123'
+        }
       })
     )
-  })
-
-  it('does not publish a send request when the assistant text is empty', async () => {
-    const publishedEvents: unknown[] = []
-    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
-      createAssistantReplyStream('')
-    )
-    const router = new ChannelMessageRouter({
-      eventBus,
-      channelsRepo,
-      bindingsRepo,
-      threadsRepo,
-      assistantRuntime: createAssistantRuntimeStub(streamChat)
-    })
-
-    eventBus.subscribe('channel.message.send-requested', (event) => {
-      publishedEvents.push(event)
-    })
-
-    await router.handleInboundEvent({
-      eventId: 'evt-1',
-      channelId,
-      channelType: 'lark',
-      message: {
-        id: 'msg-1',
-        remoteChatId: 'oc_123',
-        senderId: 'ou_user',
-        content: 'hello',
-        timestamp: new Date('2026-03-08T00:00:00.000Z')
-      }
-    })
-
-    expect(publishedEvents).toEqual([])
   })
 
   it('ignores inbound messages when the attached assistant is disabled', async () => {

@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import type { UIMessageWithMetadata } from '@mastra/core/agent/message-list'
 import type { UIMessageChunk } from 'ai'
 import type { AssistantRuntime } from '../mastra/assistant-runtime'
@@ -19,26 +18,19 @@ type ChannelMessageRouterOptions = {
 const DEFAULT_PROFILE_ID = 'default-profile'
 const DEFAULT_THREAD_TITLE = 'New Thread'
 
-async function drainStream(stream: ReadableStream<UIMessageChunk>): Promise<string> {
+async function consumeStream(stream: ReadableStream<UIMessageChunk>): Promise<void> {
   const reader = stream.getReader()
-  let assistantText = ''
 
   try {
     while (true) {
-      const { done, value } = await reader.read()
+      const { done } = await reader.read()
       if (done) {
         break
-      }
-
-      if (value.type === 'text-delta') {
-        assistantText += value.delta
       }
     }
   } finally {
     reader.releaseLock()
   }
-
-  return assistantText
 }
 
 export class ChannelMessageRouter {
@@ -114,22 +106,15 @@ export class ChannelMessageRouter {
       assistantId: runtimeChannel.assistantId,
       threadId,
       profileId: DEFAULT_PROFILE_ID,
-      messages: [userMessage]
+      messages: [userMessage],
+      channelTarget: {
+        channelId: event.channelId,
+        channelType: event.channelType,
+        remoteChatId: event.message.remoteChatId
+      }
     })
 
-    const assistantReplyText = await drainStream(stream)
-
-    if (assistantReplyText.trim().length === 0) {
-      return
-    }
-
-    await this.options.eventBus.publish('channel.message.send-requested', {
-      eventId: randomUUID(),
-      channelId: event.channelId,
-      channelType: event.channelType,
-      remoteChatId: event.message.remoteChatId,
-      content: assistantReplyText
-    })
+    await consumeStream(stream)
   }
 
   private async createThreadBinding(input: {

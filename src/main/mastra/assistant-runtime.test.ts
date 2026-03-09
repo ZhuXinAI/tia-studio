@@ -3,6 +3,7 @@ import path from 'node:path'
 import { access, mkdtemp, rm } from 'node:fs/promises'
 import { describe, expect, it, vi } from 'vitest'
 import type { Mastra } from '@mastra/core/mastra'
+import { RequestContext } from '@mastra/core/request-context'
 import type { UIMessageChunk } from 'ai'
 import type { AppAssistant } from '../persistence/repos/assistants-repo'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
@@ -89,6 +90,22 @@ async function drainStream(stream: ReadableStream<UIMessageChunk>): Promise<void
   }
 }
 
+async function getAgentInstructions(agent: unknown): Promise<string> {
+  const instructions = await (
+    agent as {
+      getInstructions: (options: { requestContext: RequestContext }) => Promise<unknown>
+    }
+  ).getInstructions({
+    requestContext: new RequestContext()
+  })
+
+  if (typeof instructions === 'string') {
+    return instructions
+  }
+
+  return JSON.stringify(instructions)
+}
+
 describe('AssistantRuntimeService', () => {
   it('includes global and workspace skills directories by default', () => {
     const runtime = new AssistantRuntimeService({
@@ -148,6 +165,107 @@ describe('AssistantRuntimeService', () => {
 
     const memory = await agent.getMemory()
     expect(memory?.getMergedThreadConfig().generateTitle).toBe(true)
+  })
+
+  it('adds channel splitter guidance only for channel-targeted runs', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.enqueue({ type: 'finish' } as UIMessageChunk)
+          controller.close()
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const provider = buildProvider()
+    const threadRecord = {
+      id: 'thread-1',
+      assistantId: assistant.id,
+      resourceId: 'profile-1',
+      title: 'New Thread',
+      lastMessageAt: null,
+      createdAt: '2026-03-02T00:00:00.000Z',
+      updatedAt: '2026-03-02T00:00:00.000Z'
+    }
+
+    const channelMastra = await createMastraInstance(':memory:')
+    const channelRuntime = new AssistantRuntimeService({
+      mastra: channelMastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => provider)
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => threadRecord),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    await drainStream(
+      await channelRuntime.streamChat({
+        assistantId: assistant.id,
+        threadId: threadRecord.id,
+        profileId: threadRecord.resourceId,
+        messages: [],
+        channelTarget: {
+          channelId: 'channel-1',
+          channelType: 'lark',
+          remoteChatId: 'chat-1'
+        }
+      })
+    )
+
+    await expect(getAgentInstructions(channelMastra.getAgentById(assistant.id))).resolves.toContain(
+      'When you want to split a reply into multiple channel messages, insert [[BR]]'
+    )
+
+    const plainMastra = await createMastraInstance(':memory:')
+    const plainRuntime = new AssistantRuntimeService({
+      mastra: plainMastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => provider)
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => threadRecord),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    await drainStream(
+      await plainRuntime.streamChat({
+        assistantId: assistant.id,
+        threadId: threadRecord.id,
+        profileId: threadRecord.resourceId,
+        messages: []
+      })
+    )
+
+    await expect(
+      getAgentInstructions(plainMastra.getAgentById(assistant.id))
+    ).resolves.not.toContain(
+      'When you want to split a reply into multiple channel messages, insert [[BR]]'
+    )
   })
 
   it('bootstraps assistant workspace files when registering an agent', async () => {
@@ -809,6 +927,140 @@ describe('AssistantRuntimeService', () => {
         payload: {
           type: 'text',
           text: 'Hello world'
+        }
+      }
+    ])
+  })
+
+  it('publishes completed channel chunks before the full reply finishes', async () => {
+    handleChatStreamMock.mockReset()
+
+    let streamController!: ReadableStreamDefaultController<UIMessageChunk>
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          streamController = controller
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const bus = new ChannelEventBus()
+    const publishedEvents: unknown[] = []
+    let resolveFirstEvent = () => {}
+    const firstEventSeen = new Promise<void>((resolve) => {
+      resolveFirstEvent = resolve
+    })
+
+    bus.subscribe('channel.message.send-requested', (event) => {
+      publishedEvents.push(event)
+      if (publishedEvents.length === 1) {
+        resolveFirstEvent()
+      }
+    })
+
+    const runtime = new AssistantRuntimeService({
+      mastra: await createMastraInstance(':memory:'),
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          title: 'New Thread',
+          lastMessageAt: null,
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        })),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never,
+      channelEventBus: bus
+    })
+
+    const stream = await runtime.streamChat({
+      assistantId: assistant.id,
+      threadId: 'thread-1',
+      profileId: 'profile-1',
+      messages: [],
+      channelTarget: {
+        channelId: 'channel-1',
+        channelType: 'lark',
+        remoteChatId: 'chat-1'
+      }
+    })
+
+    const drainPromise = drainStream(stream)
+
+    streamController.enqueue({
+      type: 'text-delta',
+      id: 'message-1',
+      delta: 'First'
+    } as UIMessageChunk)
+    streamController.enqueue({
+      type: 'text-delta',
+      id: 'message-1',
+      delta: ' chunk[[BR]]Sec'
+    } as UIMessageChunk)
+
+    await firstEventSeen
+
+    expect(publishedEvents).toEqual([
+      {
+        eventId: expect.any(String),
+        channelId: 'channel-1',
+        channelType: 'lark',
+        remoteChatId: 'chat-1',
+        content: 'First chunk',
+        payload: {
+          type: 'text',
+          text: 'First chunk'
+        }
+      }
+    ])
+
+    streamController.enqueue({
+      type: 'text-delta',
+      id: 'message-1',
+      delta: 'ond chunk'
+    } as UIMessageChunk)
+    streamController.enqueue({ type: 'finish' } as UIMessageChunk)
+    streamController.close()
+
+    await drainPromise
+
+    expect(publishedEvents).toEqual([
+      {
+        eventId: expect.any(String),
+        channelId: 'channel-1',
+        channelType: 'lark',
+        remoteChatId: 'chat-1',
+        content: 'First chunk',
+        payload: {
+          type: 'text',
+          text: 'First chunk'
+        }
+      },
+      {
+        eventId: expect.any(String),
+        channelId: 'channel-1',
+        channelType: 'lark',
+        remoteChatId: 'chat-1',
+        content: 'Second chunk',
+        payload: {
+          type: 'text',
+          text: 'Second chunk'
         }
       }
     ])
