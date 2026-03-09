@@ -1,7 +1,10 @@
 import os from 'node:os'
 import path from 'node:path'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { RequestContext } from '@mastra/core/request-context'
+import { makeCoreTool } from '@mastra/core/utils'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { resolveModel } from '../model-resolver'
 import { createWorkLogTools } from './work-log-tools'
 
 describe('work log tools', () => {
@@ -91,5 +94,36 @@ describe('work log tools', () => {
         }
       ]
     })
+  })
+
+  it('keeps the listWorkLogs input schema as a root object for OpenAI Responses', () => {
+    const tools = createWorkLogTools({ workspaceRootPath: workspaceRoot })
+    const model = resolveModel({
+      type: 'openai-response',
+      apiKey: 'test-key',
+      selectedModel: 'gpt-4.1'
+    })
+    const coreTool = makeCoreTool(
+      tools.listWorkLogs,
+      {
+        name: 'listWorkLogs',
+        model,
+        requestContext: new RequestContext()
+      },
+      'tool'
+    )
+    const parameters =
+      typeof coreTool.parameters === 'object' &&
+      coreTool.parameters !== null &&
+      'jsonSchema' in coreTool.parameters
+        ? coreTool.parameters.jsonSchema
+        : coreTool.parameters
+
+    expect(parameters).toMatchObject({
+      type: 'object',
+      properties: {},
+      additionalProperties: false
+    })
+    expect(parameters).not.toHaveProperty('anyOf')
   })
 })
