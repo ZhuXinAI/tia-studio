@@ -420,6 +420,80 @@ describe('TelegramChannel', () => {
     })
   })
 
+  it('returns from inbound delivery before downstream processing finishes', async () => {
+    const client = new TelegramClientStub()
+    const pairingsRepo = new PairingsRepoStub()
+    pairingsRepo.setPairing(createApprovedPairing())
+    let resolveHandler: (() => void) | undefined
+    const onMessage = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveHandler = resolve
+        })
+    )
+    const channel = new TelegramChannel({
+      id: 'channel-telegram',
+      botToken: '123456:test-token',
+      client,
+      pairingsRepo
+    })
+    channel.onMessage = onMessage
+
+    await channel.start()
+
+    const deliveryPromise = client.deliverText({
+      id: '42',
+      chatId: '1001',
+      senderId: '1001',
+      senderDisplayName: 'Alice',
+      senderUsername: 'alice',
+      text: 'hello from telegram',
+      timestamp: new Date('2026-03-09T00:10:00.000Z')
+    })
+
+    const result = await Promise.race([
+      deliveryPromise.then(() => 'resolved'),
+      new Promise<string>((resolve) => setTimeout(() => resolve('timeout'), 10))
+    ])
+
+    expect(result).toBe('resolved')
+    expect(onMessage).toHaveBeenCalled()
+
+    resolveHandler?.()
+    await deliveryPromise
+  })
+
+  it('does not reject inbound delivery when downstream processing fails', async () => {
+    const client = new TelegramClientStub()
+    const pairingsRepo = new PairingsRepoStub()
+    pairingsRepo.setPairing(createApprovedPairing())
+    const onMessage = vi.fn(async () => {
+      throw new Error('downstream failed')
+    })
+    const channel = new TelegramChannel({
+      id: 'channel-telegram',
+      botToken: '123456:test-token',
+      client,
+      pairingsRepo
+    })
+    channel.onMessage = onMessage
+
+    await channel.start()
+
+    await expect(
+      client.deliverText({
+        id: '42',
+        chatId: '1001',
+        senderId: '1001',
+        senderDisplayName: 'Alice',
+        senderUsername: 'alice',
+        text: 'hello from telegram',
+        timestamp: new Date('2026-03-09T00:10:00.000Z')
+      })
+    ).resolves.toBeUndefined()
+    expect(onMessage).toHaveBeenCalled()
+  })
+
   it('sends assistant replies back to the Telegram chat', async () => {
     const client = new TelegramClientStub()
     const channel = new TelegramChannel({

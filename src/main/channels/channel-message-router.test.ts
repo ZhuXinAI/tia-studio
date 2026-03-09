@@ -306,7 +306,7 @@ describe('ChannelMessageRouter', () => {
     )
   })
 
-  it('does not publish a send request when the assistant text is empty', async () => {
+  it('publishes a fallback error when the assistant text is empty', async () => {
     const publishedEvents: unknown[] = []
     const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
       createAssistantReplyStream('')
@@ -336,7 +336,13 @@ describe('ChannelMessageRouter', () => {
       }
     })
 
-    expect(publishedEvents).toEqual([])
+    expect(publishedEvents).toEqual([
+      expect.objectContaining({
+        channelId,
+        remoteChatId: 'oc_123',
+        content: '[Error] Failed to generate a response. Please try again.'
+      })
+    ])
   })
 
   it('publishes a thread message updated event after processing inbound channel messages', async () => {
@@ -500,9 +506,7 @@ describe('ChannelMessageRouter', () => {
 
     expect(publishedEvents).toHaveLength(1)
     const sent = publishedEvents[0] as { content: string }
-    expect(sent.content).toBe(
-      '[Error] Too many requests. Please wait a moment and try again.'
-    )
+    expect(sent.content).toBe('[Error] Too many requests. Please wait a moment and try again.')
   })
 
   it('returns a friendly 500 message for server errors', async () => {
