@@ -53,6 +53,7 @@
       "items": {
         "general": "常规",
         "providers": "模型提供商",
+        "channels": "频道",
         "cronJobs": "定时任务",
         "webSearch": "网络搜索",
         "mcpServers": "MCP 服务器",
@@ -343,6 +344,18 @@
       "toasts": {
         "saved": "MCP server settings saved."
       }
+    },
+    "channels": {
+      "title": "频道",
+      "description": "在一个地方管理已配置的 Telegram 和 Lark 频道。",
+      "configuredTitle": "已配置频道",
+      "configuredDescription": "编辑现有频道凭证、查看绑定关系，或移除未使用的频道。",
+      "loading": "正在加载频道...",
+      "empty": "还没有已配置的频道。",
+      "available": "可用",
+      "boundTo": "已连接到 {{assistantName}}",
+      "removeDisabled": "请先将此频道从对应的 claw 中解绑后再移除。",
+      "loadFailed": "加载频道失败"
     }
   },
   "claws": {
@@ -437,7 +450,8 @@
         "remove": "Remove Channel",
         "clear": "Clear Selection",
         "cancel": "Cancel",
-        "apply": "Apply"
+        "apply": "Apply",
+        "edit": "编辑频道"
       },
       "create": {
         "title": "Add Channel",
@@ -458,7 +472,18 @@
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "createFailed": "Failed to create channel",
-        "deleteFailed": "Failed to delete channel"
+        "deleteFailed": "Failed to delete channel",
+        "updateFailed": "更新频道失败"
+      },
+      "selectedBadge": "已选择",
+      "edit": {
+        "title": "编辑频道",
+        "description": "更新此频道配置。",
+        "save": "保存更改",
+        "credentialsOptional": "将凭证字段留空即可保留当前值。",
+        "appIdPlaceholder": "保持不变",
+        "appSecretPlaceholder": "保持不变",
+        "botTokenPlaceholder": "保持不变"
       }
     },
     "pairings": {
@@ -482,6 +507,15 @@
       "errors": {
         "loadFailed": "加载配对失败",
         "updateFailed": "更新配对失败"
+      }
+    },
+    "deleteDialog": {
+      "title": "删除“{{name}}”？",
+      "description": "这也会删除所有助手历史记录。",
+      "actions": {
+        "cancel": "取消",
+        "disable": "改为停用",
+        "confirmDelete": "确认删除"
       }
     }
   },

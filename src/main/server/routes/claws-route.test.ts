@@ -233,6 +233,89 @@ describe('claws route', () => {
     expect(cronReloadMock).not.toHaveBeenCalled()
   })
 
+  it('updates an existing configured channel', async () => {
+    const channel = await channelsRepo.create({
+      type: 'lark',
+      name: 'Configured Lark',
+      assistantId: null,
+      enabled: true,
+      config: {
+        appId: 'cli_configured',
+        appSecret: 'secret-configured'
+      }
+    })
+
+    const response = await app.request(`http://localhost/v1/claws/channels/${channel.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'lark',
+        name: 'Updated Lark',
+        appId: 'cli_updated',
+        appSecret: 'secret-updated'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      id: channel.id,
+      type: 'lark',
+      name: 'Updated Lark',
+      assistantId: null,
+      assistantName: null,
+      status: 'disconnected',
+      errorMessage: null
+    })
+    await expect(channelsRepo.getById(channel.id)).resolves.toMatchObject({
+      id: channel.id,
+      name: 'Updated Lark',
+      config: {
+        appId: 'cli_updated',
+        appSecret: 'secret-updated'
+      }
+    })
+    expect(channelReloadMock).not.toHaveBeenCalled()
+    expect(cronReloadMock).not.toHaveBeenCalled()
+  })
+
+  it('reloads services when updating a configured channel attached to a claw', async () => {
+    const assistant = await assistantsRepo.create({
+      name: 'Ops Assistant',
+      providerId,
+      enabled: true
+    })
+    const channel = await channelsRepo.create({
+      type: 'telegram',
+      name: 'Ops Telegram',
+      assistantId: assistant.id,
+      enabled: true,
+      config: {
+        botToken: '123456:original-token'
+      }
+    })
+
+    const response = await app.request(`http://localhost/v1/claws/channels/${channel.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'telegram',
+        name: 'Ops Telegram Updated',
+        botToken: '123456:updated-token'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(channelReloadMock).toHaveBeenCalledOnce()
+    expect(cronReloadMock).toHaveBeenCalledOnce()
+    await expect(channelsRepo.getById(channel.id)).resolves.toMatchObject({
+      id: channel.id,
+      name: 'Ops Telegram Updated',
+      config: {
+        botToken: '123456:updated-token'
+      }
+    })
+  })
+
   it('creates a claw without a channel as disabled even when enabled is requested', async () => {
     const response = await app.request('http://localhost/v1/claws', {
       method: 'POST',

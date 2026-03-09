@@ -8,6 +8,14 @@ import {
   CardHeader,
   CardTitle
 } from '../../../components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '../../../components/ui/dialog'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { queryClient } from '../../../lib/query-client'
 import type { ProviderRecord } from '../../settings/providers/providers-query'
@@ -24,11 +32,13 @@ import {
   rejectClawPairing,
   revokeClawPairing,
   updateClaw,
+  updateClawChannel,
   type ClawPairingRecord,
   type ClawRecord,
   type ClawsResponse,
   type CreateClawChannelInput,
   type ConfiguredClawChannelRecord,
+  type UpdateClawChannelInput,
   type SaveClawInput
 } from '../claws-query'
 import { ClawEditorDialog } from '../components/claw-editor-dialog'
@@ -68,6 +78,7 @@ export function ClawsPage(): React.JSX.Element {
   const [isPairingsLoading, setIsPairingsLoading] = useState(false)
   const [isPairingsSubmitting, setIsPairingsSubmitting] = useState(false)
   const [pairingsErrorMessage, setPairingsErrorMessage] = useState<string | null>(null)
+  const [clawPendingDelete, setClawPendingDelete] = useState<ClawRecord | null>(null)
 
   async function refreshPage(): Promise<void> {
     const [nextClaws, nextProviders] = await Promise.all([listClaws(), listProviders()])
@@ -140,8 +151,7 @@ export function ClawsPage(): React.JSX.Element {
       }))
       return createdChannel
     } catch (error) {
-      const resolvedError =
-        error instanceof Error ? error : new Error(t('claws.errors.saveFailed'))
+      const resolvedError = error instanceof Error ? error : new Error(t('claws.errors.saveFailed'))
       setErrorMessage(resolvedError.message)
       throw resolvedError
     } finally {
@@ -169,14 +179,40 @@ export function ClawsPage(): React.JSX.Element {
     }
   }
 
-  async function handleToggleEnabled(claw: ClawRecord): Promise<void> {
+  async function handleUpdateChannel(
+    channelId: string,
+    input: UpdateClawChannelInput
+  ): Promise<ConfiguredClawChannelRecord> {
+    setIsSubmitting(true)
+    setErrorMessage(null)
+
+    try {
+      const updatedChannel = await updateClawChannel(channelId, input)
+      setData((current) => ({
+        ...current,
+        configuredChannels: current.configuredChannels.map((channel) =>
+          channel.id === updatedChannel.id ? updatedChannel : channel
+        )
+      }))
+      return updatedChannel
+    } catch (error) {
+      const resolvedError =
+        error instanceof Error ? error : new Error(t('claws.errors.updateFailed'))
+      setErrorMessage(resolvedError.message)
+      throw resolvedError
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function setClawEnabled(claw: ClawRecord, enabled: boolean): Promise<void> {
     setIsSubmitting(true)
     setErrorMessage(null)
 
     try {
       await updateClaw(claw.id, {
         assistant: {
-          enabled: !claw.enabled
+          enabled
         }
       })
       invalidateAssistantsCache()
@@ -188,23 +224,32 @@ export function ClawsPage(): React.JSX.Element {
     }
   }
 
-  async function handleDelete(claw: ClawRecord): Promise<void> {
-    const confirmLabel =
-      claw.name.trim().length > 0 ? claw.name.trim() : t('claws.card.deleteConfirmFallbackLabel')
-    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
-      const confirmed = window.confirm(t('claws.card.deleteConfirmPrompt', { name: confirmLabel }))
-      if (!confirmed) {
-        return
-      }
+  async function handleToggleEnabled(claw: ClawRecord): Promise<void> {
+    await setClawEnabled(claw, !claw.enabled)
+  }
+
+  async function handleDisableInstead(): Promise<void> {
+    if (!clawPendingDelete) {
+      return
+    }
+
+    await setClawEnabled(clawPendingDelete, false)
+    setClawPendingDelete(null)
+  }
+
+  async function handleConfirmDelete(): Promise<void> {
+    if (!clawPendingDelete) {
+      return
     }
 
     setIsSubmitting(true)
     setErrorMessage(null)
 
     try {
-      await deleteClaw(claw.id)
+      await deleteClaw(clawPendingDelete.id)
       invalidateAssistantsCache()
       await refreshPage()
+      setClawPendingDelete(null)
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : t('claws.errors.deleteFailed'))
     } finally {
@@ -333,9 +378,7 @@ export function ClawsPage(): React.JSX.Element {
                       ) : null}
                     </div>
                   ) : (
-                    <span className="text-amber-600">
-                      {t('claws.card.configureChannelFirst')}
-                    </span>
+                    <span className="text-amber-600">{t('claws.card.configureChannelFirst')}</span>
                   )}
                 </div>
 
@@ -373,7 +416,7 @@ export function ClawsPage(): React.JSX.Element {
                     type="button"
                     variant="outline"
                     disabled={isSubmitting}
-                    onClick={() => void handleDelete(claw)}
+                    onClick={() => setClawPendingDelete(claw)}
                   >
                     {t('claws.card.deleteButton')}
                   </Button>
@@ -399,6 +442,7 @@ export function ClawsPage(): React.JSX.Element {
           }}
           onSubmit={handleDialogSubmit}
           onCreateChannel={handleCreateChannel}
+          onUpdateChannel={handleUpdateChannel}
           onDeleteChannel={handleDeleteChannel}
         />
 
@@ -422,6 +466,57 @@ export function ClawsPage(): React.JSX.Element {
           onReject={(pairingId) => handlePairingAction(rejectClawPairing, pairingId)}
           onRevoke={(pairingId) => handlePairingAction(revokeClawPairing, pairingId)}
         />
+
+        <Dialog
+          open={clawPendingDelete !== null}
+          onOpenChange={(open) => {
+            if (!open && !isSubmitting) {
+              setClawPendingDelete(null)
+            }
+          }}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {t('claws.deleteDialog.title', {
+                  name: clawPendingDelete?.name.trim().length
+                    ? clawPendingDelete.name.trim()
+                    : t('claws.card.deleteConfirmFallbackLabel')
+                })}
+              </DialogTitle>
+              <DialogDescription>{t('claws.deleteDialog.description')}</DialogDescription>
+            </DialogHeader>
+
+            <DialogFooter>
+              <Button
+                id="claw-delete-dialog-cancel"
+                type="button"
+                variant="outline"
+                disabled={isSubmitting}
+                onClick={() => setClawPendingDelete(null)}
+              >
+                {t('claws.deleteDialog.actions.cancel')}
+              </Button>
+              <Button
+                id="claw-delete-dialog-disable"
+                type="button"
+                variant="outline"
+                disabled={isSubmitting || clawPendingDelete?.enabled === false}
+                onClick={() => void handleDisableInstead()}
+              >
+                {t('claws.deleteDialog.actions.disable')}
+              </Button>
+              <Button
+                id="claw-delete-dialog-confirm"
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => void handleConfirmDelete()}
+              >
+                {t('claws.deleteDialog.actions.confirmDelete')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </section>
   )

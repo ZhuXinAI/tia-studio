@@ -58,7 +58,8 @@
         "mcpServers": "MCP 伺服器",
         "runtimeSetup": "執行環境設定",
         "display": "顯示",
-        "aboutFeedback": "關於與回饋"
+        "aboutFeedback": "關於與回饋",
+        "channels": "頻道"
       }
     },
     "general": {
@@ -343,6 +344,18 @@
       "toasts": {
         "saved": "MCP server settings saved."
       }
+    },
+    "channels": {
+      "title": "頻道",
+      "description": "在同一處管理已設定的 Telegram 與 Lark 頻道。",
+      "configuredTitle": "已設定頻道",
+      "configuredDescription": "編輯現有頻道憑證、查看綁定關係，或移除未使用的頻道。",
+      "loading": "正在載入頻道...",
+      "empty": "尚未有已設定的頻道。",
+      "available": "可用",
+      "boundTo": "已連接到 {{assistantName}}",
+      "removeDisabled": "請先將此頻道從其 claw 解除綁定後再移除。",
+      "loadFailed": "載入頻道失敗"
     }
   },
   "claws": {
@@ -437,7 +450,8 @@
         "remove": "Remove Channel",
         "clear": "Clear Selection",
         "cancel": "Cancel",
-        "apply": "Apply"
+        "apply": "Apply",
+        "edit": "編輯頻道"
       },
       "create": {
         "title": "Add Channel",
@@ -458,7 +472,18 @@
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "createFailed": "Failed to create channel",
-        "deleteFailed": "Failed to delete channel"
+        "deleteFailed": "Failed to delete channel",
+        "updateFailed": "更新頻道失敗"
+      },
+      "selectedBadge": "已選取",
+      "edit": {
+        "title": "編輯頻道",
+        "description": "更新此頻道設定。",
+        "save": "儲存變更",
+        "credentialsOptional": "將憑證欄位留空即可保留目前值。",
+        "appIdPlaceholder": "保持不變",
+        "appSecretPlaceholder": "保持不變",
+        "botTokenPlaceholder": "保持不變"
       }
     },
     "pairings": {
@@ -482,6 +507,15 @@
       "errors": {
         "loadFailed": "載入配對失敗",
         "updateFailed": "更新配對失敗"
+      }
+    },
+    "deleteDialog": {
+      "title": "刪除「{{name}}」？",
+      "description": "這也會刪除所有助理歷史記錄。",
+      "actions": {
+        "cancel": "取消",
+        "disable": "改為停用",
+        "confirmDelete": "確認刪除"
       }
     }
   },

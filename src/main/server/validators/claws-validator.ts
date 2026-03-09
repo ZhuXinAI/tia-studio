@@ -60,6 +60,24 @@ export const createConfiguredChannelSchema = z.union([
   createConfiguredTelegramChannelSchema
 ])
 
+export const updateConfiguredLarkChannelSchema = z.object({
+  type: z.literal('lark'),
+  name: z.string().min(1),
+  appId: z.string().min(1).optional(),
+  appSecret: z.string().min(1).optional()
+})
+
+export const updateConfiguredTelegramChannelSchema = z.object({
+  type: z.literal('telegram'),
+  name: z.string().min(1),
+  botToken: z.string().min(1).optional()
+})
+
+export const updateConfiguredChannelSchema = z.union([
+  updateConfiguredLarkChannelSchema,
+  updateConfiguredTelegramChannelSchema
+])
+
 export const createClawSchema = z.object({
   assistant: createAssistantForClawSchema,
   channel: z

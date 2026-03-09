@@ -99,12 +99,12 @@ describe('app router', () => {
     expect(html).toContain('About &amp; Feedback')
   })
 
-  it('redirects channels settings route to /claws', async () => {
-    const router = createAppMemoryRouter(['/settings/channels'])
+  it('renders channels settings route', () => {
+    const html = renderRouter(['/settings/channels'])
 
-    await router.navigate('/settings/channels')
-
-    expect(router.state.location.pathname).toBe('/claws')
+    expect(html).toContain('Channels')
+    expect(html).toContain('Configured Channels')
+    expect(html).toContain('Add Channel')
   })
 
   it('renders claws route from the top nav', () => {
@@ -121,7 +121,7 @@ describe('app router', () => {
     expect(html).toContain('Cron Jobs')
     expect(html).toContain('Scheduled Jobs')
     expect(html).toContain('Loading cron jobs')
-    expect(html).not.toContain('Channels')
+    expect(html).toContain('Channels')
     expect(html).toContain('Web Search')
   })
 

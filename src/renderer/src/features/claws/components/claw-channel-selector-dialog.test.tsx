@@ -12,10 +12,7 @@ async function flushAsyncWork(): Promise<void> {
   })
 }
 
-function setElementValue(
-  element: HTMLInputElement | HTMLSelectElement,
-  value: string
-): void {
+function setElementValue(element: HTMLInputElement | HTMLSelectElement, value: string): void {
   const prototype =
     element instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype
   const setter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set
@@ -26,7 +23,9 @@ function setElementValue(
   )
 }
 
-function buildChannel(overrides: Partial<ConfiguredClawChannelRecord>): ConfiguredClawChannelRecord {
+function buildChannel(
+  overrides: Partial<ConfiguredClawChannelRecord>
+): ConfiguredClawChannelRecord {
   return {
     id: 'channel-1',
     type: 'lark',
@@ -92,6 +91,7 @@ describe('ClawChannelSelectorDialog', () => {
           onClose={() => undefined}
           onApply={() => undefined}
           onCreateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onDeleteChannel={vi.fn(async () => undefined)}
         />
       )
@@ -106,6 +106,7 @@ describe('ClawChannelSelectorDialog', () => {
     ) as HTMLButtonElement
 
     expect(currentButton.getAttribute('data-selected')).toBe('true')
+    expect(currentButton.textContent).toContain('Selected')
     expect(claimedButton.disabled).toBe(true)
   })
 
@@ -132,6 +133,7 @@ describe('ClawChannelSelectorDialog', () => {
           onClose={() => undefined}
           onApply={onApply}
           onCreateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onDeleteChannel={vi.fn(async () => undefined)}
         />
       )
@@ -179,6 +181,7 @@ describe('ClawChannelSelectorDialog', () => {
           onClose={() => undefined}
           onApply={() => undefined}
           onCreateChannel={onCreateChannel}
+          onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onDeleteChannel={vi.fn(async () => undefined)}
         />
       )
@@ -243,6 +246,87 @@ describe('ClawChannelSelectorDialog', () => {
     expect(createdButton.getAttribute('data-selected')).toBe('true')
   })
 
+  it('edits the selected channel from the nested form dialog', async () => {
+    const onUpdateChannel = vi.fn(async (channelId: string) =>
+      buildChannel({
+        id: channelId,
+        type: 'telegram',
+        name: 'Updated Telegram',
+        status: 'connected'
+      })
+    )
+
+    await act(async () => {
+      root.render(
+        <ClawChannelSelectorDialog
+          isOpen
+          currentAssistantId="assistant-1"
+          selectedChannelId="channel-self"
+          channels={[
+            buildChannel({
+              id: 'channel-self',
+              name: 'Current Telegram',
+              type: 'telegram',
+              assistantId: 'assistant-1',
+              assistantName: 'Current claw',
+              status: 'connected'
+            })
+          ]}
+          isMutating={false}
+          errorMessage={null}
+          onClose={() => undefined}
+          onApply={() => undefined}
+          onCreateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onUpdateChannel={onUpdateChannel}
+          onDeleteChannel={vi.fn(async () => undefined)}
+        />
+      )
+    })
+    await flushAsyncWork()
+
+    const editButton = document.body.querySelector(
+      'button[id="claw-channel-selector-edit"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      editButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const nameInput = document.body.querySelector(
+      'input[id="claw-channel-form-name"]'
+    ) as HTMLInputElement
+    const tokenInput = document.body.querySelector(
+      'input[id="claw-channel-form-bot-token"]'
+    ) as HTMLInputElement
+    const saveButton = document.body.querySelector(
+      'button[id="claw-channel-form-save"]'
+    ) as HTMLButtonElement
+
+    expect(nameInput.value).toBe('Current Telegram')
+
+    await act(async () => {
+      setElementValue(nameInput, 'Updated Telegram')
+      setElementValue(tokenInput, '123456:updated-token')
+    })
+
+    await act(async () => {
+      saveButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(onUpdateChannel).toHaveBeenCalledWith('channel-self', {
+      type: 'telegram',
+      name: 'Updated Telegram',
+      botToken: '123456:updated-token'
+    })
+
+    const updatedButton = document.body.querySelector(
+      'button[data-channel-id="channel-self"]'
+    ) as HTMLButtonElement
+    expect(updatedButton.textContent).toContain('Updated Telegram')
+  })
+
   it('allows removing only unbound channels', async () => {
     const onDeleteChannel = vi.fn(async () => undefined)
 
@@ -271,6 +355,7 @@ describe('ClawChannelSelectorDialog', () => {
           onClose={() => undefined}
           onApply={() => undefined}
           onCreateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onDeleteChannel={onDeleteChannel}
         />
       )

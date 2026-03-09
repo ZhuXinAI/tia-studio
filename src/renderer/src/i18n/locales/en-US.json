@@ -53,6 +53,7 @@
       "items": {
         "general": "General",
         "providers": "Model Provider",
+        "channels": "Channels",
         "cronJobs": "Cron Jobs",
         "webSearch": "Web Search",
         "mcpServers": "MCP Servers",
@@ -343,6 +344,18 @@
       "toasts": {
         "saved": "MCP server settings saved."
       }
+    },
+    "channels": {
+      "title": "Channels",
+      "description": "Manage configured Telegram and Lark channels in one place.",
+      "configuredTitle": "Configured Channels",
+      "configuredDescription": "Edit existing channel credentials, review bindings, or remove unused channels.",
+      "loading": "Loading channels...",
+      "empty": "No configured channels yet.",
+      "available": "Available",
+      "boundTo": "Connected to {{assistantName}}",
+      "removeDisabled": "Detach this channel from its claw before removing it.",
+      "loadFailed": "Failed to load channels"
     }
   },
   "claws": {
@@ -382,6 +395,15 @@
       "deleteButton": "Delete",
       "deleteConfirmPrompt": "Delete \"{{name}}\"? This will also delete all of its threads.",
       "deleteConfirmFallbackLabel": "Unnamed claw"
+    },
+    "deleteDialog": {
+      "title": "Delete \"{{name}}\"?",
+      "description": "This will also delete all assistant history.",
+      "actions": {
+        "cancel": "Cancel",
+        "disable": "Disable Instead",
+        "confirmDelete": "Confirm Delete"
+      }
     },
     "dialog": {
       "editTitle": "Edit Claw",
@@ -436,11 +458,13 @@
       "otherAssistantFallback": "another assistant",
       "actions": {
         "add": "Add Channel",
+        "edit": "Edit Channel",
         "remove": "Remove Channel",
         "clear": "Clear Selection",
         "cancel": "Cancel",
         "apply": "Apply"
       },
+      "selectedBadge": "Selected",
       "create": {
         "title": "Add Channel",
         "description": "Create a new Telegram or Lark channel configuration.",
@@ -448,6 +472,15 @@
         "fields": {
           "type": "Channel Type"
         }
+      },
+      "edit": {
+        "title": "Edit Channel",
+        "description": "Update this channel configuration.",
+        "save": "Save Changes",
+        "credentialsOptional": "Leave credential fields blank to keep the current values.",
+        "appIdPlaceholder": "Leave unchanged",
+        "appSecretPlaceholder": "Leave unchanged",
+        "botTokenPlaceholder": "Leave unchanged"
       },
       "remove": {
         "title": "Remove Channel",
@@ -460,6 +493,7 @@
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "createFailed": "Failed to create channel",
+        "updateFailed": "Failed to update channel",
         "deleteFailed": "Failed to delete channel"
       }
     },

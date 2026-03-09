@@ -58,7 +58,8 @@
         "mcpServers": "Serveurs MCP",
         "runtimeSetup": "Configuration du runtime",
         "display": "Affichage",
-        "aboutFeedback": "À propos et retours"
+        "aboutFeedback": "À propos et retours",
+        "channels": "Canaux"
       }
     },
     "general": {
@@ -343,6 +344,18 @@
       "toasts": {
         "saved": "MCP server settings saved."
       }
+    },
+    "channels": {
+      "title": "Canaux",
+      "description": "Gérez les canaux Telegram et Lark configurés au même endroit.",
+      "configuredTitle": "Canaux configurés",
+      "configuredDescription": "Modifiez les identifiants existants, vérifiez les liaisons ou supprimez les canaux inutilisés.",
+      "loading": "Chargement des canaux...",
+      "empty": "Aucun canal configuré pour le moment.",
+      "available": "Disponible",
+      "boundTo": "Connecté à {{assistantName}}",
+      "removeDisabled": "Détachez d’abord ce canal de son claw avant de le supprimer.",
+      "loadFailed": "Impossible de charger les canaux"
     }
   },
   "claws": {
@@ -437,7 +450,8 @@
         "remove": "Remove Channel",
         "clear": "Clear Selection",
         "cancel": "Cancel",
-        "apply": "Apply"
+        "apply": "Apply",
+        "edit": "Modifier le canal"
       },
       "create": {
         "title": "Add Channel",
@@ -458,7 +472,18 @@
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "createFailed": "Failed to create channel",
-        "deleteFailed": "Failed to delete channel"
+        "deleteFailed": "Failed to delete channel",
+        "updateFailed": "Impossible de mettre à jour le canal"
+      },
+      "selectedBadge": "Sélectionné",
+      "edit": {
+        "title": "Modifier le canal",
+        "description": "Mettez à jour la configuration de ce canal.",
+        "save": "Enregistrer les modifications",
+        "credentialsOptional": "Laissez les champs d’identifiants vides pour conserver les valeurs actuelles.",
+        "appIdPlaceholder": "Ne pas modifier",
+        "appSecretPlaceholder": "Ne pas modifier",
+        "botTokenPlaceholder": "Ne pas modifier"
       }
     },
     "pairings": {
@@ -482,6 +507,15 @@
       "errors": {
         "loadFailed": "Échec du chargement des appairages",
         "updateFailed": "Échec de la mise à jour de l'appairage"
+      }
+    },
+    "deleteDialog": {
+      "title": "Supprimer « {{name}} » ?",
+      "description": "Cela supprimera également tout l’historique de l’assistant.",
+      "actions": {
+        "cancel": "Annuler",
+        "disable": "Désactiver à la place",
+        "confirmDelete": "Confirmer la suppression"
       }
     }
   },

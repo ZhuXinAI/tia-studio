@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { CheckCircle2, Pencil } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import {
   Dialog,
@@ -10,9 +11,11 @@ import {
 } from '../../../components/ui/dialog'
 import { Input } from '../../../components/ui/input'
 import { useTranslation } from '../../../i18n/use-app-translation'
+import { cn } from '../../../lib/utils'
 import type {
   ConfiguredClawChannelRecord,
-  CreateClawChannelInput
+  CreateClawChannelInput,
+  UpdateClawChannelInput
 } from '../claws-query'
 
 type ClawChannelSelectorDialogProps = {
@@ -24,12 +27,26 @@ type ClawChannelSelectorDialogProps = {
   errorMessage: string | null
   onClose: () => void
   onApply: (channelId: string) => void
-  onCreateChannel:
-    (input: CreateClawChannelInput) => Promise<ConfiguredClawChannelRecord> | ConfiguredClawChannelRecord
+  onCreateChannel: (
+    input: CreateClawChannelInput
+  ) => Promise<ConfiguredClawChannelRecord> | ConfiguredClawChannelRecord
+  onUpdateChannel: (
+    channelId: string,
+    input: UpdateClawChannelInput
+  ) => Promise<ConfiguredClawChannelRecord> | ConfiguredClawChannelRecord
   onDeleteChannel: (channelId: string) => Promise<void> | void
 }
 
 type ChannelType = 'lark' | 'telegram'
+type ChannelFormMode = 'create' | 'edit'
+
+type ChannelFormState = {
+  type: ChannelType
+  name: string
+  appId: string
+  appSecret: string
+  botToken: string
+}
 
 function isDisabledForAssistant(
   channel: ConfiguredClawChannelRecord,
@@ -42,6 +59,60 @@ function canRemoveChannel(channel: ConfiguredClawChannelRecord | null): boolean 
   return channel?.assistantId === null
 }
 
+function emptyFormState(): ChannelFormState {
+  return {
+    type: 'lark',
+    name: '',
+    appId: '',
+    appSecret: '',
+    botToken: ''
+  }
+}
+
+function toEditFormState(channel: ConfiguredClawChannelRecord): ChannelFormState {
+  return {
+    type: channel.type === 'telegram' ? 'telegram' : 'lark',
+    name: channel.name,
+    appId: '',
+    appSecret: '',
+    botToken: ''
+  }
+}
+
+function buildCreateInput(formState: ChannelFormState): CreateClawChannelInput {
+  if (formState.type === 'telegram') {
+    return {
+      type: 'telegram',
+      name: formState.name.trim(),
+      botToken: formState.botToken.trim()
+    }
+  }
+
+  return {
+    type: 'lark',
+    name: formState.name.trim(),
+    appId: formState.appId.trim(),
+    appSecret: formState.appSecret.trim()
+  }
+}
+
+function buildUpdateInput(formState: ChannelFormState): UpdateClawChannelInput {
+  if (formState.type === 'telegram') {
+    return {
+      type: 'telegram',
+      name: formState.name.trim(),
+      ...(formState.botToken.trim().length > 0 ? { botToken: formState.botToken.trim() } : {})
+    }
+  }
+
+  return {
+    type: 'lark',
+    name: formState.name.trim(),
+    ...(formState.appId.trim().length > 0 ? { appId: formState.appId.trim() } : {}),
+    ...(formState.appSecret.trim().length > 0 ? { appSecret: formState.appSecret.trim() } : {})
+  }
+}
+
 export function ClawChannelSelectorDialog({
   isOpen,
   currentAssistantId,
@@ -52,20 +123,18 @@ export function ClawChannelSelectorDialog({
   onClose,
   onApply,
   onCreateChannel,
+  onUpdateChannel,
   onDeleteChannel
 }: ClawChannelSelectorDialogProps): React.JSX.Element {
   const { t } = useTranslation()
   const [localChannels, setLocalChannels] = useState(channels)
   const [localSelectedChannelId, setLocalSelectedChannelId] = useState(selectedChannelId)
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false)
+  const [formMode, setFormMode] = useState<ChannelFormMode>('create')
+  const [formState, setFormState] = useState<ChannelFormState>(emptyFormState)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [isFormSubmitting, setIsFormSubmitting] = useState(false)
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false)
-  const [createType, setCreateType] = useState<ChannelType>('lark')
-  const [createName, setCreateName] = useState('')
-  const [createAppId, setCreateAppId] = useState('')
-  const [createAppSecret, setCreateAppSecret] = useState('')
-  const [createBotToken, setCreateBotToken] = useState('')
-  const [createError, setCreateError] = useState<string | null>(null)
-  const [isCreateSubmitting, setIsCreateSubmitting] = useState(false)
   const [removeError, setRemoveError] = useState<string | null>(null)
   const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false)
 
@@ -75,10 +144,12 @@ export function ClawChannelSelectorDialog({
     }
 
     setLocalChannels(channels)
-    setCreateError(null)
+    setFormError(null)
     setRemoveError(null)
-    setIsCreateDialogOpen(false)
+    setIsFormDialogOpen(false)
     setIsRemoveDialogOpen(false)
+    setFormState(emptyFormState())
+    setFormMode('create')
   }, [channels, isOpen])
 
   useEffect(() => {
@@ -94,60 +165,101 @@ export function ClawChannelSelectorDialog({
     [localChannels, localSelectedChannelId]
   )
 
-  function resetCreateForm(): void {
-    setCreateType('lark')
-    setCreateName('')
-    setCreateAppId('')
-    setCreateAppSecret('')
-    setCreateBotToken('')
-    setCreateError(null)
+  function usageLabel(channel: ConfiguredClawChannelRecord): string {
+    if (channel.assistantId === null) {
+      return t('claws.channelSelector.available')
+    }
+
+    if (channel.assistantId === currentAssistantId) {
+      return t('claws.channelSelector.inUseByCurrent')
+    }
+
+    return t('claws.channelSelector.inUseByOther', {
+      assistantName: channel.assistantName ?? t('claws.channelSelector.otherAssistantFallback')
+    })
   }
 
-  async function handleCreateChannel(): Promise<void> {
-    if (createName.trim().length === 0) {
-      setCreateError(t('claws.channelSelector.errors.nameRequired'))
+  function resetForm(): void {
+    setFormMode('create')
+    setFormState(emptyFormState())
+    setFormError(null)
+  }
+
+  function openCreateDialog(): void {
+    setFormMode('create')
+    setFormState(emptyFormState())
+    setFormError(null)
+    setIsFormDialogOpen(true)
+  }
+
+  function openEditDialog(): void {
+    if (!selectedChannel) {
       return
     }
 
-    if (createType === 'telegram') {
-      if (createBotToken.trim().length === 0) {
-        setCreateError(t('claws.channelSelector.errors.telegramCredentialsRequired'))
+    setFormMode('edit')
+    setFormState(toEditFormState(selectedChannel))
+    setFormError(null)
+    setIsFormDialogOpen(true)
+  }
+
+  function replaceLocalChannel(updatedChannel: ConfiguredClawChannelRecord): void {
+    setLocalChannels((currentChannels) =>
+      currentChannels.map((channel) =>
+        channel.id === updatedChannel.id ? updatedChannel : channel
+      )
+    )
+  }
+
+  async function handleSubmitForm(): Promise<void> {
+    if (formState.name.trim().length === 0) {
+      setFormError(t('claws.channelSelector.errors.nameRequired'))
+      return
+    }
+
+    if (formMode === 'create') {
+      if (formState.type === 'telegram') {
+        if (formState.botToken.trim().length === 0) {
+          setFormError(t('claws.channelSelector.errors.telegramCredentialsRequired'))
+          return
+        }
+      } else if (formState.appId.trim().length === 0 || formState.appSecret.trim().length === 0) {
+        setFormError(t('claws.channelSelector.errors.larkCredentialsRequired'))
         return
       }
-    } else if (createAppId.trim().length === 0 || createAppSecret.trim().length === 0) {
-      setCreateError(t('claws.channelSelector.errors.larkCredentialsRequired'))
-      return
     }
 
-    setIsCreateSubmitting(true)
-    setCreateError(null)
+    setIsFormSubmitting(true)
+    setFormError(null)
 
     try {
-      const createdChannel = await onCreateChannel(
-        createType === 'telegram'
-          ? {
-              type: 'telegram',
-              name: createName.trim(),
-              botToken: createBotToken.trim()
-            }
-          : {
-              type: 'lark',
-              name: createName.trim(),
-              appId: createAppId.trim(),
-              appSecret: createAppSecret.trim()
-            }
-      )
+      if (formMode === 'create') {
+        const createdChannel = await onCreateChannel(buildCreateInput(formState))
+        setLocalChannels((currentChannels) => [...currentChannels, createdChannel])
+        setLocalSelectedChannelId(createdChannel.id)
+      } else if (selectedChannel) {
+        const updatedChannel = await onUpdateChannel(
+          selectedChannel.id,
+          buildUpdateInput(formState)
+        )
+        replaceLocalChannel(updatedChannel)
+        setLocalSelectedChannelId(updatedChannel.id)
+      }
 
-      setLocalChannels((currentChannels) => [...currentChannels, createdChannel])
-      setLocalSelectedChannelId(createdChannel.id)
-      setIsCreateDialogOpen(false)
-      resetCreateForm()
+      setIsFormDialogOpen(false)
+      resetForm()
     } catch (error) {
-      setCreateError(
-        error instanceof Error ? error.message : t('claws.channelSelector.errors.createFailed')
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : t(
+              formMode === 'create'
+                ? 'claws.channelSelector.errors.createFailed'
+                : 'claws.channelSelector.errors.updateFailed'
+            )
       )
     } finally {
-      setIsCreateSubmitting(false)
+      setIsFormSubmitting(false)
     }
   }
 
@@ -175,21 +287,18 @@ export function ClawChannelSelectorDialog({
     }
   }
 
-  function usageLabel(channel: ConfiguredClawChannelRecord): string {
-    if (channel.assistantId === null) {
-      return t('claws.channelSelector.available')
-    }
-
-    if (channel.assistantId === currentAssistantId) {
-      return t('claws.channelSelector.inUseByCurrent')
-    }
-
-    return t('claws.channelSelector.inUseByOther', {
-      assistantName: channel.assistantName ?? t('claws.channelSelector.otherAssistantFallback')
-    })
-  }
-
-  const isBusy = isMutating || isCreateSubmitting || isDeleteSubmitting
+  const isBusy = isMutating || isFormSubmitting || isDeleteSubmitting
+  const channelNameInputId =
+    formMode === 'create' ? 'claw-channel-create-name' : 'claw-channel-form-name'
+  const channelTypeInputId =
+    formMode === 'create' ? 'claw-channel-create-type' : 'claw-channel-form-type'
+  const botTokenInputId =
+    formMode === 'create' ? 'claw-channel-create-bot-token' : 'claw-channel-form-bot-token'
+  const appIdInputId =
+    formMode === 'create' ? 'claw-channel-create-app-id' : 'claw-channel-form-app-id'
+  const appSecretInputId =
+    formMode === 'create' ? 'claw-channel-create-app-secret' : 'claw-channel-form-app-secret'
+  const saveButtonId = formMode === 'create' ? 'claw-channel-create-save' : 'claw-channel-form-save'
 
   return (
     <>
@@ -201,9 +310,7 @@ export function ClawChannelSelectorDialog({
           </DialogHeader>
 
           <div className="space-y-3">
-            {errorMessage ? (
-              <p className="text-sm text-destructive">{errorMessage}</p>
-            ) : null}
+            {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
 
             {localChannels.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t('claws.channelSelector.empty')}</p>
@@ -220,12 +327,25 @@ export function ClawChannelSelectorDialog({
                       data-channel-id={channel.id}
                       data-selected={selected ? 'true' : 'false'}
                       disabled={disabled || isBusy}
-                      className="w-full rounded-lg border border-border px-4 py-3 text-left disabled:cursor-not-allowed disabled:opacity-60"
+                      className={cn(
+                        'w-full rounded-lg border px-4 py-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+                        selected
+                          ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
+                          : 'border-border hover:border-primary/40 hover:bg-muted/50'
+                      )}
                       onClick={() => setLocalSelectedChannelId(channel.id)}
                     >
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
-                          <p className="font-medium">{channel.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{channel.name}</p>
+                            {selected ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                                <CheckCircle2 className="size-3" />
+                                {t('claws.channelSelector.selectedBadge')}
+                              </span>
+                            ) : null}
+                          </div>
                           <p className="text-sm text-muted-foreground">
                             {channel.type} · {channel.status}
                           </p>
@@ -244,9 +364,19 @@ export function ClawChannelSelectorDialog({
                 type="button"
                 variant="outline"
                 disabled={isBusy}
-                onClick={() => setIsCreateDialogOpen(true)}
+                onClick={openCreateDialog}
               >
                 {t('claws.channelSelector.actions.add')}
+              </Button>
+              <Button
+                id="claw-channel-selector-edit"
+                type="button"
+                variant="outline"
+                disabled={selectedChannel === null || isBusy}
+                onClick={openEditDialog}
+              >
+                <Pencil className="size-4" />
+                {t('claws.channelSelector.actions.edit')}
               </Button>
               <Button
                 id="claw-channel-selector-remove"
@@ -291,29 +421,57 @@ export function ClawChannelSelectorDialog({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+      <Dialog
+        open={isFormDialogOpen}
+        onOpenChange={(open) => {
+          setIsFormDialogOpen(open)
+          if (!open) {
+            resetForm()
+          }
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{t('claws.channelSelector.create.title')}</DialogTitle>
-            <DialogDescription>{t('claws.channelSelector.create.description')}</DialogDescription>
+            <DialogTitle>
+              {formMode === 'create'
+                ? t('claws.channelSelector.create.title')
+                : t('claws.channelSelector.edit.title')}
+            </DialogTitle>
+            <DialogDescription>
+              {formMode === 'create'
+                ? t('claws.channelSelector.create.description')
+                : t('claws.channelSelector.edit.description')}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
-            {createError ? (
-              <p id="claw-channel-create-error" className="text-sm text-destructive">
-                {createError}
+            {formError ? (
+              <p
+                id={formMode === 'create' ? 'claw-channel-create-error' : 'claw-channel-form-error'}
+                className="text-sm text-destructive"
+              >
+                {formError}
               </p>
             ) : null}
 
             <div className="grid gap-2">
-              <label htmlFor="claw-channel-create-type" className="text-sm font-medium">
+              <label htmlFor={channelTypeInputId} className="text-sm font-medium">
                 {t('claws.channelSelector.create.fields.type')}
               </label>
               <select
-                id="claw-channel-create-type"
-                className="border-input bg-background rounded-md border px-3 py-2 text-sm"
-                value={createType}
-                onChange={(event) => setCreateType(event.target.value as ChannelType)}
+                id={channelTypeInputId}
+                className="border-input bg-background rounded-md border px-3 py-2 text-sm disabled:opacity-100"
+                value={formState.type}
+                disabled={formMode === 'edit'}
+                onChange={(event) =>
+                  setFormState((currentState) => ({
+                    ...currentState,
+                    type: event.target.value as ChannelType,
+                    appId: '',
+                    appSecret: '',
+                    botToken: ''
+                  }))
+                }
               >
                 <option value="lark">{t('claws.dialog.channelTypes.lark')}</option>
                 <option value="telegram">{t('claws.dialog.channelTypes.telegram')}</option>
@@ -321,57 +479,95 @@ export function ClawChannelSelectorDialog({
             </div>
 
             <div className="grid gap-2">
-              <label htmlFor="claw-channel-create-name" className="text-sm font-medium">
+              <label htmlFor={channelNameInputId} className="text-sm font-medium">
                 {t('claws.dialog.fields.channelName')}
               </label>
               <Input
-                id="claw-channel-create-name"
-                value={createName}
-                onChange={(event) => setCreateName(event.target.value)}
+                id={channelNameInputId}
+                value={formState.name}
+                onChange={(event) =>
+                  setFormState((currentState) => ({
+                    ...currentState,
+                    name: event.target.value
+                  }))
+                }
               />
             </div>
 
-            {createType === 'telegram' ? (
+            {formState.type === 'telegram' ? (
               <div className="grid gap-2">
-                <label htmlFor="claw-channel-create-bot-token" className="text-sm font-medium">
+                <label htmlFor={botTokenInputId} className="text-sm font-medium">
                   {t('claws.dialog.fields.botToken')}
                 </label>
                 <Input
-                  id="claw-channel-create-bot-token"
+                  id={botTokenInputId}
                   type="password"
-                  value={createBotToken}
-                  onChange={(event) => setCreateBotToken(event.target.value)}
+                  placeholder={
+                    formMode === 'edit'
+                      ? t('claws.channelSelector.edit.botTokenPlaceholder')
+                      : undefined
+                  }
+                  value={formState.botToken}
+                  onChange={(event) =>
+                    setFormState((currentState) => ({
+                      ...currentState,
+                      botToken: event.target.value
+                    }))
+                  }
                 />
               </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-2">
-                  <label htmlFor="claw-channel-create-app-id" className="text-sm font-medium">
+                  <label htmlFor={appIdInputId} className="text-sm font-medium">
                     {t('claws.dialog.fields.appId')}
                   </label>
                   <Input
-                    id="claw-channel-create-app-id"
-                    value={createAppId}
-                    onChange={(event) => setCreateAppId(event.target.value)}
+                    id={appIdInputId}
+                    placeholder={
+                      formMode === 'edit'
+                        ? t('claws.channelSelector.edit.appIdPlaceholder')
+                        : undefined
+                    }
+                    value={formState.appId}
+                    onChange={(event) =>
+                      setFormState((currentState) => ({
+                        ...currentState,
+                        appId: event.target.value
+                      }))
+                    }
                   />
                 </div>
 
                 <div className="grid gap-2">
-                  <label
-                    htmlFor="claw-channel-create-app-secret"
-                    className="text-sm font-medium"
-                  >
+                  <label htmlFor={appSecretInputId} className="text-sm font-medium">
                     {t('claws.dialog.fields.appSecret')}
                   </label>
                   <Input
-                    id="claw-channel-create-app-secret"
+                    id={appSecretInputId}
                     type="password"
-                    value={createAppSecret}
-                    onChange={(event) => setCreateAppSecret(event.target.value)}
+                    placeholder={
+                      formMode === 'edit'
+                        ? t('claws.channelSelector.edit.appSecretPlaceholder')
+                        : undefined
+                    }
+                    value={formState.appSecret}
+                    onChange={(event) =>
+                      setFormState((currentState) => ({
+                        ...currentState,
+                        appSecret: event.target.value
+                      }))
+                    }
                   />
                 </div>
               </div>
             )}
+
+            {formMode === 'edit' ? (
+              <p className="text-xs text-muted-foreground">
+                {t('claws.channelSelector.edit.credentialsOptional')}
+              </p>
+            ) : null}
           </div>
 
           <DialogFooter>
@@ -379,19 +575,21 @@ export function ClawChannelSelectorDialog({
               type="button"
               variant="outline"
               onClick={() => {
-                setIsCreateDialogOpen(false)
-                resetCreateForm()
+                setIsFormDialogOpen(false)
+                resetForm()
               }}
             >
               {t('claws.channelSelector.actions.cancel')}
             </Button>
             <Button
-              id="claw-channel-create-save"
+              id={saveButtonId}
               type="button"
               disabled={isBusy}
-              onClick={() => void handleCreateChannel()}
+              onClick={() => void handleSubmitForm()}
             >
-              {t('claws.channelSelector.create.save')}
+              {formMode === 'create'
+                ? t('claws.channelSelector.create.save')
+                : t('claws.channelSelector.edit.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -403,7 +601,9 @@ export function ClawChannelSelectorDialog({
             <DialogTitle>{t('claws.channelSelector.remove.title')}</DialogTitle>
             <DialogDescription>
               {selectedChannel
-                ? t('claws.channelSelector.remove.description', { channelName: selectedChannel.name })
+                ? t('claws.channelSelector.remove.description', {
+                    channelName: selectedChannel.name
+                  })
                 : t('claws.channelSelector.remove.descriptionFallback')}
             </DialogDescription>
           </DialogHeader>
@@ -411,11 +611,7 @@ export function ClawChannelSelectorDialog({
           {removeError ? <p className="text-sm text-destructive">{removeError}</p> : null}
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsRemoveDialogOpen(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => setIsRemoveDialogOpen(false)}>
               {t('claws.channelSelector.actions.cancel')}
             </Button>
             <Button

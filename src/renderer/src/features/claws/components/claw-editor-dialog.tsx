@@ -16,6 +16,7 @@ import type {
   ClawRecord,
   ConfiguredClawChannelRecord,
   CreateClawChannelInput,
+  UpdateClawChannelInput,
   SaveClawInput
 } from '../claws-query'
 import { ClawChannelSelectorDialog } from './claw-channel-selector-dialog'
@@ -28,8 +29,13 @@ type ClawEditorDialogProps = {
   isSubmitting: boolean
   onClose: () => void
   onSubmit: (input: SaveClawInput) => Promise<void> | void
-  onCreateChannel:
-    (input: CreateClawChannelInput) => Promise<ConfiguredClawChannelRecord> | ConfiguredClawChannelRecord
+  onCreateChannel: (
+    input: CreateClawChannelInput
+  ) => Promise<ConfiguredClawChannelRecord> | ConfiguredClawChannelRecord
+  onUpdateChannel: (
+    channelId: string,
+    input: UpdateClawChannelInput
+  ) => Promise<ConfiguredClawChannelRecord> | ConfiguredClawChannelRecord
   onDeleteChannel: (channelId: string) => Promise<void> | void
 }
 
@@ -60,6 +66,7 @@ export function ClawEditorDialog({
   onClose,
   onSubmit,
   onCreateChannel,
+  onUpdateChannel,
   onDeleteChannel
 }: ClawEditorDialogProps): React.JSX.Element {
   const { t } = useTranslation()
@@ -159,7 +166,11 @@ export function ClawEditorDialog({
               <label htmlFor="claw-name" className="text-sm font-medium">
                 {t('claws.dialog.fields.assistantName')}
               </label>
-              <Input id="claw-name" value={name} onChange={(event) => setName(event.target.value)} />
+              <Input
+                id="claw-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
             </div>
 
             <div className="grid gap-2">
@@ -260,6 +271,7 @@ export function ClawEditorDialog({
           setErrorMessage(null)
         }}
         onCreateChannel={onCreateChannel}
+        onUpdateChannel={onUpdateChannel}
         onDeleteChannel={onDeleteChannel}
       />
     </>

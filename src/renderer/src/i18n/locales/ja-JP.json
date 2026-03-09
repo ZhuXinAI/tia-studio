@@ -58,7 +58,8 @@
         "mcpServers": "MCPサーバー",
         "runtimeSetup": "ランタイム設定",
         "display": "表示",
-        "aboutFeedback": "情報とフィードバック"
+        "aboutFeedback": "情報とフィードバック",
+        "channels": "チャンネル"
       }
     },
     "general": {
@@ -343,6 +344,18 @@
       "toasts": {
         "saved": "MCP server settings saved."
       }
+    },
+    "channels": {
+      "title": "チャンネル",
+      "description": "設定済みの Telegram と Lark のチャンネルを一か所で管理します。",
+      "configuredTitle": "設定済みチャンネル",
+      "configuredDescription": "既存の認証情報を編集し、紐付けを確認し、不要なチャンネルを削除できます。",
+      "loading": "チャンネルを読み込み中...",
+      "empty": "設定済みのチャンネルはまだありません。",
+      "available": "利用可能",
+      "boundTo": "{{assistantName}} に接続済み",
+      "removeDisabled": "削除する前に、このチャンネルを claw から切り離してください。",
+      "loadFailed": "チャンネルの読み込みに失敗しました"
     }
   },
   "claws": {
@@ -437,7 +450,8 @@
         "remove": "Remove Channel",
         "clear": "Clear Selection",
         "cancel": "Cancel",
-        "apply": "Apply"
+        "apply": "Apply",
+        "edit": "チャンネルを編集"
       },
       "create": {
         "title": "Add Channel",
@@ -458,7 +472,18 @@
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "createFailed": "Failed to create channel",
-        "deleteFailed": "Failed to delete channel"
+        "deleteFailed": "Failed to delete channel",
+        "updateFailed": "チャンネルの更新に失敗しました"
+      },
+      "selectedBadge": "選択中",
+      "edit": {
+        "title": "チャンネルを編集",
+        "description": "このチャンネル設定を更新します。",
+        "save": "変更を保存",
+        "credentialsOptional": "現在の値を保持するには認証情報欄を空欄のままにしてください。",
+        "appIdPlaceholder": "変更しない",
+        "appSecretPlaceholder": "変更しない",
+        "botTokenPlaceholder": "変更しない"
       }
     },
     "pairings": {
@@ -482,6 +507,15 @@
       "errors": {
         "loadFailed": "ペアリングの読み込みに失敗しました",
         "updateFailed": "ペアリングの更新に失敗しました"
+      }
+    },
+    "deleteDialog": {
+      "title": "「{{name}}」を削除しますか？",
+      "description": "これによりアシスタントの履歴もすべて削除されます。",
+      "actions": {
+        "cancel": "キャンセル",
+        "disable": "代わりに無効化",
+        "confirmDelete": "削除を確定"
       }
     }
   },

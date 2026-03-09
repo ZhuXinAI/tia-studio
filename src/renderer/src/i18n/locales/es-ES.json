@@ -58,7 +58,8 @@
         "mcpServers": "Servidores MCP",
         "runtimeSetup": "Configuración del runtime",
         "display": "Pantalla",
-        "aboutFeedback": "Acerca de y comentarios"
+        "aboutFeedback": "Acerca de y comentarios",
+        "channels": "Canales"
       }
     },
     "general": {
@@ -343,6 +344,18 @@
       "toasts": {
         "saved": "MCP server settings saved."
       }
+    },
+    "channels": {
+      "title": "Canales",
+      "description": "Gestiona los canales de Telegram y Lark configurados en un solo lugar.",
+      "configuredTitle": "Canales configurados",
+      "configuredDescription": "Edita credenciales existentes, revisa vinculaciones o elimina canales sin uso.",
+      "loading": "Cargando canales...",
+      "empty": "Todavía no hay canales configurados.",
+      "available": "Disponible",
+      "boundTo": "Conectado a {{assistantName}}",
+      "removeDisabled": "Desvincula primero este canal de su claw antes de eliminarlo.",
+      "loadFailed": "No se pudieron cargar los canales"
     }
   },
   "claws": {
@@ -437,7 +450,8 @@
         "remove": "Remove Channel",
         "clear": "Clear Selection",
         "cancel": "Cancel",
-        "apply": "Apply"
+        "apply": "Apply",
+        "edit": "Editar canal"
       },
       "create": {
         "title": "Add Channel",
@@ -458,7 +472,18 @@
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "createFailed": "Failed to create channel",
-        "deleteFailed": "Failed to delete channel"
+        "deleteFailed": "Failed to delete channel",
+        "updateFailed": "No se pudo actualizar el canal"
+      },
+      "selectedBadge": "Seleccionado",
+      "edit": {
+        "title": "Editar canal",
+        "description": "Actualiza la configuración de este canal.",
+        "save": "Guardar cambios",
+        "credentialsOptional": "Deja los campos de credenciales vacíos para conservar los valores actuales.",
+        "appIdPlaceholder": "Dejar sin cambios",
+        "appSecretPlaceholder": "Dejar sin cambios",
+        "botTokenPlaceholder": "Dejar sin cambios"
       }
     },
     "pairings": {
@@ -482,6 +507,15 @@
       "errors": {
         "loadFailed": "No se pudieron cargar las vinculaciones",
         "updateFailed": "No se pudo actualizar la vinculación"
+      }
+    },
+    "deleteDialog": {
+      "title": "¿Eliminar \"{{name}}\"?",
+      "description": "Esto también eliminará todo el historial del asistente.",
+      "actions": {
+        "cancel": "Cancelar",
+        "disable": "Desactivar en su lugar",
+        "confirmDelete": "Confirmar eliminación"
       }
     }
   },

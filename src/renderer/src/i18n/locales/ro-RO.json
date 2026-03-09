@@ -58,7 +58,8 @@
         "mcpServers": "Servere MCP",
         "runtimeSetup": "Configurare runtime",
         "display": "Afișare",
-        "aboutFeedback": "Despre și feedback"
+        "aboutFeedback": "Despre și feedback",
+        "channels": "Canale"
       }
     },
     "general": {
@@ -343,6 +344,18 @@
       "toasts": {
         "saved": "MCP server settings saved."
       }
+    },
+    "channels": {
+      "title": "Canale",
+      "description": "Gestionează într-un singur loc canalele Telegram și Lark configurate.",
+      "configuredTitle": "Canale configurate",
+      "configuredDescription": "Editează credențialele existente, verifică legăturile sau elimină canalele nefolosite.",
+      "loading": "Se încarcă canalele...",
+      "empty": "Nu există încă canale configurate.",
+      "available": "Disponibil",
+      "boundTo": "Conectat la {{assistantName}}",
+      "removeDisabled": "Detașează mai întâi acest canal din claw înainte să îl elimini.",
+      "loadFailed": "Nu s-au putut încărca canalele"
     }
   },
   "claws": {
@@ -437,7 +450,8 @@
         "remove": "Remove Channel",
         "clear": "Clear Selection",
         "cancel": "Cancel",
-        "apply": "Apply"
+        "apply": "Apply",
+        "edit": "Editează canalul"
       },
       "create": {
         "title": "Add Channel",
@@ -458,7 +472,18 @@
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "createFailed": "Failed to create channel",
-        "deleteFailed": "Failed to delete channel"
+        "deleteFailed": "Failed to delete channel",
+        "updateFailed": "Nu s-a putut actualiza canalul"
+      },
+      "selectedBadge": "Selectat",
+      "edit": {
+        "title": "Editează canalul",
+        "description": "Actualizează configurația acestui canal.",
+        "save": "Salvează modificările",
+        "credentialsOptional": "Lasă câmpurile de acreditare goale pentru a păstra valorile curente.",
+        "appIdPlaceholder": "Lasă neschimbat",
+        "appSecretPlaceholder": "Lasă neschimbat",
+        "botTokenPlaceholder": "Lasă neschimbat"
       }
     },
     "pairings": {
@@ -482,6 +507,15 @@
       "errors": {
         "loadFailed": "Nu s-au putut încărca asocierile",
         "updateFailed": "Nu s-a putut actualiza asocierea"
+      }
+    },
+    "deleteDialog": {
+      "title": "Ștergi „{{name}}”?",
+      "description": "Aceasta va șterge și tot istoricul asistentului.",
+      "actions": {
+        "cancel": "Anulează",
+        "disable": "Dezactivează în schimb",
+        "confirmDelete": "Confirmă ștergerea"
       }
     }
   },
