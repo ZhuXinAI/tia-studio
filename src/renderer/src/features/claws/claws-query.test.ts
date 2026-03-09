@@ -1,7 +1,14 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { approveClawPairing, createClaw, listClawPairings, listClaws } from './claws-query'
+import {
+  approveClawPairing,
+  createClaw,
+  createClawChannel,
+  deleteClawChannel,
+  listClawPairings,
+  listClaws
+} from './claws-query'
 
 describe('claws query api client', () => {
   beforeEach(() => {
@@ -21,7 +28,19 @@ describe('claws query api client', () => {
         new Response(
           JSON.stringify({
             claws: [],
-            availableChannels: []
+            configuredChannels: [
+              {
+                id: 'channel-1',
+                type: 'telegram',
+                name: 'Ops Bot',
+                assistantId: null,
+                assistantName: null,
+                status: 'disconnected',
+                errorMessage: null,
+                pairedCount: 0,
+                pendingPairingCount: 0
+              }
+            ]
           }),
           {
             status: 200,
@@ -31,7 +50,9 @@ describe('claws query api client', () => {
     )
     vi.stubGlobal('fetch', fetchSpy)
 
-    await listClaws()
+    await expect(listClaws()).resolves.toMatchObject({
+      configuredChannels: [expect.objectContaining({ id: 'channel-1' })]
+    })
 
     expect(fetchSpy).toHaveBeenCalledWith(
       'http://127.0.0.1:4769/v1/claws',
@@ -85,6 +106,64 @@ describe('claws query api client', () => {
       'http://127.0.0.1:4769/v1/claws',
       expect.objectContaining({
         method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer test-token'
+        })
+      })
+    )
+  })
+
+  it('creates a configured channel through backend api', async () => {
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            id: 'channel-1',
+            type: 'lark',
+            name: 'Ops Lark',
+            assistantId: null,
+            assistantName: null,
+            status: 'disconnected',
+            errorMessage: null,
+            pairedCount: 0,
+            pendingPairingCount: 0
+          }),
+          {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
+    )
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await createClawChannel({
+      type: 'lark',
+      name: 'Ops Lark',
+      appId: 'cli_ops',
+      appSecret: 'secret-ops'
+    })
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'http://127.0.0.1:4769/v1/claws/channels',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer test-token'
+        })
+      })
+    )
+  })
+
+  it('deletes a configured channel through backend api', async () => {
+    const fetchSpy = vi.fn(async () => new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await deleteClawChannel('channel-1')
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'http://127.0.0.1:4769/v1/claws/channels/channel-1',
+      expect.objectContaining({
+        method: 'DELETE',
         headers: expect.objectContaining({
           Authorization: 'Bearer test-token'
         })

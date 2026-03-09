@@ -12,58 +12,63 @@ import { Input } from '../../../components/ui/input'
 import { Textarea } from '../../../components/ui/textarea'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import type { ProviderRecord } from '../../settings/providers/providers-query'
-import type { AvailableClawChannelRecord, ClawRecord, SaveClawInput } from '../claws-query'
-
-type ChannelAction = 'create' | 'attach' | 'keep' | 'detach'
-type CreateChannelType = 'lark' | 'telegram'
+import type {
+  ClawRecord,
+  ConfiguredClawChannelRecord,
+  CreateClawChannelInput,
+  SaveClawInput
+} from '../claws-query'
+import { ClawChannelSelectorDialog } from './claw-channel-selector-dialog'
 
 type ClawEditorDialogProps = {
   isOpen: boolean
   claw: ClawRecord | null
   providers: ProviderRecord[]
-  availableChannels: AvailableClawChannelRecord[]
+  configuredChannels: ConfiguredClawChannelRecord[]
   isSubmitting: boolean
   onClose: () => void
   onSubmit: (input: SaveClawInput) => Promise<void> | void
+  onCreateChannel:
+    (input: CreateClawChannelInput) => Promise<ConfiguredClawChannelRecord> | ConfiguredClawChannelRecord
+  onDeleteChannel: (channelId: string) => Promise<void> | void
 }
 
-function getInitialChannelAction(claw: ClawRecord | null): ChannelAction {
-  if (!claw) {
-    return 'create'
+function buildChannelPayload(input: {
+  claw: ClawRecord | null
+  selectedChannelId: string
+}): SaveClawInput['channel'] {
+  if (!input.selectedChannelId) {
+    return input.claw?.channel ? { mode: 'detach' } : undefined
   }
 
-  return claw.channel ? 'keep' : 'create'
-}
+  if (input.claw?.channel?.id === input.selectedChannelId) {
+    return input.claw.channel ? { mode: 'keep' } : undefined
+  }
 
-function getInitialCreateChannelType(claw: ClawRecord | null): CreateChannelType {
-  return claw?.channel?.type === 'telegram' ? 'telegram' : 'lark'
+  return {
+    mode: 'attach',
+    channelId: input.selectedChannelId
+  }
 }
 
 export function ClawEditorDialog({
   isOpen,
   claw,
   providers,
-  availableChannels,
+  configuredChannels,
   isSubmitting,
   onClose,
-  onSubmit
+  onSubmit,
+  onCreateChannel,
+  onDeleteChannel
 }: ClawEditorDialogProps): React.JSX.Element {
   const { t } = useTranslation()
   const [name, setName] = useState(claw?.name ?? '')
   const [providerId, setProviderId] = useState(claw?.providerId ?? '')
   const [instructions, setInstructions] = useState(claw?.instructions ?? '')
   const [enabled, setEnabled] = useState(claw?.enabled ?? true)
-  const [channelAction, setChannelAction] = useState<ChannelAction>(() =>
-    getInitialChannelAction(claw)
-  )
-  const [channelType, setChannelType] = useState<CreateChannelType>(() =>
-    getInitialCreateChannelType(claw)
-  )
-  const [existingChannelId, setExistingChannelId] = useState(availableChannels[0]?.id ?? '')
-  const [channelName, setChannelName] = useState(claw?.channel?.name ?? '')
-  const [appId, setAppId] = useState('')
-  const [appSecret, setAppSecret] = useState('')
-  const [botToken, setBotToken] = useState('')
+  const [selectedChannelId, setSelectedChannelId] = useState(claw?.channel?.id ?? '')
+  const [isSelectorOpen, setIsSelectorOpen] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
@@ -71,23 +76,45 @@ export function ClawEditorDialog({
     setProviderId(claw?.providerId ?? '')
     setInstructions(claw?.instructions ?? '')
     setEnabled(claw?.enabled ?? true)
-    setChannelAction(getInitialChannelAction(claw))
-    setChannelType(getInitialCreateChannelType(claw))
-    setExistingChannelId(availableChannels[0]?.id ?? '')
-    setChannelName(claw?.channel?.name ?? '')
-    setAppId('')
-    setAppSecret('')
-    setBotToken('')
+    setSelectedChannelId(claw?.channel?.id ?? '')
+    setIsSelectorOpen(false)
     setErrorMessage(null)
-  }, [availableChannels, claw, isOpen])
+  }, [claw, isOpen])
 
-  const dialogTitle = useMemo(() => {
-    return claw ? t('claws.dialog.editTitle') : t('claws.dialog.createTitle')
-  }, [claw, t])
+  const dialogTitle = useMemo(
+    () => (claw ? t('claws.dialog.editTitle') : t('claws.dialog.createTitle')),
+    [claw, t]
+  )
 
   const submitLabel = claw ? t('claws.dialog.saveButton') : t('claws.dialog.createButton')
 
-  const canAttachExisting = availableChannels.length > 0
+  const selectedChannel = useMemo(() => {
+    if (!selectedChannelId) {
+      return null
+    }
+
+    const configuredChannel =
+      configuredChannels.find((channel) => channel.id === selectedChannelId) ?? null
+    if (configuredChannel) {
+      return configuredChannel
+    }
+
+    if (claw?.channel?.id === selectedChannelId) {
+      return {
+        id: claw.channel.id,
+        type: claw.channel.type,
+        name: claw.channel.name,
+        assistantId: claw.id,
+        assistantName: claw.name,
+        status: claw.channel.status,
+        errorMessage: claw.channel.errorMessage,
+        pairedCount: claw.channel.pairedCount ?? 0,
+        pendingPairingCount: claw.channel.pendingPairingCount ?? 0
+      }
+    }
+
+    return null
+  }, [claw, configuredChannels, selectedChannelId])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
@@ -102,252 +129,139 @@ export function ClawEditorDialog({
       return
     }
 
-    let channel: SaveClawInput['channel']
-
-    if (channelAction === 'attach') {
-      if (existingChannelId.trim().length === 0) {
-        setErrorMessage(t('claws.dialog.errors.channelRequired'))
-        return
-      }
-
-      channel = {
-        mode: 'attach',
-        channelId: existingChannelId
-      }
-    } else if (channelAction === 'create') {
-      if (channelType === 'telegram') {
-        if (channelName.trim().length === 0 || botToken.trim().length === 0) {
-          setErrorMessage(t('claws.dialog.errors.telegramCredentialsRequired'))
-          return
-        }
-
-        channel = {
-          mode: 'create',
-          type: 'telegram',
-          name: channelName.trim(),
-          botToken: botToken.trim()
-        }
-      } else {
-        if (
-          channelName.trim().length === 0 ||
-          appId.trim().length === 0 ||
-          appSecret.trim().length === 0
-        ) {
-          setErrorMessage(t('claws.dialog.errors.channelCredentialsRequired'))
-          return
-        }
-
-        channel = {
-          mode: 'create',
-          type: 'lark',
-          name: channelName.trim(),
-          appId: appId.trim(),
-          appSecret: appSecret.trim()
-        }
-      }
-    } else if (channelAction === 'detach') {
-      channel = {
-        mode: 'detach'
-      }
-    } else if (claw?.channel) {
-      channel = {
-        mode: 'keep'
-      }
-    }
+    const channel = buildChannelPayload({
+      claw,
+      selectedChannelId
+    })
 
     await onSubmit({
       assistant: {
         name: name.trim(),
         providerId: providerId.trim(),
         instructions: instructions.trim(),
-        enabled
+        enabled: selectedChannelId ? enabled : false
       },
       ...(channel ? { channel } : {})
     })
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{dialogTitle}</DialogTitle>
-          <DialogDescription>{t('claws.dialog.telegramDescription')}</DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{dialogTitle}</DialogTitle>
+            <DialogDescription>{t('claws.dialog.telegramDescription')}</DialogDescription>
+          </DialogHeader>
 
-        <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
-          <div className="grid gap-2">
-            <label htmlFor="claw-name" className="text-sm font-medium">
-              {t('claws.dialog.fields.assistantName')}
-            </label>
-            <Input id="claw-name" value={name} onChange={(event) => setName(event.target.value)} />
-          </div>
-
-          <div className="grid gap-2">
-            <label htmlFor="claw-provider" className="text-sm font-medium">
-              {t('claws.dialog.fields.provider')}
-            </label>
-            <select
-              id="claw-provider"
-              className="border-input bg-background rounded-md border px-3 py-2 text-sm"
-              value={providerId}
-              onChange={(event) => setProviderId(event.target.value)}
-            >
-              <option value="">{t('claws.dialog.selectProvider')}</option>
-              {providers.map((provider) => (
-                <option key={provider.id} value={provider.id}>
-                  {provider.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid gap-2">
-            <label htmlFor="claw-instructions" className="text-sm font-medium">
-              {t('claws.dialog.fields.instructions')}
-            </label>
-            <Textarea
-              id="claw-instructions"
-              value={instructions}
-              onChange={(event) => setInstructions(event.target.value)}
-            />
-          </div>
-
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={enabled}
-              onChange={(event) => setEnabled(event.target.checked)}
-            />
-            <span>{t('claws.dialog.enableAfterSaving')}</span>
-          </label>
-
-          {claw ? (
+          <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
             <div className="grid gap-2">
-              <label htmlFor="claw-channel-action" className="text-sm font-medium">
-                {t('claws.dialog.fields.channelAction')}
+              <label htmlFor="claw-name" className="text-sm font-medium">
+                {t('claws.dialog.fields.assistantName')}
               </label>
-              <select
-                id="claw-channel-action"
-                className="border-input bg-background rounded-md border px-3 py-2 text-sm"
-                value={channelAction}
-                onChange={(event) => setChannelAction(event.target.value as ChannelAction)}
-              >
-                {claw.channel ? (
-                  <option value="keep">{t('claws.dialog.channelActions.keep')}</option>
-                ) : null}
-                <option value="create">{t('claws.dialog.channelActions.createGeneric')}</option>
-                {canAttachExisting ? (
-                  <option value="attach">{t('claws.dialog.channelActions.attach')}</option>
-                ) : null}
-                {claw.channel ? (
-                  <option value="detach">{t('claws.dialog.channelActions.detach')}</option>
-                ) : null}
-              </select>
+              <Input id="claw-name" value={name} onChange={(event) => setName(event.target.value)} />
             </div>
-          ) : null}
 
-          {channelAction === 'attach' ? (
             <div className="grid gap-2">
-              <label htmlFor="claw-existing-channel" className="text-sm font-medium">
-                {t('claws.dialog.fields.existingChannel')}
+              <label htmlFor="claw-provider" className="text-sm font-medium">
+                {t('claws.dialog.fields.provider')}
               </label>
               <select
-                id="claw-existing-channel"
+                id="claw-provider"
                 className="border-input bg-background rounded-md border px-3 py-2 text-sm"
-                value={existingChannelId}
-                onChange={(event) => setExistingChannelId(event.target.value)}
+                value={providerId}
+                onChange={(event) => setProviderId(event.target.value)}
               >
-                <option value="">{t('claws.dialog.selectChannel')}</option>
-                {availableChannels.map((channel) => (
-                  <option key={channel.id} value={channel.id}>
-                    {channel.name}
+                <option value="">{t('claws.dialog.selectProvider')}</option>
+                {providers.map((provider) => (
+                  <option key={provider.id} value={provider.id}>
+                    {provider.name}
                   </option>
                 ))}
               </select>
             </div>
-          ) : null}
 
-          {channelAction === 'create' ? (
-            <>
-              <div className="grid gap-2">
-                <label htmlFor="claw-channel-type" className="text-sm font-medium">
-                  {t('claws.dialog.fields.channelType')}
-                </label>
-                <select
-                  id="claw-channel-type"
-                  className="border-input bg-background rounded-md border px-3 py-2 text-sm"
-                  value={channelType}
-                  onChange={(event) => setChannelType(event.target.value as CreateChannelType)}
+            <div className="grid gap-2">
+              <label htmlFor="claw-instructions" className="text-sm font-medium">
+                {t('claws.dialog.fields.instructions')}
+              </label>
+              <Textarea
+                id="claw-instructions"
+                value={instructions}
+                onChange={(event) => setInstructions(event.target.value)}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">{t('claws.dialog.fields.channelName')}</label>
+              <div className="rounded-lg border border-border p-4">
+                {selectedChannel ? (
+                  <div className="space-y-1">
+                    <p className="font-medium">{selectedChannel.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedChannel.type} · {selectedChannel.status}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {t('claws.card.noChannelConnected')}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  id="claw-select-channel-button"
+                  type="button"
+                  variant="outline"
+                  disabled={isSubmitting}
+                  onClick={() => setIsSelectorOpen(true)}
                 >
-                  <option value="lark">{t('claws.dialog.channelTypes.lark')}</option>
-                  <option value="telegram">{t('claws.dialog.channelTypes.telegram')}</option>
-                </select>
+                  {t('claws.channelSelector.openButton')}
+                </Button>
+                {!selectedChannelId ? (
+                  <p className="text-sm text-amber-600">{t('claws.card.configureChannelFirst')}</p>
+                ) : null}
               </div>
+            </div>
 
-              <div className="grid gap-2">
-                <label htmlFor="claw-channel-name" className="text-sm font-medium">
-                  {t('claws.dialog.fields.channelName')}
-                </label>
-                <Input
-                  id="claw-channel-name"
-                  value={channelName}
-                  onChange={(event) => setChannelName(event.target.value)}
-                />
-              </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={enabled}
+                onChange={(event) => setEnabled(event.target.checked)}
+              />
+              <span>{t('claws.dialog.enableAfterSaving')}</span>
+            </label>
 
-              {channelType === 'telegram' ? (
-                <div className="grid gap-2">
-                  <label htmlFor="claw-channel-bot-token" className="text-sm font-medium">
-                    {t('claws.dialog.fields.botToken')}
-                  </label>
-                  <Input
-                    id="claw-channel-bot-token"
-                    type="password"
-                    value={botToken}
-                    onChange={(event) => setBotToken(event.target.value)}
-                  />
-                </div>
-              ) : (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <div className="grid gap-2">
-                    <label htmlFor="claw-channel-app-id" className="text-sm font-medium">
-                      {t('claws.dialog.fields.appId')}
-                    </label>
-                    <Input
-                      id="claw-channel-app-id"
-                      value={appId}
-                      onChange={(event) => setAppId(event.target.value)}
-                    />
-                  </div>
+            {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
 
-                  <div className="grid gap-2">
-                    <label htmlFor="claw-channel-app-secret" className="text-sm font-medium">
-                      {t('claws.dialog.fields.appSecret')}
-                    </label>
-                    <Input
-                      id="claw-channel-app-secret"
-                      type="password"
-                      value={appSecret}
-                      onChange={(event) => setAppSecret(event.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-            </>
-          ) : null}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+                {t('common.actions.cancel')}
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {submitLabel}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-          {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-              {t('common.actions.cancel')}
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {submitLabel}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <ClawChannelSelectorDialog
+        isOpen={isSelectorOpen}
+        currentAssistantId={claw?.id ?? null}
+        selectedChannelId={selectedChannelId}
+        channels={configuredChannels}
+        isMutating={isSubmitting}
+        errorMessage={null}
+        onClose={() => setIsSelectorOpen(false)}
+        onApply={(channelId) => {
+          setSelectedChannelId(channelId)
+          setErrorMessage(null)
+        }}
+        onCreateChannel={onCreateChannel}
+        onDeleteChannel={onDeleteChannel}
+      />
+    </>
   )
 }
