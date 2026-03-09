@@ -17,6 +17,7 @@ export interface ChannelAdapter {
   start(): Promise<void>
   stop(): Promise<void>
   send(remoteChatId: string, message: string): Promise<void>
+  acknowledgeMessage?(messageId: string): Promise<void>
   onMessage?: (message: ChannelMessage) => Promise<void> | void
 }
 
