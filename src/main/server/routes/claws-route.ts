@@ -1,6 +1,10 @@
 import type { Hono } from 'hono'
 import { BUILT_IN_DEFAULT_AGENT_MCP_KEY } from '../../default-agent/default-agent-bootstrap'
 import type { AppAssistant, AssistantsRepository } from '../../persistence/repos/assistants-repo'
+import type {
+  AppChannelPairing,
+  ChannelPairingsRepository
+} from '../../persistence/repos/channel-pairings-repo'
 import type { AppChannel, ChannelsRepository } from '../../persistence/repos/channels-repo'
 import type { ProvidersRepository } from '../../persistence/repos/providers-repo'
 import { createClawSchema, updateClawSchema } from '../validators/claws-validator'
@@ -17,6 +21,16 @@ type RegisterClawsRouteOptions = {
   assistantsRepo: AssistantsRepository
   providersRepo: ProvidersRepository
   channelsRepo: ChannelsRepository
+  pairingsRepo: Pick<
+    ChannelPairingsRepository,
+    | 'countByChannelIdAndStatus'
+    | 'countActivePendingByChannelId'
+    | 'listByChannelId'
+    | 'getById'
+    | 'approve'
+    | 'reject'
+    | 'revoke'
+  >
   channelService: ChannelServiceLike
   cronSchedulerService?: CronSchedulerServiceLike
 }
@@ -34,7 +48,27 @@ type ClawResponse = {
     name: string
     status: 'connected' | 'disconnected' | 'error'
     errorMessage: string | null
+    pairedCount: number
+    pendingPairingCount: number
   }
+}
+
+type ClawPairingResponse = {
+  id: string
+  channelId: string
+  remoteChatId: string
+  senderId: string
+  senderDisplayName: string
+  senderUsername: string | null
+  code: string
+  status: string
+  expiresAt: string | null
+  approvedAt: string | null
+  rejectedAt: string | null
+  revokedAt: string | null
+  lastSeenAt: string
+  createdAt: string
+  updatedAt: string
 }
 
 function invalidBodyResponse() {
@@ -49,25 +83,57 @@ function toChannelStatus(
   channel: Pick<AppChannel, 'assistantId' | 'config' | 'enabled' | 'lastError'>,
   assistantEnabled: boolean
 ): 'connected' | 'disconnected' | 'error' {
-  const appId = typeof channel.config.appId === 'string' ? channel.config.appId.trim() : ''
-  const appSecret =
-    typeof channel.config.appSecret === 'string' ? channel.config.appSecret.trim() : ''
+  const hasValidConfig =
+    (typeof channel.config.appId === 'string' &&
+      channel.config.appId.trim().length > 0 &&
+      typeof channel.config.appSecret === 'string' &&
+      channel.config.appSecret.trim().length > 0) ||
+    (typeof channel.config.botToken === 'string' && channel.config.botToken.trim().length > 0)
 
   if (channel.lastError) {
     return 'error'
   }
 
-  if (assistantEnabled && channel.enabled && channel.assistantId && appId.length > 0 && appSecret.length > 0) {
+  if (assistantEnabled && channel.enabled && channel.assistantId && hasValidConfig) {
     return 'connected'
   }
 
   return 'disconnected'
 }
 
-function toClawResponse(
+async function getChannelPairingCounts(
+  channel: AppChannel,
+  options: RegisterClawsRouteOptions
+): Promise<{
+  pairedCount: number
+  pendingPairingCount: number
+}> {
+  if (channel.type !== 'telegram') {
+    return {
+      pairedCount: 0,
+      pendingPairingCount: 0
+    }
+  }
+
+  const now = new Date().toISOString()
+  const [pairedCount, pendingPairingCount] = await Promise.all([
+    options.pairingsRepo.countByChannelIdAndStatus(channel.id, 'approved'),
+    options.pairingsRepo.countActivePendingByChannelId(channel.id, now)
+  ])
+
+  return {
+    pairedCount,
+    pendingPairingCount
+  }
+}
+
+async function toClawResponse(
   assistant: AppAssistant,
-  channel: AppChannel | null
-): ClawResponse {
+  channel: AppChannel | null,
+  options: RegisterClawsRouteOptions
+): Promise<ClawResponse> {
+  const counts = channel ? await getChannelPairingCounts(channel, options) : null
+
   return {
     id: assistant.id,
     name: assistant.name,
@@ -81,7 +147,9 @@ function toClawResponse(
           type: channel.type,
           name: channel.name,
           status: toChannelStatus(channel, assistant.enabled),
-          errorMessage: channel.lastError
+          errorMessage: channel.lastError,
+          pairedCount: counts?.pairedCount ?? 0,
+          pendingPairingCount: counts?.pendingPairingCount ?? 0
         }
       : null
   }
@@ -100,9 +168,13 @@ async function listVisibleClaws(options: RegisterClawsRouteOptions): Promise<Cla
     channelsByAssistantId.set(channel.assistantId, channel)
   }
 
-  return assistants
-    .filter((assistant) => !isBuiltInAssistant(assistant))
-    .map((assistant) => toClawResponse(assistant, channelsByAssistantId.get(assistant.id) ?? null))
+  return Promise.all(
+    assistants
+      .filter((assistant) => !isBuiltInAssistant(assistant))
+      .map((assistant) =>
+        toClawResponse(assistant, channelsByAssistantId.get(assistant.id) ?? null, options)
+      )
+  )
 }
 
 async function loadVisibleAssistant(
@@ -127,7 +199,82 @@ async function loadClawByAssistantId(
   }
 
   const channel = await options.channelsRepo.getByAssistantId(assistant.id)
-  return toClawResponse(assistant, channel)
+  return toClawResponse(assistant, channel, options)
+}
+
+function toPairingResponse(pairing: AppChannelPairing): ClawPairingResponse {
+  return {
+    id: pairing.id,
+    channelId: pairing.channelId,
+    remoteChatId: pairing.remoteChatId,
+    senderId: pairing.senderId,
+    senderDisplayName: pairing.senderDisplayName,
+    senderUsername: pairing.senderUsername,
+    code: pairing.code,
+    status: pairing.status,
+    expiresAt: pairing.expiresAt,
+    approvedAt: pairing.approvedAt,
+    rejectedAt: pairing.rejectedAt,
+    revokedAt: pairing.revokedAt,
+    lastSeenAt: pairing.lastSeenAt,
+    createdAt: pairing.createdAt,
+    updatedAt: pairing.updatedAt
+  }
+}
+
+function buildChannelConfig(
+  channel:
+    | { type: 'lark'; appId: string; appSecret: string }
+    | { type: 'telegram'; botToken: string }
+): Record<string, unknown> {
+  if (channel.type === 'telegram') {
+    return {
+      botToken: channel.botToken
+    }
+  }
+
+  return {
+    appId: channel.appId,
+    appSecret: channel.appSecret
+  }
+}
+
+async function loadTelegramChannelByAssistantId(
+  assistantId: string,
+  options: RegisterClawsRouteOptions
+): Promise<AppChannel | null> {
+  const assistant = await loadVisibleAssistant(assistantId, options)
+  if (!assistant) {
+    return null
+  }
+
+  const channel = await options.channelsRepo.getByAssistantId(assistant.id)
+  if (!channel || channel.type !== 'telegram') {
+    return null
+  }
+
+  return channel
+}
+
+async function loadTelegramPairing(input: {
+  assistantId: string
+  pairingId: string
+  options: RegisterClawsRouteOptions
+}): Promise<{ channel: AppChannel; pairing: AppChannelPairing } | null> {
+  const channel = await loadTelegramChannelByAssistantId(input.assistantId, input.options)
+  if (!channel) {
+    return null
+  }
+
+  const pairing = await input.options.pairingsRepo.getById(input.pairingId)
+  if (!pairing || pairing.channelId !== channel.id) {
+    return null
+  }
+
+  return {
+    channel,
+    pairing
+  }
 }
 
 async function attachChannelToAssistant(input: {
@@ -225,10 +372,7 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
         name: parsed.data.channel.name,
         assistantId: assistant.id,
         enabled: true,
-        config: {
-          appId: parsed.data.channel.appId,
-          appSecret: parsed.data.channel.appSecret
-        }
+        config: buildChannelConfig(parsed.data.channel)
       })
     } else if (parsed.data.channel?.mode === 'attach') {
       const attachResult = await attachChannelToAssistant({
@@ -302,10 +446,7 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
         name: parsed.data.channel.name,
         assistantId,
         enabled: true,
-        config: {
-          appId: parsed.data.channel.appId,
-          appSecret: parsed.data.channel.appSecret
-        }
+        config: buildChannelConfig(parsed.data.channel)
       })
     } else if (parsed.data.channel?.mode === 'detach' && currentChannel) {
       await options.channelsRepo.update(currentChannel.id, {
@@ -316,6 +457,76 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
     await reloadClawServices(options)
 
     return context.json(await loadClawByAssistantId(assistantId, options))
+  })
+
+  app.get('/v1/claws/:assistantId/pairings', async (context) => {
+    const assistantId = context.req.param('assistantId')
+    const channel = await loadTelegramChannelByAssistantId(assistantId, options)
+    if (!channel) {
+      return context.json({ ok: false, error: 'Telegram channel not found' }, 404)
+    }
+
+    const pairings = await options.pairingsRepo.listByChannelId(channel.id)
+    return context.json({
+      pairings: pairings.map((pairing) => toPairingResponse(pairing))
+    })
+  })
+
+  app.post('/v1/claws/:assistantId/pairings/:pairingId/approve', async (context) => {
+    const resolved = await loadTelegramPairing({
+      assistantId: context.req.param('assistantId'),
+      pairingId: context.req.param('pairingId'),
+      options
+    })
+    if (!resolved) {
+      return context.json({ ok: false, error: 'Telegram pairing not found' }, 404)
+    }
+
+    const updated = await options.pairingsRepo.approve(
+      resolved.pairing.id,
+      new Date().toISOString()
+    )
+    if (!updated) {
+      return context.json({ ok: false, error: 'Telegram pairing not found' }, 404)
+    }
+
+    return context.json(toPairingResponse(updated))
+  })
+
+  app.post('/v1/claws/:assistantId/pairings/:pairingId/reject', async (context) => {
+    const resolved = await loadTelegramPairing({
+      assistantId: context.req.param('assistantId'),
+      pairingId: context.req.param('pairingId'),
+      options
+    })
+    if (!resolved) {
+      return context.json({ ok: false, error: 'Telegram pairing not found' }, 404)
+    }
+
+    const updated = await options.pairingsRepo.reject(resolved.pairing.id, new Date().toISOString())
+    if (!updated) {
+      return context.json({ ok: false, error: 'Telegram pairing not found' }, 404)
+    }
+
+    return context.json(toPairingResponse(updated))
+  })
+
+  app.post('/v1/claws/:assistantId/pairings/:pairingId/revoke', async (context) => {
+    const resolved = await loadTelegramPairing({
+      assistantId: context.req.param('assistantId'),
+      pairingId: context.req.param('pairingId'),
+      options
+    })
+    if (!resolved) {
+      return context.json({ ok: false, error: 'Telegram pairing not found' }, 404)
+    }
+
+    const updated = await options.pairingsRepo.revoke(resolved.pairing.id, new Date().toISOString())
+    if (!updated) {
+      return context.json({ ok: false, error: 'Telegram pairing not found' }, 404)
+    }
+
+    return context.json(toPairingResponse(updated))
   })
 
   app.delete('/v1/claws/:assistantId', async (context) => {

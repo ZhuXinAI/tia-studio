@@ -1,19 +1,31 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Bot, Link2, Plus } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '../../../components/ui/card'
 import type { ProviderRecord } from '../../settings/providers/providers-query'
 import { listProviders } from '../../settings/providers/providers-query'
 import {
+  approveClawPairing,
   createClaw,
   deleteClaw,
+  listClawPairings,
   listClaws,
+  rejectClawPairing,
+  revokeClawPairing,
   updateClaw,
+  type ClawPairingRecord,
   type ClawRecord,
   type ClawsResponse,
   type SaveClawInput
 } from '../claws-query'
 import { ClawEditorDialog } from '../components/claw-editor-dialog'
+import { ClawPairingsDialog } from '../components/claw-pairings-dialog'
 
 function emptyClawsResponse(): ClawsResponse {
   return {
@@ -37,6 +49,11 @@ export function ClawsPage(): React.JSX.Element {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingClaw, setEditingClaw] = useState<ClawRecord | null>(null)
+  const [pairingsClaw, setPairingsClaw] = useState<ClawRecord | null>(null)
+  const [pairings, setPairings] = useState<ClawPairingRecord[]>([])
+  const [isPairingsLoading, setIsPairingsLoading] = useState(false)
+  const [isPairingsSubmitting, setIsPairingsSubmitting] = useState(false)
+  const [pairingsErrorMessage, setPairingsErrorMessage] = useState<string | null>(null)
 
   async function refreshPage(): Promise<void> {
     const [nextClaws, nextProviders] = await Promise.all([listClaws(), listProviders()])
@@ -107,6 +124,47 @@ export function ClawsPage(): React.JSX.Element {
     }
   }
 
+  async function refreshPairings(assistantId: string): Promise<void> {
+    const nextPairings = await listClawPairings(assistantId)
+    setPairings(nextPairings.pairings)
+  }
+
+  async function handleOpenPairings(claw: ClawRecord): Promise<void> {
+    setPairingsClaw(claw)
+    setPairings([])
+    setPairingsErrorMessage(null)
+    setIsPairingsLoading(true)
+
+    try {
+      await refreshPairings(claw.id)
+    } catch (error) {
+      setPairingsErrorMessage(error instanceof Error ? error.message : 'Failed to load pairings')
+    } finally {
+      setIsPairingsLoading(false)
+    }
+  }
+
+  async function handlePairingAction(
+    action: (assistantId: string, pairingId: string) => Promise<unknown>,
+    pairingId: string
+  ): Promise<void> {
+    if (!pairingsClaw) {
+      return
+    }
+
+    setIsPairingsSubmitting(true)
+    setPairingsErrorMessage(null)
+
+    try {
+      await action(pairingsClaw.id, pairingId)
+      await Promise.all([refreshPairings(pairingsClaw.id), refreshPage()])
+    } catch (error) {
+      setPairingsErrorMessage(error instanceof Error ? error.message : 'Failed to update pairing')
+    } finally {
+      setIsPairingsSubmitting(false)
+    }
+  }
+
   return (
     <section className="min-h-full bg-muted/20 px-6 py-6">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
@@ -115,7 +173,8 @@ export function ClawsPage(): React.JSX.Element {
             <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">Claws</p>
             <h1 className="text-3xl font-semibold">Claws</h1>
             <p className="text-muted-foreground text-sm">
-              Connect assistants to external Lark channels without digging through raw settings.
+              Connect assistants to external Telegram or Lark channels without digging through raw
+              settings.
             </p>
           </div>
 
@@ -136,7 +195,8 @@ export function ClawsPage(): React.JSX.Element {
             <CardHeader>
               <CardTitle>Set up your first claw</CardTitle>
               <CardDescription>
-                Start with one assistant, one provider, and one Lark channel for the quickest onboarding path.
+                Start with one assistant, one provider, and one Telegram or Lark channel for the
+                quickest onboarding path.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap items-center justify-between gap-4">
@@ -169,10 +229,18 @@ export function ClawsPage(): React.JSX.Element {
               <CardContent className="space-y-4">
                 <div className="text-sm">
                   {claw.channel ? (
-                    <div className="flex items-center gap-2">
-                      <Link2 className="size-4 text-muted-foreground" />
-                      <span>{claw.channel.name}</span>
-                      <span className="text-muted-foreground">({claw.channel.status})</span>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Link2 className="size-4 text-muted-foreground" />
+                        <span>{claw.channel.name}</span>
+                        <span className="text-muted-foreground">({claw.channel.status})</span>
+                      </div>
+                      {claw.channel.type === 'telegram' ? (
+                        <p className="text-muted-foreground text-xs">
+                          {claw.channel.pairedCount ?? 0} paired ·{' '}
+                          {claw.channel.pendingPairingCount ?? 0} pending
+                        </p>
+                      ) : null}
                     </div>
                   ) : (
                     <span className="text-muted-foreground">No channel connected</span>
@@ -199,6 +267,16 @@ export function ClawsPage(): React.JSX.Element {
                   >
                     Edit
                   </Button>
+                  {claw.channel?.type === 'telegram' ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isSubmitting || isPairingsSubmitting}
+                      onClick={() => void handleOpenPairings(claw)}
+                    >
+                      Manage Pairings
+                    </Button>
+                  ) : null}
                   <Button
                     type="button"
                     variant="outline"
@@ -228,6 +306,27 @@ export function ClawsPage(): React.JSX.Element {
             setEditingClaw(null)
           }}
           onSubmit={handleDialogSubmit}
+        />
+
+        <ClawPairingsDialog
+          isOpen={pairingsClaw !== null}
+          clawName={pairingsClaw?.name ?? 'Telegram claw'}
+          pairings={pairings}
+          isLoading={isPairingsLoading}
+          isSubmitting={isPairingsSubmitting}
+          errorMessage={pairingsErrorMessage}
+          onClose={() => {
+            if (isPairingsSubmitting) {
+              return
+            }
+
+            setPairingsClaw(null)
+            setPairings([])
+            setPairingsErrorMessage(null)
+          }}
+          onApprove={(pairingId) => handlePairingAction(approveClawPairing, pairingId)}
+          onReject={(pairingId) => handlePairingAction(rejectClawPairing, pairingId)}
+          onRevoke={(pairingId) => handlePairingAction(revokeClawPairing, pairingId)}
         />
       </div>
     </section>

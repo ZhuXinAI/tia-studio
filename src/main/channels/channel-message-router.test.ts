@@ -208,6 +208,65 @@ describe('ChannelMessageRouter', () => {
     await router.stop()
   })
 
+  it('preserves the actual channel type and transport metadata for telegram messages', async () => {
+    const telegramChannel = await channelsRepo.create({
+      type: 'telegram',
+      name: 'Telegram',
+      assistantId,
+      enabled: true,
+      config: {
+        botToken: '123456:test-token'
+      }
+    })
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () => createStream())
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat)
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-telegram',
+      channelId: telegramChannel.id,
+      channelType: 'telegram',
+      message: {
+        id: '42',
+        remoteChatId: '1001',
+        senderId: '1001',
+        content: 'hello from telegram',
+        timestamp: new Date('2026-03-09T00:10:00.000Z'),
+        metadata: {
+          telegramUsername: 'alice',
+          telegramDisplayName: 'Alice'
+        }
+      }
+    })
+
+    expect(streamChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assistantId,
+        profileId: 'default-profile',
+        messages: [
+          expect.objectContaining({
+            id: `channel:${telegramChannel.id}:42`,
+            metadata: {
+              fromChannel: 'telegram',
+              channelId: telegramChannel.id,
+              channelType: 'telegram',
+              remoteChatId: '1001',
+              remoteMessageId: '42',
+              senderId: '1001',
+              telegramUsername: 'alice',
+              telegramDisplayName: 'Alice'
+            }
+          })
+        ]
+      })
+    )
+  })
+
   it('publishes a send request after the assistant finishes', async () => {
     const publishedEvents: unknown[] = []
     const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
@@ -319,6 +378,8 @@ describe('ChannelMessageRouter', () => {
     })
 
     expect(streamChat).not.toHaveBeenCalled()
-    await expect(bindingsRepo.getByChannelAndRemoteChat(disabledChannel.id, 'oc_disabled')).resolves.toBeNull()
+    await expect(
+      bindingsRepo.getByChannelAndRemoteChat(disabledChannel.id, 'oc_disabled')
+    ).resolves.toBeNull()
   })
 })

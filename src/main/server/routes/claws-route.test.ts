@@ -4,6 +4,7 @@ import { BUILT_IN_DEFAULT_AGENT_MCP_KEY } from '../../default-agent/default-agen
 import type { AppDatabase } from '../../persistence/client'
 import { migrateAppSchema } from '../../persistence/migrate'
 import { AssistantsRepository } from '../../persistence/repos/assistants-repo'
+import { ChannelPairingsRepository } from '../../persistence/repos/channel-pairings-repo'
 import { ChannelsRepository } from '../../persistence/repos/channels-repo'
 import { ProvidersRepository } from '../../persistence/repos/providers-repo'
 import { registerClawsRoute } from './claws-route'
@@ -14,6 +15,7 @@ describe('claws route', () => {
   let providersRepo: ProvidersRepository
   let assistantsRepo: AssistantsRepository
   let channelsRepo: ChannelsRepository
+  let pairingsRepo: ChannelPairingsRepository
   let channelReloadMock: ReturnType<typeof vi.fn<() => Promise<void>>>
   let cronReloadMock: ReturnType<typeof vi.fn<() => Promise<void>>>
   let providerId: string
@@ -23,6 +25,7 @@ describe('claws route', () => {
     providersRepo = new ProvidersRepository(db)
     assistantsRepo = new AssistantsRepository(db)
     channelsRepo = new ChannelsRepository(db)
+    pairingsRepo = new ChannelPairingsRepository(db)
     channelReloadMock = vi.fn(async () => undefined)
     cronReloadMock = vi.fn(async () => undefined)
     app = new Hono()
@@ -39,6 +42,7 @@ describe('claws route', () => {
       assistantsRepo,
       providersRepo,
       channelsRepo,
+      pairingsRepo,
       channelService: {
         reload: channelReloadMock
       },
@@ -153,6 +157,37 @@ describe('claws route', () => {
     })
     expect(channelReloadMock).toHaveBeenCalledOnce()
     expect(cronReloadMock).toHaveBeenCalledOnce()
+  })
+
+  it('creates a claw with a new inline telegram channel', async () => {
+    const response = await app.request('http://localhost/v1/claws', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assistant: {
+          name: 'Telegram Assistant',
+          providerId,
+          enabled: true
+        },
+        channel: {
+          mode: 'create',
+          type: 'telegram',
+          name: 'Telegram Bot',
+          botToken: '123456:test-token'
+        }
+      })
+    })
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({
+      name: 'Telegram Assistant',
+      channel: {
+        type: 'telegram',
+        name: 'Telegram Bot',
+        pairedCount: 0,
+        pendingPairingCount: 0
+      }
+    })
   })
 
   it('swaps a claw to another unbound channel and reloads runtime', async () => {
@@ -277,5 +312,235 @@ describe('claws route', () => {
     })
     expect(channelReloadMock).toHaveBeenCalledOnce()
     expect(cronReloadMock).toHaveBeenCalledOnce()
+  })
+
+  it('returns telegram pairing counts in the claw list', async () => {
+    const assistant = await assistantsRepo.create({
+      name: 'Telegram Assistant',
+      providerId,
+      enabled: true
+    })
+    const channel = await channelsRepo.create({
+      type: 'telegram',
+      name: 'Telegram Bot',
+      assistantId: assistant.id,
+      enabled: true,
+      config: {
+        botToken: '123456:test-token'
+      }
+    })
+    const approved = await pairingsRepo.createOrRefreshPending({
+      channelId: channel.id,
+      remoteChatId: '1001',
+      senderId: '1001',
+      senderDisplayName: 'Alice',
+      senderUsername: 'alice',
+      code: 'AB7KQ2XM',
+      expiresAt: '2099-03-09T01:00:00.000Z',
+      lastSeenAt: '2026-03-09T00:00:00.000Z'
+    })
+    await pairingsRepo.approve(approved.id, '2026-03-09T00:05:00.000Z')
+    await pairingsRepo.createOrRefreshPending({
+      channelId: channel.id,
+      remoteChatId: '1002',
+      senderId: '1002',
+      senderDisplayName: 'Bob',
+      senderUsername: 'bob',
+      code: 'CD8LM9NP',
+      expiresAt: '2099-03-09T02:00:00.000Z',
+      lastSeenAt: '2026-03-09T00:10:00.000Z'
+    })
+
+    const response = await app.request('http://localhost/v1/claws')
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      claws: [
+        expect.objectContaining({
+          id: assistant.id,
+          channel: expect.objectContaining({
+            id: channel.id,
+            pairedCount: 1,
+            pendingPairingCount: 1
+          })
+        })
+      ],
+      availableChannels: []
+    })
+  })
+
+  it('lists telegram pairings for a claw', async () => {
+    const assistant = await assistantsRepo.create({
+      name: 'Telegram Assistant',
+      providerId,
+      enabled: true
+    })
+    const channel = await channelsRepo.create({
+      type: 'telegram',
+      name: 'Telegram Bot',
+      assistantId: assistant.id,
+      enabled: true,
+      config: {
+        botToken: '123456:test-token'
+      }
+    })
+    const approved = await pairingsRepo.createOrRefreshPending({
+      channelId: channel.id,
+      remoteChatId: '1001',
+      senderId: '1001',
+      senderDisplayName: 'Alice',
+      senderUsername: 'alice',
+      code: 'AB7KQ2XM',
+      expiresAt: '2099-03-09T01:00:00.000Z',
+      lastSeenAt: '2026-03-09T00:00:00.000Z'
+    })
+    await pairingsRepo.approve(approved.id, '2026-03-09T00:05:00.000Z')
+    await pairingsRepo.createOrRefreshPending({
+      channelId: channel.id,
+      remoteChatId: '1002',
+      senderId: '1002',
+      senderDisplayName: 'Bob',
+      senderUsername: 'bob',
+      code: 'CD8LM9NP',
+      expiresAt: '2099-03-09T02:00:00.000Z',
+      lastSeenAt: '2026-03-09T00:10:00.000Z'
+    })
+
+    const response = await app.request(`http://localhost/v1/claws/${assistant.id}/pairings`)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      pairings: [
+        expect.objectContaining({
+          senderId: '1002',
+          status: 'pending'
+        }),
+        expect.objectContaining({
+          senderId: '1001',
+          status: 'approved'
+        })
+      ]
+    })
+  })
+
+  it('approves a pending telegram pairing', async () => {
+    const assistant = await assistantsRepo.create({
+      name: 'Telegram Assistant',
+      providerId,
+      enabled: true
+    })
+    const channel = await channelsRepo.create({
+      type: 'telegram',
+      name: 'Telegram Bot',
+      assistantId: assistant.id,
+      enabled: true,
+      config: {
+        botToken: '123456:test-token'
+      }
+    })
+    const pairing = await pairingsRepo.createOrRefreshPending({
+      channelId: channel.id,
+      remoteChatId: '1001',
+      senderId: '1001',
+      senderDisplayName: 'Alice',
+      senderUsername: 'alice',
+      code: 'AB7KQ2XM',
+      expiresAt: '2099-03-09T01:00:00.000Z',
+      lastSeenAt: '2026-03-09T00:00:00.000Z'
+    })
+
+    const response = await app.request(
+      `http://localhost/v1/claws/${assistant.id}/pairings/${pairing.id}/approve`,
+      {
+        method: 'POST'
+      }
+    )
+
+    expect(response.status).toBe(200)
+    await expect(pairingsRepo.getById(pairing.id)).resolves.toMatchObject({
+      id: pairing.id,
+      status: 'approved'
+    })
+  })
+
+  it('rejects a pending telegram pairing', async () => {
+    const assistant = await assistantsRepo.create({
+      name: 'Telegram Assistant',
+      providerId,
+      enabled: true
+    })
+    const channel = await channelsRepo.create({
+      type: 'telegram',
+      name: 'Telegram Bot',
+      assistantId: assistant.id,
+      enabled: true,
+      config: {
+        botToken: '123456:test-token'
+      }
+    })
+    const pairing = await pairingsRepo.createOrRefreshPending({
+      channelId: channel.id,
+      remoteChatId: '1001',
+      senderId: '1001',
+      senderDisplayName: 'Alice',
+      senderUsername: 'alice',
+      code: 'AB7KQ2XM',
+      expiresAt: '2099-03-09T01:00:00.000Z',
+      lastSeenAt: '2026-03-09T00:00:00.000Z'
+    })
+
+    const response = await app.request(
+      `http://localhost/v1/claws/${assistant.id}/pairings/${pairing.id}/reject`,
+      {
+        method: 'POST'
+      }
+    )
+
+    expect(response.status).toBe(200)
+    await expect(pairingsRepo.getById(pairing.id)).resolves.toMatchObject({
+      id: pairing.id,
+      status: 'rejected'
+    })
+  })
+
+  it('revokes an approved telegram pairing', async () => {
+    const assistant = await assistantsRepo.create({
+      name: 'Telegram Assistant',
+      providerId,
+      enabled: true
+    })
+    const channel = await channelsRepo.create({
+      type: 'telegram',
+      name: 'Telegram Bot',
+      assistantId: assistant.id,
+      enabled: true,
+      config: {
+        botToken: '123456:test-token'
+      }
+    })
+    const pairing = await pairingsRepo.createOrRefreshPending({
+      channelId: channel.id,
+      remoteChatId: '1001',
+      senderId: '1001',
+      senderDisplayName: 'Alice',
+      senderUsername: 'alice',
+      code: 'AB7KQ2XM',
+      expiresAt: '2099-03-09T01:00:00.000Z',
+      lastSeenAt: '2026-03-09T00:00:00.000Z'
+    })
+    await pairingsRepo.approve(pairing.id, '2026-03-09T00:05:00.000Z')
+
+    const response = await app.request(
+      `http://localhost/v1/claws/${assistant.id}/pairings/${pairing.id}/revoke`,
+      {
+        method: 'POST'
+      }
+    )
+
+    expect(response.status).toBe(200)
+    await expect(pairingsRepo.getById(pairing.id)).resolves.toMatchObject({
+      id: pairing.id,
+      status: 'revoked'
+    })
   })
 })

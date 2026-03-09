@@ -306,6 +306,27 @@ async function ensureChannelsTables(db: AppDatabase): Promise<void> {
     )
   `)
 
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_channel_pairings (
+      id TEXT PRIMARY KEY,
+      channel_id TEXT NOT NULL,
+      remote_chat_id TEXT NOT NULL,
+      sender_id TEXT NOT NULL,
+      sender_display_name TEXT NOT NULL DEFAULT '',
+      sender_username TEXT,
+      code TEXT NOT NULL,
+      status TEXT NOT NULL,
+      expires_at TEXT,
+      approved_at TEXT,
+      rejected_at TEXT,
+      revoked_at TEXT,
+      last_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (channel_id) REFERENCES app_channels(id) ON DELETE CASCADE
+    )
+  `)
+
   await db.execute('CREATE INDEX IF NOT EXISTS idx_app_channels_type ON app_channels(type)')
   await db.execute(
     'CREATE INDEX IF NOT EXISTS idx_app_channels_assistant_id ON app_channels(assistant_id)'
@@ -313,6 +334,12 @@ async function ensureChannelsTables(db: AppDatabase): Promise<void> {
   await db.execute('CREATE INDEX IF NOT EXISTS idx_app_channels_enabled ON app_channels(enabled)')
   await db.execute(
     'CREATE INDEX IF NOT EXISTS idx_app_channel_thread_bindings_thread_id ON app_channel_thread_bindings(thread_id)'
+  )
+  await db.execute(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_app_channel_pairings_channel_sender ON app_channel_pairings(channel_id, remote_chat_id, sender_id)'
+  )
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_channel_pairings_channel_status ON app_channel_pairings(channel_id, status)'
   )
 }
 
