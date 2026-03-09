@@ -6,3 +6,5 @@ out
 *.log*
 .tooling
 .worktrees
+.claude/commands/
+.agents/
