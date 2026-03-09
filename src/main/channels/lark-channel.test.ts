@@ -171,7 +171,7 @@ describe('LarkChannel', () => {
     })
   })
 
-  it('adds a reaction immediately when a message is received', async () => {
+  it('acknowledges a received message with a Lark reaction', async () => {
     const sdkStub = createSdkStub()
     const handler = vi.fn()
     const channel = new LarkChannel({
@@ -194,7 +194,7 @@ describe('LarkChannel', () => {
     expect(handler).toHaveBeenCalled()
   })
 
-  it('still emits the message even if addReaction fails', async () => {
+  it('still emits the message even if acknowledgeMessage fails', async () => {
     const sdkStub = createSdkStub()
     sdkStub.messageReactionCreate.mockRejectedValue(new Error('reaction failed'))
     const handler = vi.fn()

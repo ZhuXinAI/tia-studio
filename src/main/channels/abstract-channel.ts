@@ -9,6 +9,7 @@ export abstract class AbstractChannel implements ChannelAdapter {
   ) {}
 
   protected async emitMessage(message: ChannelMessage): Promise<void> {
+    this.acknowledgeMessage?.(message.id)?.catch(() => {})
     await this.onMessage?.(message)
   }
 

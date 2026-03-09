@@ -133,7 +133,6 @@ export class LarkChannel extends AbstractChannel {
           return
         }
 
-        this.addReaction(message.id, 'Get').catch(() => {})
         await this.emitMessage(message)
       }
     })
@@ -147,10 +146,10 @@ export class LarkChannel extends AbstractChannel {
     this.wsClient.close()
   }
 
-  async addReaction(messageId: string, emojiType: string): Promise<void> {
+  async acknowledgeMessage(messageId: string): Promise<void> {
     await this.client.im.v1.messageReaction.create({
       path: { message_id: messageId },
-      data: { reaction_type: { emoji_type: emojiType } }
+      data: { reaction_type: { emoji_type: 'Get' } }
     })
   }
 
