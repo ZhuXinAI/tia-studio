@@ -11,6 +11,7 @@ function createAssistantRuntimeStub(overrides: Partial<AssistantRuntime>): Assis
     streamChat: vi.fn(async () => new ReadableStream()),
     listThreadMessages: vi.fn(async () => []),
     runCronJob: vi.fn(async () => ({ outputText: '' })),
+    runHeartbeat: vi.fn(async () => ({ outputText: '' })),
     ...overrides
   }
 }

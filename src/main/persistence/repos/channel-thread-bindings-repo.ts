@@ -65,4 +65,18 @@ export class ChannelThreadBindingsRepository {
 
     return binding
   }
+
+  async listByThreadIds(threadIds: string[]): Promise<AppChannelThreadBinding[]> {
+    if (threadIds.length === 0) {
+      return []
+    }
+
+    const placeholders = threadIds.map(() => '?').join(', ')
+    const result = await this.db.execute(
+      `${CHANNEL_THREAD_BINDING_SELECT} WHERE thread_id IN (${placeholders}) ORDER BY created_at DESC`,
+      threadIds
+    )
+
+    return result.rows.map((row) => parseChannelThreadBindingRow(row as Record<string, unknown>))
+  }
 }
