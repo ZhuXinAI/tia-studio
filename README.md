@@ -44,6 +44,8 @@ We intentionally kept the architecture simple:
 
 In TIA Studio, a claw is not a separate runtime primitive. A claw is an assistant with a channel attached to it.
 
+For a longer architecture walkthrough, see [CLAW.md](./CLAW.md).
+
 ![Claw architecture](./claws.png)
 
 This keeps the model simple:
@@ -66,12 +68,12 @@ Claws are implemented by composing existing assistant and channel records instea
 
 Because a claw is still just an assistant underneath, assistant-owned behavior stays assistant-owned:
 
-| Concern | Owner | What happens for a claw |
-| --- | --- | --- |
-| Identity | Assistant workspace | `IDENTITY.md`, `SOUL.md`, and `MEMORY.md` are loaded as durable operating context for the same assistant whether you talk to it in the app or through a channel. |
-| Heartbeat | Assistant runtime | Scheduled runs mark the request as a heartbeat run, which adds `HEARTBEAT.md` on top of the normal identity files only for proactive/scheduled execution. |
-| Cron | Assistant + hidden thread | Cron jobs are stored against `assistantId`, require that assistant to have a workspace root, and create a hidden thread so scheduled work stays attached to the same assistant history. |
-| Enable/disable state | Assistant + channel runtime | A disabled claw disables the assistant side of the pairing, so runtime channel delivery and cron scheduling both stop until the assistant is enabled again. |
+| Concern              | Owner                       | What happens for a claw                                                                                                                                                                 |
+| -------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Identity             | Assistant workspace         | `IDENTITY.md`, `SOUL.md`, and `MEMORY.md` are loaded as durable operating context for the same assistant whether you talk to it in the app or through a channel.                        |
+| Heartbeat            | Assistant runtime           | Scheduled runs mark the request as a heartbeat run, which adds `HEARTBEAT.md` on top of the normal identity files only for proactive/scheduled execution.                               |
+| Cron                 | Assistant + hidden thread   | Cron jobs are stored against `assistantId`, require that assistant to have a workspace root, and create a hidden thread so scheduled work stays attached to the same assistant history. |
+| Enable/disable state | Assistant + channel runtime | A disabled claw disables the assistant side of the pairing, so runtime channel delivery and cron scheduling both stop until the assistant is enabled again.                             |
 
 That means adapting an assistant into a claw does **not** fork its identity:
 
@@ -128,6 +130,8 @@ pnpm run build:linux
 ```
 
 ## Project Structure
+
+For a fuller source-tree walkthrough, see [STRUCTURE.md](./STRUCTURE.md).
 
 ```
 tia-studio/
