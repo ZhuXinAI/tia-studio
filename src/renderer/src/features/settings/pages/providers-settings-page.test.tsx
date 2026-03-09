@@ -241,9 +241,12 @@ describe('providers settings page', () => {
     const dialog = container.querySelector('[role="dialog"]') as HTMLElement | null
     expect(dialog).not.toBeNull()
 
-    const selectedModelInput = dialog?.querySelector(
-      '#provider-selected-model'
-    ) as HTMLInputElement | null
+    const selectedModelInput = Array.from(
+      dialog?.querySelectorAll('input, textarea, select') ?? []
+    ).find((element) => element.getAttribute('id') === 'provider-selected-model') as
+      | HTMLInputElement
+      | HTMLSelectElement
+      | null
     expect(selectedModelInput).not.toBeNull()
 
     await act(async () => {
