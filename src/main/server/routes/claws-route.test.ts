@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { WhatsAppAuthStateStore } from '../../channels/whatsapp-auth-state-store'
 import { BUILT_IN_DEFAULT_AGENT_MCP_KEY } from '../../default-agent/default-agent-bootstrap'
 import type { AppDatabase } from '../../persistence/client'
 import { migrateAppSchema } from '../../persistence/migrate'
@@ -16,6 +17,7 @@ describe('claws route', () => {
   let assistantsRepo: AssistantsRepository
   let channelsRepo: ChannelsRepository
   let pairingsRepo: ChannelPairingsRepository
+  let whatsAppAuthStateStore: WhatsAppAuthStateStore
   let channelReloadMock: ReturnType<typeof vi.fn<() => Promise<void>>>
   let cronReloadMock: ReturnType<typeof vi.fn<() => Promise<void>>>
   let providerId: string
@@ -26,6 +28,9 @@ describe('claws route', () => {
     assistantsRepo = new AssistantsRepository(db)
     channelsRepo = new ChannelsRepository(db)
     pairingsRepo = new ChannelPairingsRepository(db)
+    whatsAppAuthStateStore = new WhatsAppAuthStateStore({
+      now: () => new Date('2026-03-10T00:00:00.000Z')
+    })
     channelReloadMock = vi.fn(async () => undefined)
     cronReloadMock = vi.fn(async () => undefined)
     app = new Hono()
@@ -43,6 +48,7 @@ describe('claws route', () => {
       providersRepo,
       channelsRepo,
       pairingsRepo,
+      whatsAppAuthStateStore,
       channelService: {
         reload: channelReloadMock
       },
@@ -231,6 +237,27 @@ describe('claws route', () => {
     })
     expect(channelReloadMock).not.toHaveBeenCalled()
     expect(cronReloadMock).not.toHaveBeenCalled()
+  })
+
+  it('creates an unbound configured whatsapp channel', async () => {
+    const response = await app.request('http://localhost/v1/claws/channels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'whatsapp',
+        name: 'Configured WhatsApp'
+      })
+    })
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({
+      type: 'whatsapp',
+      name: 'Configured WhatsApp',
+      assistantId: null,
+      assistantName: null,
+      status: 'disconnected',
+      errorMessage: null
+    })
   })
 
   it('updates an existing configured channel', async () => {
@@ -624,6 +651,136 @@ describe('claws route', () => {
         expect.objectContaining({
           senderId: '1001',
           status: 'approved'
+        })
+      ]
+    })
+  })
+
+  it('lists whatsapp pairings for a claw', async () => {
+    const assistant = await assistantsRepo.create({
+      name: 'WhatsApp Assistant',
+      providerId,
+      enabled: true
+    })
+    const channel = await channelsRepo.create({
+      type: 'whatsapp',
+      name: 'WhatsApp Device',
+      assistantId: assistant.id,
+      enabled: true,
+      config: {}
+    })
+    await pairingsRepo.createOrRefreshPending({
+      channelId: channel.id,
+      remoteChatId: '8613800138000@s.whatsapp.net',
+      senderId: '8613800138000@s.whatsapp.net',
+      senderDisplayName: 'Alice',
+      senderUsername: null,
+      code: 'AB7KQ2XM',
+      expiresAt: '2099-03-10T01:00:00.000Z',
+      lastSeenAt: '2026-03-10T00:00:00.000Z'
+    })
+
+    const response = await app.request(`http://localhost/v1/claws/${assistant.id}/pairings`)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      pairings: [
+        expect.objectContaining({
+          senderId: '8613800138000@s.whatsapp.net',
+          status: 'pending'
+        })
+      ]
+    })
+  })
+
+  it('returns whatsapp auth state for a claw', async () => {
+    const assistant = await assistantsRepo.create({
+      name: 'WhatsApp Assistant',
+      providerId,
+      enabled: true
+    })
+    const channel = await channelsRepo.create({
+      type: 'whatsapp',
+      name: 'WhatsApp Device',
+      assistantId: assistant.id,
+      enabled: true,
+      config: {}
+    })
+    whatsAppAuthStateStore.setQrCode(channel.id, {
+      qrCodeValue: 'whatsapp-qr-value',
+      qrCodeDataUrl: 'data:image/png;base64,qr'
+    })
+
+    const response = await app.request(`http://localhost/v1/claws/${assistant.id}/channel-auth`)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      channelId: channel.id,
+      channelType: 'whatsapp',
+      status: 'qr_ready',
+      qrCodeDataUrl: 'data:image/png;base64,qr',
+      qrCodeValue: 'whatsapp-qr-value',
+      phoneNumber: null,
+      errorMessage: null,
+      updatedAt: expect.any(String)
+    })
+  })
+
+  it('returns 404 when auth state is requested for a non-whatsapp claw', async () => {
+    const assistant = await assistantsRepo.create({
+      name: 'Telegram Assistant',
+      providerId,
+      enabled: true
+    })
+    await channelsRepo.create({
+      type: 'telegram',
+      name: 'Telegram Bot',
+      assistantId: assistant.id,
+      enabled: true,
+      config: {
+        botToken: '123456:test-token'
+      }
+    })
+
+    const response = await app.request(`http://localhost/v1/claws/${assistant.id}/channel-auth`)
+
+    expect(response.status).toBe(404)
+  })
+
+  it('lists whatsapp claws as connected only after auth is established', async () => {
+    const assistant = await assistantsRepo.create({
+      name: 'WhatsApp Assistant',
+      providerId,
+      enabled: true
+    })
+    const channel = await channelsRepo.create({
+      type: 'whatsapp',
+      name: 'WhatsApp Device',
+      assistantId: assistant.id,
+      enabled: true,
+      config: {}
+    })
+    whatsAppAuthStateStore.setConnected(channel.id, '8613800138000')
+
+    const response = await app.request('http://localhost/v1/claws')
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      claws: [
+        expect.objectContaining({
+          id: assistant.id,
+          channel: expect.objectContaining({
+            id: channel.id,
+            type: 'whatsapp',
+            status: 'connected'
+          })
+        })
+      ],
+      configuredChannels: [
+        expect.objectContaining({
+          id: channel.id,
+          type: 'whatsapp',
+          status: 'connected'
         })
       ]
     })

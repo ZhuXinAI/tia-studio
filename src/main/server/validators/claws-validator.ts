@@ -29,6 +29,12 @@ const createTelegramChannelSchema = z.object({
   botToken: z.string().min(1)
 })
 
+const createWhatsAppChannelSchema = z.object({
+  mode: z.literal('create'),
+  type: z.literal('whatsapp'),
+  name: z.string().min(1)
+})
+
 const attachExistingChannelSchema = z.object({
   mode: z.literal('attach'),
   channelId: z.string().min(1)
@@ -55,9 +61,15 @@ export const createConfiguredTelegramChannelSchema = z.object({
   botToken: z.string().min(1)
 })
 
+export const createConfiguredWhatsAppChannelSchema = z.object({
+  type: z.literal('whatsapp'),
+  name: z.string().min(1)
+})
+
 export const createConfiguredChannelSchema = z.union([
   createConfiguredLarkChannelSchema,
-  createConfiguredTelegramChannelSchema
+  createConfiguredTelegramChannelSchema,
+  createConfiguredWhatsAppChannelSchema
 ])
 
 export const updateConfiguredLarkChannelSchema = z.object({
@@ -73,15 +85,26 @@ export const updateConfiguredTelegramChannelSchema = z.object({
   botToken: z.string().min(1).optional()
 })
 
+export const updateConfiguredWhatsAppChannelSchema = z.object({
+  type: z.literal('whatsapp'),
+  name: z.string().min(1)
+})
+
 export const updateConfiguredChannelSchema = z.union([
   updateConfiguredLarkChannelSchema,
-  updateConfiguredTelegramChannelSchema
+  updateConfiguredTelegramChannelSchema,
+  updateConfiguredWhatsAppChannelSchema
 ])
 
 export const createClawSchema = z.object({
   assistant: createAssistantForClawSchema,
   channel: z
-    .union([createLarkChannelSchema, createTelegramChannelSchema, attachExistingChannelSchema])
+    .union([
+      createLarkChannelSchema,
+      createTelegramChannelSchema,
+      createWhatsAppChannelSchema,
+      attachExistingChannelSchema
+    ])
     .optional()
 })
 
@@ -91,6 +114,7 @@ export const updateClawSchema = z.object({
     .union([
       createLarkChannelSchema,
       createTelegramChannelSchema,
+      createWhatsAppChannelSchema,
       attachExistingChannelSchema,
       detachChannelSchema,
       keepChannelSchema

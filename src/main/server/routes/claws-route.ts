@@ -1,4 +1,8 @@
 import type { Hono } from 'hono'
+import {
+  createDefaultWhatsAppChannelAuthState,
+  type WhatsAppAuthStateStore
+} from '../../channels/whatsapp-auth-state-store'
 import { BUILT_IN_DEFAULT_AGENT_MCP_KEY } from '../../default-agent/default-agent-bootstrap'
 import type { AppAssistant, AssistantsRepository } from '../../persistence/repos/assistants-repo'
 import type {
@@ -37,6 +41,7 @@ type RegisterClawsRouteOptions = {
     | 'revoke'
   >
   channelService: ChannelServiceLike
+  whatsAppAuthStateStore?: Pick<WhatsAppAuthStateStore, 'get'>
   cronSchedulerService?: CronSchedulerServiceLike
 }
 
@@ -76,6 +81,17 @@ type ClawPairingResponse = {
   updatedAt: string
 }
 
+type ClawChannelAuthResponse = {
+  channelId: string
+  channelType: 'whatsapp'
+  status: 'disconnected' | 'connecting' | 'qr_ready' | 'connected' | 'error'
+  qrCodeDataUrl: string | null
+  qrCodeValue: string | null
+  phoneNumber: string | null
+  errorMessage: string | null
+  updatedAt: string
+}
+
 type ConfiguredChannelResponse = {
   id: string
   type: string
@@ -96,19 +112,48 @@ function isBuiltInAssistant(assistant: Pick<AppAssistant, 'mcpConfig'>): boolean
   return assistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] === true
 }
 
-function toChannelStatus(
+function hasValidChannelConfig(
   channel: Pick<AppChannel, 'assistantId' | 'config' | 'enabled' | 'lastError'>,
-  assistantEnabled: boolean
-): 'connected' | 'disconnected' | 'error' {
-  const hasValidConfig =
+  channelType?: string
+): boolean {
+  return (
     (typeof channel.config.appId === 'string' &&
       channel.config.appId.trim().length > 0 &&
       typeof channel.config.appSecret === 'string' &&
       channel.config.appSecret.trim().length > 0) ||
-    (typeof channel.config.botToken === 'string' && channel.config.botToken.trim().length > 0)
+    (typeof channel.config.botToken === 'string' && channel.config.botToken.trim().length > 0) ||
+    channelType === 'whatsapp'
+  )
+}
+
+async function toChannelStatus(
+  channel: Pick<AppChannel, 'id' | 'type' | 'assistantId' | 'config' | 'enabled' | 'lastError'>,
+  assistantEnabled: boolean,
+  options: RegisterClawsRouteOptions
+): Promise<'connected' | 'disconnected' | 'error'> {
+  const hasValidConfig = hasValidChannelConfig(channel, channel.type)
 
   if (channel.lastError) {
     return 'error'
+  }
+
+  if (channel.type === 'whatsapp') {
+    const authState = options.whatsAppAuthStateStore?.get(channel.id) ?? null
+    if (authState?.status === 'error') {
+      return 'error'
+    }
+
+    if (
+      assistantEnabled &&
+      channel.enabled &&
+      channel.assistantId &&
+      hasValidConfig &&
+      authState?.status === 'connected'
+    ) {
+      return 'connected'
+    }
+
+    return 'disconnected'
   }
 
   if (assistantEnabled && channel.enabled && channel.assistantId && hasValidConfig) {
@@ -118,6 +163,10 @@ function toChannelStatus(
   return 'disconnected'
 }
 
+function supportsPairings(channelType: string): boolean {
+  return channelType === 'telegram' || channelType === 'whatsapp'
+}
+
 async function getChannelPairingCounts(
   channel: AppChannel,
   options: RegisterClawsRouteOptions
@@ -125,7 +174,7 @@ async function getChannelPairingCounts(
   pairedCount: number
   pendingPairingCount: number
 }> {
-  if (channel.type !== 'telegram') {
+  if (!supportsPairings(channel.type)) {
     return {
       pairedCount: 0,
       pendingPairingCount: 0
@@ -163,7 +212,7 @@ async function toClawResponse(
           id: channel.id,
           type: channel.type,
           name: channel.name,
-          status: toChannelStatus(channel, assistant.enabled),
+          status: await toChannelStatus(channel, assistant.enabled, options),
           errorMessage: channel.lastError,
           pairedCount: counts?.pairedCount ?? 0,
           pendingPairingCount: counts?.pendingPairingCount ?? 0
@@ -202,7 +251,7 @@ async function listConfiguredChannels(
         name: channel.name,
         assistantId: channel.assistantId,
         assistantName: assistant?.name ?? null,
-        status: toChannelStatus(channel, assistant?.enabled ?? false),
+        status: await toChannelStatus(channel, assistant?.enabled ?? false, options),
         errorMessage: channel.lastError,
         pairedCount: counts.pairedCount,
         pendingPairingCount: counts.pendingPairingCount
@@ -234,7 +283,7 @@ async function toConfiguredChannelResponse(
     name: channel.name,
     assistantId: channel.assistantId,
     assistantName: assistant?.name ?? null,
-    status: toChannelStatus(channel, assistant?.enabled ?? false),
+    status: await toChannelStatus(channel, assistant?.enabled ?? false, options),
     errorMessage: channel.lastError,
     pairedCount: counts.pairedCount,
     pendingPairingCount: counts.pendingPairingCount
@@ -312,11 +361,16 @@ function buildChannelConfig(
   channel:
     | { type: 'lark'; appId: string; appSecret: string }
     | { type: 'telegram'; botToken: string }
+    | { type: 'whatsapp' }
 ): Record<string, unknown> {
   if (channel.type === 'telegram') {
     return {
       botToken: channel.botToken
     }
+  }
+
+  if (channel.type === 'whatsapp') {
+    return {}
   }
 
   return {
@@ -330,6 +384,7 @@ function mergeChannelConfig(
   channel:
     | { type: 'lark'; appId?: string; appSecret?: string }
     | { type: 'telegram'; botToken?: string }
+    | { type: 'whatsapp' }
 ): Record<string, unknown> {
   if (channel.type === 'telegram') {
     return {
@@ -337,6 +392,10 @@ function mergeChannelConfig(
         channel.botToken ??
         (typeof existingChannel.config.botToken === 'string' ? existingChannel.config.botToken : '')
     }
+  }
+
+  if (channel.type === 'whatsapp') {
+    return existingChannel.config
   }
 
   return {
@@ -349,7 +408,7 @@ function mergeChannelConfig(
   }
 }
 
-async function loadTelegramChannelByAssistantId(
+async function loadPairingChannelByAssistantId(
   assistantId: string,
   options: RegisterClawsRouteOptions
 ): Promise<AppChannel | null> {
@@ -359,19 +418,19 @@ async function loadTelegramChannelByAssistantId(
   }
 
   const channel = await options.channelsRepo.getByAssistantId(assistant.id)
-  if (!channel || channel.type !== 'telegram') {
+  if (!channel || !supportsPairings(channel.type)) {
     return null
   }
 
   return channel
 }
 
-async function loadTelegramPairing(input: {
+async function loadChannelPairing(input: {
   assistantId: string
   pairingId: string
   options: RegisterClawsRouteOptions
 }): Promise<{ channel: AppChannel; pairing: AppChannelPairing } | null> {
-  const channel = await loadTelegramChannelByAssistantId(input.assistantId, input.options)
+  const channel = await loadPairingChannelByAssistantId(input.assistantId, input.options)
   if (!channel) {
     return null
   }
@@ -384,6 +443,48 @@ async function loadTelegramPairing(input: {
   return {
     channel,
     pairing
+  }
+}
+
+async function loadWhatsAppChannelByAssistantId(
+  assistantId: string,
+  options: RegisterClawsRouteOptions
+): Promise<AppChannel | null> {
+  const assistant = await loadVisibleAssistant(assistantId, options)
+  if (!assistant) {
+    return null
+  }
+
+  const channel = await options.channelsRepo.getByAssistantId(assistant.id)
+  if (!channel || channel.type !== 'whatsapp') {
+    return null
+  }
+
+  return channel
+}
+
+async function loadWhatsAppAuthState(
+  assistantId: string,
+  options: RegisterClawsRouteOptions
+): Promise<ClawChannelAuthResponse | null> {
+  const channel = await loadWhatsAppChannelByAssistantId(assistantId, options)
+  if (!channel) {
+    return null
+  }
+
+  const authState =
+    options.whatsAppAuthStateStore?.get(channel.id) ??
+    createDefaultWhatsAppChannelAuthState(channel.id, new Date().toISOString())
+
+  return {
+    channelId: channel.id,
+    channelType: 'whatsapp',
+    status: authState.status,
+    qrCodeDataUrl: authState.qrCodeDataUrl,
+    qrCodeValue: authState.qrCodeValue,
+    phoneNumber: authState.phoneNumber,
+    errorMessage: authState.errorMessage,
+    updatedAt: authState.updatedAt
   }
 }
 
@@ -677,9 +778,9 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
 
   app.get('/v1/claws/:assistantId/pairings', async (context) => {
     const assistantId = context.req.param('assistantId')
-    const channel = await loadTelegramChannelByAssistantId(assistantId, options)
+    const channel = await loadPairingChannelByAssistantId(assistantId, options)
     if (!channel) {
-      return context.json({ ok: false, error: 'Telegram channel not found' }, 404)
+      return context.json({ ok: false, error: 'Pairing-capable channel not found' }, 404)
     }
 
     const pairings = await options.pairingsRepo.listByChannelId(channel.id)
@@ -688,14 +789,23 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
     })
   })
 
+  app.get('/v1/claws/:assistantId/channel-auth', async (context) => {
+    const authState = await loadWhatsAppAuthState(context.req.param('assistantId'), options)
+    if (!authState) {
+      return context.json({ ok: false, error: 'WhatsApp channel not found' }, 404)
+    }
+
+    return context.json(authState)
+  })
+
   app.post('/v1/claws/:assistantId/pairings/:pairingId/approve', async (context) => {
-    const resolved = await loadTelegramPairing({
+    const resolved = await loadChannelPairing({
       assistantId: context.req.param('assistantId'),
       pairingId: context.req.param('pairingId'),
       options
     })
     if (!resolved) {
-      return context.json({ ok: false, error: 'Telegram pairing not found' }, 404)
+      return context.json({ ok: false, error: 'Channel pairing not found' }, 404)
     }
 
     const updated = await options.pairingsRepo.approve(
@@ -703,43 +813,43 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
       new Date().toISOString()
     )
     if (!updated) {
-      return context.json({ ok: false, error: 'Telegram pairing not found' }, 404)
+      return context.json({ ok: false, error: 'Channel pairing not found' }, 404)
     }
 
     return context.json(toPairingResponse(updated))
   })
 
   app.post('/v1/claws/:assistantId/pairings/:pairingId/reject', async (context) => {
-    const resolved = await loadTelegramPairing({
+    const resolved = await loadChannelPairing({
       assistantId: context.req.param('assistantId'),
       pairingId: context.req.param('pairingId'),
       options
     })
     if (!resolved) {
-      return context.json({ ok: false, error: 'Telegram pairing not found' }, 404)
+      return context.json({ ok: false, error: 'Channel pairing not found' }, 404)
     }
 
     const updated = await options.pairingsRepo.reject(resolved.pairing.id, new Date().toISOString())
     if (!updated) {
-      return context.json({ ok: false, error: 'Telegram pairing not found' }, 404)
+      return context.json({ ok: false, error: 'Channel pairing not found' }, 404)
     }
 
     return context.json(toPairingResponse(updated))
   })
 
   app.post('/v1/claws/:assistantId/pairings/:pairingId/revoke', async (context) => {
-    const resolved = await loadTelegramPairing({
+    const resolved = await loadChannelPairing({
       assistantId: context.req.param('assistantId'),
       pairingId: context.req.param('pairingId'),
       options
     })
     if (!resolved) {
-      return context.json({ ok: false, error: 'Telegram pairing not found' }, 404)
+      return context.json({ ok: false, error: 'Channel pairing not found' }, 404)
     }
 
     const updated = await options.pairingsRepo.revoke(resolved.pairing.id, new Date().toISOString())
     if (!updated) {
-      return context.json({ ok: false, error: 'Telegram pairing not found' }, 404)
+      return context.json({ ok: false, error: 'Channel pairing not found' }, 404)
     }
 
     return context.json(toPairingResponse(updated))

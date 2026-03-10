@@ -37,7 +37,7 @@ type ClawChannelSelectorDialogProps = {
   onDeleteChannel: (channelId: string) => Promise<void> | void
 }
 
-type ChannelType = 'lark' | 'telegram'
+type ChannelType = 'lark' | 'telegram' | 'whatsapp'
 type ChannelFormMode = 'create' | 'edit'
 
 type ChannelFormState = {
@@ -71,7 +71,8 @@ function emptyFormState(): ChannelFormState {
 
 function toEditFormState(channel: ConfiguredClawChannelRecord): ChannelFormState {
   return {
-    type: channel.type === 'telegram' ? 'telegram' : 'lark',
+    type:
+      channel.type === 'telegram' ? 'telegram' : channel.type === 'whatsapp' ? 'whatsapp' : 'lark',
     name: channel.name,
     appId: '',
     appSecret: '',
@@ -85,6 +86,13 @@ function buildCreateInput(formState: ChannelFormState): CreateClawChannelInput {
       type: 'telegram',
       name: formState.name.trim(),
       botToken: formState.botToken.trim()
+    }
+  }
+
+  if (formState.type === 'whatsapp') {
+    return {
+      type: 'whatsapp',
+      name: formState.name.trim()
     }
   }
 
@@ -102,6 +110,13 @@ function buildUpdateInput(formState: ChannelFormState): UpdateClawChannelInput {
       type: 'telegram',
       name: formState.name.trim(),
       ...(formState.botToken.trim().length > 0 ? { botToken: formState.botToken.trim() } : {})
+    }
+  }
+
+  if (formState.type === 'whatsapp') {
+    return {
+      type: 'whatsapp',
+      name: formState.name.trim()
     }
   }
 
@@ -223,7 +238,10 @@ export function ClawChannelSelectorDialog({
           setFormError(t('claws.channelSelector.errors.telegramCredentialsRequired'))
           return
         }
-      } else if (formState.appId.trim().length === 0 || formState.appSecret.trim().length === 0) {
+      } else if (
+        formState.type === 'lark' &&
+        (formState.appId.trim().length === 0 || formState.appSecret.trim().length === 0)
+      ) {
         setFormError(t('claws.channelSelector.errors.larkCredentialsRequired'))
         return
       }
@@ -475,6 +493,7 @@ export function ClawChannelSelectorDialog({
               >
                 <option value="lark">{t('claws.dialog.channelTypes.lark')}</option>
                 <option value="telegram">{t('claws.dialog.channelTypes.telegram')}</option>
+                <option value="whatsapp">{t('claws.dialog.channelTypes.whatsapp')}</option>
               </select>
             </div>
 
@@ -516,6 +535,10 @@ export function ClawChannelSelectorDialog({
                   }
                 />
               </div>
+            ) : formState.type === 'whatsapp' ? (
+              <p className="text-sm text-muted-foreground">
+                {t('claws.channelSelector.create.whatsappHint')}
+              </p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-2">
@@ -563,7 +586,7 @@ export function ClawChannelSelectorDialog({
               </div>
             )}
 
-            {formMode === 'edit' ? (
+            {formMode === 'edit' && formState.type !== 'whatsapp' ? (
               <p className="text-xs text-muted-foreground">
                 {t('claws.channelSelector.edit.credentialsOptional')}
               </p>

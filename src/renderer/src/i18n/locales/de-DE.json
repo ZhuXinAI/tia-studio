@@ -53,13 +53,13 @@
       "items": {
         "general": "Allgemein",
         "providers": "Modellanbieter",
+        "channels": "Kanäle",
         "cronJobs": "Cron-Jobs",
         "webSearch": "Websuche",
         "mcpServers": "MCP-Server",
         "runtimeSetup": "Laufzeitumgebung",
         "display": "Anzeige",
-        "aboutFeedback": "Über & Feedback",
-        "channels": "Kanäle"
+        "aboutFeedback": "Über & Feedback"
       }
     },
     "general": {
@@ -392,7 +392,18 @@
       "enableButton": "Aktivieren",
       "disableButton": "Deaktivieren",
       "editButton": "Bearbeiten",
-      "deleteButton": "Löschen"
+      "deleteButton": "Löschen",
+      "deleteConfirmPrompt": "Delete \"{{name}}\"? This will also delete all of its threads.",
+      "deleteConfirmFallbackLabel": "Unnamed claw"
+    },
+    "deleteDialog": {
+      "title": "„{{name}}“ löschen?",
+      "description": "Dadurch wird auch der gesamte Assistentenverlauf gelöscht.",
+      "actions": {
+        "cancel": "Abbrechen",
+        "disable": "Stattdessen deaktivieren",
+        "confirmDelete": "Löschen bestätigen"
+      }
     },
     "dialog": {
       "editTitle": "Claw bearbeiten",
@@ -419,7 +430,8 @@
       "enableAfterSaving": "Diesen Claw nach dem Speichern aktivieren",
       "channelTypes": {
         "lark": "Lark",
-        "telegram": "Telegram"
+        "telegram": "Telegram",
+        "whatsapp": "WhatsApp"
       },
       "channelActions": {
         "keep": "Aktuellen Kanal behalten",
@@ -447,19 +459,30 @@
       "otherAssistantFallback": "another assistant",
       "actions": {
         "add": "Add Channel",
+        "edit": "Kanal bearbeiten",
         "remove": "Remove Channel",
         "clear": "Clear Selection",
         "cancel": "Cancel",
-        "apply": "Apply",
-        "edit": "Kanal bearbeiten"
+        "apply": "Apply"
       },
+      "selectedBadge": "Ausgewählt",
       "create": {
         "title": "Add Channel",
         "description": "Create a new Telegram or Lark channel configuration.",
+        "whatsappHint": "No token is required. After saving, open Manage Pairings to scan the WhatsApp QR code.",
         "save": "Add Channel",
         "fields": {
           "type": "Channel Type"
         }
+      },
+      "edit": {
+        "title": "Kanal bearbeiten",
+        "description": "Aktualisieren Sie diese Kanalkonfiguration.",
+        "save": "Änderungen speichern",
+        "credentialsOptional": "Lassen Sie die Zugangsdatenfelder leer, um die aktuellen Werte zu behalten.",
+        "appIdPlaceholder": "Unverändert lassen",
+        "appSecretPlaceholder": "Unverändert lassen",
+        "botTokenPlaceholder": "Unverändert lassen"
       },
       "remove": {
         "title": "Remove Channel",
@@ -472,27 +495,33 @@
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "createFailed": "Failed to create channel",
-        "deleteFailed": "Failed to delete channel",
-        "updateFailed": "Kanal konnte nicht aktualisiert werden"
-      },
-      "selectedBadge": "Ausgewählt",
-      "edit": {
-        "title": "Kanal bearbeiten",
-        "description": "Aktualisieren Sie diese Kanalkonfiguration.",
-        "save": "Änderungen speichern",
-        "credentialsOptional": "Lassen Sie die Zugangsdatenfelder leer, um die aktuellen Werte zu behalten.",
-        "appIdPlaceholder": "Unverändert lassen",
-        "appSecretPlaceholder": "Unverändert lassen",
-        "botTokenPlaceholder": "Unverändert lassen"
+        "updateFailed": "Kanal konnte nicht aktualisiert werden",
+        "deleteFailed": "Failed to delete channel"
       }
     },
     "pairings": {
       "title": "Kopplungen verwalten",
       "description": "Prüfe Telegram-Kopplungsanfragen für {{clawName}}.",
+      "whatsappDescription": "Scan the WhatsApp QR code and review pairing requests for {{clawName}}.",
       "loading": "Kopplungen werden geladen...",
       "empty": "Noch keine Telegram-Kopplungen.",
       "senderIds": "Sender-ID: {{senderId}} · Chat-ID: {{chatId}}",
       "approvalCode": "Freigabecode: {{code}}",
+      "whatsappAuth": {
+        "title": "WhatsApp Login",
+        "description": "Scan this QR code from WhatsApp on your phone to connect the channel.",
+        "loading": "Preparing WhatsApp login...",
+        "scanHint": "Open WhatsApp on your phone, then go to Linked Devices → Link a Device.",
+        "qrAlt": "WhatsApp login QR code",
+        "phoneFallback": "your linked device",
+        "status": {
+          "disconnected": "WhatsApp is disconnected.",
+          "connecting": "Connecting to WhatsApp...",
+          "qrReady": "QR code ready to scan.",
+          "connected": "Connected as {{phoneNumber}}.",
+          "error": "WhatsApp needs attention."
+        }
+      },
       "status": {
         "pending": "Freigabe ausstehend",
         "approved": "Freigegeben",
@@ -507,15 +536,6 @@
       "errors": {
         "loadFailed": "Kopplungen konnten nicht geladen werden",
         "updateFailed": "Kopplung konnte nicht aktualisiert werden"
-      }
-    },
-    "deleteDialog": {
-      "title": "„{{name}}“ löschen?",
-      "description": "Dadurch wird auch der gesamte Assistentenverlauf gelöscht.",
-      "actions": {
-        "cancel": "Abbrechen",
-        "disable": "Stattdessen deaktivieren",
-        "confirmDelete": "Löschen bestätigen"
       }
     }
   },
@@ -699,6 +719,23 @@
         "prompt": "Prompt",
         "workspacePath": "Arbeitsbereichspfad (optional)",
         "maxSteps": "Maximale Schritte"
+      },
+      "heartbeat": {
+        "title": "Heartbeat",
+        "description": "Run a background heartbeat on a hidden assistant thread.",
+        "loading": "Loading heartbeat...",
+        "workspaceRequired": "Save a workspace path to enable heartbeat on this assistant.",
+        "enableLabel": "Enable heartbeat",
+        "enableDescription": "Let this assistant periodically review recent work and conversations.",
+        "toggleAriaLabel": "Enable heartbeat",
+        "intervalLabel": "Interval (minutes)",
+        "intervalPlaceholder": "30",
+        "promptLabel": "Heartbeat Prompt",
+        "promptPlaceholder": "Review recent work logs and recent conversations. Follow up only if needed.",
+        "errors": {
+          "intervalInvalid": "Heartbeat interval must be a positive whole number",
+          "promptRequired": "Heartbeat prompt is required"
+        }
       },
       "placeholders": {
         "name": "Research Copilot",

@@ -53,13 +53,13 @@
       "items": {
         "general": "常規",
         "providers": "模型供應商",
+        "channels": "頻道",
         "cronJobs": "定時工作",
         "webSearch": "網頁搜尋",
         "mcpServers": "MCP 伺服器",
         "runtimeSetup": "執行環境設定",
         "display": "顯示",
-        "aboutFeedback": "關於與回饋",
-        "channels": "頻道"
+        "aboutFeedback": "關於與回饋"
       }
     },
     "general": {
@@ -392,7 +392,18 @@
       "enableButton": "啟用",
       "disableButton": "停用",
       "editButton": "編輯",
-      "deleteButton": "刪除"
+      "deleteButton": "刪除",
+      "deleteConfirmPrompt": "Delete \"{{name}}\"? This will also delete all of its threads.",
+      "deleteConfirmFallbackLabel": "Unnamed claw"
+    },
+    "deleteDialog": {
+      "title": "刪除「{{name}}」？",
+      "description": "這也會刪除所有助理歷史記錄。",
+      "actions": {
+        "cancel": "取消",
+        "disable": "改為停用",
+        "confirmDelete": "確認刪除"
+      }
     },
     "dialog": {
       "editTitle": "編輯 Claw",
@@ -419,7 +430,8 @@
       "enableAfterSaving": "儲存後啟用此 Claw",
       "channelTypes": {
         "lark": "Lark",
-        "telegram": "Telegram"
+        "telegram": "Telegram",
+        "whatsapp": "WhatsApp"
       },
       "channelActions": {
         "keep": "保留目前頻道",
@@ -447,19 +459,30 @@
       "otherAssistantFallback": "another assistant",
       "actions": {
         "add": "Add Channel",
+        "edit": "編輯頻道",
         "remove": "Remove Channel",
         "clear": "Clear Selection",
         "cancel": "Cancel",
-        "apply": "Apply",
-        "edit": "編輯頻道"
+        "apply": "Apply"
       },
+      "selectedBadge": "已選取",
       "create": {
         "title": "Add Channel",
         "description": "Create a new Telegram or Lark channel configuration.",
+        "whatsappHint": "No token is required. After saving, open Manage Pairings to scan the WhatsApp QR code.",
         "save": "Add Channel",
         "fields": {
           "type": "Channel Type"
         }
+      },
+      "edit": {
+        "title": "編輯頻道",
+        "description": "更新此頻道設定。",
+        "save": "儲存變更",
+        "credentialsOptional": "將憑證欄位留空即可保留目前值。",
+        "appIdPlaceholder": "保持不變",
+        "appSecretPlaceholder": "保持不變",
+        "botTokenPlaceholder": "保持不變"
       },
       "remove": {
         "title": "Remove Channel",
@@ -472,27 +495,33 @@
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "createFailed": "Failed to create channel",
-        "deleteFailed": "Failed to delete channel",
-        "updateFailed": "更新頻道失敗"
-      },
-      "selectedBadge": "已選取",
-      "edit": {
-        "title": "編輯頻道",
-        "description": "更新此頻道設定。",
-        "save": "儲存變更",
-        "credentialsOptional": "將憑證欄位留空即可保留目前值。",
-        "appIdPlaceholder": "保持不變",
-        "appSecretPlaceholder": "保持不變",
-        "botTokenPlaceholder": "保持不變"
+        "updateFailed": "更新頻道失敗",
+        "deleteFailed": "Failed to delete channel"
       }
     },
     "pairings": {
       "title": "管理配對",
       "description": "檢視 {{clawName}} 的 Telegram 配對請求。",
+      "whatsappDescription": "Scan the WhatsApp QR code and review pairing requests for {{clawName}}.",
       "loading": "正在載入配對...",
       "empty": "還沒有 Telegram 配對。",
       "senderIds": "傳送者 ID：{{senderId}} · 聊天 ID：{{chatId}}",
       "approvalCode": "批准碼：{{code}}",
+      "whatsappAuth": {
+        "title": "WhatsApp Login",
+        "description": "Scan this QR code from WhatsApp on your phone to connect the channel.",
+        "loading": "Preparing WhatsApp login...",
+        "scanHint": "Open WhatsApp on your phone, then go to Linked Devices → Link a Device.",
+        "qrAlt": "WhatsApp login QR code",
+        "phoneFallback": "your linked device",
+        "status": {
+          "disconnected": "WhatsApp is disconnected.",
+          "connecting": "Connecting to WhatsApp...",
+          "qrReady": "QR code ready to scan.",
+          "connected": "Connected as {{phoneNumber}}.",
+          "error": "WhatsApp needs attention."
+        }
+      },
       "status": {
         "pending": "待批准",
         "approved": "已批准",
@@ -507,15 +536,6 @@
       "errors": {
         "loadFailed": "載入配對失敗",
         "updateFailed": "更新配對失敗"
-      }
-    },
-    "deleteDialog": {
-      "title": "刪除「{{name}}」？",
-      "description": "這也會刪除所有助理歷史記錄。",
-      "actions": {
-        "cancel": "取消",
-        "disable": "改為停用",
-        "confirmDelete": "確認刪除"
       }
     }
   },
@@ -699,6 +719,23 @@
         "prompt": "提示詞",
         "workspacePath": "工作區路徑（可選）",
         "maxSteps": "最大步數"
+      },
+      "heartbeat": {
+        "title": "Heartbeat",
+        "description": "Run a background heartbeat on a hidden assistant thread.",
+        "loading": "Loading heartbeat...",
+        "workspaceRequired": "Save a workspace path to enable heartbeat on this assistant.",
+        "enableLabel": "Enable heartbeat",
+        "enableDescription": "Let this assistant periodically review recent work and conversations.",
+        "toggleAriaLabel": "Enable heartbeat",
+        "intervalLabel": "Interval (minutes)",
+        "intervalPlaceholder": "30",
+        "promptLabel": "Heartbeat Prompt",
+        "promptPlaceholder": "Review recent work logs and recent conversations. Follow up only if needed.",
+        "errors": {
+          "intervalInvalid": "Heartbeat interval must be a positive whole number",
+          "promptRequired": "Heartbeat prompt is required"
+        }
       },
       "placeholders": {
         "name": "研究副駕",

@@ -8,13 +8,16 @@ import {
   DialogTitle
 } from '../../../components/ui/dialog'
 import { useTranslation } from '../../../i18n/use-app-translation'
-import type { ClawPairingRecord } from '../claws-query'
+import type { ClawChannelAuthRecord, ClawPairingRecord } from '../claws-query'
 
 type ClawPairingsDialogProps = {
   isOpen: boolean
   clawName: string
+  channelType: string | null
   pairings: ClawPairingRecord[]
   isLoading: boolean
+  channelAuthState: ClawChannelAuthRecord | null
+  isChannelAuthLoading: boolean
   isSubmitting: boolean
   errorMessage: string | null
   onClose: () => void
@@ -41,11 +44,37 @@ function statusLabel(
   }
 }
 
+function whatsappAuthStatusLabel(
+  status: ClawChannelAuthRecord['status'],
+  translate: (key: string, options?: Record<string, unknown>) => string,
+  phoneNumber: string | null
+): string {
+  switch (status) {
+    case 'disconnected':
+      return translate('claws.pairings.whatsappAuth.status.disconnected')
+    case 'connecting':
+      return translate('claws.pairings.whatsappAuth.status.connecting')
+    case 'qr_ready':
+      return translate('claws.pairings.whatsappAuth.status.qrReady')
+    case 'connected':
+      return translate('claws.pairings.whatsappAuth.status.connected', {
+        phoneNumber: phoneNumber ?? translate('claws.pairings.whatsappAuth.phoneFallback')
+      })
+    case 'error':
+      return translate('claws.pairings.whatsappAuth.status.error')
+    default:
+      return status
+  }
+}
+
 export function ClawPairingsDialog({
   isOpen,
   clawName,
+  channelType,
   pairings,
   isLoading,
+  channelAuthState,
+  isChannelAuthLoading,
   isSubmitting,
   errorMessage,
   onClose,
@@ -54,16 +83,65 @@ export function ClawPairingsDialog({
   onRevoke
 }: ClawPairingsDialogProps): React.JSX.Element {
   const { t } = useTranslation()
+  const isWhatsApp = channelType === 'whatsapp'
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{t('claws.pairings.title')}</DialogTitle>
-          <DialogDescription>{t('claws.pairings.description', { clawName })}</DialogDescription>
+          <DialogDescription>
+            {isWhatsApp
+              ? t('claws.pairings.whatsappDescription', { clawName })
+              : t('claws.pairings.description', { clawName })}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
+          {isWhatsApp ? (
+            <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
+              <div className="space-y-1">
+                <p className="font-medium">{t('claws.pairings.whatsappAuth.title')}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t('claws.pairings.whatsappAuth.description')}
+                </p>
+              </div>
+
+              {isChannelAuthLoading ? (
+                <p className="text-sm text-muted-foreground">
+                  {t('claws.pairings.whatsappAuth.loading')}
+                </p>
+              ) : channelAuthState ? (
+                <div className="space-y-3">
+                  <p className="text-sm">
+                    {whatsappAuthStatusLabel(
+                      channelAuthState.status,
+                      t,
+                      channelAuthState.phoneNumber
+                    )}
+                  </p>
+
+                  {channelAuthState.qrCodeDataUrl ? (
+                    <div className="space-y-2">
+                      <img
+                        src={channelAuthState.qrCodeDataUrl}
+                        alt={t('claws.pairings.whatsappAuth.qrAlt')}
+                        className="h-56 w-56 rounded-lg border border-border bg-white object-contain p-3"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        {t('claws.pairings.whatsappAuth.scanHint')}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {channelAuthState.errorMessage ? (
+                    <p className="text-sm text-destructive">{channelAuthState.errorMessage}</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {isLoading ? (
             <p className="text-sm text-muted-foreground">{t('claws.pairings.loading')}</p>
           ) : null}

@@ -347,7 +347,7 @@
     },
     "channels": {
       "title": "Channels",
-      "description": "Manage configured Telegram and Lark channels in one place.",
+      "description": "Manage configured WhatsApp, Telegram, and Lark channels in one place.",
       "configuredTitle": "Configured Channels",
       "configuredDescription": "Edit existing channel credentials, review bindings, or remove unused channels.",
       "loading": "Loading channels...",
@@ -361,14 +361,14 @@
   "claws": {
     "eyebrow": "Claws",
     "title": "Claws",
-    "description": "Connect assistants to external Lark channels without digging through raw settings.",
+    "description": "Connect assistants to external WhatsApp, Telegram, or Lark channels without digging through raw settings.",
     "newButton": "New Claw",
     "telegram": {
-      "description": "Connect assistants to external Telegram or Lark channels without digging through raw settings.",
-      "emptyDescription": "Start with one assistant, one provider, and one Telegram or Lark channel for the quickest onboarding path.",
+      "description": "Connect assistants to external WhatsApp, Telegram, or Lark channels without digging through raw settings.",
+      "emptyDescription": "Start with one assistant, one provider, and one WhatsApp, Telegram, or Lark channel for the quickest onboarding path.",
       "pairingSummary": "{{pairedCount}} paired · {{pendingCount}} pending",
       "managePairingsButton": "Manage Pairings",
-      "defaultClawName": "Telegram claw"
+      "defaultClawName": "Messaging claw"
     },
     "errors": {
       "loadFailed": "Failed to load claws",
@@ -382,7 +382,7 @@
     },
     "empty": {
       "title": "Set up your first claw",
-      "description": "Start with one assistant, one provider, and one Lark channel for the quickest onboarding path.",
+      "description": "Start with one assistant, one provider, and one WhatsApp, Telegram, or Lark channel for the quickest onboarding path.",
       "note": "Assistant identity, heartbeat, and future cron stay assistant-owned.",
       "createButton": "Create Your First Claw"
     },
@@ -411,7 +411,7 @@
       "saveButton": "Save Claw",
       "createButton": "Create Claw",
       "description": "Connect an assistant to a Lark channel from one lightweight setup flow.",
-      "telegramDescription": "Connect an assistant to a Telegram or Lark channel from one lightweight setup flow.",
+      "telegramDescription": "Connect an assistant to a WhatsApp, Telegram, or Lark channel from one lightweight setup flow.",
       "fields": {
         "assistantName": "Assistant Name",
         "provider": "Provider",
@@ -430,7 +430,8 @@
       "enableAfterSaving": "Enable this claw after saving",
       "channelTypes": {
         "lark": "Lark",
-        "telegram": "Telegram"
+        "telegram": "Telegram",
+        "whatsapp": "WhatsApp"
       },
       "channelActions": {
         "keep": "Keep current channel",
@@ -467,7 +468,8 @@
       "selectedBadge": "Selected",
       "create": {
         "title": "Add Channel",
-        "description": "Create a new Telegram or Lark channel configuration.",
+        "description": "Create a new WhatsApp, Telegram, or Lark channel configuration.",
+        "whatsappHint": "No token is required. After saving, open Manage Pairings to scan the WhatsApp QR code.",
         "save": "Add Channel",
         "fields": {
           "type": "Channel Type"
@@ -499,11 +501,27 @@
     },
     "pairings": {
       "title": "Manage Pairings",
-      "description": "Review Telegram pairing requests for {{clawName}}.",
+      "description": "Review pairing requests for {{clawName}}.",
+      "whatsappDescription": "Scan the WhatsApp QR code and review pairing requests for {{clawName}}.",
       "loading": "Loading pairings...",
-      "empty": "No Telegram pairings yet.",
+      "empty": "No pairing requests yet.",
       "senderIds": "Sender ID: {{senderId}} · Chat ID: {{chatId}}",
       "approvalCode": "Approval code: {{code}}",
+      "whatsappAuth": {
+        "title": "WhatsApp Login",
+        "description": "Scan this QR code from WhatsApp on your phone to connect the channel.",
+        "loading": "Preparing WhatsApp login...",
+        "scanHint": "Open WhatsApp on your phone, then go to Linked Devices → Link a Device.",
+        "qrAlt": "WhatsApp login QR code",
+        "phoneFallback": "your linked device",
+        "status": {
+          "disconnected": "WhatsApp is disconnected.",
+          "connecting": "Connecting to WhatsApp...",
+          "qrReady": "QR code ready to scan.",
+          "connected": "Connected as {{phoneNumber}}.",
+          "error": "WhatsApp needs attention."
+        }
+      },
       "status": {
         "pending": "Pending approval",
         "approved": "Approved",

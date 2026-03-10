@@ -27,12 +27,14 @@ import {
   createClawChannel,
   deleteClaw,
   deleteClawChannel,
+  getClawChannelAuthState,
   listClawPairings,
   listClaws,
   rejectClawPairing,
   revokeClawPairing,
   updateClaw,
   updateClawChannel,
+  type ClawChannelAuthRecord,
   type ClawPairingRecord,
   type ClawRecord,
   type ClawsResponse,
@@ -76,6 +78,8 @@ export function ClawsPage(): React.JSX.Element {
   const [pairingsClaw, setPairingsClaw] = useState<ClawRecord | null>(null)
   const [pairings, setPairings] = useState<ClawPairingRecord[]>([])
   const [isPairingsLoading, setIsPairingsLoading] = useState(false)
+  const [channelAuthState, setChannelAuthState] = useState<ClawChannelAuthRecord | null>(null)
+  const [isChannelAuthLoading, setIsChannelAuthLoading] = useState(false)
   const [isPairingsSubmitting, setIsPairingsSubmitting] = useState(false)
   const [pairingsErrorMessage, setPairingsErrorMessage] = useState<string | null>(null)
   const [clawPendingDelete, setClawPendingDelete] = useState<ClawRecord | null>(null)
@@ -123,7 +127,10 @@ export function ClawsPage(): React.JSX.Element {
       setIsDialogOpen(false)
       setEditingClaw(null)
 
-      if (!editingClaw && savedClaw.channel?.type === 'telegram') {
+      if (
+        !editingClaw &&
+        (savedClaw.channel?.type === 'telegram' || savedClaw.channel?.type === 'whatsapp')
+      ) {
         await handleOpenPairings(savedClaw)
       }
 
@@ -262,20 +269,31 @@ export function ClawsPage(): React.JSX.Element {
     setPairings(nextPairings.pairings)
   }
 
+  async function refreshChannelAuthState(assistantId: string): Promise<void> {
+    const nextAuthState = await getClawChannelAuthState(assistantId)
+    setChannelAuthState(nextAuthState)
+  }
+
   async function handleOpenPairings(claw: ClawRecord): Promise<void> {
     setPairingsClaw(claw)
     setPairings([])
+    setChannelAuthState(null)
     setPairingsErrorMessage(null)
     setIsPairingsLoading(true)
+    setIsChannelAuthLoading(claw.channel?.type === 'whatsapp')
 
     try {
-      await refreshPairings(claw.id)
+      await Promise.all([
+        refreshPairings(claw.id),
+        claw.channel?.type === 'whatsapp' ? refreshChannelAuthState(claw.id) : Promise.resolve()
+      ])
     } catch (error) {
       setPairingsErrorMessage(
         error instanceof Error ? error.message : t('claws.pairings.errors.loadFailed')
       )
     } finally {
       setIsPairingsLoading(false)
+      setIsChannelAuthLoading(false)
     }
   }
 
@@ -292,7 +310,13 @@ export function ClawsPage(): React.JSX.Element {
 
     try {
       await action(pairingsClaw.id, pairingId)
-      await Promise.all([refreshPairings(pairingsClaw.id), refreshPage()])
+      await Promise.all([
+        refreshPairings(pairingsClaw.id),
+        pairingsClaw.channel?.type === 'whatsapp'
+          ? refreshChannelAuthState(pairingsClaw.id)
+          : Promise.resolve(),
+        refreshPage()
+      ])
     } catch (error) {
       setPairingsErrorMessage(
         error instanceof Error ? error.message : t('claws.pairings.errors.updateFailed')
@@ -301,6 +325,28 @@ export function ClawsPage(): React.JSX.Element {
       setIsPairingsSubmitting(false)
     }
   }
+
+  useEffect(() => {
+    if (!pairingsClaw || pairingsClaw.channel?.type !== 'whatsapp') {
+      return
+    }
+
+    if (channelAuthState?.status === 'connected') {
+      return
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshChannelAuthState(pairingsClaw.id).catch((error) => {
+        setPairingsErrorMessage(
+          error instanceof Error ? error.message : t('claws.pairings.errors.loadFailed')
+        )
+      })
+    }, 5000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [channelAuthState?.status, pairingsClaw, t])
 
   return (
     <section className="min-h-full bg-muted/20 px-6 py-6">
@@ -368,7 +414,7 @@ export function ClawsPage(): React.JSX.Element {
                         <span>{claw.channel.name}</span>
                         <span className="text-muted-foreground">({claw.channel.status})</span>
                       </div>
-                      {claw.channel.type === 'telegram' ? (
+                      {claw.channel.type === 'telegram' || claw.channel.type === 'whatsapp' ? (
                         <p className="text-muted-foreground text-xs">
                           {t('claws.telegram.pairingSummary', {
                             pairedCount: claw.channel.pairedCount ?? 0,
@@ -402,7 +448,7 @@ export function ClawsPage(): React.JSX.Element {
                   >
                     {t('claws.card.editButton')}
                   </Button>
-                  {claw.channel?.type === 'telegram' ? (
+                  {claw.channel?.type === 'telegram' || claw.channel?.type === 'whatsapp' ? (
                     <Button
                       type="button"
                       variant="outline"
@@ -449,8 +495,11 @@ export function ClawsPage(): React.JSX.Element {
         <ClawPairingsDialog
           isOpen={pairingsClaw !== null}
           clawName={pairingsClaw?.name ?? t('claws.telegram.defaultClawName')}
+          channelType={pairingsClaw?.channel?.type ?? null}
           pairings={pairings}
           isLoading={isPairingsLoading}
+          channelAuthState={channelAuthState}
+          isChannelAuthLoading={isChannelAuthLoading}
           isSubmitting={isPairingsSubmitting}
           errorMessage={pairingsErrorMessage}
           onClose={() => {
@@ -460,6 +509,8 @@ export function ClawsPage(): React.JSX.Element {
 
             setPairingsClaw(null)
             setPairings([])
+            setChannelAuthState(null)
+            setIsChannelAuthLoading(false)
             setPairingsErrorMessage(null)
           }}
           onApprove={(pairingId) => handlePairingAction(approveClawPairing, pairingId)}

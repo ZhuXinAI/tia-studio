@@ -60,6 +60,17 @@ export type ClawPairingsResponse = {
   pairings: ClawPairingRecord[]
 }
 
+export type ClawChannelAuthRecord = {
+  channelId: string
+  channelType: 'whatsapp'
+  status: 'disconnected' | 'connecting' | 'qr_ready' | 'connected' | 'error'
+  qrCodeDataUrl: string | null
+  qrCodeValue: string | null
+  phoneNumber: string | null
+  errorMessage: string | null
+  updatedAt: string
+}
+
 export type SaveClawInput = {
   assistant: {
     name?: string
@@ -80,6 +91,11 @@ export type SaveClawInput = {
         type: 'telegram'
         name: string
         botToken: string
+      }
+    | {
+        mode: 'create'
+        type: 'whatsapp'
+        name: string
       }
     | {
         mode: 'attach'
@@ -105,6 +121,10 @@ export type CreateClawChannelInput =
       name: string
       botToken: string
     }
+  | {
+      type: 'whatsapp'
+      name: string
+    }
 
 export type UpdateClawChannelInput =
   | {
@@ -117,6 +137,10 @@ export type UpdateClawChannelInput =
       type: 'telegram'
       name: string
       botToken?: string
+    }
+  | {
+      type: 'whatsapp'
+      name: string
     }
 
 const apiClient = createApiClient()
@@ -162,6 +186,10 @@ export async function deleteClawChannel(channelId: string): Promise<void> {
 
 export async function listClawPairings(assistantId: string): Promise<ClawPairingsResponse> {
   return apiClient.get<ClawPairingsResponse>(`/v1/claws/${assistantId}/pairings`)
+}
+
+export async function getClawChannelAuthState(assistantId: string): Promise<ClawChannelAuthRecord> {
+  return apiClient.get<ClawChannelAuthRecord>(`/v1/claws/${assistantId}/channel-auth`)
 }
 
 export async function approveClawPairing(

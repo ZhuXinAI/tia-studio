@@ -31,7 +31,7 @@ const extractDocumentHtmlScript = `
 const searchToolInputSchema = z
   .object({
     action: z.enum(['search', 'visit']).default('search'),
-    query: z.string().min(1, 'Query is required'),
+    query: z.string().optional().default(''),
     url: z.string().url().optional()
   })
   .refine(

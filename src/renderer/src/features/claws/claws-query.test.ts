@@ -6,6 +6,7 @@ import {
   createClaw,
   createClawChannel,
   deleteClawChannel,
+  getClawChannelAuthState,
   listClawPairings,
   listClaws
 } from './claws-query'
@@ -190,6 +191,41 @@ describe('claws query api client', () => {
 
     expect(fetchSpy).toHaveBeenCalledWith(
       'http://127.0.0.1:4769/v1/claws/assistant-1/pairings',
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer test-token'
+        })
+      })
+    )
+  })
+
+  it('loads whatsapp auth state through backend api', async () => {
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            channelId: 'channel-whatsapp',
+            channelType: 'whatsapp',
+            status: 'qr_ready',
+            qrCodeDataUrl: 'data:image/png;base64,qr',
+            qrCodeValue: 'qr-value',
+            phoneNumber: null,
+            errorMessage: null,
+            updatedAt: '2026-03-10T00:00:00.000Z'
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
+    )
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await getClawChannelAuthState('assistant-1')
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'http://127.0.0.1:4769/v1/claws/assistant-1/channel-auth',
       expect.objectContaining({
         method: 'GET',
         headers: expect.objectContaining({

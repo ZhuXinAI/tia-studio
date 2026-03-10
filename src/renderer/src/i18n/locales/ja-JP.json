@@ -53,13 +53,13 @@
       "items": {
         "general": "一般",
         "providers": "モデルプロバイダー",
+        "channels": "チャンネル",
         "cronJobs": "Cronジョブ",
         "webSearch": "ウェブ検索",
         "mcpServers": "MCPサーバー",
         "runtimeSetup": "ランタイム設定",
         "display": "表示",
-        "aboutFeedback": "情報とフィードバック",
-        "channels": "チャンネル"
+        "aboutFeedback": "情報とフィードバック"
       }
     },
     "general": {
@@ -392,7 +392,18 @@
       "enableButton": "有効化",
       "disableButton": "無効化",
       "editButton": "編集",
-      "deleteButton": "削除"
+      "deleteButton": "削除",
+      "deleteConfirmPrompt": "Delete \"{{name}}\"? This will also delete all of its threads.",
+      "deleteConfirmFallbackLabel": "Unnamed claw"
+    },
+    "deleteDialog": {
+      "title": "「{{name}}」を削除しますか？",
+      "description": "これによりアシスタントの履歴もすべて削除されます。",
+      "actions": {
+        "cancel": "キャンセル",
+        "disable": "代わりに無効化",
+        "confirmDelete": "削除を確定"
+      }
     },
     "dialog": {
       "editTitle": "Claw を編集",
@@ -419,7 +430,8 @@
       "enableAfterSaving": "保存後にこの Claw を有効化",
       "channelTypes": {
         "lark": "Lark",
-        "telegram": "Telegram"
+        "telegram": "Telegram",
+        "whatsapp": "WhatsApp"
       },
       "channelActions": {
         "keep": "現在のチャンネルを維持",
@@ -447,19 +459,30 @@
       "otherAssistantFallback": "another assistant",
       "actions": {
         "add": "Add Channel",
+        "edit": "チャンネルを編集",
         "remove": "Remove Channel",
         "clear": "Clear Selection",
         "cancel": "Cancel",
-        "apply": "Apply",
-        "edit": "チャンネルを編集"
+        "apply": "Apply"
       },
+      "selectedBadge": "選択中",
       "create": {
         "title": "Add Channel",
         "description": "Create a new Telegram or Lark channel configuration.",
+        "whatsappHint": "No token is required. After saving, open Manage Pairings to scan the WhatsApp QR code.",
         "save": "Add Channel",
         "fields": {
           "type": "Channel Type"
         }
+      },
+      "edit": {
+        "title": "チャンネルを編集",
+        "description": "このチャンネル設定を更新します。",
+        "save": "変更を保存",
+        "credentialsOptional": "現在の値を保持するには認証情報欄を空欄のままにしてください。",
+        "appIdPlaceholder": "変更しない",
+        "appSecretPlaceholder": "変更しない",
+        "botTokenPlaceholder": "変更しない"
       },
       "remove": {
         "title": "Remove Channel",
@@ -472,27 +495,33 @@
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "createFailed": "Failed to create channel",
-        "deleteFailed": "Failed to delete channel",
-        "updateFailed": "チャンネルの更新に失敗しました"
-      },
-      "selectedBadge": "選択中",
-      "edit": {
-        "title": "チャンネルを編集",
-        "description": "このチャンネル設定を更新します。",
-        "save": "変更を保存",
-        "credentialsOptional": "現在の値を保持するには認証情報欄を空欄のままにしてください。",
-        "appIdPlaceholder": "変更しない",
-        "appSecretPlaceholder": "変更しない",
-        "botTokenPlaceholder": "変更しない"
+        "updateFailed": "チャンネルの更新に失敗しました",
+        "deleteFailed": "Failed to delete channel"
       }
     },
     "pairings": {
       "title": "ペアリングを管理",
       "description": "{{clawName}} の Telegram ペアリング要求を確認します。",
+      "whatsappDescription": "Scan the WhatsApp QR code and review pairing requests for {{clawName}}.",
       "loading": "ペアリングを読み込み中...",
       "empty": "Telegram ペアリングはまだありません。",
       "senderIds": "送信者 ID: {{senderId}} · チャット ID: {{chatId}}",
       "approvalCode": "承認コード: {{code}}",
+      "whatsappAuth": {
+        "title": "WhatsApp Login",
+        "description": "Scan this QR code from WhatsApp on your phone to connect the channel.",
+        "loading": "Preparing WhatsApp login...",
+        "scanHint": "Open WhatsApp on your phone, then go to Linked Devices → Link a Device.",
+        "qrAlt": "WhatsApp login QR code",
+        "phoneFallback": "your linked device",
+        "status": {
+          "disconnected": "WhatsApp is disconnected.",
+          "connecting": "Connecting to WhatsApp...",
+          "qrReady": "QR code ready to scan.",
+          "connected": "Connected as {{phoneNumber}}.",
+          "error": "WhatsApp needs attention."
+        }
+      },
       "status": {
         "pending": "承認待ち",
         "approved": "承認済み",
@@ -507,15 +536,6 @@
       "errors": {
         "loadFailed": "ペアリングの読み込みに失敗しました",
         "updateFailed": "ペアリングの更新に失敗しました"
-      }
-    },
-    "deleteDialog": {
-      "title": "「{{name}}」を削除しますか？",
-      "description": "これによりアシスタントの履歴もすべて削除されます。",
-      "actions": {
-        "cancel": "キャンセル",
-        "disable": "代わりに無効化",
-        "confirmDelete": "削除を確定"
       }
     }
   },
@@ -699,6 +719,23 @@
         "prompt": "プロンプト",
         "workspacePath": "ワークスペースパス（任意）",
         "maxSteps": "最大ステップ数"
+      },
+      "heartbeat": {
+        "title": "Heartbeat",
+        "description": "Run a background heartbeat on a hidden assistant thread.",
+        "loading": "Loading heartbeat...",
+        "workspaceRequired": "Save a workspace path to enable heartbeat on this assistant.",
+        "enableLabel": "Enable heartbeat",
+        "enableDescription": "Let this assistant periodically review recent work and conversations.",
+        "toggleAriaLabel": "Enable heartbeat",
+        "intervalLabel": "Interval (minutes)",
+        "intervalPlaceholder": "30",
+        "promptLabel": "Heartbeat Prompt",
+        "promptPlaceholder": "Review recent work logs and recent conversations. Follow up only if needed.",
+        "errors": {
+          "intervalInvalid": "Heartbeat interval must be a positive whole number",
+          "promptRequired": "Heartbeat prompt is required"
+        }
       },
       "placeholders": {
         "name": "Research Copilot",

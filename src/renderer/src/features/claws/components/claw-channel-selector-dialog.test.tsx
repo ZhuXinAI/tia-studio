@@ -327,6 +327,70 @@ describe('ClawChannelSelectorDialog', () => {
     expect(updatedButton.textContent).toContain('Updated Telegram')
   })
 
+  it('creates a new whatsapp channel without extra credentials', async () => {
+    const onCreateChannel = vi.fn(async () =>
+      buildChannel({
+        id: 'channel-whatsapp',
+        type: 'whatsapp',
+        name: 'WhatsApp Device',
+        status: 'disconnected'
+      })
+    )
+
+    await act(async () => {
+      root.render(
+        <ClawChannelSelectorDialog
+          isOpen
+          currentAssistantId={null}
+          selectedChannelId=""
+          channels={[]}
+          isMutating={false}
+          errorMessage={null}
+          onClose={() => undefined}
+          onApply={() => undefined}
+          onCreateChannel={onCreateChannel}
+          onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onDeleteChannel={vi.fn(async () => undefined)}
+        />
+      )
+    })
+    await flushAsyncWork()
+
+    const addButton = document.body.querySelector(
+      'button[id="claw-channel-selector-add"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const typeSelect = document.body.querySelector(
+      'select[id="claw-channel-create-type"]'
+    ) as HTMLSelectElement
+    const nameInput = document.body.querySelector(
+      'input[id="claw-channel-create-name"]'
+    ) as HTMLInputElement
+    const createButton = document.body.querySelector(
+      'button[id="claw-channel-create-save"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      setElementValue(typeSelect, 'whatsapp')
+      setElementValue(nameInput, 'WhatsApp Device')
+    })
+
+    await act(async () => {
+      createButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(onCreateChannel).toHaveBeenCalledWith({
+      type: 'whatsapp',
+      name: 'WhatsApp Device'
+    })
+  })
+
   it('allows removing only unbound channels', async () => {
     const onDeleteChannel = vi.fn(async () => undefined)
 
