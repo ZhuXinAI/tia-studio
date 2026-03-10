@@ -2,34 +2,34 @@
   "appShell": {
     "nav": {
       "chats": "Chats",
-      "home": "Home",
+      "home": "Accueil",
       "claws": "Claws",
-      "team": "Team",
-      "openSettings": "Open settings"
+      "team": "Équipe",
+      "openSettings": "Ouvrir les paramètres"
     },
     "legacySidebar": {
       "title": "TIA Studio",
-      "subtitle": "Control Center",
-      "workspace": "Workspace",
-      "settings": "Settings",
+      "subtitle": "Centre de contrôle",
+      "workspace": "Espace de travail",
+      "settings": "Paramètres",
       "chat": "Chat",
-      "modelProviders": "Model Providers",
-      "notes": "TIA Studio Notes"
+      "modelProviders": "Fournisseurs de modèles",
+      "notes": "Notes TIA Studio"
     }
   },
   "common": {
     "routeError": {
-      "title": "Something went wrong",
-      "details": "Error details",
-      "refreshApp": "Refresh App",
-      "goHome": "Go Home"
+      "title": "Une erreur s'est produite",
+      "details": "Détails de l'erreur",
+      "refreshApp": "Actualiser l'app",
+      "goHome": "Retour à l'accueil"
     },
     "errorBoundary": {
-      "title": "Something went wrong",
-      "description": "The application encountered an unexpected error. You can try refreshing the app or resetting the current view.",
-      "details": "Error details",
-      "refreshApp": "Refresh App",
-      "tryAgain": "Try Again"
+      "title": "Une erreur s'est produite",
+      "description": "L'application a rencontré une erreur inattendue. Vous pouvez actualiser l'app ou réinitialiser la vue actuelle.",
+      "details": "Détails de l'erreur",
+      "refreshApp": "Actualiser l'app",
+      "tryAgain": "Réessayer"
     },
     "actions": {
       "cancel": "Annuler",
@@ -83,193 +83,193 @@
       "transparentDescription": "Active un arrière-plan de fenêtre transparent et vibrant (redémarrage requis)"
     },
     "about": {
-      "title": "About & Feedback",
-      "description": "App metadata, update controls, and helpful links for TIA Studio.",
-      "cardTitle": "About",
-      "repositoryAriaLabel": "Open source repository",
-      "appDescription": "A local-first AI workspace for assistants, providers, and tool integrations.",
+      "title": "À propos et retours",
+      "description": "Métadonnées de l'app, contrôles de mise à jour et liens utiles pour TIA Studio.",
+      "cardTitle": "À propos",
+      "repositoryAriaLabel": "Ouvrir le dépôt open source",
+      "appDescription": "Un espace de travail IA local pour assistants, fournisseurs et intégrations d'outils.",
       "autoUpdate": {
-        "label": "Auto Update",
-        "enabledDescription": "Automatically download the latest release in the background.",
-        "disabledDescription": "Disable background downloads and check manually.",
-        "loadError": "Failed to load auto update state.",
-        "saveError": "Failed to save auto update setting.",
-        "checkError": "Failed to check for updates."
+        "label": "Mise à jour automatique",
+        "enabledDescription": "Télécharger automatiquement la dernière version en arrière-plan.",
+        "disabledDescription": "Désactiver les téléchargements en arrière-plan et vérifier manuellement.",
+        "loadError": "Échec du chargement de l'état de mise à jour auto.",
+        "saveError": "Échec de l'enregistrement du paramètre de mise à jour auto.",
+        "checkError": "Échec de la vérification des mises à jour."
       },
       "links": {
         "docs": {
-          "title": "Docs",
-          "description": "Read setup guides and integration notes.",
-          "action": "Website"
+          "title": "Documentation",
+          "description": "Lire les guides d'installation et notes d'intégration.",
+          "action": "Site web"
         },
         "releaseNotes": {
-          "title": "Release Notes",
-          "description": "Track changelog details for each published build.",
-          "action": "Releases"
+          "title": "Notes de version",
+          "description": "Suivre le journal des changements pour chaque version.",
+          "action": "Versions"
         },
         "officialWebsite": {
-          "title": "Official Website",
-          "description": "Open the public landing page for project updates.",
-          "action": "Website"
+          "title": "Site officiel",
+          "description": "Ouvrir la page publique du projet pour les mises à jour.",
+          "action": "Site web"
         },
         "feedback": {
-          "title": "Feedback",
-          "description": "Report issues and share product suggestions.",
-          "action": "Feedback"
+          "title": "Retours",
+          "description": "Signaler des problèmes et partager des suggestions.",
+          "action": "Retours"
         }
       },
       "buttons": {
-        "checkUpdate": "Check Update",
-        "checking": "Checking..."
+        "checkUpdate": "Vérifier les mises à jour",
+        "checking": "Vérification..."
       }
     },
     "runtime": {
-      "title": "Runtime Setup",
-      "description": "Install managed bun and uv runtimes for MCP servers and runtime-backed tools, or point TIA Studio at a binary you already downloaded.",
+      "title": "Configuration du runtime",
+      "description": "Installer les runtimes bun et uv gérés pour les serveurs MCP, ou pointer TIA Studio vers un binaire déjà téléchargé.",
       "kindDescription": {
-        "bun": "Used for bun, bunx, and npx-backed MCP server launches.",
-        "uv": "Used for uv and uvx-backed MCP server launches."
+        "bun": "Pour les lancements de serveur MCP avec bun, bunx et npx.",
+        "uv": "Pour les lancements de serveur MCP avec uv et uvx."
       },
       "labels": {
-        "status": "Status:",
-        "source": "Source:",
-        "version": "Version:",
-        "binary": "Binary:"
+        "status": "État :",
+        "source": "Source :",
+        "version": "Version :",
+        "binary": "Binaire :"
       },
       "values": {
-        "notInstalled": "Not installed",
-        "noBinary": "No active binary selected",
-        "loading": "Loading runtime status..."
+        "notInstalled": "Non installé",
+        "noBinary": "Aucun binaire actif sélectionné",
+        "loading": "Chargement du statut du runtime..."
       },
       "buttons": {
-        "installLatest": "Install latest",
-        "installing": "Installing...",
-        "useDownloadedBinary": "Use downloaded binary",
-        "checkAgain": "Check again",
-        "checking": "Checking...",
-        "clearCustom": "Clear custom"
+        "installLatest": "Installer la dernière version",
+        "installing": "Installation...",
+        "useDownloadedBinary": "Utiliser le binaire téléchargé",
+        "checkAgain": "Vérifier à nouveau",
+        "checking": "Vérification...",
+        "clearCustom": "Effacer la personnalisation"
       },
       "toasts": {
-        "installSuccess": "Installed latest {{kind}} runtime.",
-        "pickSuccess": "Activated custom {{kind}} runtime.",
-        "checkSuccess": "Checked {{kind}} runtime status.",
-        "clearSuccess": "Cleared {{kind}} runtime selection.",
-        "unexpectedError": "Unexpected managed runtime error"
+        "installSuccess": "Dernier runtime {{kind}} installé.",
+        "pickSuccess": "Runtime {{kind}} personnalisé activé.",
+        "checkSuccess": "Statut du runtime {{kind}} vérifié.",
+        "clearSuccess": "Sélection du runtime {{kind}} effacée.",
+        "unexpectedError": "Erreur inattendue du runtime"
       }
     },
     "webSearch": {
-      "title": "Web Search",
-      "description": "Choose one default engine and every browser search tool call will use it.",
+      "title": "Recherche web",
+      "description": "Choisissez un moteur par défaut ; chaque recherche du navigateur l'utilisera.",
       "defaultEngine": {
-        "title": "Default Search Engine",
-        "description": "Google, Bing, and Baidu are supported.",
-        "loading": "Loading search settings...",
-        "empty": "No engines available."
+        "title": "Moteur de recherche par défaut",
+        "description": "Google, Bing et Baidu sont pris en charge.",
+        "loading": "Chargement des paramètres de recherche...",
+        "empty": "Aucun moteur disponible."
       },
       "buttons": {
-        "saving": "Saving...",
-        "default": "Default",
-        "setDefault": "Set Default",
-        "openSettings": "Open {{engine}} Settings"
+        "saving": "Enregistrement...",
+        "default": "Par défaut",
+        "setDefault": "Définir par défaut",
+        "openSettings": "Ouvrir les paramètres {{engine}}"
       },
       "browserBehavior": {
-        "title": "Browser Window Behavior",
-        "description": "Keep an isolated browser window in the background for future search tasks.",
-        "loading": "Loading browser window behavior...",
-        "backgroundTitle": "Background Browser Window",
-        "backgroundEnabled": "Reuses one hidden BrowserWindow for web search.",
-        "backgroundDisabled": "Creates and closes a BrowserWindow per search request.",
-        "showBrowserTitle": "Show Browser",
-        "showBrowserVisible": "Browser window is visible during search.",
-        "showBrowserHidden": "Browser window is hidden during search."
+        "title": "Comportement de la fenêtre du navigateur",
+        "description": "Garder une fenêtre de navigateur isolée en arrière-plan pour les recherches.",
+        "loading": "Chargement du comportement de la fenêtre...",
+        "backgroundTitle": "Fenêtre du navigateur en arrière-plan",
+        "backgroundEnabled": "Réutilise une BrowserWindow cachée pour la recherche web.",
+        "backgroundDisabled": "Crée et ferme une BrowserWindow par recherche.",
+        "showBrowserTitle": "Afficher le navigateur",
+        "showBrowserVisible": "La fenêtre est visible pendant la recherche.",
+        "showBrowserHidden": "La fenêtre est cachée pendant la recherche."
       },
       "engines": {
         "google": {
           "label": "Google",
-          "description": "Wide global index with broad results coverage."
+          "description": "Large index mondial et bonne couverture des résultats."
         },
         "bing": {
           "label": "Bing",
-          "description": "More consistent for direct fetch-based search pages."
+          "description": "Plus stable pour les pages de recherche basées sur fetch."
         },
         "baidu": {
           "label": "Baidu",
-          "description": "Useful when you prefer Chinese-language search ranking."
+          "description": "Utile si vous préférez les résultats en chinois."
         }
       },
       "toasts": {
-        "defaultSet": "{{engine}} is now the default web search engine.",
-        "backgroundWindow": "Background browser window is now {{state}}.",
-        "backgroundEnabled": "enabled",
-        "backgroundDisabled": "disabled",
-        "browserVisibility": "Browser window is now {{state}}.",
+        "defaultSet": "{{engine}} est maintenant le moteur de recherche web par défaut.",
+        "backgroundWindow": "La fenêtre en arrière-plan est maintenant {{state}}.",
+        "backgroundEnabled": "activée",
+        "backgroundDisabled": "désactivée",
+        "browserVisibility": "La fenêtre du navigateur est maintenant {{state}}.",
         "browserVisible": "visible",
-        "browserHidden": "hidden",
-        "openSettingsError": "Failed to open {{engine}} settings: {{message}}",
-        "unexpectedError": "Unexpected request error"
+        "browserHidden": "cachée",
+        "openSettingsError": "Échec de l'ouverture des paramètres {{engine}} : {{message}}",
+        "unexpectedError": "Erreur de requête inattendue"
       }
     },
     "cronJobs": {
-      "title": "Cron Jobs",
-      "description": "Review scheduler status, next runs, and the latest runtime errors for workspace cron jobs.",
-      "cardTitle": "Scheduled Jobs",
-      "cardDescription": "Hidden cron threads stay out of normal chat history while their runtime status is persisted here.",
-      "loading": "Loading cron jobs…",
-      "empty": "No cron jobs configured yet. Create one through the cron job API to start scheduling runs.",
-      "assistantLabel": "Assistant: {{assistant}}",
-      "enabled": "Enabled",
-      "disabled": "Disabled",
+      "title": "Tâches planifiées",
+      "description": "Consulter le statut du planificateur, les prochaines exécutions et les dernières erreurs des tâches cron.",
+      "cardTitle": "Tâches planifiées",
+      "cardDescription": "Les threads cron masqués n'apparaissent pas dans l'historique de chat ; leur statut est enregistré ici.",
+      "loading": "Chargement des tâches cron…",
+      "empty": "Aucune tâche cron configurée. Créez-en une via l'API cron pour planifier des exécutions.",
+      "assistantLabel": "Assistant : {{assistant}}",
+      "enabled": "Activé",
+      "disabled": "Désactivé",
       "fields": {
-        "cronExpression": "Cron Expression",
-        "nextRun": "Next Run",
-        "lastStatus": "Last Status",
-        "lastRun": "Last Run",
-        "lastError": "Last Error"
+        "cronExpression": "Expression cron",
+        "nextRun": "Prochaine exécution",
+        "lastStatus": "Dernier statut",
+        "lastRun": "Dernière exécution",
+        "lastError": "Dernière erreur"
       },
       "fallbacks": {
-        "notScheduled": "Not scheduled",
-        "never": "Never",
-        "none": "None"
+        "notScheduled": "Non planifié",
+        "never": "Jamais",
+        "none": "Aucun"
       },
       "status": {
-        "success": "success",
-        "failed": "failed",
-        "neverRun": "never run"
+        "success": "succès",
+        "failed": "échec",
+        "neverRun": "jamais exécuté"
       },
       "toasts": {
-        "unexpectedError": "Unexpected request error"
+        "unexpectedError": "Erreur de requête inattendue"
       }
     },
     "providers": {
-      "sidebarTitle": "PROVIDERS",
-      "newButton": "+ New",
-      "searchPlaceholder": "Search providers...",
-      "loading": "Loading providers...",
-      "empty": "No providers yet. Create one to get started.",
-      "emptySearch": "No providers match your search.",
-      "builtInProvider": "Built-in provider.",
-      "visitOfficialSite": "Visit official site",
-      "deleteAriaLabel": "Delete provider {{name}}",
-      "deleteButton": "Delete Provider",
-      "deletingButton": "Deleting...",
-      "selectPrompt": "Select a provider in the sidebar to edit its model configuration.",
+      "sidebarTitle": "FOURNISSEURS",
+      "newButton": "+ Nouveau",
+      "searchPlaceholder": "Rechercher des fournisseurs...",
+      "loading": "Chargement des fournisseurs...",
+      "empty": "Aucun fournisseur. Créez-en un pour commencer.",
+      "emptySearch": "Aucun fournisseur ne correspond à votre recherche.",
+      "builtInProvider": "Fournisseur intégré.",
+      "visitOfficialSite": "Visiter le site officiel",
+      "deleteAriaLabel": "Supprimer le fournisseur {{name}}",
+      "deleteButton": "Supprimer le fournisseur",
+      "deletingButton": "Suppression...",
+      "selectPrompt": "Sélectionnez un fournisseur dans la barre latérale pour modifier sa configuration de modèles.",
       "createDialog": {
-        "title": "New Model Provider",
-        "description": "Create a provider profile and save credentials locally.",
-        "closeAriaLabel": "Close provider dialog",
-        "closeButtonAriaLabel": "Close dialog"
+        "title": "Nouveau fournisseur de modèles",
+        "description": "Créer un profil fournisseur et enregistrer les identifiants localement.",
+        "closeAriaLabel": "Fermer le dialogue fournisseur",
+        "closeButtonAriaLabel": "Fermer le dialogue"
       },
       "toasts": {
-        "providerNotFound": "Provider not found.",
-        "providerSaved": "Provider saved locally.",
-        "providerCreated": "Provider created locally.",
-        "connectionSuccess": "Connection successful for {{type}} ({{model}}).",
-        "builtInDeleteBlocked": "Cannot delete built-in provider.",
-        "providerDeleted": "Provider deleted.",
-        "unexpectedError": "Unexpected request error"
+        "providerNotFound": "Fournisseur introuvable.",
+        "providerSaved": "Fournisseur enregistré localement.",
+        "providerCreated": "Fournisseur créé localement.",
+        "connectionSuccess": "Connexion réussie pour {{type}} ({{model}}).",
+        "builtInDeleteBlocked": "Impossible de supprimer le fournisseur intégré.",
+        "providerDeleted": "Fournisseur supprimé.",
+        "unexpectedError": "Erreur de requête inattendue"
       },
       "typeLabels": {
-        "openai": "OpenAI Compatible",
+        "openai": "Compatible OpenAI",
         "openai-response": "OpenAI Responses",
         "gemini": "Gemini",
         "anthropic": "Anthropic",
@@ -277,72 +277,72 @@
       },
       "form": {
         "errors": {
-          "selectedModelRequired": "Selected model is required"
+          "selectedModelRequired": "Un modèle doit être sélectionné"
         },
-        "enableProvider": "Enable Provider",
-        "enableProviderDescription": "Show this provider in model selection",
-        "providerName": "Provider Name",
+        "enableProvider": "Activer le fournisseur",
+        "enableProviderDescription": "Afficher ce fournisseur dans la sélection de modèles",
+        "providerName": "Nom du fournisseur",
         "type": "Type",
-        "apiKey": "API Key",
-        "apiHost": "API Host",
-        "selectedModel": "Selected Model",
-        "includeModelPresets": "Include optional provider model presets",
-        "providerModels": "Provider Models (optional)",
-        "providerModelsDescription": "Enter model names separated by commas or new lines",
-        "supportsVision": "Supports Vision",
-        "supportsVisionDescription": "Enable image attachments for this provider",
+        "apiKey": "Clé API",
+        "apiHost": "Hôte API",
+        "selectedModel": "Modèle sélectionné",
+        "includeModelPresets": "Inclure les préréglages de modèles optionnels",
+        "providerModels": "Modèles du fournisseur (optionnel)",
+        "providerModelsDescription": "Saisir les noms de modèles séparés par des virgules ou des retours à la ligne",
+        "supportsVision": "Prend en charge la vision",
+        "supportsVisionDescription": "Activer les pièces jointes image pour ce fournisseur",
         "buttons": {
-          "testing": "Testing...",
-          "testConnection": "Test Connection",
-          "saving": "Saving...",
-          "saveProvider": "Save Provider"
+          "testing": "Test en cours...",
+          "testConnection": "Tester la connexion",
+          "saving": "Enregistrement...",
+          "saveProvider": "Enregistrer le fournisseur"
         }
       }
     },
     "mcp": {
-      "title": "MCP Server Settings",
-      "description": "Manage your local mcp.json source-of-truth and control global MCP activation.",
+      "title": "Paramètres du serveur MCP",
+      "description": "Gérer votre mcp.json local et contrôler l'activation globale de MCP.",
       "buttons": {
-        "addServer": "Add MCP Server",
-        "editJson": "Edit JSON",
-        "saving": "Saving...",
-        "save": "Save",
-        "cancel": "Cancel",
-        "applyJson": "Apply JSON"
+        "addServer": "Ajouter un serveur MCP",
+        "editJson": "Modifier le JSON",
+        "saving": "Enregistrement...",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "applyJson": "Appliquer le JSON"
       },
-      "cardTitle": "MCP Servers",
-      "cardDescription": "These servers are shared globally and can be toggled per assistant later in the Tools tab.",
-      "loading": "Loading MCP servers...",
-      "empty": "No MCP servers yet. Add one to create your local mcp.json list.",
-      "serverDescription": "Global status controls whether assistants can use this server.",
-      "toggleAriaLabel": "Toggle {{id}}",
-      "deleteAriaLabel": "Delete {{id}}",
-      "managedRuntimeTitle": "This command can use TIA Studio managed runtimes.",
-      "managedRuntimeDescriptionPrefix": "Finish {{runtime}} setup in",
+      "cardTitle": "Serveurs MCP",
+      "cardDescription": "Ces serveurs sont partagés globalement et peuvent être activés/désactivés par assistant dans l'onglet Outils.",
+      "loading": "Chargement des serveurs MCP...",
+      "empty": "Aucun serveur MCP. Ajoutez-en un pour créer votre liste mcp.json locale.",
+      "serverDescription": "Le statut global contrôle si les assistants peuvent utiliser ce serveur.",
+      "toggleAriaLabel": "Basculer {{id}}",
+      "deleteAriaLabel": "Supprimer {{id}}",
+      "managedRuntimeTitle": "Cette commande peut utiliser les runtimes gérés par TIA Studio.",
+      "managedRuntimeDescriptionPrefix": "Terminer la configuration de {{runtime}} dans",
       "fields": {
-        "displayName": "Display Name",
-        "transportType": "Transport Type",
-        "command": "Command",
-        "installSource": "Install Source",
-        "url": "URL (for HTTP/SSE servers)",
-        "arguments": "Arguments (one per line)",
-        "environmentVariables": "Environment Variables (KEY=VALUE)"
+        "displayName": "Nom d'affichage",
+        "transportType": "Type de transport",
+        "command": "Commande",
+        "installSource": "Source d'installation",
+        "url": "URL (pour serveurs HTTP/SSE)",
+        "arguments": "Arguments (un par ligne)",
+        "environmentVariables": "Variables d'environnement (CLÉ=VALEUR)"
       },
       "jsonDialog": {
-        "title": "Edit MCP JSON",
-        "description": "This is a snapshot of your local MCP settings. Changes apply only after validation.",
-        "fieldLabel": "MCP Settings JSON",
-        "helper": "JSON parsing and MCP field rules are checked when you apply changes."
+        "title": "Modifier le JSON MCP",
+        "description": "Ceci est un instantané de vos paramètres MCP locaux. Les modifications ne s'appliquent qu'après validation.",
+        "fieldLabel": "JSON des paramètres MCP",
+        "helper": "L'analyse JSON et les règles des champs MCP sont vérifiées à l'application des changements."
       },
       "validation": {
-        "unexpectedError": "Unexpected request error",
-        "invalidPayload": "Invalid MCP settings payload.",
-        "rawJsonInvalid": "Raw JSON is invalid.",
-        "commandRequired": "command is required when type is stdio",
-        "urlRequired": "url is required for non-stdio MCP servers unless command is provided"
+        "unexpectedError": "Erreur de requête inattendue",
+        "invalidPayload": "Données de paramètres MCP invalides.",
+        "rawJsonInvalid": "Le JSON brut est invalide.",
+        "commandRequired": "command est requis lorsque le type est stdio",
+        "urlRequired": "url est requis pour les serveurs MCP non stdio sauf si command est fourni"
       },
       "toasts": {
-        "saved": "MCP server settings saved."
+        "saved": "Paramètres du serveur MCP enregistrés."
       }
     },
     "channels": {
@@ -648,7 +648,7 @@
       "tokens": "tokens",
       "tokenInput": "{{value}} entrée",
       "tokenOutput": "{{value}} sortie",
-      "modeLabel": "Chat assistant par défaut",
+      "modeLabel": "Chat avec l’assistant {{name}}",
       "newThread": "Nouveau fil",
       "setupIncomplete": "La configuration de l’assistant est incomplète. Ouvrez « Configurer » pour définir le fournisseur et le modèle avant d’envoyer des messages.",
       "composer": {

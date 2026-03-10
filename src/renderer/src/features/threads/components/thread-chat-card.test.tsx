@@ -56,7 +56,7 @@ vi.mock('@assistant-ui/react', () => {
 import { ThreadChatCard } from './thread-chat-card'
 
 describe('ThreadChatCard', () => {
-  it('keeps the header compact, single-line, and shows desktop status chip', () => {
+  it('keeps the header compact, single-line, and shows the selected assistant name', () => {
     useAISDKRuntimeMock.mockClear()
 
     const html = renderToString(
@@ -105,7 +105,8 @@ describe('ThreadChatCard', () => {
     expect(html).toContain('rounded-none border-t-0')
     expect(html).toContain('flex-nowrap items-center')
     expect(html).toContain('border-b border-border/70 py-2')
-    expect(html).toContain('Default assistant chat')
+    expect(html).toContain('Planner assistant chat')
+    expect(html).not.toContain('Default assistant chat')
     expect(html).not.toContain('Using Planner.')
   })
 

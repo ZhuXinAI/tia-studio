@@ -241,35 +241,35 @@
       }
     },
     "providers": {
-      "sidebarTitle": "PROVIDERS",
-      "newButton": "+ New",
-      "searchPlaceholder": "Search providers...",
-      "loading": "Loading providers...",
-      "empty": "No providers yet. Create one to get started.",
-      "emptySearch": "No providers match your search.",
-      "builtInProvider": "Built-in provider.",
-      "visitOfficialSite": "Visit official site",
-      "deleteAriaLabel": "Delete provider {{name}}",
-      "deleteButton": "Delete Provider",
-      "deletingButton": "Deleting...",
-      "selectPrompt": "Select a provider in the sidebar to edit its model configuration.",
+      "sidebarTitle": "供應商",
+      "newButton": "+ 新增",
+      "searchPlaceholder": "搜尋供應商...",
+      "loading": "正在載入供應商...",
+      "empty": "尚無供應商。建立一個以開始使用。",
+      "emptySearch": "沒有符合搜尋條件的供應商。",
+      "builtInProvider": "內建供應商。",
+      "visitOfficialSite": "造訪官方網站",
+      "deleteAriaLabel": "刪除供應商 {{name}}",
+      "deleteButton": "刪除供應商",
+      "deletingButton": "正在刪除...",
+      "selectPrompt": "在側邊欄選擇供應商以編輯其模型設定。",
       "createDialog": {
-        "title": "New Model Provider",
-        "description": "Create a provider profile and save credentials locally.",
-        "closeAriaLabel": "Close provider dialog",
-        "closeButtonAriaLabel": "Close dialog"
+        "title": "新增模型供應商",
+        "description": "建立供應商設定檔並在本機儲存憑證。",
+        "closeAriaLabel": "關閉供應商對話框",
+        "closeButtonAriaLabel": "關閉對話框"
       },
       "toasts": {
-        "providerNotFound": "Provider not found.",
-        "providerSaved": "Provider saved locally.",
-        "providerCreated": "Provider created locally.",
-        "connectionSuccess": "Connection successful for {{type}} ({{model}}).",
-        "builtInDeleteBlocked": "Cannot delete built-in provider.",
-        "providerDeleted": "Provider deleted.",
-        "unexpectedError": "Unexpected request error"
+        "providerNotFound": "找不到供應商。",
+        "providerSaved": "供應商已儲存至本機。",
+        "providerCreated": "供應商已在本機建立。",
+        "connectionSuccess": "{{type}} ({{model}}) 連線成功。",
+        "builtInDeleteBlocked": "無法刪除內建供應商。",
+        "providerDeleted": "供應商已刪除。",
+        "unexpectedError": "要求發生未預期錯誤"
       },
       "typeLabels": {
-        "openai": "OpenAI Compatible",
+        "openai": "OpenAI 相容",
         "openai-response": "OpenAI Responses",
         "gemini": "Gemini",
         "anthropic": "Anthropic",
@@ -277,72 +277,72 @@
       },
       "form": {
         "errors": {
-          "selectedModelRequired": "Selected model is required"
+          "selectedModelRequired": "請選擇模型"
         },
-        "enableProvider": "Enable Provider",
-        "enableProviderDescription": "Show this provider in model selection",
-        "providerName": "Provider Name",
-        "type": "Type",
-        "apiKey": "API Key",
-        "apiHost": "API Host",
-        "selectedModel": "Selected Model",
-        "includeModelPresets": "Include optional provider model presets",
-        "providerModels": "Provider Models (optional)",
-        "providerModelsDescription": "Enter model names separated by commas or new lines",
-        "supportsVision": "Supports Vision",
-        "supportsVisionDescription": "Enable image attachments for this provider",
+        "enableProvider": "啟用供應商",
+        "enableProviderDescription": "在模型選擇中顯示此供應商",
+        "providerName": "供應商名稱",
+        "type": "類型",
+        "apiKey": "API 金鑰",
+        "apiHost": "API 主機",
+        "selectedModel": "已選模型",
+        "includeModelPresets": "包含可選的供應商模型預設",
+        "providerModels": "供應商模型（可選）",
+        "providerModelsDescription": "輸入模型名稱，以逗號或換行分隔",
+        "supportsVision": "支援視覺",
+        "supportsVisionDescription": "為此供應商啟用圖片附件",
         "buttons": {
-          "testing": "Testing...",
-          "testConnection": "Test Connection",
-          "saving": "Saving...",
-          "saveProvider": "Save Provider"
+          "testing": "測試中...",
+          "testConnection": "測試連線",
+          "saving": "儲存中...",
+          "saveProvider": "儲存供應商"
         }
       }
     },
     "mcp": {
-      "title": "MCP Server Settings",
-      "description": "Manage your local mcp.json source-of-truth and control global MCP activation.",
+      "title": "MCP 伺服器設定",
+      "description": "管理本機 mcp.json 並控制全域 MCP 啟用狀態。",
       "buttons": {
-        "addServer": "Add MCP Server",
-        "editJson": "Edit JSON",
-        "saving": "Saving...",
-        "save": "Save",
-        "cancel": "Cancel",
-        "applyJson": "Apply JSON"
+        "addServer": "新增 MCP 伺服器",
+        "editJson": "編輯 JSON",
+        "saving": "儲存中...",
+        "save": "儲存",
+        "cancel": "取消",
+        "applyJson": "套用 JSON"
       },
-      "cardTitle": "MCP Servers",
-      "cardDescription": "These servers are shared globally and can be toggled per assistant later in the Tools tab.",
-      "loading": "Loading MCP servers...",
-      "empty": "No MCP servers yet. Add one to create your local mcp.json list.",
-      "serverDescription": "Global status controls whether assistants can use this server.",
-      "toggleAriaLabel": "Toggle {{id}}",
-      "deleteAriaLabel": "Delete {{id}}",
-      "managedRuntimeTitle": "This command can use TIA Studio managed runtimes.",
-      "managedRuntimeDescriptionPrefix": "Finish {{runtime}} setup in",
+      "cardTitle": "MCP 伺服器",
+      "cardDescription": "這些伺服器為全域共用，可在工具標籤中依助手個別開關。",
+      "loading": "正在載入 MCP 伺服器...",
+      "empty": "尚無 MCP 伺服器。新增一個以建立本機 mcp.json 清單。",
+      "serverDescription": "全域狀態控制助手是否可使用此伺服器。",
+      "toggleAriaLabel": "切換 {{id}}",
+      "deleteAriaLabel": "刪除 {{id}}",
+      "managedRuntimeTitle": "此命令可使用 TIA Studio 託管的執行環境。",
+      "managedRuntimeDescriptionPrefix": "請在以下位置完成 {{runtime}} 設定：",
       "fields": {
-        "displayName": "Display Name",
-        "transportType": "Transport Type",
-        "command": "Command",
-        "installSource": "Install Source",
-        "url": "URL (for HTTP/SSE servers)",
-        "arguments": "Arguments (one per line)",
-        "environmentVariables": "Environment Variables (KEY=VALUE)"
+        "displayName": "顯示名稱",
+        "transportType": "傳輸類型",
+        "command": "命令",
+        "installSource": "安裝來源",
+        "url": "URL（用於 HTTP/SSE 伺服器）",
+        "arguments": "參數（每行一個）",
+        "environmentVariables": "環境變數（KEY=VALUE）"
       },
       "jsonDialog": {
-        "title": "Edit MCP JSON",
-        "description": "This is a snapshot of your local MCP settings. Changes apply only after validation.",
-        "fieldLabel": "MCP Settings JSON",
-        "helper": "JSON parsing and MCP field rules are checked when you apply changes."
+        "title": "編輯 MCP JSON",
+        "description": "這是您本機 MCP 設定的快照。變更僅在驗證後生效。",
+        "fieldLabel": "MCP 設定 JSON",
+        "helper": "套用變更時會驗證 JSON 解析與 MCP 欄位規則。"
       },
       "validation": {
-        "unexpectedError": "Unexpected request error",
-        "invalidPayload": "Invalid MCP settings payload.",
-        "rawJsonInvalid": "Raw JSON is invalid.",
-        "commandRequired": "command is required when type is stdio",
-        "urlRequired": "url is required for non-stdio MCP servers unless command is provided"
+        "unexpectedError": "要求發生未預期錯誤",
+        "invalidPayload": "MCP 設定資料無效。",
+        "rawJsonInvalid": "原始 JSON 無效。",
+        "commandRequired": "類型為 stdio 時必須提供 command",
+        "urlRequired": "非 stdio 的 MCP 伺服器需要提供 url，除非已提供 command"
       },
       "toasts": {
-        "saved": "MCP server settings saved."
+        "saved": "MCP 伺服器設定已儲存。"
       }
     },
     "channels": {
@@ -388,7 +388,7 @@
     },
     "card": {
       "noChannelConnected": "未連接頻道",
-      "configureChannelFirst": "Configure a channel first",
+      "configureChannelFirst": "請先設定頻道",
       "enableButton": "啟用",
       "disableButton": "停用",
       "editButton": "編輯",
@@ -449,30 +449,30 @@
       }
     },
     "channelSelector": {
-      "title": "Select Channel",
-      "description": "Choose from configured channels, add a new one, or leave this claw without a channel.",
-      "openButton": "Select Channel",
-      "empty": "No configured channels yet.",
-      "available": "Available",
-      "inUseByCurrent": "In use by this claw",
-      "inUseByOther": "In use by {{assistantName}}",
-      "otherAssistantFallback": "another assistant",
+      "title": "選擇頻道",
+      "description": "從已設定的頻道中選擇、新增頻道，或讓此 claw 不綁定頻道。",
+      "openButton": "選擇頻道",
+      "empty": "尚未有已設定的頻道。",
+      "available": "可用",
+      "inUseByCurrent": "目前由此 claw 使用",
+      "inUseByOther": "正在由 {{assistantName}} 使用",
+      "otherAssistantFallback": "其他助手",
       "actions": {
-        "add": "Add Channel",
+        "add": "新增頻道",
         "edit": "編輯頻道",
-        "remove": "Remove Channel",
-        "clear": "Clear Selection",
-        "cancel": "Cancel",
-        "apply": "Apply"
+        "remove": "移除頻道",
+        "clear": "清除選擇",
+        "cancel": "取消",
+        "apply": "套用"
       },
       "selectedBadge": "已選取",
       "create": {
-        "title": "Add Channel",
-        "description": "Create a new Telegram or Lark channel configuration.",
-        "whatsappHint": "No token is required. After saving, open Manage Pairings to scan the WhatsApp QR code.",
-        "save": "Add Channel",
+        "title": "新增頻道",
+        "description": "建立新的 WhatsApp、Telegram 或 Lark 頻道設定。",
+        "whatsappHint": "不需要權杖。儲存後，開啟「管理配對」來掃描 WhatsApp QR 碼。",
+        "save": "新增頻道",
         "fields": {
-          "type": "Channel Type"
+          "type": "頻道類型"
         }
       },
       "edit": {
@@ -485,18 +485,18 @@
         "botTokenPlaceholder": "保持不變"
       },
       "remove": {
-        "title": "Remove Channel",
-        "description": "Remove {{channelName}} from configured channels?",
-        "descriptionFallback": "Remove this channel from configured channels?",
-        "confirm": "Remove Channel"
+        "title": "移除頻道",
+        "description": "從已設定頻道中移除 {{channelName}}？",
+        "descriptionFallback": "從已設定頻道中移除此頻道？",
+        "confirm": "移除頻道"
       },
       "errors": {
-        "nameRequired": "Channel name is required",
-        "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
-        "telegramCredentialsRequired": "Bot token is required for Telegram channels",
-        "createFailed": "Failed to create channel",
+        "nameRequired": "頻道名稱為必填",
+        "larkCredentialsRequired": "Lark 頻道需要應用程式 ID 與應用程式密鑰",
+        "telegramCredentialsRequired": "Telegram 頻道需要 Bot 令牌",
+        "createFailed": "建立頻道失敗",
         "updateFailed": "更新頻道失敗",
-        "deleteFailed": "Failed to delete channel"
+        "deleteFailed": "刪除頻道失敗"
       }
     },
     "pairings": {
@@ -544,20 +544,20 @@
       "eyebrow": "Team",
       "title": "Team 工作區",
       "defaultWorkspaceName": "Team 工作區",
-      "createWorkspaceAriaLabel": "Create team workspace",
+      "createWorkspaceAriaLabel": "建立 Team 工作區",
       "creatingWorkspace": "正在建立工作區...",
       "newWorkspace": "新增工作區",
       "workspaces": "工作區",
-      "createThreadAriaLabel": "Create team thread",
+      "createThreadAriaLabel": "建立 Team 執行緒",
       "newThread": "新增執行緒",
       "loadingWorkspaces": "正在載入 Team 工作區...",
       "emptyWorkspaces": "還沒有工作區。先建立一個，再開始 Team 執行緒。",
       "loadingThreads": "正在載入 Team 執行緒...",
       "emptyThreads": "還沒有 Team 執行緒。",
       "untitledThread": "未命名 Team 執行緒",
-      "deleteThreadAriaLabel": "Delete team thread {{title}}",
+      "deleteThreadAriaLabel": "刪除 Team 執行緒 {{title}}",
       "deleteThreadPrompt": "刪除執行緒？",
-      "confirmDeleteThreadAriaLabel": "Confirm delete team thread {{title}}",
+      "confirmDeleteThreadAriaLabel": "確認刪除 Team 執行緒 {{title}}",
       "deletingThread": "正在刪除..."
     },
     "chat": {
@@ -615,11 +615,11 @@
       }
     },
     "readiness": {
-      "threadSelected": "Team thread is selected",
-      "workspaceConfigured": "Workspace path is configured",
-      "providerConfigured": "Supervisor provider is configured",
-      "modelConfigured": "Supervisor model is configured",
-      "membersSelected": "At least one live team member is selected"
+      "threadSelected": "已選擇 Team 執行緒",
+      "workspaceConfigured": "已設定工作區路徑",
+      "providerConfigured": "已設定主管供應商",
+      "modelConfigured": "已設定主管模型",
+      "membersSelected": "已至少選擇一名團隊成員"
     }
   },
   "threads": {
@@ -629,18 +629,18 @@
       "creatingThread": "正在建立執行緒...",
       "newThread": "新增執行緒",
       "assistants": "助手",
-      "createAssistantAriaLabel": "Create assistant",
-      "assistantActionsAriaLabel": "Assistant actions for {{name}}",
-      "deleteAssistantAriaLabel": "Delete assistant {{name}}",
+      "createAssistantAriaLabel": "建立助手",
+      "assistantActionsAriaLabel": "助手 {{name}} 的操作",
+      "deleteAssistantAriaLabel": "刪除助手 {{name}}",
       "loadingAssistants": "正在載入助手...",
       "emptyAssistants": "還沒有助手。請先在 Assistants 建立一個。",
       "loadingThreads": "正在載入執行緒...",
       "emptyThreads": "還沒有執行緒。",
       "untitledThread": "未命名執行緒",
-      "deleteThreadAriaLabel": "Delete thread {{title}}",
+      "deleteThreadAriaLabel": "刪除執行緒 {{title}}",
       "deleteThreadPrompt": "刪除執行緒？",
-      "cancelDeleteThreadAriaLabel": "Cancel delete thread {{title}}",
-      "confirmDeleteThreadAriaLabel": "Confirm delete thread {{title}}"
+      "cancelDeleteThreadAriaLabel": "取消刪除執行緒 {{title}}",
+      "confirmDeleteThreadAriaLabel": "確認刪除執行緒 {{title}}"
     },
     "chat": {
       "defaultAssistantName": "助手",
@@ -648,7 +648,7 @@
       "tokens": "權杖",
       "tokenInput": "{{value}} 輸入",
       "tokenOutput": "{{value}} 輸出",
-      "modeLabel": "預設助手對話",
+      "modeLabel": "{{name}} 助手對話",
       "newThread": "新增執行緒",
       "setupIncomplete": "助手設定尚未完成。請先打開「設定」配置供應商與模型，再傳送訊息。",
       "composer": {
@@ -694,8 +694,8 @@
       "assistantDeleted": "助手已刪除。"
     },
     "readiness": {
-      "providerAssigned": "Provider is assigned to this assistant",
-      "providerModelSelected": "Provider has one selected model"
+      "providerAssigned": "已為此助手指派供應商",
+      "providerModelSelected": "供應商已選擇模型"
     }
   },
   "assistants": {
@@ -755,7 +755,7 @@
       "noMcpServersPrefix": "尚未設定 MCP 伺服器。請前往",
       "noMcpServersLinkLabel": "MCP 伺服器設定",
       "mcpGloballyDisabled": "已在 MCP 伺服器設定中全域停用。",
-      "toggleMcpAriaLabel": "Toggle {{serverId}} for this assistant",
+      "toggleMcpAriaLabel": "為此助手切換 {{serverId}}",
       "savingButton": "正在儲存...",
       "updateButton": "更新助手",
       "createButton": "建立助手",
@@ -771,15 +771,15 @@
         "globalAgent": "Global ~/.agent/skills"
       },
       "skills": {
-        "description": "Skills are loaded from `~/.claude/skills`, `~/.agent/skills`, and `./skills`.",
-        "workspaceRequired": "Set a workspace path first to load workspace skills.",
-        "loading": "Loading skills...",
-        "empty": "No skills found in the configured global or workspace folders.",
-        "noDescription": "No description found in SKILL.md.",
-        "removeAriaLabel": "Remove skill {{name}}",
-        "removingButton": "Removing...",
-        "removeButton": "Remove",
-        "readOnly": "Read-only"
+        "description": "Skills 從 `~/.claude/skills`、`~/.agent/skills` 與 `./skills` 載入。",
+        "workspaceRequired": "請先設定工作區路徑以載入工作區 Skills。",
+        "loading": "正在載入 Skills...",
+        "empty": "在設定的全域或工作區資料夾中找不到 Skills。",
+        "noDescription": "SKILL.md 中找不到描述。",
+        "removeAriaLabel": "移除 Skill {{name}}",
+        "removingButton": "正在移除...",
+        "removeButton": "移除",
+        "readOnly": "唯讀"
       }
     }
   },

@@ -1,35 +1,35 @@
 {
   "appShell": {
     "nav": {
-      "chats": "Chats",
-      "home": "Home",
+      "chats": "Conversații",
+      "home": "Acasă",
       "claws": "Claws",
-      "team": "Team",
-      "openSettings": "Open settings"
+      "team": "Echipă",
+      "openSettings": "Deschide setări"
     },
     "legacySidebar": {
       "title": "TIA Studio",
-      "subtitle": "Control Center",
-      "workspace": "Workspace",
-      "settings": "Settings",
+      "subtitle": "Centru de control",
+      "workspace": "Spațiu de lucru",
+      "settings": "Setări",
       "chat": "Chat",
-      "modelProviders": "Model Providers",
-      "notes": "TIA Studio Notes"
+      "modelProviders": "Furnizori de modele",
+      "notes": "Note TIA Studio"
     }
   },
   "common": {
     "routeError": {
-      "title": "Something went wrong",
-      "details": "Error details",
-      "refreshApp": "Refresh App",
-      "goHome": "Go Home"
+      "title": "Ceva n-a mers bine",
+      "details": "Detalii eroare",
+      "refreshApp": "Reîmprospătează aplicația",
+      "goHome": "Mergi la acasă"
     },
     "errorBoundary": {
-      "title": "Something went wrong",
-      "description": "The application encountered an unexpected error. You can try refreshing the app or resetting the current view.",
-      "details": "Error details",
-      "refreshApp": "Refresh App",
-      "tryAgain": "Try Again"
+      "title": "Ceva n-a mers bine",
+      "description": "Aplicația a întâlnit o eroare neașteptată. Poți reîmprospăta aplicația sau reseta vista curentă.",
+      "details": "Detalii eroare",
+      "refreshApp": "Reîmprospătează aplicația",
+      "tryAgain": "Încearcă din nou"
     },
     "actions": {
       "cancel": "Anulează",
@@ -83,44 +83,44 @@
       "transparentDescription": "Activează fundalul transparent și vibrant al ferestrei (necesită repornire)"
     },
     "about": {
-      "title": "About & Feedback",
-      "description": "App metadata, update controls, and helpful links for TIA Studio.",
-      "cardTitle": "About",
-      "repositoryAriaLabel": "Open source repository",
-      "appDescription": "A local-first AI workspace for assistants, providers, and tool integrations.",
+      "title": "Despre și feedback",
+      "description": "Metadate aplicație, controale actualizare și linkuri utile pentru TIA Studio.",
+      "cardTitle": "Despre",
+      "repositoryAriaLabel": "Deschide repository open source",
+      "appDescription": "Un spațiu de lucru AI local pentru asistenți, furnizori și integrări de unelte.",
       "autoUpdate": {
-        "label": "Auto Update",
-        "enabledDescription": "Automatically download the latest release in the background.",
-        "disabledDescription": "Disable background downloads and check manually.",
-        "loadError": "Failed to load auto update state.",
-        "saveError": "Failed to save auto update setting.",
-        "checkError": "Failed to check for updates."
+        "label": "Actualizare automată",
+        "enabledDescription": "Descarcă automat cea mai recentă versiune în fundal.",
+        "disabledDescription": "Dezactivează descărcările în fundal și verifică manual.",
+        "loadError": "Nu s-a putut încărca starea actualizării automate.",
+        "saveError": "Nu s-a putut salva setarea actualizării automate.",
+        "checkError": "Verificarea actualizărilor a eșuat."
       },
       "links": {
         "docs": {
-          "title": "Docs",
-          "description": "Read setup guides and integration notes.",
+          "title": "Documentație",
+          "description": "Citește ghiduri de configurare și note de integrare.",
           "action": "Website"
         },
         "releaseNotes": {
-          "title": "Release Notes",
-          "description": "Track changelog details for each published build.",
-          "action": "Releases"
+          "title": "Note de versiune",
+          "description": "Urmărește jurnalul de modificări pentru fiecare build publicat.",
+          "action": "Versiuni"
         },
         "officialWebsite": {
-          "title": "Official Website",
-          "description": "Open the public landing page for project updates.",
+          "title": "Site oficial",
+          "description": "Deschide pagina publică a proiectului pentru actualizări.",
           "action": "Website"
         },
         "feedback": {
           "title": "Feedback",
-          "description": "Report issues and share product suggestions.",
+          "description": "Raportează probleme și împărtășește sugestii de produs.",
           "action": "Feedback"
         }
       },
       "buttons": {
-        "checkUpdate": "Check Update",
-        "checking": "Checking..."
+        "checkUpdate": "Verifică actualizări",
+        "checking": "Se verifică..."
       }
     },
     "runtime": {
@@ -648,7 +648,7 @@
       "tokens": "token-uri",
       "tokenInput": "{{value}} intrare",
       "tokenOutput": "{{value}} ieșire",
-      "modeLabel": "Chat implicit al asistentului",
+      "modeLabel": "Chat cu asistentul {{name}}",
       "newThread": "Thread nou",
       "setupIncomplete": "Configurarea asistentului este incompletă. Deschide „Configurează” pentru a seta furnizorul și modelul înainte de a trimite mesaje.",
       "composer": {

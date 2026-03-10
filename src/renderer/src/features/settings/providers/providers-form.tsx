@@ -52,7 +52,7 @@ type ProvidersFormProps = {
   isTestingConnection?: boolean
   isPrebuilt?: boolean
   isBuiltIn?: boolean
-  onSubmit: (values: SaveProviderInput) => Promise<void> | void
+  onSubmit: (values: SaveProviderInput, onSuccess?: () => void) => Promise<void> | void
   onTestConnection?: (values: SaveProviderInput) => Promise<void> | void
 }
 
@@ -122,7 +122,12 @@ export function ProvidersForm({
       return
     }
 
-    await onSubmit(toProviderPayload(values, showProviderModels))
+    await onSubmit(toProviderPayload(values, showProviderModels), () => {
+      setValues({
+        ...values,
+        enabled: true
+      })
+    })
   }
 
   const handleTestConnection = async () => {

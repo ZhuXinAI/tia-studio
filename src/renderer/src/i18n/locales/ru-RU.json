@@ -1,35 +1,35 @@
 {
   "appShell": {
     "nav": {
-      "chats": "Chats",
-      "home": "Home",
+      "chats": "Чаты",
+      "home": "Главная",
       "claws": "Claws",
-      "team": "Team",
-      "openSettings": "Open settings"
+      "team": "Команда",
+      "openSettings": "Открыть настройки"
     },
     "legacySidebar": {
       "title": "TIA Studio",
-      "subtitle": "Control Center",
-      "workspace": "Workspace",
-      "settings": "Settings",
-      "chat": "Chat",
-      "modelProviders": "Model Providers",
-      "notes": "TIA Studio Notes"
+      "subtitle": "Панель управления",
+      "workspace": "Рабочее пространство",
+      "settings": "Настройки",
+      "chat": "Чат",
+      "modelProviders": "Поставщики моделей",
+      "notes": "Заметки TIA Studio"
     }
   },
   "common": {
     "routeError": {
-      "title": "Something went wrong",
-      "details": "Error details",
-      "refreshApp": "Refresh App",
-      "goHome": "Go Home"
+      "title": "Что-то пошло не так",
+      "details": "Подробности ошибки",
+      "refreshApp": "Обновить приложение",
+      "goHome": "На главную"
     },
     "errorBoundary": {
-      "title": "Something went wrong",
-      "description": "The application encountered an unexpected error. You can try refreshing the app or resetting the current view.",
-      "details": "Error details",
-      "refreshApp": "Refresh App",
-      "tryAgain": "Try Again"
+      "title": "Что-то пошло не так",
+      "description": "В приложении произошла непредвиденная ошибка. Можно обновить приложение или сбросить текущий вид.",
+      "details": "Подробности ошибки",
+      "refreshApp": "Обновить приложение",
+      "tryAgain": "Повторить"
     },
     "actions": {
       "cancel": "Отмена",
@@ -83,44 +83,44 @@
       "transparentDescription": "Включить эффект прозрачного фона окна (требуется перезапуск)"
     },
     "about": {
-      "title": "About & Feedback",
-      "description": "App metadata, update controls, and helpful links for TIA Studio.",
-      "cardTitle": "About",
-      "repositoryAriaLabel": "Open source repository",
-      "appDescription": "A local-first AI workspace for assistants, providers, and tool integrations.",
+      "title": "О приложении и отзывы",
+      "description": "Метаданные приложения, управление обновлениями и полезные ссылки для TIA Studio.",
+      "cardTitle": "О приложении",
+      "repositoryAriaLabel": "Открыть репозиторий с открытым исходным кодом",
+      "appDescription": "Локальное AI-рабочее пространство для ассистентов, поставщиков и интеграций инструментов.",
       "autoUpdate": {
-        "label": "Auto Update",
-        "enabledDescription": "Automatically download the latest release in the background.",
-        "disabledDescription": "Disable background downloads and check manually.",
-        "loadError": "Failed to load auto update state.",
-        "saveError": "Failed to save auto update setting.",
-        "checkError": "Failed to check for updates."
+        "label": "Автообновление",
+        "enabledDescription": "Автоматически загружать последнюю версию в фоне.",
+        "disabledDescription": "Отключить фоновую загрузку и проверять вручную.",
+        "loadError": "Не удалось загрузить состояние автообновления.",
+        "saveError": "Не удалось сохранить настройку автообновления.",
+        "checkError": "Не удалось проверить обновления."
       },
       "links": {
         "docs": {
-          "title": "Docs",
-          "description": "Read setup guides and integration notes.",
-          "action": "Website"
+          "title": "Документация",
+          "description": "Читать руководства по настройке и интеграции.",
+          "action": "Сайт"
         },
         "releaseNotes": {
-          "title": "Release Notes",
-          "description": "Track changelog details for each published build.",
-          "action": "Releases"
+          "title": "Заметки о выпуске",
+          "description": "Отслеживать изменения для каждой опубликованной сборки.",
+          "action": "Релизы"
         },
         "officialWebsite": {
-          "title": "Official Website",
-          "description": "Open the public landing page for project updates.",
-          "action": "Website"
+          "title": "Официальный сайт",
+          "description": "Открыть публичную страницу проекта для обновлений.",
+          "action": "Сайт"
         },
         "feedback": {
-          "title": "Feedback",
-          "description": "Report issues and share product suggestions.",
-          "action": "Feedback"
+          "title": "Отзывы",
+          "description": "Сообщать о проблемах и делиться предложениями.",
+          "action": "Отзывы"
         }
       },
       "buttons": {
-        "checkUpdate": "Check Update",
-        "checking": "Checking..."
+        "checkUpdate": "Проверить обновления",
+        "checking": "Проверка..."
       }
     },
     "runtime": {
@@ -648,7 +648,7 @@
       "tokens": "токенов",
       "tokenInput": "{{value}} вход",
       "tokenOutput": "{{value}} выход",
-      "modeLabel": "Чат с ассистентом по умолчанию",
+      "modeLabel": "Чат с ассистентом {{name}}",
       "newThread": "Новый тред",
       "setupIncomplete": "Настройка ассистента не завершена. Откройте «Настроить», чтобы указать провайдера и модель перед отправкой сообщений.",
       "composer": {
