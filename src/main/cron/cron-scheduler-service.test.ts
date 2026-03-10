@@ -125,17 +125,18 @@ describe('CronSchedulerService', () => {
   })
 
   it('schedules only future runs after restart and reloads job state', async () => {
-    vi.setSystemTime(new Date('2026-03-09T10:05:00.000Z'))
+    // Use local time: March 9, 10:05
+    vi.setSystemTime(new Date(2026, 2, 9, 10, 5, 0))
     const jobs = [
       createCronJob({
         id: 'cron-job-1',
         cronExpression: '0 10 * * *',
-        nextRunAt: '2026-03-08T10:00:00.000Z'
+        nextRunAt: new Date(2026, 2, 8, 10, 0, 0).toISOString()
       }),
       createCronJob({
         id: 'cron-job-2',
         enabled: false,
-        nextRunAt: '2026-03-09T10:15:00.000Z'
+        nextRunAt: new Date(2026, 2, 9, 10, 15, 0).toISOString()
       })
     ]
     const repo = new InMemoryCronJobsRepo(jobs)
@@ -147,13 +148,19 @@ describe('CronSchedulerService', () => {
 
     await scheduler.start()
 
-    expect((await repo.getById('cron-job-1'))?.nextRunAt).toBe('2026-03-10T10:00:00.000Z')
+    // Next local 10:00 after 10:05 → tomorrow March 10, 10:00 local
+    expect((await repo.getById('cron-job-1'))?.nextRunAt).toBe(
+      new Date(2026, 2, 10, 10, 0, 0).toISOString()
+    )
     expect((await repo.getById('cron-job-2'))?.nextRunAt).toBeNull()
 
     await repo.update('cron-job-1', { cronExpression: '30 10 * * *' })
     await scheduler.reload()
 
-    expect((await repo.getById('cron-job-1'))?.nextRunAt).toBe('2026-03-09T10:30:00.000Z')
+    // Next local 10:30 after 10:05 → today March 9, 10:30 local
+    expect((await repo.getById('cron-job-1'))?.nextRunAt).toBe(
+      new Date(2026, 2, 9, 10, 30, 0).toISOString()
+    )
     expect(runJob).not.toHaveBeenCalled()
 
     await scheduler.stop()
