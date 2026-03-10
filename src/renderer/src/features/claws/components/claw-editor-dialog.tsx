@@ -9,7 +9,6 @@ import {
   DialogTitle
 } from '../../../components/ui/dialog'
 import { Input } from '../../../components/ui/input'
-import { Textarea } from '../../../components/ui/textarea'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import type { ProviderRecord, SaveProviderInput } from '../../settings/providers/providers-query'
 import type {
@@ -19,6 +18,7 @@ import type {
   UpdateClawChannelInput,
   SaveClawInput
 } from '../claws-query'
+import { channelStatusLabel, channelTypeLabel } from '../claw-labels'
 import { ClawChannelSelectorDialog } from './claw-channel-selector-dialog'
 import { ClawProviderSelectorDialog } from './claw-provider-selector-dialog'
 
@@ -80,9 +80,9 @@ export function ClawEditorDialog({
   const { t } = useTranslation()
   const [name, setName] = useState(claw?.name ?? '')
   const [providerId, setProviderId] = useState(claw?.providerId ?? '')
-  const [instructions, setInstructions] = useState(claw?.instructions ?? '')
   const [enabled, setEnabled] = useState(claw?.enabled ?? true)
   const [selectedChannelId, setSelectedChannelId] = useState(claw?.channel?.id ?? '')
+  const [workspacePath, setWorkspacePath] = useState(claw?.workspacePath ?? '')
   const [isChannelSelectorOpen, setIsChannelSelectorOpen] = useState(false)
   const [isProviderSelectorOpen, setIsProviderSelectorOpen] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -90,9 +90,9 @@ export function ClawEditorDialog({
   useEffect(() => {
     setName(claw?.name ?? '')
     setProviderId(claw?.providerId ?? '')
-    setInstructions(claw?.instructions ?? '')
     setEnabled(claw?.enabled ?? true)
     setSelectedChannelId(claw?.channel?.id ?? '')
+    setWorkspacePath(claw?.workspacePath ?? '')
     setIsChannelSelectorOpen(false)
     setIsProviderSelectorOpen(false)
     setErrorMessage(null)
@@ -141,6 +141,20 @@ export function ClawEditorDialog({
     return providers.find((provider) => provider.id === providerId) ?? null
   }, [providers, providerId])
 
+  async function handlePickWorkspaceFolder(): Promise<void> {
+    try {
+      const selectedPath = await window.tiaDesktop.pickDirectory()
+      if (selectedPath) {
+        setWorkspacePath(selectedPath)
+        setErrorMessage(null)
+      }
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : t('claws.dialog.errors.pickFolderFailed')
+      )
+    }
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
 
@@ -163,8 +177,8 @@ export function ClawEditorDialog({
       assistant: {
         name: name.trim(),
         providerId: providerId.trim(),
-        instructions: instructions.trim(),
-        enabled: selectedChannelId ? enabled : false
+        enabled: selectedChannelId ? enabled : false,
+        ...(workspacePath.trim().length > 0 ? { workspacePath: workspacePath.trim() } : {})
       },
       ...(channel ? { channel } : {})
     })
@@ -224,24 +238,14 @@ export function ClawEditorDialog({
             </div>
 
             <div className="grid gap-2">
-              <label htmlFor="claw-instructions" className="text-sm font-medium">
-                {t('claws.dialog.fields.instructions')}
-              </label>
-              <Textarea
-                id="claw-instructions"
-                value={instructions}
-                onChange={(event) => setInstructions(event.target.value)}
-              />
-            </div>
-
-            <div className="grid gap-2">
               <label className="text-sm font-medium">{t('claws.dialog.fields.channelName')}</label>
               <div className="rounded-lg border border-border p-4">
                 {selectedChannel ? (
                   <div className="space-y-1">
                     <p className="font-medium">{selectedChannel.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {selectedChannel.type} · {selectedChannel.status}
+                      {channelTypeLabel(selectedChannel.type, t)} ·{' '}
+                      {channelStatusLabel(selectedChannel.status, t)}
                     </p>
                   </div>
                 ) : (
@@ -264,6 +268,37 @@ export function ClawEditorDialog({
                   <p className="text-sm text-amber-600">{t('claws.card.configureChannelFirst')}</p>
                 ) : null}
               </div>
+            </div>
+
+            <div className="grid gap-2">
+              <label htmlFor="claw-workspace-path" className="text-sm font-medium">
+                {t('claws.dialog.fields.workspacePath')}
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  id="claw-workspace-path"
+                  value={workspacePath}
+                  onChange={(event) => setWorkspacePath(event.target.value)}
+                  placeholder={t('claws.dialog.workspacePathPlaceholder')}
+                  disabled={!!claw}
+                  className={claw ? 'bg-muted cursor-not-allowed' : ''}
+                />
+                {!claw ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isSubmitting}
+                    onClick={() => void handlePickWorkspaceFolder()}
+                  >
+                    {t('claws.dialog.pickFolder')}
+                  </Button>
+                ) : null}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {claw
+                  ? t('claws.dialog.workspacePathReadOnly')
+                  : t('claws.dialog.workspacePathHint')}
+              </p>
             </div>
 
             <label className="flex items-center gap-2 text-sm">

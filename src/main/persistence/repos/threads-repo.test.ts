@@ -121,4 +121,29 @@ describe('ThreadsRepository', () => {
       id: systemCronThread.id
     })
   })
+
+  it('checks if assistant has any threads', async () => {
+    const providersRepo = new ProvidersRepository(db)
+    const assistantsRepo = new AssistantsRepository(db)
+    const provider = await providersRepo.create({
+      name: 'Test Provider',
+      type: 'openai',
+      apiKey: 'test-key',
+      selectedModel: 'gpt-4'
+    })
+    const newAssistant = await assistantsRepo.create({
+      name: 'New Assistant',
+      providerId: provider.id
+    })
+
+    await expect(repo.hasAnyThreads(newAssistant.id)).resolves.toBe(false)
+
+    await repo.create({
+      assistantId: newAssistant.id,
+      resourceId: 'profile-default',
+      title: 'First thread'
+    })
+
+    await expect(repo.hasAnyThreads(newAssistant.id)).resolves.toBe(true)
+  })
 })

@@ -155,4 +155,17 @@ export class ThreadsRepository {
       [timestamp, id]
     )
   }
+
+  async hasAnyThreads(assistantId: string): Promise<boolean> {
+    const result = await this.db.execute(
+      'SELECT COUNT(*) AS total FROM app_threads WHERE assistant_id = ? LIMIT 1',
+      [assistantId]
+    )
+    const row = result.rows.at(0) as Record<string, unknown> | undefined
+    if (!row) {
+      return false
+    }
+
+    return Number(row.total ?? 0) > 0
+  }
 }

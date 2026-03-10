@@ -13,7 +13,12 @@
 
 </div>
 
-一种可以轻松在本机运行 local claw 的方式 —— 同时也是一款功能完整的桌面 AI 助手应用，可用于构建、对话和运营 AI assistants、teams 与 channels。
+## 两步认领你的 Claw
+
+1. 创建或选择一个 assistant。
+2. 连接一个 channel，开始本地运行。
+
+只需几分钟，就能在你的电脑上跑起一个 local claw —— 同时获得一款功能完整的桌面 AI 助手工作区，用于构建、对话和运营 AI assistants、teams 与 channels。
 
 ## TIA Studio 是什么？
 

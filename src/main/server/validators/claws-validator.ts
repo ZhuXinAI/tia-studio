@@ -3,14 +3,13 @@ import { z } from 'zod'
 const createAssistantForClawSchema = z.object({
   name: z.string().min(1),
   providerId: z.string().min(1),
-  instructions: z.string().optional(),
-  enabled: z.boolean().optional()
+  enabled: z.boolean().optional(),
+  workspacePath: z.string().optional()
 })
 
 const updateAssistantForClawSchema = z.object({
   name: z.string().min(1).optional(),
   providerId: z.string().min(1).optional(),
-  instructions: z.string().optional(),
   enabled: z.boolean().optional()
 })
 

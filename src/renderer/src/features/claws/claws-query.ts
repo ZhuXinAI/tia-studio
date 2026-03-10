@@ -15,9 +15,9 @@ export type ClawRecord = {
   id: string
   name: string
   description: string
-  instructions: string
   providerId: string | null
   enabled: boolean
+  workspacePath: string | null
   channel: ClawChannelRecord | null
 }
 
@@ -75,8 +75,8 @@ export type SaveClawInput = {
   assistant: {
     name?: string
     providerId?: string
-    instructions?: string
     enabled?: boolean
+    workspacePath?: string
   }
   channel?:
     | {

@@ -1,8 +1,17 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+// @vitest-environment jsdom
+
+import { act } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { i18n } from '../../../i18n'
 import { ClawProviderSelectorDialog } from './claw-provider-selector-dialog'
 import type { ProviderRecord } from '../../settings/providers/providers-query'
+
+async function flushAsyncWork(): Promise<void> {
+  await act(async () => {
+    await Promise.resolve()
+  })
+}
 
 const mockProviders: ProviderRecord[] = [
   {
@@ -40,107 +49,199 @@ const mockProviders: ProviderRecord[] = [
 ]
 
 describe('ClawProviderSelectorDialog', () => {
-  it('renders provider list when open', () => {
-    render(
-      <ClawProviderSelectorDialog
-        isOpen={true}
-        selectedProviderId=""
-        providers={mockProviders}
-        isMutating={false}
-        errorMessage={null}
-        onClose={vi.fn()}
-        onApply={vi.fn()}
-        onCreateProvider={vi.fn()}
-        onUpdateProvider={vi.fn()}
-      />
-    )
+  let container: HTMLDivElement
+  let root: Root
 
-    expect(screen.getByText('OpenAI')).toBeInTheDocument()
-    expect(screen.getByText('Anthropic')).toBeInTheDocument()
+  beforeEach(() => {
+    ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
   })
 
-  it('shows selected badge on selected provider', () => {
-    render(
-      <ClawProviderSelectorDialog
-        isOpen={true}
-        selectedProviderId="provider-1"
-        providers={mockProviders}
-        isMutating={false}
-        errorMessage={null}
-        onClose={vi.fn()}
-        onApply={vi.fn()}
-        onCreateProvider={vi.fn()}
-        onUpdateProvider={vi.fn()}
-      />
-    )
+  afterEach(async () => {
+    act(() => {
+      root.unmount()
+    })
+    container.remove()
+    document.body.innerHTML = ''
+    delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT
+    vi.clearAllMocks()
+    await i18n.changeLanguage('en-US')
+  })
 
-    const selectedButton = screen.getByRole('button', { name: /OpenAI/i })
-    expect(selectedButton).toHaveAttribute('data-selected', 'true')
+  it('renders provider list when open', async () => {
+    await act(async () => {
+      root.render(
+        <ClawProviderSelectorDialog
+          isOpen
+          selectedProviderId=""
+          providers={mockProviders}
+          isMutating={false}
+          errorMessage={null}
+          onClose={() => undefined}
+          onApply={() => undefined}
+          onCreateProvider={vi.fn(async () => mockProviders[0])}
+          onUpdateProvider={vi.fn(async () => mockProviders[0])}
+        />
+      )
+    })
+    await flushAsyncWork()
+
+    expect(document.body.textContent).toContain('OpenAI')
+    expect(document.body.textContent).toContain('Anthropic')
+  })
+
+  it('shows selected badge on selected provider', async () => {
+    await act(async () => {
+      root.render(
+        <ClawProviderSelectorDialog
+          isOpen
+          selectedProviderId="provider-1"
+          providers={mockProviders}
+          isMutating={false}
+          errorMessage={null}
+          onClose={() => undefined}
+          onApply={() => undefined}
+          onCreateProvider={vi.fn(async () => mockProviders[0])}
+          onUpdateProvider={vi.fn(async () => mockProviders[0])}
+        />
+      )
+    })
+    await flushAsyncWork()
+
+    const selectedButton = document.body.querySelector(
+      'button[data-provider-id="provider-1"]'
+    ) as HTMLButtonElement
+
+    expect(selectedButton.getAttribute('data-selected')).toBe('true')
+    expect(selectedButton.textContent).toContain('Selected')
   })
 
   it('calls onApply with selected provider when apply is clicked', async () => {
-    const user = userEvent.setup()
     const onApply = vi.fn()
 
-    render(
-      <ClawProviderSelectorDialog
-        isOpen={true}
-        selectedProviderId=""
-        providers={mockProviders}
-        isMutating={false}
-        errorMessage={null}
-        onClose={vi.fn()}
-        onApply={onApply}
-        onCreateProvider={vi.fn()}
-        onUpdateProvider={vi.fn()}
-      />
-    )
+    await act(async () => {
+      root.render(
+        <ClawProviderSelectorDialog
+          isOpen
+          selectedProviderId=""
+          providers={mockProviders}
+          isMutating={false}
+          errorMessage={null}
+          onClose={() => undefined}
+          onApply={onApply}
+          onCreateProvider={vi.fn(async () => mockProviders[0])}
+          onUpdateProvider={vi.fn(async () => mockProviders[0])}
+        />
+      )
+    })
+    await flushAsyncWork()
 
-    await user.click(screen.getByRole('button', { name: /OpenAI/i }))
-    await user.click(screen.getByRole('button', { name: /Apply/i }))
+    const providerButton = document.body.querySelector(
+      'button[data-provider-id="provider-1"]'
+    ) as HTMLButtonElement
+    const applyButton = document.body.querySelector(
+      'button[id="claw-provider-selector-apply"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      providerButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    await act(async () => {
+      applyButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
 
     expect(onApply).toHaveBeenCalledWith('provider-1')
   })
 
   it('opens create dialog when add button is clicked', async () => {
-    const user = userEvent.setup()
-
-    render(
-      <ClawProviderSelectorDialog
-        isOpen={true}
-        selectedProviderId=""
-        providers={mockProviders}
-        isMutating={false}
-        errorMessage={null}
-        onClose={vi.fn()}
-        onApply={vi.fn()}
-        onCreateProvider={vi.fn()}
-        onUpdateProvider={vi.fn()}
-      />
-    )
-
-    await user.click(screen.getByRole('button', { name: /Add Provider/i }))
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Add Provider/i })).toBeInTheDocument()
+    await act(async () => {
+      root.render(
+        <ClawProviderSelectorDialog
+          isOpen
+          selectedProviderId=""
+          providers={mockProviders}
+          isMutating={false}
+          errorMessage={null}
+          onClose={() => undefined}
+          onApply={() => undefined}
+          onCreateProvider={vi.fn(async () => mockProviders[0])}
+          onUpdateProvider={vi.fn(async () => mockProviders[0])}
+        />
+      )
     })
+    await flushAsyncWork()
+
+    const addButton = document.body.querySelector(
+      'button[id="claw-provider-selector-add"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(document.body.textContent).toContain('Add Provider')
   })
 
-  it('shows empty state when no providers', () => {
-    render(
-      <ClawProviderSelectorDialog
-        isOpen={true}
-        selectedProviderId=""
-        providers={[]}
-        isMutating={false}
-        errorMessage={null}
-        onClose={vi.fn()}
-        onApply={vi.fn()}
-        onCreateProvider={vi.fn()}
-        onUpdateProvider={vi.fn()}
-      />
-    )
+  it('shows empty state when no providers', async () => {
+    await act(async () => {
+      root.render(
+        <ClawProviderSelectorDialog
+          isOpen
+          selectedProviderId=""
+          providers={[]}
+          isMutating={false}
+          errorMessage={null}
+          onClose={() => undefined}
+          onApply={() => undefined}
+          onCreateProvider={vi.fn(async () => mockProviders[0])}
+          onUpdateProvider={vi.fn(async () => mockProviders[0])}
+        />
+      )
+    })
+    await flushAsyncWork()
 
-    expect(screen.getByText(/No configured providers yet/i)).toBeInTheDocument()
+    expect(document.body.textContent).toContain('No configured providers yet.')
+  })
+
+  it('renders zh-CN provider selector strings and translated type labels', async () => {
+    await i18n.changeLanguage('zh-CN')
+
+    await act(async () => {
+      root.render(
+        <ClawProviderSelectorDialog
+          isOpen
+          selectedProviderId=""
+          providers={mockProviders}
+          isMutating={false}
+          errorMessage={null}
+          onClose={() => undefined}
+          onApply={() => undefined}
+          onCreateProvider={vi.fn(async () => mockProviders[0])}
+          onUpdateProvider={vi.fn(async () => mockProviders[0])}
+        />
+      )
+    })
+    await flushAsyncWork()
+
+    expect(document.body.textContent).toContain('选择提供商')
+    expect(document.body.textContent).toContain('OpenAI 兼容 · gpt-4o')
+
+    const addButton = document.body.querySelector(
+      'button[id="claw-provider-selector-add"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(document.body.textContent).toContain('添加提供商')
+    expect(document.body.textContent).toContain('提供商名称')
+    expect(document.body.textContent).toContain('类型')
   })
 })

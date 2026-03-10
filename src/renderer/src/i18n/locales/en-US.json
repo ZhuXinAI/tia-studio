@@ -275,6 +275,13 @@
         "anthropic": "Anthropic",
         "ollama": "Ollama"
       },
+      "typeDescriptions": {
+        "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
+        "openai-response": "For services using OpenAI response format. Use this for third-party APIs that return OpenAI-compatible responses.",
+        "gemini": "For Google Gemini models. Requires Google AI API key from ai.google.dev.",
+        "anthropic": "For Claude models from Anthropic. Requires Anthropic API key from console.anthropic.com.",
+        "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint."
+      },
       "form": {
         "errors": {
           "selectedModelRequired": "Selected model is required",
@@ -420,6 +427,7 @@
         "assistantName": "Assistant Name",
         "provider": "Provider",
         "instructions": "Instructions",
+        "workspacePath": "Workspace Path",
         "channelAction": "Channel Action",
         "existingChannel": "Existing Channel",
         "channelType": "Channel Type",
@@ -429,6 +437,10 @@
         "appId": "App ID",
         "appSecret": "App Secret"
       },
+      "pickFolder": "Browse",
+      "workspacePathPlaceholder": "Auto-generated from assistant name",
+      "workspacePathHint": "Leave empty to auto-generate from assistant name, or pick a custom folder",
+      "workspacePathReadOnly": "Workspace path is set automatically and cannot be changed",
       "selectProvider": "Select a provider",
       "selectChannel": "Select a channel",
       "enableAfterSaving": "Enable this claw after saving",
@@ -449,8 +461,14 @@
         "providerRequired": "Provider is required",
         "channelRequired": "Pick a channel to attach",
         "channelCredentialsRequired": "Lark channel name, app ID, and app secret are required",
-        "telegramCredentialsRequired": "Telegram channel name and bot token are required"
+        "telegramCredentialsRequired": "Telegram channel name and bot token are required",
+        "pickFolderFailed": "Failed to pick folder"
       }
+    },
+    "channelStatus": {
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "error": "Needs attention"
     },
     "channelSelector": {
       "title": "Select Channel",

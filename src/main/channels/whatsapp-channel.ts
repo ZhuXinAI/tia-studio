@@ -1,6 +1,5 @@
 import { rm } from 'node:fs/promises'
 import {
-  Browsers,
   DisconnectReason,
   useMultiFileAuthState as createMultiFileAuthState,
   getContentType,

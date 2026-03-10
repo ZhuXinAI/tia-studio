@@ -14,6 +14,7 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Switch } from '../../../components/ui/switch'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { cn } from '../../../lib/utils'
+import { providerTypeLabel } from '../claw-labels'
 import type {
   ProviderRecord,
   ProviderType,
@@ -35,7 +36,7 @@ type ClawProviderSelectorDialogProps = {
   ) => Promise<ProviderRecord> | ProviderRecord
 }
 
-type ProviderFormMode = 'create' | 'edit'
+type ProviderFormMode = 'create' | 'edit' | 'template'
 
 type ProviderFormState = {
   name: string
@@ -46,6 +47,14 @@ type ProviderFormState = {
   providerModelsText: string
   supportsVision: boolean
   enabled: boolean
+  icon: string | null
+  officialSite: string | null
+}
+
+const providerTypes: ProviderType[] = ['openai', 'openai-response', 'gemini', 'anthropic', 'ollama']
+
+function getProviderTypeDescription(type: ProviderType, translate: Translate): string {
+  return translate(`settings.providers.typeDescriptions.${type}`)
 }
 
 function emptyFormState(): ProviderFormState {
@@ -57,7 +66,24 @@ function emptyFormState(): ProviderFormState {
     selectedModel: '',
     providerModelsText: '',
     supportsVision: false,
-    enabled: true
+    enabled: true,
+    icon: null,
+    officialSite: null
+  }
+}
+
+function fromBuiltInProvider(provider: ProviderRecord): ProviderFormState {
+  return {
+    name: provider.name,
+    type: provider.type,
+    apiKey: '',
+    apiHost: provider.apiHost ?? '',
+    selectedModel: provider.selectedModel,
+    providerModelsText: provider.providerModels?.join('\n') ?? '',
+    supportsVision: provider.supportsVision,
+    enabled: true,
+    icon: provider.icon,
+    officialSite: provider.officialSite
   }
 }
 
@@ -70,7 +96,9 @@ function toEditFormState(provider: ProviderRecord): ProviderFormState {
     selectedModel: provider.selectedModel,
     providerModelsText: provider.providerModels?.join('\n') ?? '',
     supportsVision: provider.supportsVision,
-    enabled: provider.enabled
+    enabled: provider.enabled,
+    icon: provider.icon,
+    officialSite: provider.officialSite
   }
 }
 
@@ -123,10 +151,20 @@ export function ClawProviderSelectorDialog({
   const [localProviders, setLocalProviders] = useState(providers)
   const [localSelectedProviderId, setLocalSelectedProviderId] = useState(selectedProviderId)
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false)
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false)
   const [formMode, setFormMode] = useState<ProviderFormMode>('create')
   const [formState, setFormState] = useState<ProviderFormState>(emptyFormState)
   const [formError, setFormError] = useState<string | null>(null)
   const [isFormSubmitting, setIsFormSubmitting] = useState(false)
+
+  const builtInProviders = useMemo(
+    () => localProviders.filter((p) => p.isBuiltIn && !p.enabled),
+    [localProviders]
+  )
+  const configuredProviders = useMemo(
+    () => localProviders.filter((p) => !p.isBuiltIn || p.enabled),
+    [localProviders]
+  )
 
   useEffect(() => {
     if (!isOpen) {
@@ -136,6 +174,7 @@ export function ClawProviderSelectorDialog({
     setLocalProviders(providers)
     setFormError(null)
     setIsFormDialogOpen(false)
+    setIsTemplateDialogOpen(false)
     setFormState(emptyFormState())
     setFormMode('create')
   }, [providers, isOpen])
@@ -157,6 +196,18 @@ export function ClawProviderSelectorDialog({
     setFormMode('create')
     setFormState(emptyFormState())
     setFormError(null)
+  }
+
+  function openTemplateDialog(): void {
+    setIsTemplateDialogOpen(true)
+  }
+
+  function selectTemplate(provider: ProviderRecord): void {
+    setFormMode('template')
+    setFormState(fromBuiltInProvider(provider))
+    setFormError(null)
+    setIsTemplateDialogOpen(false)
+    setIsFormDialogOpen(true)
   }
 
   function openCreateDialog(): void {
@@ -301,7 +352,7 @@ export function ClawProviderSelectorDialog({
                             ) : null}
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {provider.type} · {provider.selectedModel}
+                            {providerTypeLabel(provider.type, t)} · {provider.selectedModel}
                           </p>
                         </div>
                         <span
@@ -439,12 +490,15 @@ export function ClawProviderSelectorDialog({
                   }))
                 }
               >
-                <option value="openai">OpenAI</option>
-                <option value="openai-response">OpenAI-Response</option>
-                <option value="gemini">Gemini</option>
-                <option value="anthropic">Anthropic</option>
-                <option value="ollama">Ollama</option>
+                {providerTypes.map((providerType) => (
+                  <option key={providerType} value={providerType}>
+                    {providerTypeLabel(providerType, t)}
+                  </option>
+                ))}
               </select>
+              <p className="text-xs text-muted-foreground">
+                {getProviderTypeDescription(formState.type, t)}
+              </p>
             </div>
 
             <div className="grid gap-2">

@@ -4,6 +4,7 @@ import {
   type WhatsAppAuthStateStore
 } from '../../channels/whatsapp-auth-state-store'
 import { BUILT_IN_DEFAULT_AGENT_MCP_KEY } from '../../default-agent/default-agent-bootstrap'
+import { createDefaultWorkspaceConfig } from '../../mastra/workspace-path-resolver'
 import type { AppAssistant, AssistantsRepository } from '../../persistence/repos/assistants-repo'
 import type {
   AppChannelPairing,
@@ -49,9 +50,9 @@ type ClawResponse = {
   id: string
   name: string
   description: string
-  instructions: string
   providerId: string | null
   enabled: boolean
+  workspacePath: string | null
   channel: null | {
     id: string
     type: string
@@ -199,14 +200,16 @@ async function toClawResponse(
   options: RegisterClawsRouteOptions
 ): Promise<ClawResponse> {
   const counts = channel ? await getChannelPairingCounts(channel, options) : null
+  const workspacePath =
+    typeof assistant.workspaceConfig.path === 'string' ? assistant.workspaceConfig.path : null
 
   return {
     id: assistant.id,
     name: assistant.name,
     description: assistant.description,
-    instructions: assistant.instructions,
     providerId: assistant.providerId,
     enabled: assistant.enabled,
+    workspacePath,
     channel: channel
       ? {
           id: channel.id,
@@ -655,10 +658,14 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
 
     const hasChannel = Boolean(parsed.data.channel)
 
+    const workspaceConfig = parsed.data.assistant.workspacePath
+      ? { path: parsed.data.assistant.workspacePath }
+      : createDefaultWorkspaceConfig(parsed.data.assistant.name)
+
     const assistant = await options.assistantsRepo.create({
       name: parsed.data.assistant.name,
-      instructions: parsed.data.assistant.instructions,
       providerId: parsed.data.assistant.providerId,
+      workspaceConfig,
       enabled: resolveAssistantEnabledValue({
         requestedEnabled: parsed.data.assistant.enabled,
         hasChannel,

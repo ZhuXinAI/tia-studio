@@ -10,6 +10,12 @@ import { ChannelsRepository } from '../../persistence/repos/channels-repo'
 import { ProvidersRepository } from '../../persistence/repos/providers-repo'
 import { registerClawsRoute } from './claws-route'
 
+vi.mock('electron', () => ({
+  app: {
+    getPath: vi.fn(() => '/tmp/test-user-data')
+  }
+}))
+
 describe('claws route', () => {
   let db: AppDatabase
   let app: Hono
@@ -361,6 +367,56 @@ describe('claws route', () => {
       name: 'Unconfigured Assistant',
       enabled: false,
       channel: null
+    })
+  })
+
+  it('creates a claw with automatic workspace path', async () => {
+    const response = await app.request('http://localhost/v1/claws', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assistant: {
+          name: 'My Test Assistant',
+          providerId,
+          instructions: 'Test instructions',
+          enabled: false
+        }
+      })
+    })
+
+    expect(response.status).toBe(201)
+    const body = await response.json()
+    expect(body).toMatchObject({
+      name: 'My Test Assistant',
+      enabled: false
+    })
+    expect(body.workspacePath).toBeTruthy()
+    expect(body.workspacePath).toContain('assistants')
+    expect(body.workspacePath).toContain('my_test_assistant')
+  })
+
+  it('creates a claw with custom workspace path', async () => {
+    const customPath = '/custom/workspace/path'
+    const response = await app.request('http://localhost/v1/claws', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assistant: {
+          name: 'Custom Path Assistant',
+          providerId,
+          instructions: 'Test instructions',
+          enabled: false,
+          workspacePath: customPath
+        }
+      })
+    })
+
+    expect(response.status).toBe(201)
+    const body = await response.json()
+    expect(body).toMatchObject({
+      name: 'Custom Path Assistant',
+      enabled: false,
+      workspacePath: customPath
     })
   })
 

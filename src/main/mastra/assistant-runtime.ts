@@ -86,6 +86,32 @@ const CHANNEL_BREAK_TAG = '[[BR]]'
 const CHANNEL_SPLITTER_INSTRUCTION =
   'When you want to split a reply into multiple channel messages, insert [[BR]] between chunks.'
 
+const ONBOARDING_INSTRUCTIONS = `
+# First Conversation Onboarding
+
+This is your first conversation! Let's set up your identity and personality.
+
+## Your Task
+1. **Introduce yourself warmly** - Tell the user you're a new assistant and excited to work with them
+2. **Ask about your identity** - Ask the user:
+   - What should your name be?
+   - What kind of personality should you have? (professional, friendly, casual, etc.)
+   - What's your main purpose? (customer support, coding assistant, general helper, etc.)
+   - Any specific traits or characteristics they want you to have?
+
+3. **Explain your workspace** - Let them know you have a workspace with these files:
+   - IDENTITY.md - Where you'll save your name, personality, and avatar
+   - SOUL.md - Your core values and how you should behave
+   - MEMORY.md - Long-term facts and preferences you should remember
+
+4. **After gathering their input**, use your tools to:
+   - Update IDENTITY.md with your name, personality, and purpose
+   - Update SOUL.md with your behavioral guidelines based on their preferences
+   - Confirm the changes and let them know you're ready to help
+
+Keep it conversational and friendly. This is about co-creating your identity together!
+`.trim()
+
 export type AssistantRuntime = {
   streamChat: (params: StreamChatParams) => Promise<ReadableStream<UIMessageChunk>>
   listThreadMessages: (params: ListThreadMessagesParams) => Promise<UIMessage[]>
@@ -660,11 +686,14 @@ export class AssistantRuntimeService implements AssistantRuntime {
       second: '2-digit',
       timeZoneName: 'short'
     })
+
+    const isFirstConversation = !(await this.options.threadsRepo.hasAnyThreads(assistant.id))
     const baseInstructions = assistant.instructions || 'You are a helpful assistant.'
+    const onboardingInstructions = isFirstConversation ? `\n\n${ONBOARDING_INSTRUCTIONS}\n` : ''
     const channelInstructions = options.channelDeliveryEnabled
       ? `\nChannel delivery guidelines:\n- ${CHANNEL_SPLITTER_INSTRUCTION}\n- Keep channel replies short and natural.\n- Do not mention [[BR]] to the user.\n`
       : ''
-    const agentInstructions = `${baseInstructions}\n\nCurrent date and time: ${currentDateTime}\n${channelInstructions}\n`
+    const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${channelInstructions}\n`
     const workspace = await this.buildWorkspace(
       assistant.workspaceConfig ?? {},
       assistant.skillsConfig ?? {}
