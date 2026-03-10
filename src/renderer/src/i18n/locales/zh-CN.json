@@ -241,35 +241,35 @@
       }
     },
     "providers": {
-      "sidebarTitle": "PROVIDERS",
-      "newButton": "+ New",
-      "searchPlaceholder": "Search providers...",
-      "loading": "Loading providers...",
-      "empty": "No providers yet. Create one to get started.",
-      "emptySearch": "No providers match your search.",
-      "builtInProvider": "Built-in provider.",
-      "visitOfficialSite": "Visit official site",
-      "deleteAriaLabel": "Delete provider {{name}}",
-      "deleteButton": "Delete Provider",
-      "deletingButton": "Deleting...",
-      "selectPrompt": "Select a provider in the sidebar to edit its model configuration.",
+      "sidebarTitle": "提供商",
+      "newButton": "+ 新建",
+      "searchPlaceholder": "搜索提供商...",
+      "loading": "正在加载提供商...",
+      "empty": "还没有提供商。创建一个以开始使用。",
+      "emptySearch": "没有匹配搜索条件的提供商。",
+      "builtInProvider": "内置提供商。",
+      "visitOfficialSite": "访问官方网站",
+      "deleteAriaLabel": "删除提供商 {{name}}",
+      "deleteButton": "删除提供商",
+      "deletingButton": "正在删除...",
+      "selectPrompt": "在侧栏选择一个提供商以编辑其模型配置。",
       "createDialog": {
-        "title": "New Model Provider",
-        "description": "Create a provider profile and save credentials locally.",
-        "closeAriaLabel": "Close provider dialog",
-        "closeButtonAriaLabel": "Close dialog"
+        "title": "新建模型提供商",
+        "description": "创建提供商配置并在本地保存凭证。",
+        "closeAriaLabel": "关闭提供商对话框",
+        "closeButtonAriaLabel": "关闭对话框"
       },
       "toasts": {
-        "providerNotFound": "Provider not found.",
-        "providerSaved": "Provider saved locally.",
-        "providerCreated": "Provider created locally.",
-        "connectionSuccess": "Connection successful for {{type}} ({{model}}).",
-        "builtInDeleteBlocked": "Cannot delete built-in provider.",
-        "providerDeleted": "Provider deleted.",
-        "unexpectedError": "Unexpected request error"
+        "providerNotFound": "未找到提供商。",
+        "providerSaved": "提供商已保存到本地。",
+        "providerCreated": "提供商已在本地创建。",
+        "connectionSuccess": "{{type}} ({{model}}) 连接成功。",
+        "builtInDeleteBlocked": "无法删除内置提供商。",
+        "providerDeleted": "提供商已删除。",
+        "unexpectedError": "请求发生意外错误"
       },
       "typeLabels": {
-        "openai": "OpenAI Compatible",
+        "openai": "OpenAI 兼容",
         "openai-response": "OpenAI Responses",
         "gemini": "Gemini",
         "anthropic": "Anthropic",
@@ -277,72 +277,72 @@
       },
       "form": {
         "errors": {
-          "selectedModelRequired": "Selected model is required"
+          "selectedModelRequired": "请选择模型"
         },
-        "enableProvider": "Enable Provider",
-        "enableProviderDescription": "Show this provider in model selection",
-        "providerName": "Provider Name",
-        "type": "Type",
-        "apiKey": "API Key",
-        "apiHost": "API Host",
-        "selectedModel": "Selected Model",
-        "includeModelPresets": "Include optional provider model presets",
-        "providerModels": "Provider Models (optional)",
-        "providerModelsDescription": "Enter model names separated by commas or new lines",
-        "supportsVision": "Supports Vision",
-        "supportsVisionDescription": "Enable image attachments for this provider",
+        "enableProvider": "启用提供商",
+        "enableProviderDescription": "在模型选择中显示此提供商",
+        "providerName": "提供商名称",
+        "type": "类型",
+        "apiKey": "API 密钥",
+        "apiHost": "API 主机",
+        "selectedModel": "已选模型",
+        "includeModelPresets": "包含可选的提供商模型预设",
+        "providerModels": "提供商模型（可选）",
+        "providerModelsDescription": "输入模型名称，用逗号或换行分隔",
+        "supportsVision": "支持视觉",
+        "supportsVisionDescription": "为此提供商启用图片附件",
         "buttons": {
-          "testing": "Testing...",
-          "testConnection": "Test Connection",
-          "saving": "Saving...",
-          "saveProvider": "Save Provider"
+          "testing": "测试中...",
+          "testConnection": "测试连接",
+          "saving": "保存中...",
+          "saveProvider": "保存提供商"
         }
       }
     },
     "mcp": {
-      "title": "MCP Server Settings",
-      "description": "Manage your local mcp.json source-of-truth and control global MCP activation.",
+      "title": "MCP 服务器设置",
+      "description": "管理本地 mcp.json 并控制全局 MCP 启用状态。",
       "buttons": {
-        "addServer": "Add MCP Server",
-        "editJson": "Edit JSON",
-        "saving": "Saving...",
-        "save": "Save",
-        "cancel": "Cancel",
-        "applyJson": "Apply JSON"
+        "addServer": "添加 MCP 服务器",
+        "editJson": "编辑 JSON",
+        "saving": "保存中...",
+        "save": "保存",
+        "cancel": "取消",
+        "applyJson": "应用 JSON"
       },
-      "cardTitle": "MCP Servers",
-      "cardDescription": "These servers are shared globally and can be toggled per assistant later in the Tools tab.",
-      "loading": "Loading MCP servers...",
-      "empty": "No MCP servers yet. Add one to create your local mcp.json list.",
-      "serverDescription": "Global status controls whether assistants can use this server.",
-      "toggleAriaLabel": "Toggle {{id}}",
-      "deleteAriaLabel": "Delete {{id}}",
-      "managedRuntimeTitle": "This command can use TIA Studio managed runtimes.",
-      "managedRuntimeDescriptionPrefix": "Finish {{runtime}} setup in",
+      "cardTitle": "MCP 服务器",
+      "cardDescription": "这些服务器全局共享，可在工具标签中按助手单独开关。",
+      "loading": "正在加载 MCP 服务器...",
+      "empty": "还没有 MCP 服务器。添加一个以创建本地 mcp.json 列表。",
+      "serverDescription": "全局状态控制助手是否可使用此服务器。",
+      "toggleAriaLabel": "切换 {{id}}",
+      "deleteAriaLabel": "删除 {{id}}",
+      "managedRuntimeTitle": "此命令可使用 TIA Studio 托管的运行时。",
+      "managedRuntimeDescriptionPrefix": "请在以下位置完成 {{runtime}} 设置：",
       "fields": {
-        "displayName": "Display Name",
-        "transportType": "Transport Type",
-        "command": "Command",
-        "installSource": "Install Source",
-        "url": "URL (for HTTP/SSE servers)",
-        "arguments": "Arguments (one per line)",
-        "environmentVariables": "Environment Variables (KEY=VALUE)"
+        "displayName": "显示名称",
+        "transportType": "传输类型",
+        "command": "命令",
+        "installSource": "安装来源",
+        "url": "URL（用于 HTTP/SSE 服务器）",
+        "arguments": "参数（每行一个）",
+        "environmentVariables": "环境变量（KEY=VALUE）"
       },
       "jsonDialog": {
-        "title": "Edit MCP JSON",
-        "description": "This is a snapshot of your local MCP settings. Changes apply only after validation.",
-        "fieldLabel": "MCP Settings JSON",
-        "helper": "JSON parsing and MCP field rules are checked when you apply changes."
+        "title": "编辑 MCP JSON",
+        "description": "这是你本地 MCP 设置的快照。修改仅在验证后生效。",
+        "fieldLabel": "MCP 设置 JSON",
+        "helper": "应用更改时会校验 JSON 解析和 MCP 字段规则。"
       },
       "validation": {
-        "unexpectedError": "Unexpected request error",
-        "invalidPayload": "Invalid MCP settings payload.",
-        "rawJsonInvalid": "Raw JSON is invalid.",
-        "commandRequired": "command is required when type is stdio",
-        "urlRequired": "url is required for non-stdio MCP servers unless command is provided"
+        "unexpectedError": "请求发生意外错误",
+        "invalidPayload": "MCP 设置数据无效。",
+        "rawJsonInvalid": "原始 JSON 无效。",
+        "commandRequired": "类型为 stdio 时必须提供 command",
+        "urlRequired": "非 stdio 的 MCP 服务器需要提供 url，除非已提供 command"
       },
       "toasts": {
-        "saved": "MCP server settings saved."
+        "saved": "MCP 服务器设置已保存。"
       }
     },
     "channels": {
@@ -388,7 +388,7 @@
     },
     "card": {
       "noChannelConnected": "未连接频道",
-      "configureChannelFirst": "Configure a channel first",
+      "configureChannelFirst": "请先配置频道",
       "enableButton": "启用",
       "disableButton": "禁用",
       "editButton": "编辑",
@@ -437,42 +437,42 @@
       }
     },
     "channelSelector": {
-      "title": "Select Channel",
-      "description": "Choose from configured channels, add a new one, or leave this claw without a channel.",
-      "openButton": "Select Channel",
-      "empty": "No configured channels yet.",
-      "available": "Available",
-      "inUseByCurrent": "In use by this claw",
-      "inUseByOther": "In use by {{assistantName}}",
-      "otherAssistantFallback": "another assistant",
+      "title": "选择频道",
+      "description": "从已配置的频道中选择、添加新频道，或让此 claw 不绑定频道。",
+      "openButton": "选择频道",
+      "empty": "还没有已配置的频道。",
+      "available": "可用",
+      "inUseByCurrent": "当前 claw 使用中",
+      "inUseByOther": "正在被 {{assistantName}} 使用",
+      "otherAssistantFallback": "其他助手",
       "actions": {
-        "add": "Add Channel",
-        "remove": "Remove Channel",
-        "clear": "Clear Selection",
-        "cancel": "Cancel",
-        "apply": "Apply",
+        "add": "添加频道",
+        "remove": "移除频道",
+        "clear": "清除选择",
+        "cancel": "取消",
+        "apply": "应用",
         "edit": "编辑频道"
       },
       "create": {
-        "title": "Add Channel",
-        "description": "Create a new Telegram or Lark channel configuration.",
-        "save": "Add Channel",
+        "title": "添加频道",
+        "description": "创建新的 Telegram 或 Lark 频道配置。",
+        "save": "添加频道",
         "fields": {
-          "type": "Channel Type"
+          "type": "频道类型"
         }
       },
       "remove": {
-        "title": "Remove Channel",
-        "description": "Remove {{channelName}} from configured channels?",
-        "descriptionFallback": "Remove this channel from configured channels?",
-        "confirm": "Remove Channel"
+        "title": "移除频道",
+        "description": "从已配置频道中移除 {{channelName}}？",
+        "descriptionFallback": "从已配置频道中移除此频道？",
+        "confirm": "移除频道"
       },
       "errors": {
-        "nameRequired": "Channel name is required",
-        "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
-        "telegramCredentialsRequired": "Bot token is required for Telegram channels",
-        "createFailed": "Failed to create channel",
-        "deleteFailed": "Failed to delete channel",
+        "nameRequired": "频道名称为必填项",
+        "larkCredentialsRequired": "Lark 频道需要应用 ID 和应用密钥",
+        "telegramCredentialsRequired": "Telegram 频道需要 Bot 令牌",
+        "createFailed": "创建频道失败",
+        "deleteFailed": "删除频道失败",
         "updateFailed": "更新频道失败"
       },
       "selectedBadge": "已选择",
@@ -524,20 +524,20 @@
       "eyebrow": "Team",
       "title": "Team 工作区",
       "defaultWorkspaceName": "Team 工作区",
-      "createWorkspaceAriaLabel": "Create team workspace",
+      "createWorkspaceAriaLabel": "创建 Team 工作区",
       "creatingWorkspace": "正在创建工作区...",
       "newWorkspace": "新建工作区",
       "workspaces": "工作区",
-      "createThreadAriaLabel": "Create team thread",
+      "createThreadAriaLabel": "创建 Team 线程",
       "newThread": "新建线程",
       "loadingWorkspaces": "正在加载 Team 工作区...",
       "emptyWorkspaces": "还没有工作区。先创建一个，再开始 Team 线程。",
       "loadingThreads": "正在加载 Team 线程...",
       "emptyThreads": "还没有 Team 线程。",
       "untitledThread": "未命名 Team 线程",
-      "deleteThreadAriaLabel": "Delete team thread {{title}}",
+      "deleteThreadAriaLabel": "删除 Team 线程 {{title}}",
       "deleteThreadPrompt": "删除线程？",
-      "confirmDeleteThreadAriaLabel": "Confirm delete team thread {{title}}",
+      "confirmDeleteThreadAriaLabel": "确认删除 Team 线程 {{title}}",
       "deletingThread": "正在删除..."
     },
     "chat": {
@@ -595,11 +595,11 @@
       }
     },
     "readiness": {
-      "threadSelected": "Team thread is selected",
-      "workspaceConfigured": "Workspace path is configured",
-      "providerConfigured": "Supervisor provider is configured",
-      "modelConfigured": "Supervisor model is configured",
-      "membersSelected": "At least one live team member is selected"
+      "threadSelected": "已选择 Team 线程",
+      "workspaceConfigured": "已配置工作区路径",
+      "providerConfigured": "已配置主管提供商",
+      "modelConfigured": "已配置主管模型",
+      "membersSelected": "已至少选择一名团队成员"
     }
   },
   "threads": {
@@ -609,18 +609,18 @@
       "creatingThread": "正在创建线程...",
       "newThread": "新建线程",
       "assistants": "助手",
-      "createAssistantAriaLabel": "Create assistant",
-      "assistantActionsAriaLabel": "Assistant actions for {{name}}",
-      "deleteAssistantAriaLabel": "Delete assistant {{name}}",
+      "createAssistantAriaLabel": "创建助手",
+      "assistantActionsAriaLabel": "助手 {{name}} 的操作",
+      "deleteAssistantAriaLabel": "删除助手 {{name}}",
       "loadingAssistants": "正在加载助手...",
       "emptyAssistants": "还没有助手。请先在 Assistants 中创建一个。",
       "loadingThreads": "正在加载线程...",
       "emptyThreads": "还没有线程。",
       "untitledThread": "未命名线程",
-      "deleteThreadAriaLabel": "Delete thread {{title}}",
+      "deleteThreadAriaLabel": "删除线程 {{title}}",
       "deleteThreadPrompt": "删除线程？",
-      "cancelDeleteThreadAriaLabel": "Cancel delete thread {{title}}",
-      "confirmDeleteThreadAriaLabel": "Confirm delete thread {{title}}"
+      "cancelDeleteThreadAriaLabel": "取消删除线程 {{title}}",
+      "confirmDeleteThreadAriaLabel": "确认删除线程 {{title}}"
     },
     "chat": {
       "defaultAssistantName": "助手",
@@ -674,8 +674,8 @@
       "assistantDeleted": "助手已删除。"
     },
     "readiness": {
-      "providerAssigned": "Provider is assigned to this assistant",
-      "providerModelSelected": "Provider has one selected model"
+      "providerAssigned": "已为此助手分配提供商",
+      "providerModelSelected": "提供商已选择模型"
     }
   },
   "assistants": {
@@ -718,7 +718,7 @@
       "noMcpServersPrefix": "尚未配置 MCP 服务器。请前往",
       "noMcpServersLinkLabel": "MCP 服务器设置",
       "mcpGloballyDisabled": "已在 MCP 服务器设置中全局禁用。",
-      "toggleMcpAriaLabel": "Toggle {{serverId}} for this assistant",
+      "toggleMcpAriaLabel": "为此助手切换 {{serverId}}",
       "savingButton": "正在保存...",
       "updateButton": "更新助手",
       "createButton": "创建助手",
@@ -734,15 +734,15 @@
         "globalAgent": "Global ~/.agent/skills"
       },
       "skills": {
-        "description": "Skills are loaded from `~/.claude/skills`, `~/.agent/skills`, and `./skills`.",
-        "workspaceRequired": "Set a workspace path first to load workspace skills.",
-        "loading": "Loading skills...",
-        "empty": "No skills found in the configured global or workspace folders.",
-        "noDescription": "No description found in SKILL.md.",
-        "removeAriaLabel": "Remove skill {{name}}",
-        "removingButton": "Removing...",
-        "removeButton": "Remove",
-        "readOnly": "Read-only"
+        "description": "Skills 从 `~/.claude/skills`、`~/.agent/skills` 和 `./skills` 加载。",
+        "workspaceRequired": "请先设置工作区路径以加载工作区 Skills。",
+        "loading": "正在加载 Skills...",
+        "empty": "在配置的全局或工作区目录中未找到 Skills。",
+        "noDescription": "SKILL.md 中未找到描述。",
+        "removeAriaLabel": "移除 Skill {{name}}",
+        "removingButton": "正在移除...",
+        "removeButton": "移除",
+        "readOnly": "只读"
       }
     }
   },

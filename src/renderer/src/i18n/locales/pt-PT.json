@@ -2,34 +2,34 @@
   "appShell": {
     "nav": {
       "chats": "Chats",
-      "home": "Home",
+      "home": "Início",
       "claws": "Claws",
-      "team": "Team",
-      "openSettings": "Open settings"
+      "team": "Equipa",
+      "openSettings": "Abrir definições"
     },
     "legacySidebar": {
       "title": "TIA Studio",
-      "subtitle": "Control Center",
-      "workspace": "Workspace",
-      "settings": "Settings",
+      "subtitle": "Centro de controlo",
+      "workspace": "Área de trabalho",
+      "settings": "Definições",
       "chat": "Chat",
-      "modelProviders": "Model Providers",
-      "notes": "TIA Studio Notes"
+      "modelProviders": "Fornecedores de modelos",
+      "notes": "Notas TIA Studio"
     }
   },
   "common": {
     "routeError": {
-      "title": "Something went wrong",
-      "details": "Error details",
-      "refreshApp": "Refresh App",
-      "goHome": "Go Home"
+      "title": "Algo correu mal",
+      "details": "Detalhes do erro",
+      "refreshApp": "Atualizar aplicação",
+      "goHome": "Ir para o início"
     },
     "errorBoundary": {
-      "title": "Something went wrong",
-      "description": "The application encountered an unexpected error. You can try refreshing the app or resetting the current view.",
-      "details": "Error details",
-      "refreshApp": "Refresh App",
-      "tryAgain": "Try Again"
+      "title": "Algo correu mal",
+      "description": "A aplicação encontrou um erro inesperado. Pode tentar atualizar a aplicação ou repor a vista atual.",
+      "details": "Detalhes do erro",
+      "refreshApp": "Atualizar aplicação",
+      "tryAgain": "Tentar novamente"
     },
     "actions": {
       "cancel": "Cancelar",
@@ -83,44 +83,44 @@
       "transparentDescription": "Ativar fundo de janela transparente vibrante (requer reinício)"
     },
     "about": {
-      "title": "About & Feedback",
-      "description": "App metadata, update controls, and helpful links for TIA Studio.",
-      "cardTitle": "About",
-      "repositoryAriaLabel": "Open source repository",
-      "appDescription": "A local-first AI workspace for assistants, providers, and tool integrations.",
+      "title": "Acerca de e feedback",
+      "description": "Metadados da app, controlos de atualização e ligações úteis para o TIA Studio.",
+      "cardTitle": "Acerca de",
+      "repositoryAriaLabel": "Abrir repositório de código aberto",
+      "appDescription": "Um espaço de trabalho de IA local para assistentes, fornecedores e integrações de ferramentas.",
       "autoUpdate": {
-        "label": "Auto Update",
-        "enabledDescription": "Automatically download the latest release in the background.",
-        "disabledDescription": "Disable background downloads and check manually.",
-        "loadError": "Failed to load auto update state.",
-        "saveError": "Failed to save auto update setting.",
-        "checkError": "Failed to check for updates."
+        "label": "Atualização automática",
+        "enabledDescription": "Descarregar automaticamente a versão mais recente em segundo plano.",
+        "disabledDescription": "Desativar descarregamentos em segundo plano e verificar manualmente.",
+        "loadError": "Falha ao carregar o estado de atualização automática.",
+        "saveError": "Falha ao guardar a definição de atualização automática.",
+        "checkError": "Falha ao verificar atualizações."
       },
       "links": {
         "docs": {
-          "title": "Docs",
-          "description": "Read setup guides and integration notes.",
+          "title": "Documentação",
+          "description": "Ler guias de configuração e notas de integração.",
           "action": "Website"
         },
         "releaseNotes": {
-          "title": "Release Notes",
-          "description": "Track changelog details for each published build.",
-          "action": "Releases"
+          "title": "Notas de versão",
+          "description": "Acompanhar o histórico de alterações de cada versão publicada.",
+          "action": "Versões"
         },
         "officialWebsite": {
-          "title": "Official Website",
-          "description": "Open the public landing page for project updates.",
+          "title": "Site oficial",
+          "description": "Abrir a página pública do projeto para atualizações.",
           "action": "Website"
         },
         "feedback": {
           "title": "Feedback",
-          "description": "Report issues and share product suggestions.",
+          "description": "Reportar problemas e partilhar sugestões do produto.",
           "action": "Feedback"
         }
       },
       "buttons": {
-        "checkUpdate": "Check Update",
-        "checking": "Checking..."
+        "checkUpdate": "Verificar atualização",
+        "checking": "A verificar..."
       }
     },
     "runtime": {

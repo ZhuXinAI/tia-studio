@@ -1,35 +1,35 @@
 {
   "appShell": {
     "nav": {
-      "chats": "Chats",
-      "home": "Home",
+      "chats": "チャット",
+      "home": "ホーム",
       "claws": "Claws",
-      "team": "Team",
-      "openSettings": "Open settings"
+      "team": "チーム",
+      "openSettings": "設定を開く"
     },
     "legacySidebar": {
       "title": "TIA Studio",
-      "subtitle": "Control Center",
-      "workspace": "Workspace",
-      "settings": "Settings",
-      "chat": "Chat",
-      "modelProviders": "Model Providers",
-      "notes": "TIA Studio Notes"
+      "subtitle": "コントロールセンター",
+      "workspace": "ワークスペース",
+      "settings": "設定",
+      "chat": "チャット",
+      "modelProviders": "モデルプロバイダー",
+      "notes": "TIA Studio メモ"
     }
   },
   "common": {
     "routeError": {
-      "title": "Something went wrong",
-      "details": "Error details",
-      "refreshApp": "Refresh App",
-      "goHome": "Go Home"
+      "title": "問題が発生しました",
+      "details": "エラー詳細",
+      "refreshApp": "アプリを更新",
+      "goHome": "ホームに戻る"
     },
     "errorBoundary": {
-      "title": "Something went wrong",
-      "description": "The application encountered an unexpected error. You can try refreshing the app or resetting the current view.",
-      "details": "Error details",
-      "refreshApp": "Refresh App",
-      "tryAgain": "Try Again"
+      "title": "問題が発生しました",
+      "description": "アプリで予期しないエラーが発生しました。アプリを更新するか、現在のビューをリセットしてください。",
+      "details": "エラー詳細",
+      "refreshApp": "アプリを更新",
+      "tryAgain": "再試行"
     },
     "actions": {
       "cancel": "キャンセル",
@@ -83,44 +83,44 @@
       "transparentDescription": "透明感のあるウィンドウ背景を有効にします（再起動が必要です）"
     },
     "about": {
-      "title": "About & Feedback",
-      "description": "App metadata, update controls, and helpful links for TIA Studio.",
-      "cardTitle": "About",
-      "repositoryAriaLabel": "Open source repository",
-      "appDescription": "A local-first AI workspace for assistants, providers, and tool integrations.",
+      "title": "情報とフィードバック",
+      "description": "TIA Studio のアプリメタデータ、更新制御、便利なリンク。",
+      "cardTitle": "情報",
+      "repositoryAriaLabel": "オープンソースリポジトリを開く",
+      "appDescription": "アシスタント、プロバイダー、ツール連携のためのローカルファースト AI ワークスペース。",
       "autoUpdate": {
-        "label": "Auto Update",
-        "enabledDescription": "Automatically download the latest release in the background.",
-        "disabledDescription": "Disable background downloads and check manually.",
-        "loadError": "Failed to load auto update state.",
-        "saveError": "Failed to save auto update setting.",
-        "checkError": "Failed to check for updates."
+        "label": "自動更新",
+        "enabledDescription": "バックグラウンドで最新版を自動ダウンロードします。",
+        "disabledDescription": "バックグラウンドダウンロードを無効にし、手動で確認します。",
+        "loadError": "自動更新の状態を読み込めませんでした。",
+        "saveError": "自動更新設定の保存に失敗しました。",
+        "checkError": "更新の確認に失敗しました。"
       },
       "links": {
         "docs": {
-          "title": "Docs",
-          "description": "Read setup guides and integration notes.",
-          "action": "Website"
+          "title": "ドキュメント",
+          "description": "セットアップガイドと連携メモを読む。",
+          "action": "ウェブサイト"
         },
         "releaseNotes": {
-          "title": "Release Notes",
-          "description": "Track changelog details for each published build.",
-          "action": "Releases"
+          "title": "リリースノート",
+          "description": "各ビルドの変更履歴を確認。",
+          "action": "リリース"
         },
         "officialWebsite": {
-          "title": "Official Website",
-          "description": "Open the public landing page for project updates.",
-          "action": "Website"
+          "title": "公式サイト",
+          "description": "プロジェクト更新の公開ランディングページを開く。",
+          "action": "ウェブサイト"
         },
         "feedback": {
-          "title": "Feedback",
-          "description": "Report issues and share product suggestions.",
-          "action": "Feedback"
+          "title": "フィードバック",
+          "description": "問題の報告と製品提案の共有。",
+          "action": "フィードバック"
         }
       },
       "buttons": {
-        "checkUpdate": "Check Update",
-        "checking": "Checking..."
+        "checkUpdate": "更新を確認",
+        "checking": "確認中..."
       }
     },
     "runtime": {
