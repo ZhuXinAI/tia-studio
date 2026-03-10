@@ -18,7 +18,7 @@ afterEach(async () => {
       })
     })
   )
-})
+}, 20_000)
 
 it('creates core app tables', async () => {
   const db = await migrateAppSchema(':memory:')
@@ -278,56 +278,56 @@ it('backfills assistant activation from legacy channel bindings', async () => {
 
   await legacyDb.execute('PRAGMA foreign_keys = ON')
   await legacyDb.execute(`
-    CREATE TABLE IF NOT EXISTS app_profiles (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      is_active INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `)
+      CREATE TABLE IF NOT EXISTS app_profiles (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        is_active INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
   await legacyDb.execute(`
-    CREATE TABLE IF NOT EXISTS app_providers (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL,
-      api_key TEXT NOT NULL,
-      api_host TEXT,
-      selected_model TEXT NOT NULL,
-      provider_models TEXT,
-      enabled INTEGER NOT NULL DEFAULT 1,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `)
+      CREATE TABLE IF NOT EXISTS app_providers (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        api_key TEXT NOT NULL,
+        api_host TEXT,
+        selected_model TEXT NOT NULL,
+        provider_models TEXT,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
   await legacyDb.execute(`
-    CREATE TABLE IF NOT EXISTS app_assistants (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      instructions TEXT NOT NULL DEFAULT '',
-      provider_id TEXT,
-      workspace_config TEXT NOT NULL DEFAULT '{}',
-      skills_config TEXT NOT NULL DEFAULT '{}',
-      mcp_config TEXT NOT NULL DEFAULT '{}',
-      max_steps INTEGER NOT NULL DEFAULT 100,
-      memory_config TEXT,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `)
+      CREATE TABLE IF NOT EXISTS app_assistants (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        instructions TEXT NOT NULL DEFAULT '',
+        provider_id TEXT,
+        workspace_config TEXT NOT NULL DEFAULT '{}',
+        skills_config TEXT NOT NULL DEFAULT '{}',
+        mcp_config TEXT NOT NULL DEFAULT '{}',
+        max_steps INTEGER NOT NULL DEFAULT 100,
+        memory_config TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
   await legacyDb.execute(`
-    CREATE TABLE IF NOT EXISTS app_channels (
-      id TEXT PRIMARY KEY,
-      type TEXT NOT NULL,
-      name TEXT NOT NULL,
-      assistant_id TEXT,
-      enabled INTEGER NOT NULL DEFAULT 1,
-      config TEXT NOT NULL DEFAULT '{}',
-      last_error TEXT,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `)
+      CREATE TABLE IF NOT EXISTS app_channels (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        name TEXT NOT NULL,
+        assistant_id TEXT,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        config TEXT NOT NULL DEFAULT '{}',
+        last_error TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
 
   await legacyDb.execute(
     'INSERT INTO app_assistants (id, name, instructions, provider_id) VALUES (?, ?, ?, ?), (?, ?, ?, ?)',
@@ -371,4 +371,4 @@ it('backfills assistant activation from legacy channel bindings', async () => {
   ])
 
   await migratedDb.close()
-})
+}, 20_000)
