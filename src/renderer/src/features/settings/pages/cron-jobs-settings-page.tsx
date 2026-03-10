@@ -17,7 +17,12 @@ function formatTimestamp(value: string | null, fallback: string): string {
     return fallback
   }
 
-  return value
+  const date = new Date(value)
+  if (isNaN(date.getTime())) {
+    return value
+  }
+
+  return date.toLocaleString()
 }
 
 export function CronJobsSettingsPage(): React.JSX.Element {
