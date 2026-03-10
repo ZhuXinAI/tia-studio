@@ -210,8 +210,8 @@ async function createWhatsAppClient(authDirectoryPath: string): Promise<WhatsApp
       const { state, saveCreds } = await createMultiFileAuthState(authDirectoryPath)
       socket = makeWASocket({
         auth: state,
-        browser: Browsers.macOS('TIA Studio'),
-        markOnlineOnConnect: false
+        printQRInTerminal: false,
+        version: [2, 3000, 1033893291]
       })
 
       socket.ev.on('creds.update', () => {
