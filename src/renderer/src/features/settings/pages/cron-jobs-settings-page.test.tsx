@@ -102,6 +102,6 @@ describe('cron jobs settings page', () => {
     expect(container.textContent).toContain('Workspace Scheduler')
     expect(container.textContent).toContain('failed')
     expect(container.textContent).toContain('Provider timed out')
-    expect(container.textContent).toContain('2026-03-10T09:00:00.000Z')
+    expect(container.textContent).toContain('3/10/2026')
   })
 })
