@@ -184,6 +184,18 @@ export class HeartbeatSchedulerService {
       return
     }
 
+    if (!assistantState.workspaceRootPath) {
+      console.log('[HeartbeatScheduler] Assistant workspace is required for heartbeat', {
+        heartbeatId: heartbeat.id,
+        assistantId: heartbeat.assistantId
+      })
+      await this.options.heartbeatsRepo.update(heartbeat.id, {
+        nextRunAt: null,
+        lastError: 'Assistant workspace is required for heartbeat'
+      })
+      return
+    }
+
     if (this.runningHeartbeats.has(heartbeat.id)) {
       console.log('[HeartbeatScheduler] Heartbeat already running', {
         heartbeatId: heartbeat.id

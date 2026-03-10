@@ -25,7 +25,7 @@ export const appRoutes: RouteObject[] = [
     children: [
       {
         index: true,
-        loader: () => redirect('/claws')
+        loader: () => redirect('/chat')
       },
       {
         path: 'chat',

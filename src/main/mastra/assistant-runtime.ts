@@ -201,7 +201,8 @@ export class AssistantRuntimeService implements AssistantRuntime {
     if (params.channelTarget) {
       requestContext.set('channelContext', {
         channelId: params.channelTarget.channelId,
-        chatId: params.channelTarget.remoteChatId,
+        channelType: params.channelTarget.channelType,
+        remoteChatId: params.channelTarget.remoteChatId,
         userId: params.profileId
       })
     }
@@ -509,6 +510,18 @@ ${input.prompt}`
       channelTextBuffer = ''
     }
 
+    const flushChannelTextBeforeStep = async (): Promise<void> => {
+      if (!params.channelTarget || !channelTextBuffer.trim()) {
+        return
+      }
+
+      await this.publishChannelReplyChunk({
+        channelTarget: params.channelTarget,
+        text: channelTextBuffer
+      })
+      channelTextBuffer = ''
+    }
+
     return new ReadableStream<UIMessageChunk>({
       pull: async (controller) => {
         try {
@@ -550,6 +563,8 @@ ${input.prompt}`
 
           // Pass through start-step events for multi-step visibility
           if (value.type === 'start-step') {
+            // Flush any accumulated text to channel before starting a new step
+            await flushChannelTextBeforeStep()
             controller.enqueue(value)
             return
           }
