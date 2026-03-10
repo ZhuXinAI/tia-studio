@@ -1,6 +1,7 @@
 import os from 'node:os'
 import path from 'node:path'
 import { mkdtemp, rm } from 'node:fs/promises'
+import { setTimeout as delay } from 'node:timers/promises'
 import { afterEach, expect, it } from 'vitest'
 import { createAppDatabase } from './client'
 import { migrateAppSchema } from './migrate'
@@ -8,17 +9,16 @@ import { migrateAppSchema } from './migrate'
 const tempPaths: string[] = []
 
 afterEach(async () => {
-  await Promise.all(
-    tempPaths.splice(0).map(async (tempPath) => {
-      await rm(tempPath, {
-        recursive: true,
-        force: true,
-        maxRetries: 10,
-        retryDelay: 100
-      })
+  for (const tempPath of tempPaths.splice(0)) {
+    await delay(250)
+    await rm(tempPath, {
+      recursive: true,
+      force: true,
+      maxRetries: 50,
+      retryDelay: 200
     })
-  )
-}, 20_000)
+  }
+}, 60_000)
 
 it('creates core app tables', async () => {
   const db = await migrateAppSchema(':memory:')
