@@ -31,6 +31,34 @@ function setElementValue(
   )
 }
 
+async function clickElement(element: Element | null | undefined): Promise<void> {
+  await act(async () => {
+    element?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  })
+}
+
+async function selectProvider(providerId: string): Promise<void> {
+  const openSelectorButton = document.body.querySelector(
+    'button[id="claw-select-provider-button"]'
+  ) as HTMLButtonElement | null
+
+  await clickElement(openSelectorButton)
+  await flushAsyncWork()
+
+  const providerButton = document.body.querySelector(
+    `button[data-provider-id="${providerId}"]`
+  ) as HTMLButtonElement | null
+  const applyButton = document.body.querySelector(
+    'button[id="claw-provider-selector-apply"]'
+  ) as HTMLButtonElement | null
+
+  await clickElement(providerButton)
+  await flushAsyncWork()
+
+  await clickElement(applyButton)
+  await flushAsyncWork()
+}
+
 const provider = {
   id: 'provider-1',
   name: 'OpenAI',
@@ -102,23 +130,18 @@ describe('ClawEditorDialog', () => {
 
     const body = document.body
     const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-    const providerSelect = body.querySelector('select[id="claw-provider"]') as HTMLSelectElement
-    const instructionsInput = body.querySelector(
-      'textarea[id="claw-instructions"]'
-    ) as HTMLTextAreaElement
     const saveButton = Array.from(body.querySelectorAll('button')).find((button) =>
       button.textContent?.includes('Create Claw')
     )
 
     await act(async () => {
       setElementValue(nameInput, 'Ops Assistant')
-      setElementValue(providerSelect, 'provider-1')
-      setElementValue(instructionsInput, 'Handle ops.')
     })
+    await flushAsyncWork()
 
-    await act(async () => {
-      saveButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await selectProvider('provider-1')
+
+    await clickElement(saveButton)
     await flushAsyncWork()
 
     expect(body.querySelector('select[id="claw-channel-action"]')).toBeNull()
@@ -126,7 +149,6 @@ describe('ClawEditorDialog', () => {
       assistant: {
         name: 'Ops Assistant',
         providerId: 'provider-1',
-        workspacePath: null,
         enabled: false
       }
     })
@@ -228,7 +250,6 @@ describe('ClawEditorDialog', () => {
       assistant: {
         name: 'Ops Assistant',
         providerId: 'provider-1',
-        workspacePath: null,
         enabled: false
       },
       channel: {
@@ -344,7 +365,6 @@ describe('ClawEditorDialog', () => {
       assistant: {
         name: 'Ops Assistant',
         providerId: 'provider-1',
-        workspacePath: null,
         enabled: true
       },
       channel: {

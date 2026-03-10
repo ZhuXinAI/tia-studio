@@ -343,9 +343,18 @@ describe('AssistantRuntimeService', () => {
 
       await (
         runtime as unknown as {
-          ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+          ensureAgentRegistered: (
+            assistant: AppAssistant,
+            provider: AppProvider,
+            options?: {
+              channelDeliveryEnabled: boolean
+              cronToolsEnabled?: boolean
+            }
+          ) => Promise<void>
         }
-      ).ensureAgentRegistered(assistant, buildProvider())
+      ).ensureAgentRegistered(assistant, buildProvider(), {
+        channelDeliveryEnabled: true
+      })
 
       const agent = mastra.getAgentById(assistant.id)
       const tools = await agent.listTools()
@@ -1033,23 +1042,25 @@ describe('AssistantRuntimeService', () => {
       expect(handleCall.params.messages).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            role: 'system',
+            role: 'user',
             content: expect.stringContaining('Recent work-log context')
           }),
           expect.objectContaining({
-            role: 'system',
+            role: 'user',
             content: expect.stringContaining('Recent work entry.')
           }),
           expect.objectContaining({
             role: 'user',
-            content: 'Review the recent work and decide whether follow-up is needed.'
+            content: expect.stringContaining(
+              'Review the recent work and decide whether follow-up is needed.'
+            )
           })
         ])
       )
       expect(handleCall.params.messages).not.toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            role: 'system',
+            role: 'user',
             content: expect.stringContaining('Old work entry.')
           })
         ])

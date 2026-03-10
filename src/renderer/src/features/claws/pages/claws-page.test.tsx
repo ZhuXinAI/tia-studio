@@ -62,6 +62,69 @@ function setElementValue(
   )
 }
 
+function findButtonByText(root: ParentNode, text: string): HTMLButtonElement | undefined {
+  return Array.from(root.querySelectorAll('button')).find((button) =>
+    button.textContent?.includes(text)
+  ) as HTMLButtonElement | undefined
+}
+
+async function clickElement(element: Element | null | undefined): Promise<void> {
+  await act(async () => {
+    element?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  })
+}
+
+async function openMenu(element: Element | null | undefined): Promise<void> {
+  await act(async () => {
+    element?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    element?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  })
+}
+
+function findClawCard(clawName: string): HTMLElement | null {
+  const title = Array.from(document.body.querySelectorAll('[data-slot="card-title"]')).find(
+    (element) => element.textContent?.includes(clawName)
+  )
+
+  return (title?.closest('[data-slot="card"]') as HTMLElement | null) ?? null
+}
+
+async function openClawActions(clawName: string): Promise<void> {
+  const card = findClawCard(clawName)
+  const actionsButton = card ? findButtonByText(card, 'Actions') : undefined
+
+  await openMenu(actionsButton)
+  await flushAsyncWork()
+}
+
+function findMenuItemByText(text: string): HTMLElement | undefined {
+  return Array.from(document.body.querySelectorAll('[role="menuitem"]')).find((element) =>
+    element.textContent?.includes(text)
+  ) as HTMLElement | undefined
+}
+
+async function selectProvider(providerId: string): Promise<void> {
+  const openSelectorButton = document.body.querySelector(
+    'button[id="claw-select-provider-button"]'
+  ) as HTMLButtonElement | null
+
+  await clickElement(openSelectorButton)
+  await flushAsyncWork()
+
+  const providerButton = document.body.querySelector(
+    `button[data-provider-id="${providerId}"]`
+  ) as HTMLButtonElement | null
+  const applyButton = document.body.querySelector(
+    'button[id="claw-provider-selector-apply"]'
+  ) as HTMLButtonElement | null
+
+  await clickElement(providerButton)
+  await flushAsyncWork()
+
+  await clickElement(applyButton)
+  await flushAsyncWork()
+}
+
 describe('ClawsPage', () => {
   let container: HTMLDivElement
   let root: Root
@@ -303,8 +366,8 @@ describe('ClawsPage', () => {
 
     expect(container.textContent).toContain('Ops Assistant')
     expect(container.textContent).toContain('Ops Lark')
-    expect(container.textContent).toContain('Disable')
     expect(container.textContent).toContain('New Claw')
+    expect(findButtonByText(findClawCard('Ops Assistant') ?? container, 'Actions')).toBeDefined()
   })
 
   it('shows a warning and disables enable when a claw has no channel', async () => {
@@ -333,10 +396,15 @@ describe('ClawsPage', () => {
     await flushAsyncWork()
 
     expect(container.textContent).toContain('Configure a channel first')
-    const enableButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Enable')
-    )
-    expect(enableButton?.hasAttribute('disabled')).toBe(true)
+
+    await openClawActions('Ops Assistant')
+
+    const enableItem = findMenuItemByText('Enable')
+    const isDisabled =
+      enableItem?.hasAttribute('data-disabled') === true ||
+      enableItem?.getAttribute('aria-disabled') === 'true'
+
+    expect(isDisabled).toBe(true)
   })
 
   it('creates a claw from the onboarding dialog', async () => {
@@ -354,47 +422,34 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    const createButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Create Your First Claw')
-    )
+    const createButton = findButtonByText(container, 'Create Your First Claw')
 
-    await act(async () => {
-      createButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(createButton)
     await flushAsyncWork()
     await flushAsyncWork()
 
     const body = document.body
     const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-    const providerSelect = body.querySelector('select[id="claw-provider"]') as HTMLSelectElement
-    const instructionsInput = body.querySelector(
-      'textarea[id="claw-instructions"]'
-    ) as HTMLTextAreaElement
     const openSelectorButton = body.querySelector(
       'button[id="claw-select-channel-button"]'
     ) as HTMLButtonElement
-    const saveButton = Array.from(body.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Create Claw')
-    )
+    const saveButton = findButtonByText(body, 'Create Claw')
 
     await act(async () => {
       setElementValue(nameInput, 'Ops Assistant')
-      setElementValue(providerSelect, 'provider-1')
-      setElementValue(instructionsInput, 'Handle ops.')
     })
+    await flushAsyncWork()
 
-    await act(async () => {
-      openSelectorButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await selectProvider('provider-1')
+
+    await clickElement(openSelectorButton)
     await flushAsyncWork()
 
     const addChannelButton = body.querySelector(
       'button[id="claw-channel-selector-add"]'
     ) as HTMLButtonElement
 
-    await act(async () => {
-      addChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(addChannelButton)
     await flushAsyncWork()
 
     const channelNameInput = body.querySelector(
@@ -428,22 +483,16 @@ describe('ClawsPage', () => {
       pendingPairingCount: 0
     })
 
-    await act(async () => {
-      createChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(createChannelButton)
     await flushAsyncWork()
 
     const applyChannelButton = body.querySelector(
       'button[id="claw-channel-selector-apply"]'
     ) as HTMLButtonElement
 
-    await act(async () => {
-      applyChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(applyChannelButton)
 
-    await act(async () => {
-      saveButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(saveButton)
     await flushAsyncWork()
 
     expect(createClawChannel).toHaveBeenCalledWith({
@@ -456,7 +505,6 @@ describe('ClawsPage', () => {
       assistant: {
         name: 'Ops Assistant',
         providerId: 'provider-1',
-        workspacePath: null,
         enabled: true
       },
       channel: {
@@ -481,43 +529,33 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    const createButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Create Your First Claw')
-    )
+    const createButton = findButtonByText(container, 'Create Your First Claw')
 
-    await act(async () => {
-      createButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(createButton)
     await flushAsyncWork()
 
     const body = document.body
     const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-    const providerSelect = body.querySelector('select[id="claw-provider"]') as HTMLSelectElement
     const openSelectorButton = body.querySelector(
       'button[id="claw-select-channel-button"]'
     ) as HTMLButtonElement
-    const saveButton = Array.from(body.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Create Claw')
-    )
+    const saveButton = findButtonByText(body, 'Create Claw')
 
     await act(async () => {
       setElementValue(nameInput, 'Telegram Assistant')
-      setElementValue(providerSelect, 'provider-1')
     })
     await flushAsyncWork()
 
-    await act(async () => {
-      openSelectorButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await selectProvider('provider-1')
+
+    await clickElement(openSelectorButton)
     await flushAsyncWork()
 
     const addChannelButton = body.querySelector(
       'button[id="claw-channel-selector-add"]'
     ) as HTMLButtonElement
 
-    await act(async () => {
-      addChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(addChannelButton)
     await flushAsyncWork()
 
     const channelTypeSelect = body.querySelector(
@@ -557,22 +595,16 @@ describe('ClawsPage', () => {
       'button[id="claw-channel-create-save"]'
     ) as HTMLButtonElement
 
-    await act(async () => {
-      createChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(createChannelButton)
     await flushAsyncWork()
 
     const applyChannelButton = body.querySelector(
       'button[id="claw-channel-selector-apply"]'
     ) as HTMLButtonElement
 
-    await act(async () => {
-      applyChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(applyChannelButton)
 
-    await act(async () => {
-      saveButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(saveButton)
     await flushAsyncWork()
 
     expect(createClawChannel).toHaveBeenCalledWith({
@@ -584,7 +616,6 @@ describe('ClawsPage', () => {
       assistant: {
         name: 'Telegram Assistant',
         providerId: 'provider-1',
-        workspacePath: null,
         enabled: true
       },
       channel: {
@@ -630,43 +661,33 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    const createButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Create Your First Claw')
-    )
+    const createButton = findButtonByText(container, 'Create Your First Claw')
 
-    await act(async () => {
-      createButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(createButton)
     await flushAsyncWork()
 
     const body = document.body
     const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-    const providerSelect = body.querySelector('select[id="claw-provider"]') as HTMLSelectElement
     const openSelectorButton = body.querySelector(
       'button[id="claw-select-channel-button"]'
     ) as HTMLButtonElement
-    const saveButton = Array.from(body.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Create Claw')
-    )
+    const saveButton = findButtonByText(body, 'Create Claw')
 
     await act(async () => {
       setElementValue(nameInput, 'Telegram Assistant')
-      setElementValue(providerSelect, 'provider-1')
     })
     await flushAsyncWork()
 
-    await act(async () => {
-      openSelectorButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await selectProvider('provider-1')
+
+    await clickElement(openSelectorButton)
     await flushAsyncWork()
 
     const addChannelButton = body.querySelector(
       'button[id="claw-channel-selector-add"]'
     ) as HTMLButtonElement
 
-    await act(async () => {
-      addChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(addChannelButton)
     await flushAsyncWork()
 
     const channelTypeSelect = body.querySelector(
@@ -706,22 +727,16 @@ describe('ClawsPage', () => {
       'button[id="claw-channel-create-save"]'
     ) as HTMLButtonElement
 
-    await act(async () => {
-      createChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(createChannelButton)
     await flushAsyncWork()
 
     const applyChannelButton = body.querySelector(
       'button[id="claw-channel-selector-apply"]'
     ) as HTMLButtonElement
 
-    await act(async () => {
-      applyChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(applyChannelButton)
 
-    await act(async () => {
-      saveButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(saveButton)
     await flushAsyncWork()
 
     expect(listClawPairings).toHaveBeenCalledWith('assistant-telegram')
@@ -765,40 +780,33 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    const newButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('New Claw')
-    )
+    const newButton = findButtonByText(container, 'New Claw')
 
-    await act(async () => {
-      newButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(newButton)
     await flushAsyncWork()
 
     const body = document.body
     const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-    const providerSelect = body.querySelector('select[id="claw-provider"]') as HTMLSelectElement
 
     await act(async () => {
       setElementValue(nameInput, 'WhatsApp Assistant')
-      setElementValue(providerSelect, 'provider-1')
     })
+    await flushAsyncWork()
+
+    await selectProvider('provider-1')
 
     const selectChannelButton = body.querySelector(
       'button[id="claw-select-channel-button"]'
     ) as HTMLButtonElement
 
-    await act(async () => {
-      selectChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(selectChannelButton)
     await flushAsyncWork()
 
     const addChannelButton = body.querySelector(
       'button[id="claw-channel-selector-add"]'
     ) as HTMLButtonElement
 
-    await act(async () => {
-      addChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(addChannelButton)
     await flushAsyncWork()
 
     const channelTypeSelect = body.querySelector(
@@ -834,26 +842,18 @@ describe('ClawsPage', () => {
       'button[id="claw-channel-create-save"]'
     ) as HTMLButtonElement
 
-    await act(async () => {
-      createChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(createChannelButton)
     await flushAsyncWork()
 
     const applyChannelButton = body.querySelector(
       'button[id="claw-channel-selector-apply"]'
     ) as HTMLButtonElement
 
-    await act(async () => {
-      applyChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(applyChannelButton)
 
-    const saveButton = Array.from(body.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Create Claw')
-    )
+    const saveButton = findButtonByText(body, 'Create Claw')
 
-    await act(async () => {
-      saveButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(saveButton)
     await flushAsyncWork()
 
     expect(listClawPairings).toHaveBeenCalledWith('assistant-whatsapp')
@@ -1004,13 +1004,11 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    const deleteButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Delete')
-    )
+    await openClawActions('Ops Assistant')
 
-    await act(async () => {
-      deleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    const deleteButton = findMenuItemByText('Delete')
+
+    await clickElement(deleteButton)
     await flushAsyncWork()
 
     expect(document.body.textContent).toContain('Delete "Ops Assistant"?')
@@ -1020,26 +1018,21 @@ describe('ClawsPage', () => {
       'button[id="claw-delete-dialog-cancel"]'
     ) as HTMLButtonElement
 
-    await act(async () => {
-      cancelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(cancelButton)
     await flushAsyncWork()
 
     expect(deleteClaw).not.toHaveBeenCalled()
     expect(updateClaw).not.toHaveBeenCalled()
 
-    await act(async () => {
-      deleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await openClawActions('Ops Assistant')
+    await clickElement(findMenuItemByText('Delete'))
     await flushAsyncWork()
 
     const disableButton = document.body.querySelector(
       'button[id="claw-delete-dialog-disable"]'
     ) as HTMLButtonElement
 
-    await act(async () => {
-      disableButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(disableButton)
     await flushAsyncWork()
 
     expect(updateClaw).toHaveBeenCalledWith('assistant-1', {
@@ -1049,18 +1042,15 @@ describe('ClawsPage', () => {
     })
     expect(deleteClaw).not.toHaveBeenCalled()
 
-    await act(async () => {
-      deleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await openClawActions('Ops Assistant')
+    await clickElement(findMenuItemByText('Delete'))
     await flushAsyncWork()
 
     const confirmDeleteButton = document.body.querySelector(
       'button[id="claw-delete-dialog-confirm"]'
     ) as HTMLButtonElement
 
-    await act(async () => {
-      confirmDeleteButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(confirmDeleteButton)
     await flushAsyncWork()
 
     expect(deleteClaw).toHaveBeenCalledWith('assistant-1')

@@ -176,7 +176,7 @@ describe('ClawProviderSelectorDialog', () => {
     await flushAsyncWork()
 
     const addButton = document.body.querySelector(
-      'button[id="claw-provider-selector-add"]'
+      'button[id="claw-provider-selector-add-custom"]'
     ) as HTMLButtonElement
 
     await act(async () => {
@@ -232,7 +232,7 @@ describe('ClawProviderSelectorDialog', () => {
     expect(document.body.textContent).toContain('OpenAI 兼容 · gpt-4o')
 
     const addButton = document.body.querySelector(
-      'button[id="claw-provider-selector-add"]'
+      'button[id="claw-provider-selector-add-custom"]'
     ) as HTMLButtonElement
 
     await act(async () => {
