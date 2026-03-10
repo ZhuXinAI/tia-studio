@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bot, Link2, Plus } from 'lucide-react'
+import { Bot, Plus } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import {
   Card,
@@ -47,6 +47,7 @@ import {
   type UpdateClawChannelInput,
   type SaveClawInput
 } from '../claws-query'
+import { ClawCard } from '../components/claw-card'
 import { ClawEditorDialog } from '../components/claw-editor-dialog'
 import { ClawPairingsDialog } from '../components/claw-pairings-dialog'
 
@@ -91,7 +92,7 @@ export function ClawsPage(): React.JSX.Element {
   async function refreshPage(): Promise<void> {
     const [nextClaws, nextProviders] = await Promise.all([listClaws(), listProviders()])
     setData(nextClaws)
-    setProviders(nextProviders.filter((provider) => provider.enabled))
+    setProviders(nextProviders)
   }
 
   useEffect(() => {
@@ -444,75 +445,19 @@ export function ClawsPage(): React.JSX.Element {
 
         <div className="grid gap-4 md:grid-cols-2">
           {data.claws.map((claw) => (
-            <Card key={claw.id}>
-              <CardHeader>
-                <CardTitle>{claw.name}</CardTitle>
-                <CardDescription>{providerLabel(claw.providerId)}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-sm">
-                  {claw.channel ? (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Link2 className="size-4 text-muted-foreground" />
-                        <span>{claw.channel.name}</span>
-                        <span className="text-muted-foreground">({claw.channel.status})</span>
-                      </div>
-                      {claw.channel.type === 'telegram' || claw.channel.type === 'whatsapp' ? (
-                        <p className="text-muted-foreground text-xs">
-                          {t('claws.telegram.pairingSummary', {
-                            pairedCount: claw.channel.pairedCount ?? 0,
-                            pendingCount: claw.channel.pendingPairingCount ?? 0
-                          })}
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <span className="text-amber-600">{t('claws.card.configureChannelFirst')}</span>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isSubmitting || claw.channel === null}
-                    onClick={() => void handleToggleEnabled(claw)}
-                  >
-                    {claw.enabled ? t('claws.card.disableButton') : t('claws.card.enableButton')}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isSubmitting}
-                    onClick={() => {
-                      setEditingClaw(claw)
-                      setIsDialogOpen(true)
-                    }}
-                  >
-                    {t('claws.card.editButton')}
-                  </Button>
-                  {claw.channel?.type === 'telegram' || claw.channel?.type === 'whatsapp' ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={isSubmitting || isPairingsSubmitting}
-                      onClick={() => void handleOpenPairings(claw)}
-                    >
-                      {t('claws.telegram.managePairingsButton')}
-                    </Button>
-                  ) : null}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isSubmitting}
-                    onClick={() => setClawPendingDelete(claw)}
-                  >
-                    {t('claws.card.deleteButton')}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <ClawCard
+              key={claw.id}
+              claw={claw}
+              providerLabel={providerLabel(claw.providerId)}
+              isSubmitting={isSubmitting || isPairingsSubmitting}
+              onToggleEnabled={() => void handleToggleEnabled(claw)}
+              onEdit={() => {
+                setEditingClaw(claw)
+                setIsDialogOpen(true)
+              }}
+              onDelete={() => setClawPendingDelete(claw)}
+              onManagePairings={() => void handleOpenPairings(claw)}
+            />
           ))}
         </div>
 

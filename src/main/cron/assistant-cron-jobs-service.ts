@@ -6,6 +6,7 @@ import type {
   UpdateCronJobInput
 } from '../persistence/repos/cron-jobs-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
+import type { ChannelThreadBindingsRepository } from '../persistence/repos/channel-thread-bindings-repo'
 
 const DEFAULT_CRON_THREAD_RESOURCE_ID = 'default-profile'
 
@@ -30,6 +31,7 @@ type AssistantCronJobsServiceOptions = {
   cronJobsRepo: Pick<CronJobsRepository, 'list' | 'getById' | 'create' | 'update' | 'delete'>
   assistantsRepo: Pick<AssistantsRepository, 'getById'>
   threadsRepo: Pick<ThreadsRepository, 'create' | 'delete'>
+  channelThreadBindingsRepo?: Pick<ChannelThreadBindingsRepository, 'create'>
   reloadScheduler?: () => Promise<void>
 }
 
@@ -39,6 +41,8 @@ type CreateCronJobInput = {
   prompt: string
   cronExpression: string
   enabled?: boolean
+  channelId?: string | null
+  remoteChatId?: string | null
 }
 
 type UpdateCronJobOptions = UpdateCronJobInput
@@ -84,6 +88,15 @@ export class AssistantCronJobsService {
     await this.options.cronJobsRepo.update(cronJob.id, {
       threadId: hiddenThread.id
     })
+
+    // If channel context is provided, create a channel thread binding
+    if (input.channelId && input.remoteChatId && this.options.channelThreadBindingsRepo) {
+      await this.options.channelThreadBindingsRepo.create({
+        channelId: input.channelId,
+        remoteChatId: input.remoteChatId,
+        threadId: hiddenThread.id
+      })
+    }
 
     return this.reloadAndReadCronJob(cronJob.id)
   }

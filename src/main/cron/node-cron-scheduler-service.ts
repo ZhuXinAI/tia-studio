@@ -66,7 +66,6 @@ export class NodeCronSchedulerService {
       return
     }
 
-    console.log('[NodeCronScheduler] Starting node-cron scheduler...')
     this.started = true
     await this.reload()
   }
@@ -80,14 +79,13 @@ export class NodeCronSchedulerService {
   }
 
   async reload(): Promise<void> {
-    // Stop and clear all existing tasks
     for (const task of this.tasks.values()) {
       task.stop()
     }
     this.tasks.clear()
 
     const jobs = await this.options.cronJobsRepo.list()
-    console.log(`[NodeCronScheduler] Reloading ${jobs.length} cron job(s)`)
+    console.log(`[NodeCronScheduler] Loaded ${jobs.length} cron job(s)`)
 
     for (const job of jobs) {
       await this.syncJob(job)
@@ -107,7 +105,6 @@ export class NodeCronSchedulerService {
     const assistantEnabled = await this.isAssistantEnabled(job.assistantId)
 
     if (!job.enabled) {
-      console.log(`[NodeCronScheduler] Job "${job.name}" (${job.id}) is disabled, skipping`)
       if (job.nextRunAt !== null) {
         await this.options.cronJobsRepo.update(job.id, { nextRunAt: null })
       }
@@ -115,9 +112,6 @@ export class NodeCronSchedulerService {
     }
 
     if (!assistantEnabled) {
-      console.log(
-        `[NodeCronScheduler] Job "${job.name}" (${job.id}) has disabled assistant, skipping`
-      )
       if (job.nextRunAt !== null) {
         await this.options.cronJobsRepo.update(job.id, { nextRunAt: null })
       }
@@ -130,17 +124,15 @@ export class NodeCronSchedulerService {
     })
 
     if (!this.started || !nextRunAt) {
-      console.log(
-        `[NodeCronScheduler] Job "${job.name}" (${job.id}) - scheduler not started or no next run time`
-      )
       return
     }
 
     console.log(
-      `[NodeCronScheduler] Job "${job.name}" (${job.id}) scheduled with cron: ${job.cronExpression}, next run: ${nextRunAt.toISOString()}`
+      `[NodeCronScheduler] Scheduled "${job.name}" (${job.cronExpression}) for ${nextRunAt.toISOString()}`
     )
 
     // Create and schedule the cron task
+    // Use system local timezone to match getNextCronRunAt behavior
     const task = cron.schedule(
       job.cronExpression,
       async () => {
@@ -150,7 +142,7 @@ export class NodeCronSchedulerService {
         })
       },
       {
-        timezone: 'UTC'
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
       }
     )
 
@@ -159,30 +151,22 @@ export class NodeCronSchedulerService {
 
   private async executeJob(jobId: string, scheduledFor: string): Promise<void> {
     if (this.runningJobs.has(jobId)) {
-      console.log(`[NodeCronScheduler] Job ${jobId} is already running, skipping`)
       return
     }
 
     const job = await this.options.cronJobsRepo.getById(jobId)
     if (!job) {
-      console.log(`[NodeCronScheduler] Job ${jobId} not found, skipping execution`)
       return
     }
 
-    console.log(
-      `[NodeCronScheduler] Executing job "${job.name}" (${job.id}) scheduled for ${scheduledFor}`
-    )
+    console.log(`[NodeCronScheduler] Executing "${job.name}" with prompt: "${job.prompt}"`)
 
     if (!job.enabled || !(await this.isAssistantEnabled(job.assistantId))) {
-      console.log(
-        `[NodeCronScheduler] Job "${job.name}" (${job.id}) is disabled or assistant is disabled, skipping`
-      )
       await this.options.cronJobsRepo.update(jobId, { nextRunAt: null })
       return
     }
 
     if (!this.options.runJob) {
-      console.log(`[NodeCronScheduler] No runJob handler configured`)
       return
     }
 
@@ -195,13 +179,20 @@ export class NodeCronSchedulerService {
     let workLogPath: string | null = null
 
     try {
-      console.log(`[NodeCronScheduler] Running job "${job.name}" (${job.id})...`)
       const result = await this.options.runJob(job)
       outputText = toNonEmptyString(result && typeof result === 'object' ? result.outputText : null)
-      console.log(`[NodeCronScheduler] Job "${job.name}" (${job.id}) completed successfully`)
 
       const assistant = await this.options.assistantsRepo?.getById(job.assistantId)
       const workspaceRootPath = toNonEmptyString(assistant?.workspaceConfig?.rootPath)
+
+      if (outputText) {
+        console.log(
+          `[NodeCronScheduler] Job "${job.name}" generated output (${outputText.length} chars)`
+        )
+      } else {
+        console.log(`[NodeCronScheduler] Job "${job.name}" completed with no output`)
+      }
+
       if (assistant && workspaceRootPath && outputText) {
         const writeWorkLog = this.options.writeWorkLog ?? appendWorkLogEntry
         workLogPath = await writeWorkLog({
@@ -211,11 +202,14 @@ export class NodeCronSchedulerService {
           outputText,
           occurredAt: new Date(scheduledFor)
         })
+        console.log(`[NodeCronScheduler] Work log written to: ${workLogPath}`)
+      } else if (!workspaceRootPath) {
+        console.log(`[NodeCronScheduler] No workspace configured, skipping work log`)
       }
     } catch (error) {
       status = 'failed'
       errorPayload = serializeError(error)
-      console.error(`[NodeCronScheduler] Job "${job.name}" (${job.id}) failed:`, error)
+      console.error(`[NodeCronScheduler] Job "${job.name}" failed:`, error)
     } finally {
       this.runningJobs.delete(jobId)
 

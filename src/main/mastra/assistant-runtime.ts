@@ -194,6 +194,16 @@ export class AssistantRuntimeService implements AssistantRuntime {
       channelDeliveryEnabled: Boolean(params.channelTarget)
     })
 
+    // Create request context with channel context if available
+    const requestContext = new RequestContext()
+    if (params.channelTarget) {
+      requestContext.set('channelContext', {
+        channelId: params.channelTarget.channelId,
+        chatId: params.channelTarget.remoteChatId,
+        userId: params.profileId
+      })
+    }
+
     const stream = await handleChatStream({
       mastra: this.options.mastra,
       agentId: assistant.id,
@@ -203,6 +213,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
         abortSignal: params.abortSignal,
         maxSteps: assistant.maxSteps,
         providerOptions: this.buildProviderOptions(provider.type),
+        requestContext,
         memory: {
           thread: params.threadId,
           resource: params.profileId,
@@ -232,16 +243,26 @@ export class AssistantRuntimeService implements AssistantRuntime {
       threadId: params.threadId
     })
 
-    // Check if assistant has a channel attached
-    const channel = await this.options.channelsRepo?.getByAssistantId(params.assistantId)
-    const hasChannel = Boolean(channel)
+    console.log(`[AssistantRuntime] Cron job thread ID: ${params.threadId}`)
+
+    // Check if this thread has a channel binding
+    const bindings =
+      (await this.options.channelThreadBindingsRepo?.listByThreadIds([params.threadId])) ?? []
+
+    console.log(`[AssistantRuntime] Found ${bindings.length} binding(s) for thread ${params.threadId}`)
+    if (bindings.length > 0) {
+      console.log(`[AssistantRuntime] Binding: channelId=${bindings[0].channelId}, remoteChatId=${bindings[0].remoteChatId}`)
+    }
+
+    const binding = bindings[0]
+    const hasChannelTarget = Boolean(binding)
 
     await this.ensureAgentRegistered(assistant, provider, {
-      channelDeliveryEnabled: hasChannel
+      channelDeliveryEnabled: hasChannelTarget
     })
 
     console.log(
-      `[AssistantRuntime] Agent registered, starting chat stream (model: ${provider.selectedModel}, channel: ${hasChannel ? channel.type : 'none'})`
+      `[AssistantRuntime] Agent registered, starting chat stream (model: ${provider.selectedModel}, channel: ${hasChannelTarget ? 'yes' : 'no'})`
     )
 
     const requestContext = new RequestContext()
@@ -270,44 +291,33 @@ export class AssistantRuntimeService implements AssistantRuntime {
       sendReasoning: true
     })
 
-    // If channel is attached, stream with channel delivery
-    let outputText: string
-    if (hasChannel && channel) {
-      const binding = await this.options.channelThreadBindingsRepo?.listByThreadIds([
-        params.threadId
-      ])
-      const remoteChatId = binding?.[0]?.remoteChatId
+    const outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>)
 
-      if (remoteChatId) {
-        console.log(
-          `[AssistantRuntime] Sending cron output to channel ${channel.type} chat ${remoteChatId}`
-        )
+    // If thread has a channel binding, send output to that channel conversation
+    if (hasChannelTarget && binding && outputText.trim().length > 0) {
+      console.log(
+        `[AssistantRuntime] Sending cron output to channel ${binding.channelId} chat ${binding.remoteChatId}`
+      )
 
-        const streamWithChannel = this.streamWithThreadTitleSync(
-          stream as ReadableStream<UIMessageChunk>,
-          {
-            threadId: params.threadId,
-            profileId: thread.resourceId,
-            channelTarget: {
-              channelId: channel.id,
-              channelType: channel.type,
-              remoteChatId
-            }
+      const channel = await this.options.channelsRepo?.getByAssistantId(params.assistantId)
+      if (channel) {
+        await this.channelEventBus.publish('channel.message.send-requested', {
+          eventId: randomUUID(),
+          channelId: binding.channelId,
+          channelType: channel.type,
+          remoteChatId: binding.remoteChatId,
+          content: outputText,
+          payload: {
+            type: 'text',
+            text: outputText
           }
-        )
-        outputText = await this.collectStreamText(streamWithChannel)
-      } else {
-        console.log(`[AssistantRuntime] No channel binding found for thread ${params.threadId}`)
-        outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>)
+        })
       }
-    } else {
-      outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>)
     }
 
     console.log(
-      `[AssistantRuntime] Cron job completed, collected ${outputText.length} chars${hasChannel ? ', sent to channel' : ''}`
+      `[AssistantRuntime] Cron job completed, collected ${outputText.length} chars${hasChannelTarget ? ', sent to channel' : ''}`
     )
-
     // Notify UI that thread has new messages
     this.options.threadMessageEventsStore?.appendMessagesUpdated({
       assistantId: params.assistantId,
@@ -828,7 +838,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
             new PromptInjectionDetector({
               model: guardrailModel,
               threshold: PROMPT_INJECTION_THRESHOLD,
-              strategy: 'rewrite'
+              strategy: 'warn'
             })
           ]
         : []),

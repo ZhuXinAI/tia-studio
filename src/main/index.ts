@@ -197,6 +197,7 @@ async function startLocalApiServer(): Promise<void> {
     cronJobsRepo,
     assistantsRepo,
     threadsRepo,
+    channelThreadBindingsRepo,
     reloadScheduler: async () => cronSchedulerService?.reload()
   })
   const assistantHeartbeatsService = new AssistantHeartbeatsService({

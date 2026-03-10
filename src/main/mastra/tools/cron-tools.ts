@@ -1,4 +1,5 @@
 import { createTool } from '@mastra/core/tools'
+import type { ToolExecutionContext } from '@mastra/core/tools'
 import { z } from 'zod'
 import { isValidCronExpression } from '../../cron/cron-expression'
 import type { AppCronJob } from '../../persistence/repos/cron-jobs-repo'
@@ -11,6 +12,31 @@ type CronToolsOptions = {
     AssistantCronJobsService,
     'createCronJob' | 'listAssistantCronJobs' | 'removeAssistantCronJob'
   >
+}
+
+type ChannelExecutionContext = {
+  channelId: string
+  chatId: string
+  userId: string
+}
+
+function getChannelExecutionContext(
+  context: ToolExecutionContext
+): ChannelExecutionContext | null {
+  const channelContext = context.requestContext?.get('channelContext') as
+    | ChannelExecutionContext
+    | undefined
+
+  if (
+    !channelContext ||
+    !channelContext.channelId ||
+    !channelContext.chatId ||
+    !channelContext.userId
+  ) {
+    return null
+  }
+
+  return channelContext
 }
 
 const cronExpressionSchema = z
@@ -60,18 +86,24 @@ export function createCronTools(options: CronToolsOptions) {
     outputSchema: cronJobOutputSchema.extend({
       message: z.string()
     }),
-    execute: async ({ name, prompt, cronExpression, enabled }) => {
+    execute: async ({ name, prompt, cronExpression, enabled }, context) => {
+      const channelContext = getChannelExecutionContext(context)
+
       const cronJob = await options.cronJobService.createCronJob({
         assistantId: options.assistantId,
         name,
         prompt,
         cronExpression,
-        enabled
+        enabled,
+        channelId: channelContext?.channelId ?? null,
+        remoteChatId: channelContext?.chatId ?? null
       })
 
       return {
         ...formatCronJob(cronJob),
-        message: `Created cron job "${cronJob.name}".`
+        message: channelContext
+          ? `Created cron job "${cronJob.name}" that will send messages to this chat.`
+          : `Created cron job "${cronJob.name}".`
       }
     }
   })

@@ -138,6 +138,14 @@ export function CronJobsSettingsPage(): React.JSX.Element {
                   </div>
                   <div className="space-y-1">
                     <dt className="text-muted-foreground text-xs uppercase tracking-wide">
+                      Thread ID
+                    </dt>
+                    <dd className="font-mono text-xs truncate">
+                      {cronJob.threadId ?? 'N/A'}
+                    </dd>
+                  </div>
+                  <div className="space-y-1">
+                    <dt className="text-muted-foreground text-xs uppercase tracking-wide">
                       {t('settings.cronJobs.fields.lastStatus')}
                     </dt>
                     <dd>{formatStatus(cronJob.lastRunStatus)}</dd>
