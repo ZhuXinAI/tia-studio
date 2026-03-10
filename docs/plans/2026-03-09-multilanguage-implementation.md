@@ -11,6 +11,7 @@
 ### Task 1: Lock locale resolution behavior in tests
 
 **Files:**
+
 - Create: `src/renderer/src/i18n/config.ts`
 - Create: `src/renderer/src/i18n/config.test.ts`
 
@@ -59,6 +60,7 @@ Expected: PASS
 ### Task 2: Extend UI config and system locale IPC
 
 **Files:**
+
 - Create: `src/main/ui-config.ts`
 - Create: `src/main/ui-config.test.ts`
 - Modify: `src/main/index.ts`
@@ -109,6 +111,7 @@ Expected: PASS
 ### Task 3: Bootstrap renderer i18n and add General Settings routing
 
 **Files:**
+
 - Create: `src/renderer/src/i18n/index.ts`
 - Create: `src/renderer/src/features/settings/pages/general-settings-page.tsx`
 - Create: `src/renderer/src/features/settings/pages/general-settings-page.test.tsx`
@@ -159,6 +162,7 @@ Expected: PASS
 ### Task 4: Localize the settings shell and initial settings pages
 
 **Files:**
+
 - Modify: `src/renderer/src/features/settings/components/settings-sidebar-nav.tsx`
 - Modify: `src/renderer/src/features/settings/pages/general-settings-page.tsx`
 - Modify: `src/renderer/src/features/settings/pages/display-settings-page.tsx`
@@ -203,6 +207,7 @@ Expected: PASS
 ### Task 5: Add locale catalogs and sync automation
 
 **Files:**
+
 - Create: `src/renderer/src/i18n/locales/en-US.json`
 - Create: `src/renderer/src/i18n/locales/zh-CN.json`
 - Create: `src/renderer/src/i18n/locales/zh-HK.json`

@@ -20,9 +20,7 @@ type ChannelExecutionContext = {
   userId: string
 }
 
-function getChannelExecutionContext(
-  context: ToolExecutionContext
-): ChannelExecutionContext | null {
+function getChannelExecutionContext(context: ToolExecutionContext): ChannelExecutionContext | null {
   const channelContext = context.requestContext?.get('channelContext') as
     | ChannelExecutionContext
     | undefined
@@ -81,7 +79,12 @@ export function createCronTools(options: CronToolsOptions) {
       'Create a cron job for this assistant. Supports both recurring schedules (daily, weekly, etc.) and one-time reminders. Set recurring=false for one-time execution. IMPORTANT: The prompt should be the ACTUAL TASK to execute, NOT a request. Remove phrases like "remind me to", "remind me of", "keep me updated on" - just state the task directly. Example: User says "remind me to call John" → prompt should be "call John" or "提醒：给John打电话".',
     inputSchema: z.object({
       name: z.string().min(1),
-      prompt: z.string().min(1).describe('The actual task to execute when the cron job runs. Remove "remind me" phrases and state the task directly. Example: "提醒：开会了" instead of "提醒我：开会了"'),
+      prompt: z
+        .string()
+        .min(1)
+        .describe(
+          'The actual task to execute when the cron job runs. Remove "remind me" phrases and state the task directly. Example: "提醒：开会了" instead of "提醒我：开会了"'
+        ),
       cronExpression: cronExpressionSchema,
       enabled: z.boolean().default(true),
       recurring: z.boolean().default(true)

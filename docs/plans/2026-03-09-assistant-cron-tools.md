@@ -13,6 +13,7 @@
 ### Task 1: Add failing tests for cron tools and service
 
 **Files:**
+
 - Create: `src/main/mastra/tools/cron-tools.test.ts`
 - Create: `src/main/cron/assistant-cron-jobs-service.test.ts`
 - Modify: `src/main/mastra/assistant-runtime.test.ts`
@@ -53,6 +54,7 @@ git commit -m "test: cover assistant cron tools"
 ### Task 2: Implement shared cron job management service
 
 **Files:**
+
 - Create: `src/main/cron/assistant-cron-jobs-service.ts`
 - Modify: `src/main/server/routes/cron-jobs-route.ts`
 - Modify: `src/main/server/create-app.ts`
@@ -105,6 +107,7 @@ git commit -m "feat: share assistant cron job lifecycle"
 ### Task 3: Add Mastra cron tools and runtime wiring
 
 **Files:**
+
 - Create: `src/main/mastra/tools/cron-tools.ts`
 - Modify: `src/main/mastra/assistant-runtime.ts`
 - Test: `src/main/mastra/tools/cron-tools.test.ts`
@@ -150,6 +153,7 @@ git commit -m "feat: add assistant cron tools"
 ### Task 4: Verify end-to-end cron behavior stays intact
 
 **Files:**
+
 - Modify: `src/main/mastra/assistant-runtime.test.ts`
 - Modify: `src/main/server/routes/cron-jobs-route.test.ts`
 - Test: `src/main/cron/cron-scheduler-service.test.ts`

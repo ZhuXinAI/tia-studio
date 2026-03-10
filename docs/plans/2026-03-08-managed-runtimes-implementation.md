@@ -22,6 +22,7 @@
 ### Task 1: Add runtime persistence primitives
 
 **Files:**
+
 - Create: `src/main/persistence/repos/managed-runtimes-repo.ts`
 - Create: `src/main/persistence/repos/managed-runtimes-repo.test.ts`
 
@@ -132,6 +133,7 @@ git commit -m "feat: add managed runtime persistence"
 ### Task 2: Add runtime service release and validation logic
 
 **Files:**
+
 - Create: `src/main/runtimes/managed-runtime-service.ts`
 - Create: `src/main/runtimes/managed-runtime-service.test.ts`
 - Modify: `src/main/index.ts`
@@ -152,12 +154,9 @@ import { ManagedRuntimeService } from './managed-runtime-service'
 
 describe('ManagedRuntimeService', () => {
   it('selects bun asset for darwin arm64', () => {
-    const asset = ManagedRuntimeService.selectReleaseAsset(
-      'bun',
-      'darwin',
-      'arm64',
-      [{ name: 'bun-darwin-aarch64.zip', browser_download_url: 'https://example.test/bun.zip' }]
-    )
+    const asset = ManagedRuntimeService.selectReleaseAsset('bun', 'darwin', 'arm64', [
+      { name: 'bun-darwin-aarch64.zip', browser_download_url: 'https://example.test/bun.zip' }
+    ])
 
     expect(asset?.browser_download_url).toContain('bun.zip')
   })
@@ -209,6 +208,7 @@ git commit -m "feat: add managed runtime service"
 ### Task 3: Expose runtime APIs through preload IPC
 
 **Files:**
+
 - Modify: `src/main/index.ts`
 - Modify: `src/preload/index.ts`
 - Modify: `src/preload/index.d.ts`
@@ -269,6 +269,7 @@ git commit -m "feat: expose managed runtime ipc"
 ### Task 4: Add Runtime Setup settings page and navigation
 
 **Files:**
+
 - Create: `src/renderer/src/features/settings/runtimes/managed-runtimes-query.ts`
 - Create: `src/renderer/src/features/settings/pages/runtime-setup-page.tsx`
 - Create: `src/renderer/src/features/settings/pages/runtime-setup-page.test.tsx`
@@ -337,6 +338,7 @@ git commit -m "feat: add runtime setup settings page"
 ### Task 5: Add MCP guidance into Runtime Setup
 
 **Files:**
+
 - Modify: `src/renderer/src/features/settings/pages/mcp-servers-settings-page.tsx`
 - Modify: `src/renderer/src/features/settings/pages/mcp-servers-settings-page.test.tsx`
 - Modify: `src/renderer/src/features/assistants/assistant-editor.tsx`
@@ -394,6 +396,7 @@ git commit -m "feat: guide users to runtime setup"
 ### Task 6: Normalize managed runtimes in MCP launching
 
 **Files:**
+
 - Modify: `src/main/mastra/assistant-runtime.ts`
 - Create: `src/main/mastra/assistant-runtime.runtime-resolution.test.ts`
 
@@ -452,6 +455,7 @@ git commit -m "feat: use managed runtimes for compatible mcps"
 ### Task 7: Verify runtime feature end-to-end
 
 **Files:**
+
 - Verify only:
   - `src/main/persistence/repos/managed-runtimes-repo.test.ts`
   - `src/main/runtimes/managed-runtime-service.test.ts`

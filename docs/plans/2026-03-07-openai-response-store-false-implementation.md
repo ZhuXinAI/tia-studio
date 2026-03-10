@@ -13,6 +13,7 @@
 ### Task 1: Add assistant runtime regression coverage
 
 **Files:**
+
 - Modify: `src/main/mastra/assistant-runtime.test.ts`
 
 **Step 1: Write the failing test**
@@ -34,6 +35,7 @@
 ### Task 2: Add team runtime regression coverage
 
 **Files:**
+
 - Modify: `src/main/mastra/team-runtime.test.ts`
 
 **Step 1: Write the failing test**
@@ -55,6 +57,7 @@
 ### Task 3: Verify the full targeted runtime suite
 
 **Files:**
+
 - Modify: `src/main/mastra/assistant-runtime.ts`
 - Modify: `src/main/mastra/team-runtime.ts`
 

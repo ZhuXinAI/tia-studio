@@ -13,6 +13,7 @@
 ### Task 1: Lock Team shell scrolling to internal panels
 
 **Files:**
+
 - Modify: `src/renderer/src/features/team/team-page.test.tsx`
 - Modify: `src/renderer/src/features/team/pages/team-page.tsx`
 - Modify: `src/renderer/src/features/team/components/team-chat-card.test.tsx`
@@ -69,6 +70,7 @@ git commit -m "fix: contain team chat scrolling"
 ### Task 2: Dock Team chat as a bottom-right floating panel
 
 **Files:**
+
 - Modify: `src/renderer/src/features/team/pages/team-page.tsx`
 - Modify: `src/renderer/src/features/team/components/team-chat-card.tsx`
 - Modify: `src/renderer/src/features/team/team-page.test.tsx`
@@ -122,6 +124,7 @@ git commit -m "feat: dock team chat as floating panel"
 ### Task 3: Make Team status visibly work in React Flow
 
 **Files:**
+
 - Modify: `src/renderer/src/main.tsx`
 - Modify: `src/renderer/src/features/team/components/team-status-graph.tsx`
 - Modify: `src/renderer/src/features/team/components/team-status-graph.test.tsx`
@@ -176,6 +179,7 @@ git commit -m "feat: show visible team run status in graph"
 ### Task 4: Verify the Team surface end-to-end
 
 **Files:**
+
 - Verify only:
   - `src/renderer/src/features/team/team-page.test.tsx`
   - `src/renderer/src/features/team/components/team-chat-card.test.tsx`

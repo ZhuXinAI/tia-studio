@@ -23,6 +23,7 @@
 ### Task 1: Add channel persistence and thread mapping
 
 **Files:**
+
 - Modify: `src/main/persistence/migrate.ts`
 - Modify: `src/main/persistence/migrate.test.ts`
 - Create: `src/main/persistence/repos/channels-repo.ts`
@@ -142,6 +143,7 @@ git commit -m "feat: add channel persistence"
 ### Task 2: Add main-process channel event bus and service boundaries
 
 **Files:**
+
 - Create: `src/main/channels/types.ts`
 - Create: `src/main/channels/channel-event-bus.ts`
 - Create: `src/main/channels/abstract-channel.ts`
@@ -250,6 +252,7 @@ git commit -m "feat: add channel event bus and service"
 ### Task 3: Implement the Lark transport adapter
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `pnpm-lock.yaml`
 - Create: `src/main/channels/lark-channel.ts`
@@ -334,6 +337,7 @@ git commit -m "feat: add lark channel adapter"
 ### Task 4: Route inbound channel messages into assistant threads
 
 **Files:**
+
 - Create: `src/main/channels/channel-message-router.ts`
 - Create: `src/main/channels/channel-message-router.test.ts`
 - Modify: `src/main/index.ts`
@@ -453,6 +457,7 @@ git commit -m "feat: route channel messages into assistant threads"
 ### Task 5: Publish assistant replies back to the channel
 
 **Files:**
+
 - Modify: `src/main/channels/channel-event-bus.ts`
 - Modify: `src/main/channels/channel-message-router.ts`
 - Modify: `src/main/channels/channel-service.test.ts`
@@ -538,6 +543,7 @@ git commit -m "feat: publish assistant replies to channels"
 ### Task 6: Expose channel settings API and wire startup lifecycle
 
 **Files:**
+
 - Create: `src/main/server/validators/channels-validator.ts`
 - Create: `src/main/server/routes/channels-settings-route.ts`
 - Create: `src/main/server/routes/channels-settings-route.test.ts`
@@ -639,6 +645,7 @@ git commit -m "feat: add channel settings api"
 ### Task 7: Add the Channels settings page in the renderer
 
 **Files:**
+
 - Create: `src/renderer/src/features/settings/channels/channels-query.ts`
 - Create: `src/renderer/src/features/settings/pages/channels-settings-page.tsx`
 - Create: `src/renderer/src/features/settings/pages/channels-settings-page.test.tsx`
@@ -719,6 +726,7 @@ git commit -m "feat: add channels settings page"
 ### Task 8: Run focused verification and then the broader suite
 
 **Files:**
+
 - Modify: `docs/plans/2026-03-08-channels-lark-design.md`
 - Modify: `docs/plans/2026-03-08-channels-lark-implementation.md`
 

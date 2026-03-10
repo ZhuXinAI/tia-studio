@@ -13,6 +13,7 @@
 ### Task 1: Add helper-level regression test
 
 **Files:**
+
 - Create: `docs/plans/2026-03-09-no-arg-tool-schema-helper.md`
 - Modify: `src/main/mastra/tools/tool-schema.test.ts`
 
@@ -42,9 +43,8 @@ it('keeps no-arg tool schemas as a root object for OpenAI Responses', () => {
     'tool'
   )
 
-  const parameters = 'jsonSchema' in coreTool.parameters
-    ? coreTool.parameters.jsonSchema
-    : coreTool.parameters
+  const parameters =
+    'jsonSchema' in coreTool.parameters ? coreTool.parameters.jsonSchema : coreTool.parameters
 
   expect(parameters).toMatchObject({
     type: 'object',
@@ -79,6 +79,7 @@ git commit -m "refactor: add no-arg tool schema helper"
 ### Task 2: Migrate current no-arg tools
 
 **Files:**
+
 - Modify: `src/main/mastra/tools/work-log-tools.ts`
 - Modify: `src/main/mastra/tools/soul-memory-tools.ts`
 - Modify: `src/main/mastra/tools/work-log-tools.test.ts`
@@ -111,6 +112,7 @@ git commit -m "refactor: reuse no-arg tool input schema"
 ### Task 3: Verify adjacent runtime behavior
 
 **Files:**
+
 - Test: `src/main/mastra/assistant-runtime.test.ts`
 
 **Step 1: Run focused integration verification**

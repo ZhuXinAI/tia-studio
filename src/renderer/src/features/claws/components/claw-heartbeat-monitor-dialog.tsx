@@ -153,9 +153,7 @@ export function ClawHeartbeatMonitorDialog({
             <Activity className="size-5" />
             Heartbeat Monitor - {assistantName}
           </DialogTitle>
-          <DialogDescription>
-            Configure and monitor heartbeat executions
-          </DialogDescription>
+          <DialogDescription>Configure and monitor heartbeat executions</DialogDescription>
         </DialogHeader>
 
         {isLoading && !heartbeat ? (
@@ -224,11 +222,7 @@ export function ClawHeartbeatMonitorDialog({
                   <div className="rounded-lg border p-4">
                     <div className="mb-4 flex items-center justify-between">
                       <h3 className="text-sm font-medium">Heartbeat Configuration</h3>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setIsEditing(true)}
-                      >
+                      <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
                         <Settings className="size-4 mr-1" />
                         Configure
                       </Button>
@@ -251,7 +245,9 @@ export function ClawHeartbeatMonitorDialog({
                       </div>
                       <div>
                         <div className="text-xs text-muted-foreground">Interval</div>
-                        <div className="mt-1 text-sm font-medium">{heartbeat.intervalMinutes} minutes</div>
+                        <div className="mt-1 text-sm font-medium">
+                          {heartbeat.intervalMinutes} minutes
+                        </div>
                       </div>
                       <div className="col-span-2">
                         <div className="text-xs text-muted-foreground">Prompt</div>
@@ -266,7 +262,9 @@ export function ClawHeartbeatMonitorDialog({
                       <div>
                         <div className="text-xs text-muted-foreground">Next Run</div>
                         <div className="mt-1 text-sm">
-                          {heartbeat.nextRunAt ? formatDateTime(heartbeat.nextRunAt) : 'Not scheduled'}
+                          {heartbeat.nextRunAt
+                            ? formatDateTime(heartbeat.nextRunAt)
+                            : 'Not scheduled'}
                         </div>
                       </div>
                     </div>
@@ -282,7 +280,7 @@ export function ClawHeartbeatMonitorDialog({
               </>
             ) : null}
 
-        <div>
+            <div>
               <div className="mb-2 text-sm font-medium">Recent Heartbeat Runs (Last 10)</div>
               {runs.length === 0 ? (
                 <div className="rounded-lg border p-8 text-center text-sm text-muted-foreground">
@@ -326,7 +324,7 @@ export function ClawHeartbeatMonitorDialog({
                                 <div className="text-sm text-destructive">
                                   Error: {String(run.error.message ?? 'Unknown error')}
                                 </div>
-                        ) : null}
+                              ) : null}
                             </div>
                           </div>
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">

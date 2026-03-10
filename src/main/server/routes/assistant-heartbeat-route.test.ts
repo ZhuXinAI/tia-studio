@@ -34,11 +34,17 @@ describe('assistant heartbeat route', () => {
       heartbeatsRepo,
       heartbeatRunsRepo: {
         listByHeartbeatId: vi.fn().mockResolvedValue([])
-      } as any,
+      } as Pick<
+        Parameters<typeof registerAssistantHeartbeatRoute>[1]['heartbeatRunsRepo'],
+        'listByHeartbeatId'
+      >,
       cronJobsRepo,
       cronJobRunsRepo: {
         listByCronJobId: vi.fn().mockResolvedValue([])
-      } as any,
+      } as Pick<
+        Parameters<typeof registerAssistantHeartbeatRoute>[1]['cronJobRunsRepo'],
+        'listByCronJobId'
+      >,
       heartbeatSchedulerService: {
         reload: schedulerReload
       }

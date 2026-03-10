@@ -130,12 +130,16 @@ export class CronSchedulerService {
     })
 
     if (!this.started || !nextRunAt) {
-      console.log(`[CronScheduler] Job "${job.name}" (${job.id}) - scheduler not started or no next run time`)
+      console.log(
+        `[CronScheduler] Job "${job.name}" (${job.id}) - scheduler not started or no next run time`
+      )
       return
     }
 
     const delay = Math.max(0, nextRunAt.getTime() - Date.now())
-    console.log(`[CronScheduler] Job "${job.name}" (${job.id}) scheduled for ${nextRunAt.toISOString()} (in ${Math.round(delay / 1000)}s)`)
+    console.log(
+      `[CronScheduler] Job "${job.name}" (${job.id}) scheduled for ${nextRunAt.toISOString()} (in ${Math.round(delay / 1000)}s)`
+    )
 
     const timer = setTimeout(async () => {
       this.timers.delete(job.id)
@@ -156,10 +160,14 @@ export class CronSchedulerService {
       return
     }
 
-    console.log(`[CronScheduler] Executing job "${job.name}" (${job.id}) scheduled for ${scheduledFor}`)
+    console.log(
+      `[CronScheduler] Executing job "${job.name}" (${job.id}) scheduled for ${scheduledFor}`
+    )
 
     if (!job.enabled || !(await this.isAssistantEnabled(job.assistantId))) {
-      console.log(`[CronScheduler] Job "${job.name}" (${job.id}) is disabled or assistant is disabled, skipping`)
+      console.log(
+        `[CronScheduler] Job "${job.name}" (${job.id}) is disabled or assistant is disabled, skipping`
+      )
       await this.options.cronJobsRepo.update(jobId, { nextRunAt: null })
       return
     }
@@ -205,7 +213,7 @@ export class CronSchedulerService {
 
       const now = new Date()
       const nextRunAt = job.recurring
-        ? getNextCronRunAt(job.cronExpression, now)?.toISOString() ?? null
+        ? (getNextCronRunAt(job.cronExpression, now)?.toISOString() ?? null)
         : null
       const finishedAt = now.toISOString()
 

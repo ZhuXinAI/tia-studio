@@ -15,6 +15,7 @@
 ### Task 1: Add assistant activation to persistence
 
 **Files:**
+
 - Modify: `src/main/persistence/migrate.ts`
 - Modify: `src/main/persistence/migrate.test.ts`
 - Modify: `src/main/persistence/repos/assistants-repo.ts`
@@ -104,6 +105,7 @@ git commit -m "feat: add assistant activation persistence"
 ### Task 2: Surface assistant activation through shared APIs
 
 **Files:**
+
 - Modify: `src/main/server/validators/assistants-validator.ts`
 - Modify: `src/main/server/routes/assistants-route.ts`
 - Modify: `src/main/server/routes/assistants-route.test.ts`
@@ -178,6 +180,7 @@ git commit -m "feat: expose assistant activation flag"
 ### Task 3: Make channel runtime assistant-driven
 
 **Files:**
+
 - Modify: `src/main/persistence/repos/channels-repo.ts`
 - Modify: `src/main/persistence/repos/channels-repo.test.ts`
 - Modify: `src/main/channels/channel-service.ts`
@@ -267,6 +270,7 @@ git commit -m "feat: gate channel runtime by assistant activation"
 ### Task 4: Add the claws orchestration API
 
 **Files:**
+
 - Create: `src/main/server/validators/claws-validator.ts`
 - Create: `src/main/server/routes/claws-route.ts`
 - Create: `src/main/server/routes/claws-route.test.ts`
@@ -358,6 +362,7 @@ git commit -m "feat: add claws orchestration api"
 ### Task 5: Build the renderer query layer and claws page
 
 **Files:**
+
 - Create: `src/renderer/src/features/claws/claws-query.ts`
 - Create: `src/renderer/src/features/claws/claws-query.test.ts`
 - Create: `src/renderer/src/features/claws/pages/claws-page.tsx`
@@ -444,6 +449,7 @@ git commit -m "feat: add claws management page"
 ### Task 6: Remove the legacy channels settings surface
 
 **Files:**
+
 - Modify: `src/renderer/src/features/settings/components/settings-sidebar-nav.tsx`
 - Modify: `src/renderer/src/features/settings/pages/settings-page-layout.test.tsx`
 - Delete: `src/renderer/src/features/settings/pages/channels-settings-page.tsx`
@@ -511,6 +517,7 @@ git commit -m "refactor: remove legacy channels settings page"
 ### Task 7: Verify the full claws slice end-to-end
 
 **Files:**
+
 - Modify: none unless fixes are needed
 
 **Step 1: Run the focused backend and renderer suites**

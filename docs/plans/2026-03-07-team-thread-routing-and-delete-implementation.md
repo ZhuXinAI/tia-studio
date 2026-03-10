@@ -13,6 +13,7 @@
 ### Task 1: Lock down the failing team-thread URL behavior
 
 **Files:**
+
 - Modify: `src/renderer/src/app/router.test.tsx`
 
 **Step 1: Write the failing test**
@@ -52,6 +53,7 @@ Expected: PASS
 ### Task 2: Expose team thread deletion in the sidebar and controller
 
 **Files:**
+
 - Modify: `src/renderer/src/features/team/components/team-sidebar.tsx`
 - Modify: `src/renderer/src/features/team/components/team-sidebar.test.tsx`
 - Modify: `src/renderer/src/features/team/hooks/use-team-page-controller.ts`
@@ -96,6 +98,7 @@ Expected: PASS
 ### Task 3: Verify the end-to-end regression surface
 
 **Files:**
+
 - Modify: `src/renderer/src/app/router.tsx`
 
 **Step 1: Run the focused renderer regression suite**

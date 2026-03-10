@@ -13,6 +13,7 @@
 ### Task 1: Move team ownership into workspace persistence
 
 **Files:**
+
 - Modify: `src/main/persistence/migrations/0001_app_core.sql`
 - Modify: `src/main/persistence/migrations/0001_app_core.ts`
 - Modify: `src/main/persistence/migrate.ts`
@@ -109,6 +110,7 @@ git commit -m "refactor: move team config to workspaces"
 ### Task 2: Move API and renderer contracts to workspace-level team config
 
 **Files:**
+
 - Modify: `src/main/server/validators/team-validator.ts`
 - Modify: `src/main/server/routes/team-workspaces-route.ts`
 - Modify: `src/main/server/routes/team-workspaces-route.test.ts`
@@ -188,6 +190,7 @@ git commit -m "refactor: expose workspace-scoped team config APIs"
 ### Task 3: Shift runtime and title generation to workspace-owned team state
 
 **Files:**
+
 - Modify: `src/main/mastra/team-runtime.ts`
 - Modify: `src/main/mastra/team-runtime.test.ts`
 - Modify: `src/main/persistence/repos/team-workspaces-repo.ts`
@@ -269,6 +272,7 @@ git commit -m "refactor: run teams from workspace config"
 ### Task 4: Refactor the controller around workspace-scoped configuration
 
 **Files:**
+
 - Modify: `src/renderer/src/features/team/hooks/use-team-page-controller.ts`
 - Modify: `src/renderer/src/features/team/hooks/use-team-page-controller.test.tsx`
 - Modify: `src/renderer/src/features/team/pages/team-page.tsx`
@@ -339,6 +343,7 @@ git commit -m "refactor: make team config workspace scoped"
 ### Task 5: Rebuild the sidebar with the existing collapsible thread pattern
 
 **Files:**
+
 - Modify: `src/renderer/src/features/team/components/team-sidebar.tsx`
 - Modify: `src/renderer/src/features/team/components/team-sidebar.test.tsx`
 - Reference: `src/renderer/src/features/threads/components/thread-sidebar.tsx`
@@ -411,6 +416,7 @@ git commit -m "feat: adopt collapsible team sidebar"
 ### Task 6: Verify the full feature before handoff
 
 **Files:**
+
 - Modify as needed: only files touched by failing tests from Tasks 1-5
 
 **Step 1: Run the focused end-to-end feature suite**

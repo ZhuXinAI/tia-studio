@@ -13,6 +13,7 @@
 ### Task 1: Persist assistant descriptions
 
 **Files:**
+
 - Modify: `src/main/persistence/migrations/0001_app_core.sql`
 - Modify: `src/main/persistence/migrations/0001_app_core.ts`
 - Modify: `src/main/persistence/migrate.ts`
@@ -48,6 +49,7 @@ Expected: PASS
 ### Task 2: Expose description to team routing
 
 **Files:**
+
 - Modify: `src/main/mastra/team-runtime.ts`
 - Test: `src/main/mastra/team-runtime.test.ts`
 
@@ -76,6 +78,7 @@ Expected: PASS
 ### Task 3: Add description to the assistant editor
 
 **Files:**
+
 - Modify: `src/renderer/src/features/assistants/assistants-query.ts`
 - Modify: `src/renderer/src/features/assistants/assistant-editor.tsx`
 - Test: `src/renderer/src/features/assistants/assistant-editor.test.tsx`
@@ -106,6 +109,7 @@ Expected: PASS
 ### Task 4: Verify integrated behavior
 
 **Files:**
+
 - Verify only
 
 **Step 1: Run focused verification**

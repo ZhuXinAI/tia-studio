@@ -15,27 +15,27 @@ Claws is the user-facing management surface for connecting AI assistants to exte
 
 ### Backend (Main Process)
 
-| File | Description |
-|------|-------------|
-| `src/main/server/routes/claws-route.ts` | Hono route handlers (CRUD) |
-| `src/main/server/routes/claws-route.test.ts` | Route tests |
-| `src/main/server/validators/claws-validator.ts` | Zod request schemas |
-| `src/main/persistence/repos/assistants-repo.ts` | Assistant persistence with `enabled` flag |
-| `src/main/persistence/repos/channels-repo.ts` | Channel persistence |
-| `src/main/persistence/migrate.ts` | Migration for `enabled` column on assistants |
-| `src/main/channels/channel-service.ts` | Runtime channel activation |
-| `src/main/default-agent/default-agent-bootstrap.ts` | Built-in agent marker |
+| File                                                | Description                                  |
+| --------------------------------------------------- | -------------------------------------------- |
+| `src/main/server/routes/claws-route.ts`             | Hono route handlers (CRUD)                   |
+| `src/main/server/routes/claws-route.test.ts`        | Route tests                                  |
+| `src/main/server/validators/claws-validator.ts`     | Zod request schemas                          |
+| `src/main/persistence/repos/assistants-repo.ts`     | Assistant persistence with `enabled` flag    |
+| `src/main/persistence/repos/channels-repo.ts`       | Channel persistence                          |
+| `src/main/persistence/migrate.ts`                   | Migration for `enabled` column on assistants |
+| `src/main/channels/channel-service.ts`              | Runtime channel activation                   |
+| `src/main/default-agent/default-agent-bootstrap.ts` | Built-in agent marker                        |
 
 ### Frontend (Renderer)
 
-| File | Description |
-|------|-------------|
-| `src/renderer/src/features/claws/claws-query.ts` | TanStack Query hooks & API functions |
-| `src/renderer/src/features/claws/claws-query.test.ts` | Query tests |
-| `src/renderer/src/features/claws/pages/claws-page.tsx` | Main page component |
-| `src/renderer/src/features/claws/pages/claws-page.test.tsx` | Page tests |
-| `src/renderer/src/features/claws/components/claw-editor-dialog.tsx` | Create/edit dialog |
-| `src/renderer/src/features/claws/components/claw-editor-dialog.test.tsx` | Dialog tests |
+| File                                                                     | Description                          |
+| ------------------------------------------------------------------------ | ------------------------------------ |
+| `src/renderer/src/features/claws/claws-query.ts`                         | TanStack Query hooks & API functions |
+| `src/renderer/src/features/claws/claws-query.test.ts`                    | Query tests                          |
+| `src/renderer/src/features/claws/pages/claws-page.tsx`                   | Main page component                  |
+| `src/renderer/src/features/claws/pages/claws-page.test.tsx`              | Page tests                           |
+| `src/renderer/src/features/claws/components/claw-editor-dialog.tsx`      | Create/edit dialog                   |
+| `src/renderer/src/features/claws/components/claw-editor-dialog.test.tsx` | Dialog tests                         |
 
 ### Navigation & Routing
 
@@ -70,7 +70,7 @@ Channels store external service credentials (e.g., Lark appId/appSecret). Key fi
 
 ```typescript
 type ClawRecord = {
-  id: string           // assistant ID
+  id: string // assistant ID
   name: string
   description: string
   instructions: string
@@ -153,11 +153,11 @@ The default built-in agent is marked with `BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__t
 
 ### Key Files
 
-| File | Description |
-|------|-------------|
-| `src/main/channels/types.ts` | `ChannelAdapter` interface |
+| File                                    | Description                     |
+| --------------------------------------- | ------------------------------- |
+| `src/main/channels/types.ts`            | `ChannelAdapter` interface      |
 | `src/main/channels/abstract-channel.ts` | Base class with shared behavior |
-| `src/main/channels/lark-channel.ts` | Lark implementation |
+| `src/main/channels/lark-channel.ts`     | Lark implementation             |
 
 ### Message Acknowledgment
 

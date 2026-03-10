@@ -13,6 +13,7 @@
 ### Task 1: Add the channel event bus
 
 **Files:**
+
 - Create: `src/main/channels/types.ts`
 - Create: `src/main/channels/channel-event-bus.ts`
 - Create: `src/main/channels/channel-event-bus.test.ts`
@@ -20,6 +21,7 @@
 **Step 1: Write the failing tests**
 
 Add tests for:
+
 - subscribing to `channel.message.send-requested`
 - publishing a text outbound payload
 - publishing an image outbound payload
@@ -44,12 +46,14 @@ Expected: PASS
 ### Task 2: Add assistant workspace bootstrap helpers
 
 **Files:**
+
 - Create: `src/main/mastra/assistant-workspace.ts`
 - Create: `src/main/mastra/assistant-workspace.test.ts`
 
 **Step 1: Write the failing tests**
 
 Add tests for:
+
 - creating `IDENTITY.md`, `SOUL.md`, `MEMORY.md`, and `HEARTBEAT.md` inside a provided workspace root
 - leaving existing files untouched
 - resolving relative assistant file paths against the workspace root
@@ -73,6 +77,7 @@ Expected: PASS
 ### Task 3: Add SOUL memory and merged channel tools
 
 **Files:**
+
 - Create: `src/main/mastra/tool-context.ts`
 - Create: `src/main/mastra/tools/soul-memory-tools.ts`
 - Create: `src/main/mastra/tools/soul-memory-tools.test.ts`
@@ -82,6 +87,7 @@ Expected: PASS
 **Step 1: Write the failing tests**
 
 Add tests for:
+
 - `read-soul-memory` returning the assistant workspace file contents
 - `update-soul-memory` appending and overwriting correctly
 - the context input processor loading `IDENTITY.md`, `SOUL.md`, and `MEMORY.md`
@@ -114,6 +120,7 @@ Expected: PASS
 ### Task 4: Wire the tools into assistant runtime
 
 **Files:**
+
 - Modify: `src/main/mastra/assistant-runtime.ts`
 - Modify: `src/main/mastra/assistant-runtime.test.ts`
 - Modify: `src/main/index.ts`
@@ -121,6 +128,7 @@ Expected: PASS
 **Step 1: Write the failing tests**
 
 Add tests for:
+
 - ensuring assistant workspace files are bootstrapped when an assistant workspace is configured
 - registering the SOUL tools and merged channel tools with the agent
 - including the workspace context input processor alongside the attachment uploader

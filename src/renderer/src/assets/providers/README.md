@@ -7,42 +7,49 @@ This directory contains logo images for built-in AI providers.
 Please fetch and place the following logo images in this directory:
 
 ### 1. **minimax.png**
+
 - Provider: MiniMax
 - Official Site: https://www.minimaxi.com
 - Recommended Size: 256x256px or 512x512px
 - Format: PNG with transparent background preferred
 
 ### 2. **glm.png**
+
 - Provider: GLM (Zhipu AI)
 - Official Site: https://open.bigmodel.cn
 - Recommended Size: 256x256px or 512x512px
 - Format: PNG with transparent background preferred
 
 ### 3. **ollama.png**
+
 - Provider: Ollama
 - Official Site: https://ollama.com
 - Recommended Size: 256x256px or 512x512px
 - Format: PNG with transparent background preferred
 
 ### 4. **openai.png**
+
 - Provider: OpenAI
 - Official Site: https://platform.openai.com
 - Recommended Size: 256x256px or 512x512px
 - Format: PNG with transparent background preferred
 
 ### 5. **anthropic.png**
+
 - Provider: Anthropic
 - Official Site: https://www.anthropic.com
 - Recommended Size: 256x256px or 512x512px
 - Format: PNG with transparent background preferred
 
 ### 6. **gemini.png**
+
 - Provider: Google Gemini
 - Official Site: https://ai.google.dev
 - Recommended Size: 256x256px or 512x512px
 - Format: PNG with transparent background preferred
 
 ### 7. **kimi.png**
+
 - Provider: Kimi (Moonshot AI)
 - Official Site: https://platform.moonshot.cn
 - Recommended Size: 256x256px or 512x512px
@@ -59,5 +66,6 @@ Please fetch and place the following logo images in this directory:
 ## Usage
 
 These images are displayed as avatars in the provider list at:
+
 - Settings > Providers page
 - Each provider shows its logo in a circular avatar (40x40px display size)

@@ -386,7 +386,9 @@ export function ClawProviderSelectorDialog({
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3">
                           <Avatar className="size-10">
-                            {avatarPath ? <AvatarImage src={avatarPath} alt={provider.name} /> : null}
+                            {avatarPath ? (
+                              <AvatarImage src={avatarPath} alt={provider.name} />
+                            ) : null}
                             <AvatarFallback>{initials}</AvatarFallback>
                           </Avatar>
                           <div className="space-y-1">
@@ -744,7 +746,9 @@ export function ClawProviderSelectorDialog({
                       <div className="space-y-3">
                         <div className="flex items-center gap-3">
                           <Avatar className="size-10">
-                            {avatarPath ? <AvatarImage src={avatarPath} alt={provider.name} /> : null}
+                            {avatarPath ? (
+                              <AvatarImage src={avatarPath} alt={provider.name} />
+                            ) : null}
                             <AvatarFallback>{initials}</AvatarFallback>
                           </Avatar>
                           <p className="font-medium">{provider.name}</p>
@@ -772,11 +776,7 @@ export function ClawProviderSelectorDialog({
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsTemplateDialogOpen(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => setIsTemplateDialogOpen(false)}>
               {t('claws.providerSelector.actions.cancel')}
             </Button>
           </DialogFooter>

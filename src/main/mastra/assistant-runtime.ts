@@ -328,9 +328,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       params.remoteChatId &&
       outputText.trim().length > 0
     ) {
-      console.log(
-        `[AssistantRuntime] Cron job completed with ${outputText.length} chars output`
-      )
+      console.log(`[AssistantRuntime] Cron job completed with ${outputText.length} chars output`)
       // Note: If agent used channel tools, messages were already sent during execution
       // This fallback ensures something is sent if agent didn't use tools
     }
@@ -471,7 +469,6 @@ ${input.prompt}`
 
     return transformed
   }
-
 
   private streamWithThreadTitleSync(
     stream: ReadableStream<UIMessageChunk>,

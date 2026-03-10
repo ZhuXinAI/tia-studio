@@ -13,11 +13,13 @@
 ### Task 1: Add the outbound runtime red tests
 
 **Files:**
+
 - Modify: `src/main/mastra/assistant-runtime.test.ts`
 
 **Step 1: Write the failing tests**
 
 Add tests for:
+
 - publishing `channel.message.send-requested` when a streamed assistant reply finishes and a channel target is provided
 - preserving `channelId`, `channelType`, and `remoteChatId`
 - not publishing an event when the captured assistant reply text is empty
@@ -42,6 +44,7 @@ Expected: PASS
 ### Task 2: Run focused verification
 
 **Files:**
+
 - No code changes expected
 
 **Step 1: Run focused tests**

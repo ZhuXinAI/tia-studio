@@ -13,6 +13,7 @@
 ### Task 1: Lock the Home-style Team shell in tests
 
 **Files:**
+
 - Modify: `src/renderer/src/features/team/team-page.test.tsx`
 - Modify: `src/renderer/src/features/team/components/team-chat-card.test.tsx`
 
@@ -56,6 +57,7 @@ Expected: PASS
 ### Task 2: Render Team status as a graph-only dialog
 
 **Files:**
+
 - Modify: `src/renderer/src/features/team/pages/team-page.tsx`
 - Modify: `src/renderer/src/features/team/components/team-status-graph.tsx`
 - Modify: `src/renderer/src/features/team/components/team-status-graph.test.tsx`

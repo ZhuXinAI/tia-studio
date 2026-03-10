@@ -13,6 +13,7 @@
 ### Task 1: Expand channel persistence and claws APIs
 
 **Files:**
+
 - Modify: `src/main/persistence/repos/channels-repo.ts`
 - Modify: `src/main/persistence/repos/channels-repo.test.ts`
 - Modify: `src/main/server/validators/claws-validator.ts`
@@ -121,6 +122,7 @@ git commit -m "feat: add configured channel management for claws"
 ### Task 2: Update the claws query layer for configured channels
 
 **Files:**
+
 - Modify: `src/renderer/src/features/claws/claws-query.ts`
 - Modify: `src/renderer/src/features/claws/claws-query.test.ts`
 
@@ -206,6 +208,7 @@ git commit -m "refactor: expose configured claws channels to renderer"
 ### Task 3: Build the channel selector dialog with nested add/remove flows
 
 **Files:**
+
 - Create: `src/renderer/src/features/claws/components/claw-channel-selector-dialog.tsx`
 - Create: `src/renderer/src/features/claws/components/claw-channel-selector-dialog.test.tsx`
 
@@ -316,6 +319,7 @@ git commit -m "feat: add claw channel selector dialog"
 ### Task 4: Refactor the claw editor to use channel selection instead of channel actions
 
 **Files:**
+
 - Modify: `src/renderer/src/features/claws/components/claw-editor-dialog.tsx`
 - Modify: `src/renderer/src/features/claws/components/claw-editor-dialog.test.tsx`
 
@@ -439,6 +443,7 @@ git commit -m "refactor: move claw channel setup into selector dialog"
 ### Task 5: Wire the claws page, warning states, and translations
 
 **Files:**
+
 - Modify: `src/renderer/src/features/claws/pages/claws-page.tsx`
 - Modify: `src/renderer/src/features/claws/pages/claws-page.test.tsx`
 - Modify: `src/renderer/src/i18n/locales/en-US.json`

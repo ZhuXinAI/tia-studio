@@ -13,6 +13,7 @@
 ### Task 1: Lock the Team resume-stream regression with tests
 
 **Files:**
+
 - Modify: `src/renderer/src/features/team/hooks/use-team-page-controller.test.tsx`
 - Modify: `src/renderer/src/features/team/team-page.test.tsx`
 
@@ -71,6 +72,7 @@ git commit -m "fix: restore team chat as primary surface"
 ### Task 2: Make the right-side Team status drawer usable
 
 **Files:**
+
 - Modify: `src/renderer/src/features/team/pages/team-page.tsx`
 - Modify: `src/renderer/src/features/team/components/team-status-graph.tsx`
 - Modify: `src/renderer/src/features/team/team-page.test.tsx`
@@ -128,6 +130,7 @@ git commit -m "feat: move team status into right drawer"
 ### Task 3: Lock React Flow into static inspection mode
 
 **Files:**
+
 - Modify: `src/renderer/src/features/team/components/team-status-graph.tsx`
 - Modify: `src/renderer/src/features/team/components/team-status-graph.test.tsx`
 
@@ -185,6 +188,7 @@ git commit -m "fix: lock team status graph to view-only mode"
 ### Task 4: Verify the full Team renderer surface
 
 **Files:**
+
 - Verify only:
   - `src/renderer/src/features/team/team-page.test.tsx`
   - `src/renderer/src/features/team/components/team-chat-card.test.tsx`

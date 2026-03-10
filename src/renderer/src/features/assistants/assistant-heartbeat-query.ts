@@ -72,7 +72,9 @@ export type CronRunRecord = {
 
 export type CombinedRunRecord = HeartbeatRunRecord | CronRunRecord
 
-export async function getHeartbeatRuns(assistantId: string): Promise<{ runs: CombinedRunRecord[] }> {
+export async function getHeartbeatRuns(
+  assistantId: string
+): Promise<{ runs: CombinedRunRecord[] }> {
   return apiClient.get<{ runs: CombinedRunRecord[] }>(
     `/v1/assistants/${assistantId}/heartbeat/runs`
   )

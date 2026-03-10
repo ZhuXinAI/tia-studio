@@ -200,7 +200,9 @@ export class AssistantsRepository {
       return null
     }
 
-    const workspaceConfig = normalizeWorkspaceConfig(input.workspaceConfig ?? existing.workspaceConfig)
+    const workspaceConfig = normalizeWorkspaceConfig(
+      input.workspaceConfig ?? existing.workspaceConfig
+    )
 
     await this.db.execute(
       'UPDATE app_assistants SET name = ?, description = ?, instructions = ?, enabled = ?, provider_id = ?, workspace_config = ?, skills_config = ?, mcp_config = ?, max_steps = ?, memory_config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
