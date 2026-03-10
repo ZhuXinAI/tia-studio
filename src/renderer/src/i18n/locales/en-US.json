@@ -277,7 +277,11 @@
       },
       "form": {
         "errors": {
-          "selectedModelRequired": "Selected model is required"
+          "selectedModelRequired": "Selected model is required",
+          "nameRequired": "Provider name is required",
+          "apiKeyRequired": "API key is required",
+          "createFailed": "Failed to create provider",
+          "updateFailed": "Failed to update provider"
         },
         "enableProvider": "Enable Provider",
         "enableProviderDescription": "Show this provider in model selection",
@@ -497,6 +501,42 @@
         "createFailed": "Failed to create channel",
         "updateFailed": "Failed to update channel",
         "deleteFailed": "Failed to delete channel"
+      }
+    },
+    "providerSelector": {
+      "title": "Select Provider",
+      "description": "Choose from configured providers or add a new one.",
+      "openButton": "Select Provider",
+      "noProviderSelected": "No provider selected",
+      "required": "Provider is required",
+      "empty": "No configured providers yet.",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "actions": {
+        "add": "Add Provider",
+        "edit": "Edit Provider",
+        "clear": "Clear Selection",
+        "cancel": "Cancel",
+        "apply": "Apply"
+      },
+      "selectedBadge": "Selected",
+      "create": {
+        "title": "Add Provider",
+        "description": "Create a new model provider configuration.",
+        "save": "Add Provider"
+      },
+      "edit": {
+        "title": "Edit Provider",
+        "description": "Update this provider configuration.",
+        "save": "Save Changes",
+        "apiKeyOptional": "Leave API key blank to keep the current value.",
+        "apiKeyPlaceholder": "Leave unchanged"
+      },
+      "errors": {
+        "nameRequired": "Provider name is required",
+        "apiKeyRequired": "API key is required",
+        "createFailed": "Failed to create provider",
+        "updateFailed": "Failed to update provider"
       }
     },
     "pairings": {

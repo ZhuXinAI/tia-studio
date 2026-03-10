@@ -18,8 +18,12 @@ import {
 } from '../../../components/ui/dialog'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { queryClient } from '../../../lib/query-client'
-import type { ProviderRecord } from '../../settings/providers/providers-query'
-import { listProviders } from '../../settings/providers/providers-query'
+import type { ProviderRecord, SaveProviderInput } from '../../settings/providers/providers-query'
+import {
+  listProviders,
+  createProvider,
+  updateProvider
+} from '../../settings/providers/providers-query'
 import { assistantKeys } from '../../assistants/assistants-query'
 import {
   approveClawPairing,
@@ -202,6 +206,46 @@ export function ClawsPage(): React.JSX.Element {
         )
       }))
       return updatedChannel
+    } catch (error) {
+      const resolvedError =
+        error instanceof Error ? error : new Error(t('claws.errors.updateFailed'))
+      setErrorMessage(resolvedError.message)
+      throw resolvedError
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function handleCreateProvider(input: SaveProviderInput): Promise<ProviderRecord> {
+    setIsSubmitting(true)
+    setErrorMessage(null)
+
+    try {
+      const createdProvider = await createProvider(input)
+      setProviders((current) => [...current, createdProvider])
+      return createdProvider
+    } catch (error) {
+      const resolvedError = error instanceof Error ? error : new Error(t('claws.errors.saveFailed'))
+      setErrorMessage(resolvedError.message)
+      throw resolvedError
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function handleUpdateProvider(
+    providerId: string,
+    input: Partial<SaveProviderInput>
+  ): Promise<ProviderRecord> {
+    setIsSubmitting(true)
+    setErrorMessage(null)
+
+    try {
+      const updatedProvider = await updateProvider(providerId, input)
+      setProviders((current) =>
+        current.map((provider) => (provider.id === updatedProvider.id ? updatedProvider : provider))
+      )
+      return updatedProvider
     } catch (error) {
       const resolvedError =
         error instanceof Error ? error : new Error(t('claws.errors.updateFailed'))
@@ -490,6 +534,8 @@ export function ClawsPage(): React.JSX.Element {
           onCreateChannel={handleCreateChannel}
           onUpdateChannel={handleUpdateChannel}
           onDeleteChannel={handleDeleteChannel}
+          onCreateProvider={handleCreateProvider}
+          onUpdateProvider={handleUpdateProvider}
         />
 
         <ClawPairingsDialog

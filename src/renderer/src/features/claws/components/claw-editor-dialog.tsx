@@ -11,7 +11,7 @@ import {
 import { Input } from '../../../components/ui/input'
 import { Textarea } from '../../../components/ui/textarea'
 import { useTranslation } from '../../../i18n/use-app-translation'
-import type { ProviderRecord } from '../../settings/providers/providers-query'
+import type { ProviderRecord, SaveProviderInput } from '../../settings/providers/providers-query'
 import type {
   ClawRecord,
   ConfiguredClawChannelRecord,
@@ -20,6 +20,7 @@ import type {
   SaveClawInput
 } from '../claws-query'
 import { ClawChannelSelectorDialog } from './claw-channel-selector-dialog'
+import { ClawProviderSelectorDialog } from './claw-provider-selector-dialog'
 
 type ClawEditorDialogProps = {
   isOpen: boolean
@@ -37,6 +38,11 @@ type ClawEditorDialogProps = {
     input: UpdateClawChannelInput
   ) => Promise<ConfiguredClawChannelRecord> | ConfiguredClawChannelRecord
   onDeleteChannel: (channelId: string) => Promise<void> | void
+  onCreateProvider: (input: SaveProviderInput) => Promise<ProviderRecord> | ProviderRecord
+  onUpdateProvider: (
+    providerId: string,
+    input: Partial<SaveProviderInput>
+  ) => Promise<ProviderRecord> | ProviderRecord
 }
 
 function buildChannelPayload(input: {
@@ -67,7 +73,9 @@ export function ClawEditorDialog({
   onSubmit,
   onCreateChannel,
   onUpdateChannel,
-  onDeleteChannel
+  onDeleteChannel,
+  onCreateProvider,
+  onUpdateProvider
 }: ClawEditorDialogProps): React.JSX.Element {
   const { t } = useTranslation()
   const [name, setName] = useState(claw?.name ?? '')
@@ -75,7 +83,8 @@ export function ClawEditorDialog({
   const [instructions, setInstructions] = useState(claw?.instructions ?? '')
   const [enabled, setEnabled] = useState(claw?.enabled ?? true)
   const [selectedChannelId, setSelectedChannelId] = useState(claw?.channel?.id ?? '')
-  const [isSelectorOpen, setIsSelectorOpen] = useState(false)
+  const [isChannelSelectorOpen, setIsChannelSelectorOpen] = useState(false)
+  const [isProviderSelectorOpen, setIsProviderSelectorOpen] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
@@ -84,7 +93,8 @@ export function ClawEditorDialog({
     setInstructions(claw?.instructions ?? '')
     setEnabled(claw?.enabled ?? true)
     setSelectedChannelId(claw?.channel?.id ?? '')
-    setIsSelectorOpen(false)
+    setIsChannelSelectorOpen(false)
+    setIsProviderSelectorOpen(false)
     setErrorMessage(null)
   }, [claw, isOpen])
 
@@ -122,6 +132,14 @@ export function ClawEditorDialog({
 
     return null
   }, [claw, configuredChannels, selectedChannelId])
+
+  const selectedProvider = useMemo(() => {
+    if (!providerId) {
+      return null
+    }
+
+    return providers.find((provider) => provider.id === providerId) ?? null
+  }, [providers, providerId])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
@@ -174,22 +192,35 @@ export function ClawEditorDialog({
             </div>
 
             <div className="grid gap-2">
-              <label htmlFor="claw-provider" className="text-sm font-medium">
-                {t('claws.dialog.fields.provider')}
-              </label>
-              <select
-                id="claw-provider"
-                className="border-input bg-background rounded-md border px-3 py-2 text-sm"
-                value={providerId}
-                onChange={(event) => setProviderId(event.target.value)}
-              >
-                <option value="">{t('claws.dialog.selectProvider')}</option>
-                {providers.map((provider) => (
-                  <option key={provider.id} value={provider.id}>
-                    {provider.name}
-                  </option>
-                ))}
-              </select>
+              <label className="text-sm font-medium">{t('claws.dialog.fields.provider')}</label>
+              <div className="rounded-lg border border-border p-4">
+                {selectedProvider ? (
+                  <div className="space-y-1">
+                    <p className="font-medium">{selectedProvider.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedProvider.type} · {selectedProvider.selectedModel}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {t('claws.providerSelector.noProviderSelected')}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  id="claw-select-provider-button"
+                  type="button"
+                  variant="outline"
+                  disabled={isSubmitting}
+                  onClick={() => setIsProviderSelectorOpen(true)}
+                >
+                  {t('claws.providerSelector.openButton')}
+                </Button>
+                {!providerId ? (
+                  <p className="text-sm text-amber-600">{t('claws.providerSelector.required')}</p>
+                ) : null}
+              </div>
             </div>
 
             <div className="grid gap-2">
@@ -225,7 +256,7 @@ export function ClawEditorDialog({
                   type="button"
                   variant="outline"
                   disabled={isSubmitting}
-                  onClick={() => setIsSelectorOpen(true)}
+                  onClick={() => setIsChannelSelectorOpen(true)}
                 >
                   {t('claws.channelSelector.openButton')}
                 </Button>
@@ -258,14 +289,29 @@ export function ClawEditorDialog({
         </DialogContent>
       </Dialog>
 
+      <ClawProviderSelectorDialog
+        isOpen={isProviderSelectorOpen}
+        selectedProviderId={providerId}
+        providers={providers}
+        isMutating={isSubmitting}
+        errorMessage={null}
+        onClose={() => setIsProviderSelectorOpen(false)}
+        onApply={(newProviderId) => {
+          setProviderId(newProviderId)
+          setErrorMessage(null)
+        }}
+        onCreateProvider={onCreateProvider}
+        onUpdateProvider={onUpdateProvider}
+      />
+
       <ClawChannelSelectorDialog
-        isOpen={isSelectorOpen}
+        isOpen={isChannelSelectorOpen}
         currentAssistantId={claw?.id ?? null}
         selectedChannelId={selectedChannelId}
         channels={configuredChannels}
         isMutating={isSubmitting}
         errorMessage={null}
-        onClose={() => setIsSelectorOpen(false)}
+        onClose={() => setIsChannelSelectorOpen(false)}
         onApply={(channelId) => {
           setSelectedChannelId(channelId)
           setErrorMessage(null)
