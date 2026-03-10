@@ -965,6 +965,8 @@ ${input.prompt}`
         ]
       : []
 
+    console.log('[AssistantRuntime] Agent workspace', workspace)
+
     const agent = new Agent({
       id: assistant.id,
       name: assistant.name,
@@ -1049,6 +1051,8 @@ ${input.prompt}`
       sandbox,
       ...(skillsPaths.length > 0 ? { skills: skillsPaths } : {})
     })
+
+    console.log('[AssistantRuntime] Workspace skills', skillsPaths)
 
     await workspace.init()
     return workspace

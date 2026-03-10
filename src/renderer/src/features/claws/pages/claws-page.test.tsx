@@ -94,8 +94,8 @@ describe('ClawsPage', () => {
       id: 'assistant-1',
       name: 'Ops Assistant',
       description: '',
-      instructions: 'Handle ops.',
       providerId: 'provider-1',
+      workspacePath: null,
       enabled: true,
       channel: {
         id: 'channel-1',
@@ -122,8 +122,8 @@ describe('ClawsPage', () => {
       id: 'assistant-1',
       name: 'Ops Assistant',
       description: '',
-      instructions: '',
       providerId: 'provider-1',
+      workspacePath: null,
       enabled: false,
       channel: {
         id: 'channel-1',
@@ -275,8 +275,8 @@ describe('ClawsPage', () => {
           id: 'assistant-1',
           name: 'Ops Assistant',
           description: '',
-          instructions: '',
           providerId: 'provider-1',
+          workspacePath: null,
           enabled: true,
           channel: {
             id: 'channel-1',
@@ -314,8 +314,8 @@ describe('ClawsPage', () => {
           id: 'assistant-1',
           name: 'Ops Assistant',
           description: '',
-          instructions: '',
           providerId: 'provider-1',
+          workspacePath: null,
           enabled: false,
           channel: null
         }
@@ -456,7 +456,7 @@ describe('ClawsPage', () => {
       assistant: {
         name: 'Ops Assistant',
         providerId: 'provider-1',
-        instructions: 'Handle ops.',
+        workspacePath: null,
         enabled: true
       },
       channel: {
@@ -584,7 +584,7 @@ describe('ClawsPage', () => {
       assistant: {
         name: 'Telegram Assistant',
         providerId: 'provider-1',
-        instructions: '',
+        workspacePath: null,
         enabled: true
       },
       channel: {
@@ -607,8 +607,8 @@ describe('ClawsPage', () => {
       id: 'assistant-telegram',
       name: 'Telegram Assistant',
       description: '',
-      instructions: '',
       providerId: 'provider-1',
+      workspacePath: null,
       enabled: true,
       channel: {
         id: 'channel-telegram',
@@ -742,8 +742,8 @@ describe('ClawsPage', () => {
       id: 'assistant-whatsapp',
       name: 'WhatsApp Assistant',
       description: '',
-      instructions: '',
       providerId: 'provider-1',
+      workspacePath: null,
       enabled: true,
       channel: {
         id: 'channel-whatsapp',
@@ -869,8 +869,8 @@ describe('ClawsPage', () => {
           id: 'assistant-telegram',
           name: 'Telegram Assistant',
           description: '',
-          instructions: '',
           providerId: 'provider-1',
+          workspacePath: null,
           enabled: true,
           channel: {
             id: 'channel-telegram',
@@ -930,8 +930,8 @@ describe('ClawsPage', () => {
           id: 'assistant-whatsapp',
           name: 'WhatsApp Assistant',
           description: '',
-          instructions: '',
           providerId: 'provider-1',
+          workspacePath: null,
           enabled: true,
           channel: {
             id: 'channel-whatsapp',
@@ -978,8 +978,8 @@ describe('ClawsPage', () => {
           id: 'assistant-1',
           name: 'Ops Assistant',
           description: '',
-          instructions: '',
           providerId: 'provider-1',
+          workspacePath: null,
           enabled: true,
           channel: {
             id: 'channel-1',

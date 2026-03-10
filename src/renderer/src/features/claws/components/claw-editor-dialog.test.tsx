@@ -89,6 +89,12 @@ describe('ClawEditorDialog', () => {
             throw new Error('not used')
           })}
           onDeleteChannel={vi.fn(async () => undefined)}
+          onCreateProvider={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onUpdateProvider={vi.fn(async () => {
+            throw new Error('not used')
+          })}
         />
       )
     })
@@ -120,7 +126,7 @@ describe('ClawEditorDialog', () => {
       assistant: {
         name: 'Ops Assistant',
         providerId: 'provider-1',
-        instructions: 'Handle ops.',
+        workspacePath: null,
         enabled: false
       }
     })
@@ -137,8 +143,8 @@ describe('ClawEditorDialog', () => {
             id: 'assistant-1',
             name: 'Ops Assistant',
             description: '',
-            instructions: '',
             providerId: 'provider-1',
+            workspacePath: null,
             enabled: true,
             channel: {
               id: 'channel-current',
@@ -172,6 +178,12 @@ describe('ClawEditorDialog', () => {
             throw new Error('not used')
           })}
           onDeleteChannel={vi.fn(async () => undefined)}
+          onCreateProvider={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onUpdateProvider={vi.fn(async () => {
+            throw new Error('not used')
+          })}
         />
       )
     })
@@ -216,7 +228,7 @@ describe('ClawEditorDialog', () => {
       assistant: {
         name: 'Ops Assistant',
         providerId: 'provider-1',
-        instructions: '',
+        workspacePath: null,
         enabled: false
       },
       channel: {
@@ -236,8 +248,8 @@ describe('ClawEditorDialog', () => {
             id: 'assistant-1',
             name: 'Ops Assistant',
             description: '',
-            instructions: '',
             providerId: 'provider-1',
+            workspacePath: null,
             enabled: true,
             channel: {
               id: 'channel-current',
@@ -282,6 +294,12 @@ describe('ClawEditorDialog', () => {
             throw new Error('not used')
           })}
           onDeleteChannel={vi.fn(async () => undefined)}
+          onCreateProvider={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onUpdateProvider={vi.fn(async () => {
+            throw new Error('not used')
+          })}
         />
       )
     })
@@ -326,7 +344,7 @@ describe('ClawEditorDialog', () => {
       assistant: {
         name: 'Ops Assistant',
         providerId: 'provider-1',
-        instructions: '',
+        workspacePath: null,
         enabled: true
       },
       channel: {

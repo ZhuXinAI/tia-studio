@@ -14,6 +14,7 @@ import { Textarea } from '../../../components/ui/textarea'
 import { Switch } from '../../../components/ui/switch'
 import { Avatar, AvatarFallback, AvatarImage } from '../../../components/ui/avatar'
 import { useTranslation } from '../../../i18n/use-app-translation'
+import type { TFunction } from 'i18next'
 import { cn } from '../../../lib/utils'
 import { providerTypeLabel } from '../claw-labels'
 import type {
@@ -89,7 +90,7 @@ function getProviderInitials(name: string): string {
     .toUpperCase()
 }
 
-function getProviderTypeDescription(type: ProviderType, translate: Translate): string {
+function getProviderTypeDescription(type: ProviderType, translate: TFunction): string {
   return translate(`settings.providers.typeDescriptions.${type}`)
 }
 

@@ -74,7 +74,6 @@ describe('claws query api client', () => {
             id: 'assistant-1',
             name: 'Ops Assistant',
             description: '',
-            instructions: 'Handle ops.',
             providerId: 'provider-1',
             enabled: true,
             channel: null
@@ -91,7 +90,6 @@ describe('claws query api client', () => {
       assistant: {
         name: 'Ops Assistant',
         providerId: 'provider-1',
-        instructions: 'Handle ops.',
         enabled: true
       },
       channel: {
