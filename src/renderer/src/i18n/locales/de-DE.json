@@ -628,7 +628,7 @@
       "tokens": "Token",
       "tokenInput": "{{value}} eingehend",
       "tokenOutput": "{{value}} ausgehend",
-      "modeLabel": "Standard-Assistentenchat",
+      "modeLabel": "Chat mit dem Assistenten {{name}}",
       "newThread": "Neuer Thread",
       "setupIncomplete": "Die Assistenteneinrichtung ist unvollständig. Öffne „Konfigurieren“, um Provider und Modell festzulegen, bevor du Nachrichten sendest.",
       "composer": {

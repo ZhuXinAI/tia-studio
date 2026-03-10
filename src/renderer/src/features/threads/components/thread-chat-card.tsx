@@ -177,6 +177,7 @@ export function ThreadChatCard({
 
   const canCompose =
     Boolean(selectedAssistant && readiness.canChat) && !isChatStreaming && !isLoadingChatHistory
+  const assistantName = selectedAssistant?.name ?? t('threads.chat.defaultAssistantName')
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
@@ -189,9 +190,7 @@ export function ThreadChatCard({
           <div className="flex h-full flex-nowrap items-center justify-between gap-3 overflow-hidden">
             <CardTitle className="min-w-0 flex-1 truncate text-base">
               {selectedThread?.title ??
-                t('threads.chat.titleWithAssistant', {
-                  name: selectedAssistant?.name ?? t('threads.chat.defaultAssistantName')
-                })}
+                t('threads.chat.titleWithAssistant', { name: assistantName })}
             </CardTitle>
             <div className="flex shrink-0 items-center gap-2">
               {tokenUsage && (
@@ -216,7 +215,7 @@ export function ThreadChatCard({
               )}
               <div className="bg-muted/50 text-muted-foreground inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs">
                 <Sparkles className="size-3.5" />
-                {t('threads.chat.modeLabel')}
+                {t('threads.chat.modeLabel', { name: assistantName })}
               </div>
               <Button
                 type="button"
@@ -251,7 +250,7 @@ export function ThreadChatCard({
             ) : null}
 
             <ThreadChatMessageList
-              assistantName={selectedAssistant?.name ?? t('threads.chat.defaultAssistantName')}
+              assistantName={assistantName}
               isLoadingChatHistory={isLoadingChatHistory}
               isChatStreaming={isChatStreaming}
               loadError={loadError}

@@ -628,7 +628,7 @@
       "tokens": "トークン",
       "tokenInput": "{{value}} 入力",
       "tokenOutput": "{{value}} 出力",
-      "modeLabel": "デフォルトのアシスタントチャット",
+      "modeLabel": "{{name}} のアシスタントチャット",
       "newThread": "新しいスレッド",
       "setupIncomplete": "アシスタントの設定が不完全です。メッセージを送る前に「設定」を開いてプロバイダーとモデルを設定してください。",
       "composer": {

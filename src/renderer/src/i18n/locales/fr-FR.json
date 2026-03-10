@@ -628,7 +628,7 @@
       "tokens": "tokens",
       "tokenInput": "{{value}} entrée",
       "tokenOutput": "{{value}} sortie",
-      "modeLabel": "Chat assistant par défaut",
+      "modeLabel": "Chat avec l’assistant {{name}}",
       "newThread": "Nouveau fil",
       "setupIncomplete": "La configuration de l’assistant est incomplète. Ouvrez « Configurer » pour définir le fournisseur et le modèle avant d’envoyer des messages.",
       "composer": {

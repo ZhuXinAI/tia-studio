@@ -628,7 +628,7 @@
       "tokens": "權杖",
       "tokenInput": "{{value}} 輸入",
       "tokenOutput": "{{value}} 輸出",
-      "modeLabel": "預設助手對話",
+      "modeLabel": "{{name}} 助手對話",
       "newThread": "新增執行緒",
       "setupIncomplete": "助手設定尚未完成。請先打開「設定」配置供應商與模型，再傳送訊息。",
       "composer": {

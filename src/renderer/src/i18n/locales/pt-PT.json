@@ -628,7 +628,7 @@
       "tokens": "tokens",
       "tokenInput": "{{value}} entrada",
       "tokenOutput": "{{value}} saída",
-      "modeLabel": "Chat predefinido do assistente",
+      "modeLabel": "Chat com o assistente {{name}}",
       "newThread": "Nova thread",
       "setupIncomplete": "A configuração do assistente está incompleta. Abra “Configurar” para definir fornecedor e modelo antes de enviar mensagens.",
       "composer": {

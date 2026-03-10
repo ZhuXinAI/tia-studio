@@ -1,4 +1,4 @@
-import { Bot, Home, Settings, Users } from 'lucide-react'
+import { Bot, Home, Settings } from 'lucide-react'
 import { useTranslation } from '../../i18n/use-app-translation'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
@@ -9,7 +9,7 @@ export function AppShell(): React.JSX.Element {
   const location = useLocation()
   const isChatRoute = location.pathname.startsWith('/chat')
   const isClawsRoute = location.pathname.startsWith('/claws')
-  const isTeamRoute = location.pathname.startsWith('/team')
+  // const isTeamRoute = location.pathname.startsWith('/team')
   const isSettingsRoute = location.pathname.startsWith('/settings')
 
   return (
@@ -41,7 +41,7 @@ export function AppShell(): React.JSX.Element {
               </NavLink>
             </Button>
 
-            <Button
+            {/* <Button
               asChild
               variant={isTeamRoute ? 'secondary' : 'ghost'}
               size="sm"
@@ -51,7 +51,7 @@ export function AppShell(): React.JSX.Element {
                 <Users className="size-4" />
                 <span className="text-sm font-medium">{t('appShell.nav.team')}</span>
               </NavLink>
-            </Button>
+            </Button> */}
           </div>
 
           <Button

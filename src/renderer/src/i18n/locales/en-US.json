@@ -630,7 +630,7 @@
       "tokens": "tokens",
       "tokenInput": "{{value}} in",
       "tokenOutput": "{{value}} out",
-      "modeLabel": "Default assistant chat",
+      "modeLabel": "{{name}} assistant chat",
       "newThread": "New thread",
       "setupIncomplete": "Assistant setup is incomplete. Open Configure to set provider and model before sending messages.",
       "composer": {

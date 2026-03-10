@@ -628,7 +628,7 @@
       "tokens": "令牌",
       "tokenInput": "{{value}} 输入",
       "tokenOutput": "{{value}} 输出",
-      "modeLabel": "默认助手聊天",
+      "modeLabel": "{{name}} 助手聊天",
       "newThread": "新建线程",
       "setupIncomplete": "助手设置未完成。请先打开“配置”设置提供商和模型，再发送消息。",
       "composer": {

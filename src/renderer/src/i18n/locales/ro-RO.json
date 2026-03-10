@@ -628,7 +628,7 @@
       "tokens": "token-uri",
       "tokenInput": "{{value}} intrare",
       "tokenOutput": "{{value}} ieșire",
-      "modeLabel": "Chat implicit al asistentului",
+      "modeLabel": "Chat cu asistentul {{name}}",
       "newThread": "Thread nou",
       "setupIncomplete": "Configurarea asistentului este incompletă. Deschide „Configurează” pentru a seta furnizorul și modelul înainte de a trimite mesaje.",
       "composer": {
