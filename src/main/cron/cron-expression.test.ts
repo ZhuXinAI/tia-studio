@@ -12,13 +12,23 @@ describe('cron expression helpers', () => {
     expect(isValidCronExpression('0 24 * * *')).toBe(false)
   })
 
-  it('computes the next future run from a timestamp', () => {
-    expect(
-      getNextCronRunAt('30 10 * * *', new Date('2026-03-09T10:15:45.000Z'))?.toISOString()
-    ).toBe('2026-03-09T10:30:00.000Z')
+  it('computes the next future run from a timestamp using local time', () => {
+    // from = local 10:15, cron = "30 10 * * *" → next = local 10:30 same day
+    const from1 = new Date(2026, 2, 9, 10, 15, 45)
+    const result1 = getNextCronRunAt('30 10 * * *', from1)!
+    expect(result1.getFullYear()).toBe(2026)
+    expect(result1.getMonth()).toBe(2)
+    expect(result1.getDate()).toBe(9)
+    expect(result1.getHours()).toBe(10)
+    expect(result1.getMinutes()).toBe(30)
 
-    expect(
-      getNextCronRunAt('30 10 * * *', new Date('2026-03-09T10:30:00.000Z'))?.toISOString()
-    ).toBe('2026-03-10T10:30:00.000Z')
+    // from = local 10:30, cron = "30 10 * * *" → next = local 10:30 next day
+    const from2 = new Date(2026, 2, 9, 10, 30, 0)
+    const result2 = getNextCronRunAt('30 10 * * *', from2)!
+    expect(result2.getFullYear()).toBe(2026)
+    expect(result2.getMonth()).toBe(2)
+    expect(result2.getDate()).toBe(10)
+    expect(result2.getHours()).toBe(10)
+    expect(result2.getMinutes()).toBe(30)
   })
 })

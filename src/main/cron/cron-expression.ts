@@ -143,8 +143,8 @@ function fieldMatches(field: CronField, value: number): boolean {
 }
 
 function matchesDay(parsed: ParsedCronExpression, date: Date): boolean {
-  const dayOfMonthMatches = fieldMatches(parsed.dayOfMonth, date.getUTCDate())
-  const dayOfWeekMatches = fieldMatches(parsed.dayOfWeek, date.getUTCDay())
+  const dayOfMonthMatches = fieldMatches(parsed.dayOfMonth, date.getDate())
+  const dayOfWeekMatches = fieldMatches(parsed.dayOfWeek, date.getDay())
 
   if (parsed.dayOfMonth.wildcard && parsed.dayOfWeek.wildcard) {
     return true
@@ -163,17 +163,17 @@ function matchesDay(parsed: ParsedCronExpression, date: Date): boolean {
 
 function matchesCronExpression(parsed: ParsedCronExpression, date: Date): boolean {
   return (
-    fieldMatches(parsed.minute, date.getUTCMinutes()) &&
-    fieldMatches(parsed.hour, date.getUTCHours()) &&
-    fieldMatches(parsed.month, date.getUTCMonth() + 1) &&
+    fieldMatches(parsed.minute, date.getMinutes()) &&
+    fieldMatches(parsed.hour, date.getHours()) &&
+    fieldMatches(parsed.month, date.getMonth() + 1) &&
     matchesDay(parsed, date)
   )
 }
 
 function nextMinute(date: Date): Date {
   const next = new Date(date.getTime())
-  next.setUTCSeconds(0, 0)
-  next.setUTCMinutes(next.getUTCMinutes() + 1)
+  next.setSeconds(0, 0)
+  next.setMinutes(next.getMinutes() + 1)
   return next
 }
 
