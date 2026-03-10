@@ -198,7 +198,10 @@ export function ProvidersSettingsPage(): React.JSX.Element {
     setIsCreateDialogOpen(false)
   }
 
-  const handleSaveEditedProvider = async (values: SaveProviderInput): Promise<void> => {
+  const handleSaveEditedProvider = async (
+    values: SaveProviderInput,
+    onSuccess?: () => void
+  ): Promise<void> => {
     if (!selectedProvider) {
       toast.error(t('settings.providers.toasts.providerNotFound'))
       return
@@ -207,7 +210,10 @@ export function ProvidersSettingsPage(): React.JSX.Element {
     setIsSubmitting(true)
 
     try {
-      const updatedProvider = await updateProvider(selectedProvider.id, values)
+      const updatedProvider = await updateProvider(selectedProvider.id, {
+        ...values,
+        enabled: true
+      })
       setProviders((currentProviders) => {
         const nextProviders = currentProviders.map((provider) =>
           provider.id === updatedProvider.id ? updatedProvider : provider
@@ -217,6 +223,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
       })
       setSelectedProviderId(updatedProvider.id)
       toast.success(t('settings.providers.toasts.providerSaved'))
+      onSuccess?.()
     } catch (error) {
       toast.error(toErrorMessage(error, t))
     } finally {
