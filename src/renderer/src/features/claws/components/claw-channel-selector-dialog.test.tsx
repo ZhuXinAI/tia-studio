@@ -3,6 +3,7 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { i18n } from '../../../i18n'
 import type { ConfiguredClawChannelRecord } from '../claws-query'
 import { ClawChannelSelectorDialog } from './claw-channel-selector-dialog'
 
@@ -51,7 +52,7 @@ describe('ClawChannelSelectorDialog', () => {
     root = createRoot(container)
   })
 
-  afterEach(() => {
+  afterEach(async () => {
     act(() => {
       root.unmount()
     })
@@ -59,6 +60,7 @@ describe('ClawChannelSelectorDialog', () => {
     document.body.innerHTML = ''
     delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT
     vi.clearAllMocks()
+    await i18n.changeLanguage('en-US')
   })
 
   it('preselects the current channel and disables channels used by another assistant', async () => {
@@ -108,6 +110,41 @@ describe('ClawChannelSelectorDialog', () => {
     expect(currentButton.getAttribute('data-selected')).toBe('true')
     expect(currentButton.textContent).toContain('Selected')
     expect(claimedButton.disabled).toBe(true)
+  })
+
+  it('renders zh-CN channel selector strings and translated status labels', async () => {
+    await i18n.changeLanguage('zh-CN')
+
+    await act(async () => {
+      root.render(
+        <ClawChannelSelectorDialog
+          isOpen
+          currentAssistantId={null}
+          selectedChannelId="channel-lark"
+          channels={[
+            buildChannel({
+              id: 'channel-lark',
+              name: 'Lark 频道',
+              type: 'lark',
+              status: 'connected'
+            })
+          ]}
+          isMutating={false}
+          errorMessage={null}
+          onClose={() => undefined}
+          onApply={() => undefined}
+          onCreateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onDeleteChannel={vi.fn(async () => undefined)}
+        />
+      )
+    })
+    await flushAsyncWork()
+
+    expect(document.body.textContent).toContain('选择频道')
+    expect(document.body.textContent).toContain('Lark · 已连接')
+    expect(document.body.textContent).toContain('可用')
+    expect(document.body.textContent).toContain('添加频道')
   })
 
   it('clears the selection and applies an empty channel id', async () => {

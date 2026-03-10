@@ -12,6 +12,7 @@ import {
 import { Input } from '../../../components/ui/input'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { cn } from '../../../lib/utils'
+import { channelStatusLabel, channelTypeLabel } from '../claw-labels'
 import type {
   ConfiguredClawChannelRecord,
   CreateClawChannelInput,
@@ -365,7 +366,8 @@ export function ClawChannelSelectorDialog({
                             ) : null}
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {channel.type} · {channel.status}
+                            {channelTypeLabel(channel.type, t)} ·{' '}
+                            {channelStatusLabel(channel.status, t)}
                           </p>
                         </div>
                         <span className="text-xs text-muted-foreground">{usageLabel(channel)}</span>

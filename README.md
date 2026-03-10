@@ -13,7 +13,12 @@
 
 </div>
 
-An easy way to run a local claw on your own machine — and a full-featured desktop app for building, chatting with, and operating AI assistants, teams, and channels.
+## Claim your Claw in only two steps
+
+1. Create or choose an assistant.
+2. Attach a channel and start operating locally.
+
+Run a local claw on your own machine in minutes — and use a full-featured desktop workspace to build, chat with, and operate AI assistants, teams, and channels.
 
 ## What is TIA Studio?
 

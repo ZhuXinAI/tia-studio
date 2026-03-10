@@ -275,9 +275,20 @@
         "anthropic": "Anthropic",
         "ollama": "Ollama"
       },
+      "typeDescriptions": {
+        "openai": "适用于 OpenAI API 及兼容服务（DeepSeek、Groq 等）。需要 API 密钥，支持自定义端点。",
+        "openai-response": "适用于使用 OpenAI 响应格式的服务。用于返回 OpenAI 兼容响应的第三方 API。",
+        "gemini": "适用于 Google Gemini 模型。需要从 ai.google.dev 获取 Google AI API 密钥。",
+        "anthropic": "适用于 Anthropic 的 Claude 模型。需要从 console.anthropic.com 获取 Anthropic API 密钥。",
+        "ollama": "适用于本地托管的 Ollama 模型。无需 API 密钥，只需指定本地 Ollama 端点。"
+      },
       "form": {
         "errors": {
-          "selectedModelRequired": "请选择模型"
+          "selectedModelRequired": "已选模型为必填项",
+          "nameRequired": "提供商名称为必填项",
+          "apiKeyRequired": "API Key 为必填项",
+          "createFailed": "创建提供商失败",
+          "updateFailed": "更新提供商失败"
         },
         "enableProvider": "启用提供商",
         "enableProviderDescription": "在模型选择中显示此提供商",
@@ -393,8 +404,8 @@
       "disableButton": "禁用",
       "editButton": "编辑",
       "deleteButton": "删除",
-      "deleteConfirmPrompt": "Delete \"{{name}}\"? This will also delete all of its threads.",
-      "deleteConfirmFallbackLabel": "Unnamed claw"
+      "deleteConfirmPrompt": "删除“{{name}}”？这也会删除它的所有线程。",
+      "deleteConfirmFallbackLabel": "未命名 Claw"
     },
     "deleteDialog": {
       "title": "删除“{{name}}”？",
@@ -416,6 +427,7 @@
         "assistantName": "助手名称",
         "provider": "提供商",
         "instructions": "说明",
+        "workspacePath": "工作区路径",
         "channelAction": "频道操作",
         "existingChannel": "现有频道",
         "channelType": "频道类型",
@@ -425,6 +437,10 @@
         "appId": "应用 ID",
         "appSecret": "应用密钥"
       },
+      "pickFolder": "浏览",
+      "workspacePathPlaceholder": "根据助手名称自动生成",
+      "workspacePathHint": "留空可根据助手名称自动生成，或选择自定义文件夹",
+      "workspacePathReadOnly": "工作区路径会自动设置，无法更改",
       "selectProvider": "选择提供商",
       "selectChannel": "选择频道",
       "enableAfterSaving": "保存后启用此 Claw",
@@ -445,17 +461,23 @@
         "providerRequired": "提供商为必填项",
         "channelRequired": "请选择要绑定的频道",
         "channelCredentialsRequired": "Lark 频道名称、应用 ID 和应用密钥均为必填项",
-        "telegramCredentialsRequired": "Telegram 频道名称和 Bot Token 均为必填项"
+        "telegramCredentialsRequired": "Telegram 频道名称和 Bot Token 均为必填项",
+        "pickFolderFailed": "选择文件夹失败"
       }
+    },
+    "channelStatus": {
+      "connected": "已连接",
+      "disconnected": "未连接",
+      "error": "需处理"
     },
     "channelSelector": {
       "title": "选择频道",
-      "description": "从已配置的频道中选择、添加新频道，或让此 claw 不绑定频道。",
+      "description": "从已配置的频道中选择、添加新频道，或让这个 Claw 不绑定任何频道。",
       "openButton": "选择频道",
       "empty": "还没有已配置的频道。",
       "available": "可用",
-      "inUseByCurrent": "当前 claw 使用中",
-      "inUseByOther": "正在被 {{assistantName}} 使用",
+      "inUseByCurrent": "当前 Claw 正在使用",
+      "inUseByOther": "正由 {{assistantName}} 使用",
       "otherAssistantFallback": "其他助手",
       "actions": {
         "add": "添加频道",
@@ -486,17 +508,53 @@
       },
       "remove": {
         "title": "移除频道",
-        "description": "从已配置频道中移除 {{channelName}}？",
-        "descriptionFallback": "从已配置频道中移除此频道？",
+        "description": "要从已配置频道中移除 {{channelName}} 吗？",
+        "descriptionFallback": "要从已配置频道中移除此频道吗？",
         "confirm": "移除频道"
       },
       "errors": {
         "nameRequired": "频道名称为必填项",
-        "larkCredentialsRequired": "Lark 频道需要应用 ID 和应用密钥",
-        "telegramCredentialsRequired": "Telegram 频道需要 Bot 令牌",
+        "larkCredentialsRequired": "Lark 频道必须填写 App ID 和应用密钥",
+        "telegramCredentialsRequired": "Telegram 频道必须填写 Bot Token",
         "createFailed": "创建频道失败",
         "updateFailed": "更新频道失败",
         "deleteFailed": "删除频道失败"
+      }
+    },
+    "providerSelector": {
+      "title": "选择提供商",
+      "description": "从已配置的提供商中选择，或添加新的提供商。",
+      "openButton": "选择提供商",
+      "noProviderSelected": "未选择提供商",
+      "required": "提供商为必填项",
+      "empty": "还没有已配置的提供商。",
+      "enabled": "已启用",
+      "disabled": "已禁用",
+      "actions": {
+        "add": "添加提供商",
+        "edit": "编辑提供商",
+        "clear": "清除选择",
+        "cancel": "取消",
+        "apply": "应用"
+      },
+      "selectedBadge": "已选择",
+      "create": {
+        "title": "添加提供商",
+        "description": "创建新的模型提供商配置。",
+        "save": "添加提供商"
+      },
+      "edit": {
+        "title": "编辑提供商",
+        "description": "更新此提供商配置。",
+        "save": "保存更改",
+        "apiKeyOptional": "将 API Key 留空即可保留当前值。",
+        "apiKeyPlaceholder": "保持不变"
+      },
+      "errors": {
+        "nameRequired": "提供商名称为必填项",
+        "apiKeyRequired": "API Key 为必填项",
+        "createFailed": "创建提供商失败",
+        "updateFailed": "更新提供商失败"
       }
     },
     "pairings": {

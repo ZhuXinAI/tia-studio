@@ -25,7 +25,7 @@ import { TelegramChannel } from './channels/telegram-channel'
 import { WhatsAppAuthStateStore } from './channels/whatsapp-auth-state-store'
 import { WhatsAppChannel } from './channels/whatsapp-channel'
 import { AssistantCronJobsService } from './cron/assistant-cron-jobs-service'
-import { CronSchedulerService } from './cron/cron-scheduler-service'
+import { NodeCronSchedulerService } from './cron/node-cron-scheduler-service'
 import { AssistantHeartbeatsService } from './heartbeat/assistant-heartbeats-service'
 import { HeartbeatSchedulerService } from './heartbeat/heartbeat-scheduler-service'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
@@ -71,7 +71,7 @@ let webSearchSettingsWindow: BrowserWindow | null = null
 let managedRuntimeService: ManagedRuntimeService | null = null
 let channelService: ChannelService | null = null
 let channelMessageRouter: ChannelMessageRouter | null = null
-let cronSchedulerService: CronSchedulerService | null = null
+let cronSchedulerService: NodeCronSchedulerService | null = null
 let heartbeatSchedulerService: HeartbeatSchedulerService | null = null
 const searchBrowserPartition = 'persist:tia-browser-search'
 let uiConfigStore: UiConfigStore | null = null
@@ -268,7 +268,7 @@ async function startLocalApiServer(): Promise<void> {
     assistantRuntime,
     threadMessageEventsStore
   })
-  cronSchedulerService = new CronSchedulerService({
+  cronSchedulerService = new NodeCronSchedulerService({
     cronJobsRepo,
     cronJobRunsRepo,
     assistantsRepo,
