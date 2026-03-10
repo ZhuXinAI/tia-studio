@@ -404,6 +404,18 @@ async function ensureCronTables(db: AppDatabase): Promise<void> {
     await db.execute('ALTER TABLE app_cron_jobs ADD COLUMN last_error TEXT')
   }
 
+  if (!cronJobsColumns.includes('channel_id')) {
+    await db.execute('ALTER TABLE app_cron_jobs ADD COLUMN channel_id TEXT')
+  }
+
+  if (!cronJobsColumns.includes('remote_chat_id')) {
+    await db.execute('ALTER TABLE app_cron_jobs ADD COLUMN remote_chat_id TEXT')
+  }
+
+  if (!cronJobsColumns.includes('recurring')) {
+    await db.execute('ALTER TABLE app_cron_jobs ADD COLUMN recurring INTEGER NOT NULL DEFAULT 1')
+  }
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS app_cron_job_runs (
       id TEXT PRIMARY KEY,

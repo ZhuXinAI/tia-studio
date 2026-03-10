@@ -95,16 +95,16 @@ describe('createDefaultWorkspaceConfig', () => {
     vi.clearAllMocks()
   })
 
-  it('creates config with path property', () => {
+  it('creates config with rootPath property', () => {
     const result = createDefaultWorkspaceConfig('My Assistant')
     expect(result).toEqual({
-      path: '/Users/test/Library/Application Support/tia-studio/assistants/my_assistant'
+      rootPath: '/Users/test/Library/Application Support/tia-studio/assistants/my_assistant'
     })
   })
 
   it('returns object with correct structure', () => {
     const result = createDefaultWorkspaceConfig('Test')
-    expect(result).toHaveProperty('path')
-    expect(typeof result.path).toBe('string')
+    expect(result).toHaveProperty('rootPath')
+    expect(typeof result.rootPath).toBe('string')
   })
 })

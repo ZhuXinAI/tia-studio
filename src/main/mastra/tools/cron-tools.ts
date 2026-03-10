@@ -52,6 +52,7 @@ const cronJobOutputSchema = z.object({
   prompt: z.string(),
   cronExpression: z.string(),
   enabled: z.boolean(),
+  recurring: z.boolean(),
   lastRunAt: z.string().nullable(),
   nextRunAt: z.string().nullable(),
   lastRunStatus: z.enum(['success', 'failed']).nullable(),
@@ -65,6 +66,7 @@ function formatCronJob(cronJob: AppCronJob) {
     prompt: cronJob.prompt,
     cronExpression: cronJob.cronExpression,
     enabled: cronJob.enabled,
+    recurring: cronJob.recurring,
     lastRunAt: cronJob.lastRunAt,
     nextRunAt: cronJob.nextRunAt,
     lastRunStatus: cronJob.lastRunStatus,
@@ -76,17 +78,18 @@ export function createCronTools(options: CronToolsOptions) {
   const createCronJob = createTool({
     id: 'create-cron-job',
     description:
-      'Create a recurring cron job for this assistant. Use this when the user asks for scheduled follow-ups, reminders, or periodic summaries.',
+      'Create a cron job for this assistant. Supports both recurring schedules (daily, weekly, etc.) and one-time reminders. Set recurring=false for one-time execution. IMPORTANT: The prompt should be the ACTUAL TASK to execute, NOT a request. Remove phrases like "remind me to", "remind me of", "keep me updated on" - just state the task directly. Example: User says "remind me to call John" → prompt should be "call John" or "提醒：给John打电话".',
     inputSchema: z.object({
       name: z.string().min(1),
-      prompt: z.string().min(1),
+      prompt: z.string().min(1).describe('The actual task to execute when the cron job runs. Remove "remind me" phrases and state the task directly. Example: "提醒：开会了" instead of "提醒我：开会了"'),
       cronExpression: cronExpressionSchema,
-      enabled: z.boolean().default(true)
+      enabled: z.boolean().default(true),
+      recurring: z.boolean().default(true)
     }),
     outputSchema: cronJobOutputSchema.extend({
       message: z.string()
     }),
-    execute: async ({ name, prompt, cronExpression, enabled }, context) => {
+    execute: async ({ name, prompt, cronExpression, enabled, recurring }, context) => {
       const channelContext = getChannelExecutionContext(context)
 
       const cronJob = await options.cronJobService.createCronJob({
@@ -95,6 +98,7 @@ export function createCronTools(options: CronToolsOptions) {
         prompt,
         cronExpression,
         enabled,
+        recurring,
         channelId: channelContext?.channelId ?? null,
         remoteChatId: channelContext?.chatId ?? null
       })

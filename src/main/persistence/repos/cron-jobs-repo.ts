@@ -11,6 +11,9 @@ export type AppCronJob = {
   prompt: string
   cronExpression: string
   enabled: boolean
+  recurring: boolean
+  channelId: string | null
+  remoteChatId: string | null
   lastRunAt: string | null
   nextRunAt: string | null
   lastRunStatus: CronJobRunStatus | null
@@ -26,6 +29,9 @@ export type CreateCronJobInput = {
   prompt: string
   cronExpression: string
   enabled?: boolean
+  recurring?: boolean
+  channelId?: string | null
+  remoteChatId?: string | null
   lastRunAt?: string | null
   nextRunAt?: string | null
   lastRunStatus?: CronJobRunStatus | null
@@ -43,6 +49,9 @@ const CRON_JOB_SELECT = `
     prompt,
     cron_expression,
     enabled,
+    recurring,
+    channel_id,
+    remote_chat_id,
     last_run_at,
     next_run_at,
     last_run_status,
@@ -69,6 +78,9 @@ function parseCronJobRow(row: Record<string, unknown>): AppCronJob {
     prompt: String(row.prompt),
     cronExpression: String(row.cron_expression),
     enabled: Number(row.enabled) === 1,
+    recurring: Number(row.recurring ?? 1) === 1,
+    channelId: row.channel_id ? String(row.channel_id) : null,
+    remoteChatId: row.remote_chat_id ? String(row.remote_chat_id) : null,
     lastRunAt: row.last_run_at ? String(row.last_run_at) : null,
     nextRunAt: row.next_run_at ? String(row.next_run_at) : null,
     lastRunStatus: parseCronJobStatus(row.last_run_status),
@@ -90,6 +102,15 @@ export class CronJobsRepository {
   async listEnabled(): Promise<AppCronJob[]> {
     const result = await this.db.execute(
       `${CRON_JOB_SELECT} WHERE enabled = 1 ORDER BY created_at DESC`
+    )
+
+    return result.rows.map((row) => parseCronJobRow(row as Record<string, unknown>))
+  }
+
+  async listByAssistantId(assistantId: string): Promise<AppCronJob[]> {
+    const result = await this.db.execute(
+      `${CRON_JOB_SELECT} WHERE assistant_id = ? ORDER BY created_at DESC`,
+      [assistantId]
     )
 
     return result.rows.map((row) => parseCronJobRow(row as Record<string, unknown>))
@@ -119,12 +140,15 @@ export class CronJobsRepository {
           prompt,
           cron_expression,
           enabled,
+          recurring,
+          channel_id,
+          remote_chat_id,
           last_run_at,
           next_run_at,
           last_run_status,
           last_error
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         id,
@@ -134,6 +158,9 @@ export class CronJobsRepository {
         input.prompt,
         input.cronExpression,
         input.enabled === false ? 0 : 1,
+        input.recurring === false ? 0 : 1,
+        input.channelId ?? null,
+        input.remoteChatId ?? null,
         input.lastRunAt ?? null,
         input.nextRunAt ?? null,
         input.lastRunStatus ?? null,
@@ -165,6 +192,9 @@ export class CronJobsRepository {
           prompt = ?,
           cron_expression = ?,
           enabled = ?,
+          recurring = ?,
+          channel_id = ?,
+          remote_chat_id = ?,
           last_run_at = ?,
           next_run_at = ?,
           last_run_status = ?,
@@ -179,6 +209,9 @@ export class CronJobsRepository {
         input.prompt ?? existing.prompt,
         input.cronExpression ?? existing.cronExpression,
         input.enabled === undefined ? (existing.enabled ? 1 : 0) : input.enabled ? 1 : 0,
+        input.recurring === undefined ? (existing.recurring ? 1 : 0) : input.recurring ? 1 : 0,
+        'channelId' in input ? (input.channelId ?? null) : existing.channelId,
+        'remoteChatId' in input ? (input.remoteChatId ?? null) : existing.remoteChatId,
         'lastRunAt' in input ? (input.lastRunAt ?? null) : existing.lastRunAt,
         'nextRunAt' in input ? (input.nextRunAt ?? null) : existing.nextRunAt,
         'lastRunStatus' in input ? (input.lastRunStatus ?? null) : existing.lastRunStatus,

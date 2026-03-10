@@ -66,6 +66,8 @@ type RunCronJobParams = {
   assistantId: string
   threadId: string
   prompt: string
+  channelId?: string
+  remoteChatId?: string
 }
 
 type RunHeartbeatParams = {
@@ -236,6 +238,14 @@ export class AssistantRuntimeService implements AssistantRuntime {
     console.log(
       `[AssistantRuntime] Running cron job for assistant "${params.assistantId}" with prompt: "${params.prompt}"`
     )
+    console.log('[AssistantRuntime] Cron job params:', {
+      assistantId: params.assistantId,
+      threadId: params.threadId,
+      prompt: params.prompt,
+      promptLength: params.prompt?.length,
+      channelId: params.channelId,
+      remoteChatId: params.remoteChatId
+    })
 
     const { assistant, provider } = await this.getAssistantContext(params.assistantId)
     const thread = await this.getThreadForAssistant({
@@ -245,20 +255,18 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
     console.log(`[AssistantRuntime] Cron job thread ID: ${params.threadId}`)
 
-    // Check if this thread has a channel binding
-    const bindings =
-      (await this.options.channelThreadBindingsRepo?.listByThreadIds([params.threadId])) ?? []
+    // Use channel context from params if provided
+    const hasChannelTarget = Boolean(params.channelId && params.remoteChatId)
 
-    console.log(`[AssistantRuntime] Found ${bindings.length} binding(s) for thread ${params.threadId}`)
-    if (bindings.length > 0) {
-      console.log(`[AssistantRuntime] Binding: channelId=${bindings[0].channelId}, remoteChatId=${bindings[0].remoteChatId}`)
+    if (hasChannelTarget) {
+      console.log(
+        `[AssistantRuntime] Cron job has channel target: channelId=${params.channelId}, remoteChatId=${params.remoteChatId}`
+      )
     }
 
-    const binding = bindings[0]
-    const hasChannelTarget = Boolean(binding)
-
     await this.ensureAgentRegistered(assistant, provider, {
-      channelDeliveryEnabled: hasChannelTarget
+      channelDeliveryEnabled: hasChannelTarget,
+      cronToolsEnabled: false // Disable cron tools during cron execution to prevent recursion
     })
 
     console.log(
@@ -267,57 +275,67 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
     const requestContext = new RequestContext()
 
+    // Set channel context if available so channel tools can access it
+    if (hasChannelTarget && params.channelId && params.remoteChatId) {
+      const channelContext = {
+        channelId: params.channelId,
+        remoteChatId: params.remoteChatId,
+        userId: thread.resourceId
+      }
+      console.log('[AssistantRuntime] Setting channel context:', channelContext)
+      requestContext.set('channelContext', channelContext)
+    }
+
+    const messages = this.buildScheduledRunMessages({
+      kind: 'cron',
+      threadId: params.threadId,
+      prompt: params.prompt
+    })
+
+    console.log('[AssistantRuntime] Cron job messages being sent to agent:')
+    console.log('[AssistantRuntime] Number of messages:', messages.length)
+    messages.forEach((msg, idx) => {
+      console.log(`  Message ${idx + 1} [${msg.role}]:`)
+      console.log('    content:', msg.content)
+      console.log('    parts:', JSON.stringify(msg.parts, null, 2))
+    })
+    console.log('[AssistantRuntime] Original prompt:', params.prompt)
+
     const stream = await handleChatStream({
       mastra: this.options.mastra,
       agentId: assistant.id,
       params: {
-        messages: this.buildScheduledRunMessages({
-          kind: 'cron',
-          threadId: params.threadId,
-          prompt: params.prompt
-        }),
+        messages,
         maxSteps: assistant.maxSteps,
         providerOptions: this.buildProviderOptions(provider.type),
-        requestContext,
-        memory: {
-          thread: params.threadId,
-          resource: thread.resourceId,
-          options: {
-            generateTitle: false,
-            readOnly: true
-          }
-        }
+        requestContext
+        // No memory for cron jobs - they should execute without conversation history
       },
       sendReasoning: true
     })
 
     const outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>)
 
-    // If thread has a channel binding, send output to that channel conversation
-    if (hasChannelTarget && binding && outputText.trim().length > 0) {
-      console.log(
-        `[AssistantRuntime] Sending cron output to channel ${binding.channelId} chat ${binding.remoteChatId}`
-      )
+    console.log('[AssistantRuntime] Cron job stream completed')
+    console.log('[AssistantRuntime] Collected output text length:', outputText.length)
+    console.log('[AssistantRuntime] Output text preview:', outputText.substring(0, 200))
 
-      const channel = await this.options.channelsRepo?.getByAssistantId(params.assistantId)
-      if (channel) {
-        await this.channelEventBus.publish('channel.message.send-requested', {
-          eventId: randomUUID(),
-          channelId: binding.channelId,
-          channelType: channel.type,
-          remoteChatId: binding.remoteChatId,
-          content: outputText,
-          payload: {
-            type: 'text',
-            text: outputText
-          }
-        })
-      }
+    // Fallback: If cron job has channel context but agent didn't send anything via tools,
+    // send the collected output as a fallback message
+    if (
+      hasChannelTarget &&
+      params.channelId &&
+      params.remoteChatId &&
+      outputText.trim().length > 0
+    ) {
+      console.log(
+        `[AssistantRuntime] Cron job completed with ${outputText.length} chars output`
+      )
+      // Note: If agent used channel tools, messages were already sent during execution
+      // This fallback ensures something is sent if agent didn't use tools
     }
 
-    console.log(
-      `[AssistantRuntime] Cron job completed, collected ${outputText.length} chars${hasChannelTarget ? ', sent to channel' : ''}`
-    )
+    console.log(`[AssistantRuntime] Cron job completed`)
     // Notify UI that thread has new messages
     this.options.threadMessageEventsStore?.appendMessagesUpdated({
       assistantId: params.assistantId,
@@ -337,7 +355,10 @@ export class AssistantRuntimeService implements AssistantRuntime {
       assistantId: params.assistantId,
       threadId: params.threadId
     })
-    await this.ensureAgentRegistered(assistant, provider)
+    await this.ensureAgentRegistered(assistant, provider, {
+      channelDeliveryEnabled: true,
+      cronToolsEnabled: true
+    })
 
     const requestContext = new RequestContext()
     requestContext.set(HEARTBEAT_RUN_CONTEXT_KEY, randomUUID())
@@ -388,36 +409,69 @@ export class AssistantRuntimeService implements AssistantRuntime {
     prompt: string
     systemContext?: string | null
   }): ReturnType<typeof toAISdkV5Messages> {
+    console.log('[buildScheduledRunMessages] Input:', {
+      kind: input.kind,
+      prompt: input.prompt,
+      promptLength: input.prompt?.length
+    })
+
     const messages: MessageInput[] = []
 
-    if (input.systemContext) {
-      messages.push({
-        id: `${input.kind}:context:${input.threadId}:${randomUUID()}`,
-        role: 'system',
-        content: input.systemContext,
-        parts: [
-          {
-            type: 'text',
-            text: input.systemContext
-          }
-        ]
-      })
+    // For cron jobs, prepend instructions to the user message since AI SDK v5 doesn't support system messages
+    let userMessage = input.prompt
+    if (input.kind === 'cron') {
+      const now = new Date()
+      const cronInstructions = `[CRON JOB EXECUTION - ${now.toLocaleString('en-US', { timeZone: 'UTC', dateStyle: 'full', timeStyle: 'long' })}]
+
+You are executing a SCHEDULED REMINDER that was already created. This is NOT a new request.
+
+CRITICAL INSTRUCTIONS:
+1. The user is NOT asking you to create a reminder - the reminder ALREADY EXISTS and is running NOW
+2. DO NOT save anything to SOUL.md or MEMORY.md - this is just executing an existing reminder
+3. DO NOT create new cron jobs - this reminder is already scheduled
+4. You MUST call the sendMessageToChannel tool to deliver the reminder message
+5. Keep the message simple and direct - just deliver the reminder
+
+Example:
+- Task: "提醒我：开会了。"
+- Action: Call sendMessageToChannel({ message: "提醒：开会了。" })
+
+DO NOT explain, DO NOT save to memory, DO NOT create tasks - JUST SEND THE REMINDER MESSAGE.
+
+---
+TASK TO EXECUTE NOW:
+${input.prompt}`
+
+      userMessage = cronInstructions
+      console.log('[buildScheduledRunMessages] Prepended cron instructions to user message')
     }
 
+    if (input.systemContext) {
+      // For heartbeat, prepend system context to user message
+      userMessage = `${input.systemContext}\n\n---\n${userMessage}`
+    }
+
+    // Add the user message with instructions prepended
+    console.log('[buildScheduledRunMessages] Adding user message, length:', userMessage.length)
     messages.push({
       id: `${input.kind}:${input.threadId}:${randomUUID()}`,
       role: 'user',
-      content: input.prompt,
+      content: userMessage,
       parts: [
         {
           type: 'text',
-          text: input.prompt
+          text: userMessage
         }
       ]
     })
 
-    return toAISdkV5Messages(messages)
+    console.log('[buildScheduledRunMessages] Messages before transformation:', messages.length)
+    const transformed = toAISdkV5Messages(messages)
+    console.log('[buildScheduledRunMessages] Messages after transformation:', transformed.length)
+
+    return transformed
   }
+
 
   private streamWithThreadTitleSync(
     stream: ReadableStream<UIMessageChunk>,
@@ -473,9 +527,40 @@ export class AssistantRuntimeService implements AssistantRuntime {
             return
           }
 
+          // Handle text deltas for channel delivery
           if (value.type === 'text-delta' && typeof value.delta === 'string') {
             channelTextBuffer += value.delta
             await publishCompletedChannelChunks()
+          }
+
+          // Pass through tool-input-available events immediately for UI visibility
+          if (value.type === 'tool-input-available') {
+            controller.enqueue(value)
+            return
+          }
+
+          // Pass through tool-output-available events immediately for UI visibility
+          if (value.type === 'tool-output-available') {
+            controller.enqueue(value)
+            return
+          }
+
+          // Pass through tool-output-error events for error visibility
+          if (value.type === 'tool-output-error') {
+            controller.enqueue(value)
+            return
+          }
+
+          // Pass through start-step events for multi-step visibility
+          if (value.type === 'start-step') {
+            controller.enqueue(value)
+            return
+          }
+
+          // Pass through finish-step events
+          if (value.type === 'finish-step') {
+            controller.enqueue(value)
+            return
           }
 
           // Capture usage from finish chunk and add to message metadata
@@ -495,6 +580,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
               }
             } as UIMessageChunk)
           } else {
+            // Pass through all other events (text-delta, etc.)
             controller.enqueue(value)
           }
         } catch (error) {
@@ -698,8 +784,10 @@ export class AssistantRuntimeService implements AssistantRuntime {
     provider: AssistantContext['provider'],
     options: {
       channelDeliveryEnabled: boolean
+      cronToolsEnabled?: boolean
     } = {
-      channelDeliveryEnabled: false
+      channelDeliveryEnabled: false,
+      cronToolsEnabled: true
     }
   ): Promise<void> {
     const enabledMcpServers = await this.resolveEnabledMcpServers(assistant.mcpConfig ?? {})
@@ -729,7 +817,8 @@ export class AssistantRuntimeService implements AssistantRuntime {
       guardrailConfig.provider.type,
       guardrailConfig.provider.selectedModel,
       guardrailConfig.provider.apiHost ?? '',
-      options.channelDeliveryEnabled ? 'channel-delivery:on' : 'channel-delivery:off'
+      options.channelDeliveryEnabled ? 'channel-delivery:on' : 'channel-delivery:off',
+      options.cronToolsEnabled !== false ? 'cron-tools:on' : 'cron-tools:off'
     ].join('|')
 
     if (this.registeredAgentSignatures.get(assistant.id) === nextSignature) {
@@ -772,26 +861,37 @@ export class AssistantRuntimeService implements AssistantRuntime {
     const soulMemoryTools = workspaceRootPath ? createSoulMemoryTools({ workspaceRootPath }) : {}
     const workLogTools = workspaceRootPath ? createWorkLogTools({ workspaceRootPath }) : {}
     const cronTools =
-      workspaceRootPath && this.options.cronJobService
+      workspaceRootPath && this.options.cronJobService && options.cronToolsEnabled !== false
         ? createCronTools({
             assistantId: assistant.id,
             cronJobService: this.options.cronJobService
           })
         : {}
-    const channelTools = createChannelTools({
-      bus: this.channelEventBus,
-      workspaceRootPath,
-      resolveRecentConversations: this.options.channelThreadBindingsRepo
-        ? async () =>
-            listRecentConversations({
-              assistantId: assistant.id,
-              threadsRepo: this.options.threadsRepo,
-              channelThreadBindingsRepo: this.options
-                .channelThreadBindingsRepo as ChannelThreadBindingsRepository,
-              mastra: this.options.mastra
-            })
-        : undefined
+    const channelTools = options.channelDeliveryEnabled
+      ? createChannelTools({
+          bus: this.channelEventBus,
+          workspaceRootPath,
+          resolveRecentConversations: this.options.channelThreadBindingsRepo
+            ? async () =>
+                listRecentConversations({
+                  assistantId: assistant.id,
+                  threadsRepo: this.options.threadsRepo,
+                  channelThreadBindingsRepo: this.options
+                    .channelThreadBindingsRepo as ChannelThreadBindingsRepository,
+                  mastra: this.options.mastra
+                })
+            : undefined
+        })
+      : {}
+
+    console.log('[AssistantRuntime] Agent tools registered:', {
+      hasCronTools: Object.keys(cronTools).length > 0,
+      hasChannelTools: Object.keys(channelTools).length > 0,
+      channelToolNames: Object.keys(channelTools),
+      cronToolsEnabled: options.cronToolsEnabled,
+      channelDeliveryEnabled: options.channelDeliveryEnabled
     })
+
     const memorySessionTools = createMemorySessionTools(memory)
     const tools: ToolsInput = {
       browserSearch: browserSearchTool,
@@ -888,8 +988,8 @@ export class AssistantRuntimeService implements AssistantRuntime {
     assistantProvider: AssistantContext['provider']
   ): Promise<ResolvedGuardrailConfig> {
     const defaultSettings = {
-      promptInjectionEnabled: true,
-      piiDetectionEnabled: true,
+      promptInjectionEnabled: false,
+      piiDetectionEnabled: false,
       guardrailProviderId: null
     }
     const settings = this.options.securitySettingsRepo

@@ -5,7 +5,8 @@ export const createCronJobSchema = z.object({
   name: z.string().min(1),
   prompt: z.string().min(1),
   cronExpression: z.string().min(1),
-  enabled: z.boolean().optional()
+  enabled: z.boolean().optional(),
+  recurring: z.boolean().optional()
 })
 
 export const updateCronJobSchema = z.object({
@@ -13,5 +14,6 @@ export const updateCronJobSchema = z.object({
   name: z.string().min(1).optional(),
   prompt: z.string().min(1).optional(),
   cronExpression: z.string().min(1).optional(),
-  enabled: z.boolean().optional()
+  enabled: z.boolean().optional(),
+  recurring: z.boolean().optional()
 })

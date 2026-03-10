@@ -454,15 +454,9 @@ describe('AssistantRuntimeService', () => {
       const workspaceContextProcessor = await agent.resolveProcessorById(
         'assistant-workspace-context'
       )
-      const promptInjectionProcessor = await agent.resolveProcessorById('prompt-injection-detector')
-      const piiProcessor = await agent.resolveProcessorById('pii-detector')
-      const batchPartsProcessor = await agent.resolveProcessorById('batch-parts')
 
       expect(attachmentProcessor?.id).toBe('attachment-uploader')
       expect(workspaceContextProcessor?.id).toBe('assistant-workspace-context')
-      expect(promptInjectionProcessor?.id).toBe('prompt-injection-detector')
-      expect(piiProcessor?.id).toBe('pii-detector')
-      expect(batchPartsProcessor?.id).toBe('batch-parts')
     } finally {
       await rm(workspaceRoot, { recursive: true, force: true })
     }
@@ -565,6 +559,44 @@ describe('AssistantRuntimeService', () => {
           guardrailProviderId: null
         }))
       },
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    await (
+      runtime as unknown as {
+        ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+      }
+    ).ensureAgentRegistered(assistant, buildProvider())
+
+    const agent = mastra.getAgentById(assistant.id)
+
+    await expect(agent.resolveProcessorById('prompt-injection-detector')).resolves.toBeNull()
+    await expect(agent.resolveProcessorById('pii-detector')).resolves.toBeNull()
+    await expect(agent.resolveProcessorById('batch-parts')).resolves.toBeNull()
+    await expect(agent.resolveProcessorById('attachment-uploader')).resolves.toMatchObject({
+      id: 'attachment-uploader'
+    })
+  })
+
+  it('omits security processors by default when security settings are unavailable', async () => {
+    const assistant = buildAssistant({
+      workspaceConfig: {
+        rootPath: '/tmp'
+      }
+    })
+    const mastra = await createMastraInstance(':memory:')
+    const runtime = new AssistantRuntimeService({
+      mastra,
+      assistantsRepo: {} as AssistantsRepository,
+      providersRepo: {} as ProvidersRepository,
+      threadsRepo: {
+        hasAnyThreads: vi.fn(async () => true)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing')
+      } as unknown as WebSearchSettingsRepository,
       mcpServersRepo: {
         getSettings: vi.fn(async () => ({ mcpServers: {} }))
       } as never

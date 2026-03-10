@@ -279,14 +279,33 @@ async function startLocalApiServer(): Promise<void> {
     cronJobRunsRepo,
     assistantsRepo,
     runJob: async (job) => {
-      if (!job.threadId) {
+      let threadId = job.threadId
+
+      // If cron job has channel context, look up the thread from the channel binding
+      if (job.channelId && job.remoteChatId) {
+        const binding = await channelThreadBindingsRepo.getByChannelAndRemoteChat(
+          job.channelId,
+          job.remoteChatId
+        )
+        if (binding) {
+          threadId = binding.threadId
+        } else {
+          throw new Error(
+            `Channel binding not found for channelId=${job.channelId}, remoteChatId=${job.remoteChatId}`
+          )
+        }
+      }
+
+      if (!threadId) {
         throw new Error('Cron job thread is missing')
       }
 
       return assistantRuntime.runCronJob({
         assistantId: job.assistantId,
-        threadId: job.threadId,
-        prompt: job.prompt
+        threadId,
+        prompt: job.prompt,
+        channelId: job.channelId ?? undefined,
+        remoteChatId: job.remoteChatId ?? undefined
       })
     }
   })
@@ -294,6 +313,7 @@ async function startLocalApiServer(): Promise<void> {
     heartbeatsRepo,
     heartbeatRunsRepo,
     assistantsRepo,
+    debugMode: process.env.HEARTBEAT_DEBUG === 'true',
     ensureHeartbeatThread: (assistantId, heartbeatId) =>
       assistantHeartbeatsService.ensureHeartbeatThread(assistantId, heartbeatId),
     runHeartbeat: async (heartbeat) => {
@@ -319,7 +339,9 @@ async function startLocalApiServer(): Promise<void> {
       channels: channelsRepo,
       pairings: channelPairingsRepo,
       cronJobs: cronJobsRepo,
+      cronJobRuns: cronJobRunsRepo,
       heartbeats: heartbeatsRepo,
+      heartbeatRuns: heartbeatRunsRepo,
       teamWorkspaces: teamWorkspacesRepo,
       teamThreads: teamThreadsRepo,
       webSearchSettings: webSearchSettingsRepo,

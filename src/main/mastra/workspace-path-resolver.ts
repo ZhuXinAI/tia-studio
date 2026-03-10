@@ -34,6 +34,6 @@ export function resolveDefaultAssistantWorkspacePath(assistantName: string): str
  */
 export function createDefaultWorkspaceConfig(assistantName: string): Record<string, unknown> {
   return {
-    path: resolveDefaultAssistantWorkspacePath(assistantName)
+    rootPath: resolveDefaultAssistantWorkspacePath(assistantName)
   }
 }

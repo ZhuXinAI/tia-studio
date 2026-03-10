@@ -4,6 +4,7 @@ import {
   type WhatsAppAuthStateStore
 } from '../../channels/whatsapp-auth-state-store'
 import { BUILT_IN_DEFAULT_AGENT_MCP_KEY } from '../../default-agent/default-agent-bootstrap'
+import { AssistantHeartbeatsService } from '../../heartbeat/assistant-heartbeats-service'
 import { createDefaultWorkspaceConfig } from '../../mastra/workspace-path-resolver'
 import type { AppAssistant, AssistantsRepository } from '../../persistence/repos/assistants-repo'
 import type {
@@ -44,6 +45,17 @@ type RegisterClawsRouteOptions = {
   channelService: ChannelServiceLike
   whatsAppAuthStateStore?: Pick<WhatsAppAuthStateStore, 'get'>
   cronSchedulerService?: CronSchedulerServiceLike
+  heartbeatsRepo?: Pick<
+    import('../../persistence/repos/assistant-heartbeats-repo').AssistantHeartbeatsRepository,
+    'getByAssistantId' | 'upsertForAssistant' | 'update'
+  >
+  threadsRepo?: Pick<
+    import('../../persistence/repos/threads-repo').ThreadsRepository,
+    'getById' | 'create'
+  >
+  heartbeatSchedulerService?: {
+    reload(): Promise<void>
+  }
 }
 
 type ClawResponse = {
@@ -201,7 +213,9 @@ async function toClawResponse(
 ): Promise<ClawResponse> {
   const counts = channel ? await getChannelPairingCounts(channel, options) : null
   const workspacePath =
-    typeof assistant.workspaceConfig.path === 'string' ? assistant.workspaceConfig.path : null
+    typeof assistant.workspaceConfig.rootPath === 'string'
+      ? assistant.workspaceConfig.rootPath
+      : null
 
   return {
     id: assistant.id,
@@ -538,6 +552,17 @@ function resolveAssistantEnabledValue(input: {
 }
 
 export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions): void {
+  // Create heartbeats service if repositories are available
+  const heartbeatsService =
+    options.heartbeatsRepo && options.threadsRepo
+      ? new AssistantHeartbeatsService({
+          heartbeatsRepo: options.heartbeatsRepo,
+          assistantsRepo: options.assistantsRepo,
+          threadsRepo: options.threadsRepo,
+          reloadScheduler: async () => options.heartbeatSchedulerService?.reload()
+        })
+      : null
+
   app.get('/v1/claws', async (context) => {
     return context.json({
       claws: await listVisibleClaws(options),
@@ -659,7 +684,7 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
     const hasChannel = Boolean(parsed.data.channel)
 
     const workspaceConfig = parsed.data.assistant.workspacePath
-      ? { path: parsed.data.assistant.workspacePath }
+      ? { rootPath: parsed.data.assistant.workspacePath }
       : createDefaultWorkspaceConfig(parsed.data.assistant.name)
 
     const assistant = await options.assistantsRepo.create({
@@ -672,6 +697,20 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
         fallbackEnabled: false
       })
     })
+
+    // Create default heartbeat with 1-hour interval
+    if (heartbeatsService) {
+      await heartbeatsService
+        .upsertHeartbeat({
+          assistantId: assistant.id,
+          enabled: true,
+          intervalMinutes: 60,
+          prompt: 'Review recent work logs and recent conversations. Follow up only if needed.'
+        })
+        .catch((error) => {
+          console.error('[ClawsRoute] Failed to create default heartbeat:', error)
+        })
+    }
 
     if (parsed.data.channel?.mode === 'create') {
       await options.channelsRepo.create({

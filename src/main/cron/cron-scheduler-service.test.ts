@@ -33,6 +33,9 @@ function createCronJob(overrides?: Partial<MutableCronJob>): MutableCronJob {
       prompt: 'Summarize the workspace status',
       cronExpression: '15 10 * * *',
       enabled: true,
+      recurring: true,
+      channelId: null,
+      remoteChatId: null,
       lastRunAt: null,
       nextRunAt: null,
       lastRunStatus: null,
@@ -62,7 +65,11 @@ class InMemoryCronJobsRepo {
       return null
     }
 
-    Object.assign(job, input)
+    for (const [key, value] of Object.entries(input)) {
+      if (value !== undefined) {
+        Object.assign(job, { [key]: value })
+      }
+    }
     job.updatedAt = new Date().toISOString()
     return { ...job }
   }

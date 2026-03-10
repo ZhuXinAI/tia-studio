@@ -1,10 +1,12 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { AssistantHeartbeatsRepository } from '../persistence/repos/assistant-heartbeats-repo'
+import type { AssistantHeartbeatRunsRepository } from '../persistence/repos/assistant-heartbeat-runs-repo'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { ChannelsRepository } from '../persistence/repos/channels-repo'
 import type { ChannelPairingsRepository } from '../persistence/repos/channel-pairings-repo'
 import type { CronJobsRepository } from '../persistence/repos/cron-jobs-repo'
+import type { CronJobRunsRepository } from '../persistence/repos/cron-job-runs-repo'
 import type { McpServersRepository } from '../persistence/repos/mcp-servers-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { SecuritySettingsRepository } from '../persistence/repos/security-settings-repo'
@@ -47,7 +49,9 @@ type CreateAppOptions = {
     channels: ChannelsRepository
     pairings: ChannelPairingsRepository
     cronJobs: CronJobsRepository
+    cronJobRuns: CronJobRunsRepository
     heartbeats: AssistantHeartbeatsRepository
+    heartbeatRuns: AssistantHeartbeatRunsRepository
   }
   assistantRuntime?: AssistantRuntime
   teamRuntime?: TeamRuntime
@@ -114,13 +118,19 @@ export function createApp(options: CreateAppOptions): Hono {
         pairingsRepo: options.repositories.pairings,
         channelService: options.channelService,
         whatsAppAuthStateStore: options.whatsAppAuthStateStore,
-        cronSchedulerService: options.cronSchedulerService
+        cronSchedulerService: options.cronSchedulerService,
+        heartbeatsRepo: options.repositories.heartbeats,
+        threadsRepo: options.repositories.threads,
+        heartbeatSchedulerService: options.heartbeatSchedulerService
       })
     }
     registerAssistantHeartbeatRoute(app, {
       assistantsRepo: options.repositories.assistants,
       threadsRepo: options.repositories.threads,
       heartbeatsRepo: options.repositories.heartbeats,
+      heartbeatRunsRepo: options.repositories.heartbeatRuns,
+      cronJobsRepo: options.repositories.cronJobs,
+      cronJobRunsRepo: options.repositories.cronJobRuns,
       heartbeatSchedulerService: options.heartbeatSchedulerService
     })
     registerThreadsRoute(app, {

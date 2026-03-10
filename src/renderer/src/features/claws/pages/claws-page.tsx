@@ -50,6 +50,8 @@ import {
 import { ClawCard } from '../components/claw-card'
 import { ClawEditorDialog } from '../components/claw-editor-dialog'
 import { ClawPairingsDialog } from '../components/claw-pairings-dialog'
+import { ClawHeartbeatMonitorDialog } from '../components/claw-heartbeat-monitor-dialog'
+import { ClawCronMonitorDialog } from '../components/claw-cron-monitor-dialog'
 
 function emptyClawsResponse(): ClawsResponse {
   return {
@@ -88,6 +90,8 @@ export function ClawsPage(): React.JSX.Element {
   const [isPairingsSubmitting, setIsPairingsSubmitting] = useState(false)
   const [pairingsErrorMessage, setPairingsErrorMessage] = useState<string | null>(null)
   const [clawPendingDelete, setClawPendingDelete] = useState<ClawRecord | null>(null)
+  const [heartbeatMonitorClaw, setHeartbeatMonitorClaw] = useState<ClawRecord | null>(null)
+  const [cronMonitorClaw, setCronMonitorClaw] = useState<ClawRecord | null>(null)
 
   async function refreshPage(): Promise<void> {
     const [nextClaws, nextProviders] = await Promise.all([listClaws(), listProviders()])
@@ -457,6 +461,8 @@ export function ClawsPage(): React.JSX.Element {
               }}
               onDelete={() => setClawPendingDelete(claw)}
               onManagePairings={() => void handleOpenPairings(claw)}
+              onViewHeartbeat={() => setHeartbeatMonitorClaw(claw)}
+              onViewCron={() => setCronMonitorClaw(claw)}
             />
           ))}
         </div>
@@ -507,6 +513,20 @@ export function ClawsPage(): React.JSX.Element {
           onApprove={(pairingId) => handlePairingAction(approveClawPairing, pairingId)}
           onReject={(pairingId) => handlePairingAction(rejectClawPairing, pairingId)}
           onRevoke={(pairingId) => handlePairingAction(revokeClawPairing, pairingId)}
+        />
+
+        <ClawHeartbeatMonitorDialog
+          isOpen={heartbeatMonitorClaw !== null}
+          assistantId={heartbeatMonitorClaw?.id ?? null}
+          assistantName={heartbeatMonitorClaw?.name ?? ''}
+          onClose={() => setHeartbeatMonitorClaw(null)}
+        />
+
+        <ClawCronMonitorDialog
+          isOpen={cronMonitorClaw !== null}
+          assistantId={cronMonitorClaw?.id ?? null}
+          assistantName={cronMonitorClaw?.name ?? ''}
+          onClose={() => setCronMonitorClaw(null)}
         />
 
         <Dialog

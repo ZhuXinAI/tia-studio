@@ -4,6 +4,7 @@ import type { AppDatabase } from '../../persistence/client'
 import { migrateAppSchema } from '../../persistence/migrate'
 import { AssistantHeartbeatsRepository } from '../../persistence/repos/assistant-heartbeats-repo'
 import { AssistantsRepository } from '../../persistence/repos/assistants-repo'
+import { CronJobsRepository } from '../../persistence/repos/cron-jobs-repo'
 import { ProvidersRepository } from '../../persistence/repos/providers-repo'
 import { ThreadsRepository } from '../../persistence/repos/threads-repo'
 import { registerAssistantHeartbeatRoute } from './assistant-heartbeat-route'
@@ -15,6 +16,7 @@ describe('assistant heartbeat route', () => {
   let providersRepo: ProvidersRepository
   let threadsRepo: ThreadsRepository
   let heartbeatsRepo: AssistantHeartbeatsRepository
+  let cronJobsRepo: CronJobsRepository
   let schedulerReload: ReturnType<typeof vi.fn<() => Promise<void>>>
 
   beforeEach(async () => {
@@ -23,12 +25,20 @@ describe('assistant heartbeat route', () => {
     providersRepo = new ProvidersRepository(db)
     threadsRepo = new ThreadsRepository(db)
     heartbeatsRepo = new AssistantHeartbeatsRepository(db)
+    cronJobsRepo = new CronJobsRepository(db)
     schedulerReload = vi.fn(async (): Promise<void> => undefined)
     app = new Hono()
     registerAssistantHeartbeatRoute(app, {
       assistantsRepo,
       threadsRepo,
       heartbeatsRepo,
+      heartbeatRunsRepo: {
+        listByHeartbeatId: vi.fn().mockResolvedValue([])
+      } as any,
+      cronJobsRepo,
+      cronJobRunsRepo: {
+        listByCronJobId: vi.fn().mockResolvedValue([])
+      } as any,
       heartbeatSchedulerService: {
         reload: schedulerReload
       }

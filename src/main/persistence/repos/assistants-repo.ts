@@ -34,6 +34,28 @@ export type CreateAssistantInput = {
 
 export type UpdateAssistantInput = Partial<CreateAssistantInput>
 
+function toNonEmptyString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
+
+function normalizeWorkspaceConfig(
+  workspaceConfig: Record<string, unknown> | null | undefined
+): Record<string, unknown> {
+  const normalizedConfig = { ...(workspaceConfig ?? {}) }
+  const rootPath =
+    toNonEmptyString(normalizedConfig.rootPath) ?? toNonEmptyString(normalizedConfig.path)
+
+  delete normalizedConfig.path
+
+  if (rootPath) {
+    normalizedConfig.rootPath = rootPath
+  } else {
+    delete normalizedConfig.rootPath
+  }
+
+  return normalizedConfig
+}
+
 function parseJsonObject(value: unknown): Record<string, unknown> {
   if (typeof value !== 'string' || value.trim().length === 0) {
     return {}
@@ -96,7 +118,7 @@ function parseAssistantRow(row: Record<string, unknown>): AppAssistant {
     instructions: String(row.instructions),
     enabled: Number(row.enabled) === 1,
     providerId: String(row.provider_id),
-    workspaceConfig: parseJsonObject(row.workspace_config),
+    workspaceConfig: normalizeWorkspaceConfig(parseJsonObject(row.workspace_config)),
     skillsConfig: parseJsonObject(row.skills_config),
     mcpConfig: parseJsonBooleanMap(row.mcp_config),
     maxSteps,
@@ -146,6 +168,7 @@ export class AssistantsRepository {
 
   async create(input: CreateAssistantInput): Promise<AppAssistant> {
     const id = randomUUID()
+    const workspaceConfig = normalizeWorkspaceConfig(input.workspaceConfig)
     await this.db.execute(
       'INSERT INTO app_assistants (id, name, description, instructions, enabled, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
@@ -155,7 +178,7 @@ export class AssistantsRepository {
         input.instructions ?? '',
         input.enabled === true ? 1 : 0,
         input.providerId,
-        JSON.stringify(input.workspaceConfig ?? {}),
+        JSON.stringify(workspaceConfig),
         JSON.stringify(input.skillsConfig ?? {}),
         JSON.stringify(input.mcpConfig ?? {}),
         input.maxSteps ?? DEFAULT_ASSISTANT_MAX_STEPS,
@@ -177,6 +200,8 @@ export class AssistantsRepository {
       return null
     }
 
+    const workspaceConfig = normalizeWorkspaceConfig(input.workspaceConfig ?? existing.workspaceConfig)
+
     await this.db.execute(
       'UPDATE app_assistants SET name = ?, description = ?, instructions = ?, enabled = ?, provider_id = ?, workspace_config = ?, skills_config = ?, mcp_config = ?, max_steps = ?, memory_config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [
@@ -185,7 +210,7 @@ export class AssistantsRepository {
         input.instructions ?? existing.instructions,
         input.enabled === undefined ? (existing.enabled ? 1 : 0) : input.enabled ? 1 : 0,
         input.providerId ?? existing.providerId,
-        JSON.stringify(input.workspaceConfig ?? existing.workspaceConfig),
+        JSON.stringify(workspaceConfig),
         JSON.stringify(input.skillsConfig ?? existing.skillsConfig),
         JSON.stringify(input.mcpConfig ?? existing.mcpConfig),
         input.maxSteps ?? existing.maxSteps,

@@ -204,14 +204,17 @@ export class CronSchedulerService {
       this.runningJobs.delete(jobId)
 
       const now = new Date()
-      const nextRunAt = getNextCronRunAt(job.cronExpression, now)?.toISOString() ?? null
+      const nextRunAt = job.recurring
+        ? getNextCronRunAt(job.cronExpression, now)?.toISOString() ?? null
+        : null
       const finishedAt = now.toISOString()
 
       await this.options.cronJobsRepo.update(jobId, {
         lastRunAt: scheduledFor,
         nextRunAt,
         lastRunStatus: status,
-        lastError: status === 'failed' ? String(errorPayload?.message ?? 'Unknown error') : null
+        lastError: status === 'failed' ? String(errorPayload?.message ?? 'Unknown error') : null,
+        enabled: job.recurring ? undefined : false
       })
 
       if (this.options.cronJobRunsRepo) {
@@ -237,6 +240,8 @@ export class CronSchedulerService {
       return
     }
 
-    await this.syncJob(latestJob)
+    if (latestJob.recurring) {
+      await this.syncJob(latestJob)
+    }
   }
 }

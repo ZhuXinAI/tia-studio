@@ -60,11 +60,11 @@ export class SecuritySettingsRepository {
     return {
       promptInjectionEnabled: normalizeBooleanPreference(
         preferences.get(promptInjectionEnabledKey),
-        true
+        false
       ),
       piiDetectionEnabled: normalizeBooleanPreference(
         preferences.get(piiDetectionEnabledKey),
-        true
+        false
       ),
       guardrailProviderId: normalizeStringPreference(preferences.get(guardrailProviderIdKey))
     }

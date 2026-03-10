@@ -25,6 +25,8 @@ interface ClawCardProps {
   onEdit: () => void
   onDelete: () => void
   onManagePairings?: () => void
+  onViewHeartbeat?: () => void
+  onViewCron?: () => void
 }
 
 export function ClawCard({
@@ -34,7 +36,9 @@ export function ClawCard({
   onToggleEnabled,
   onEdit,
   onDelete,
-  onManagePairings
+  onManagePairings,
+  onViewHeartbeat,
+  onViewCron
 }: ClawCardProps): React.JSX.Element {
   const { t } = useTranslation()
 
@@ -79,6 +83,16 @@ export function ClawCard({
               <DropdownMenuItem disabled={isSubmitting} onClick={onEdit}>
                 {t('claws.card.editButton')}
               </DropdownMenuItem>
+              {onViewHeartbeat ? (
+                <DropdownMenuItem disabled={isSubmitting} onClick={onViewHeartbeat}>
+                  View Heartbeat
+                </DropdownMenuItem>
+              ) : null}
+              {onViewCron ? (
+                <DropdownMenuItem disabled={isSubmitting} onClick={onViewCron}>
+                  View Cron
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 disabled={isSubmitting}

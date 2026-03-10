@@ -11,6 +11,9 @@ function buildCronJob(overrides?: Partial<AppCronJob>): AppCronJob {
     prompt: 'Summarize the workspace status.',
     cronExpression: '0 9 * * 1-5',
     enabled: true,
+    recurring: true,
+    channelId: null,
+    remoteChatId: null,
     lastRunAt: null,
     nextRunAt: '2026-03-10T09:00:00.000Z',
     lastRunStatus: null,
@@ -43,7 +46,8 @@ describe('cron tools', () => {
         name: 'Morning summary',
         prompt: 'Summarize the workspace status.',
         cronExpression: '0 9 * * 1-5',
-        enabled: true
+        enabled: true,
+        recurring: true
       },
       {} as never
     )
@@ -53,7 +57,10 @@ describe('cron tools', () => {
       name: 'Morning summary',
       prompt: 'Summarize the workspace status.',
       cronExpression: '0 9 * * 1-5',
-      enabled: true
+      enabled: true,
+      recurring: true,
+      channelId: null,
+      remoteChatId: null
     })
     expect(result).toMatchObject({
       cronJobId: 'cron-job-1',

@@ -26,7 +26,7 @@ TIA (short for "This Is AI") Studio is an Electron-based desktop app built to ma
 
 At the same time, TIA Studio is a full-featured assistant app. You can chat with a single assistant, coordinate a team of assistants, organize threaded work, and manage channels from one local-first desktop workspace.
 
-Today, TIA Studio supports Lark channels. Telegram and WhatsApp support are coming very soon, with more channels planned next.
+Today, TIA Studio supports Lark, Telegram, and WhatsApp channels, with more channels planned next.
 
 ## Full Assistant Workspace
 
@@ -101,8 +101,8 @@ That means adapting an assistant into a claw does **not** fork its identity:
 - 🤖 Full-featured AI assistant workspace with multiple assistants
 - 👥 Teams for coordinating assistants in one workspace
 - 📡 Channels that connect assistants to real conversations
-- ✅ Lark support available today
-- 🚧 Telegram and WhatsApp support coming very soon, with more channels next
+- ✅ Lark, Telegram, and WhatsApp support available today
+- 🚧 More channels coming soon
 - 💬 Thread-based conversation management
 - 🎨 Clean, dark-themed interface
 - 🔒 Local-first architecture
@@ -110,12 +110,12 @@ That means adapting an assistant into a claw does **not** fork its identity:
 
 ## Security
 
-TIA Studio now includes two Mastra-based LLM guardrails that are enabled by default:
+TIA Studio includes two Mastra-based LLM guardrails that are disabled by default:
 
 - **Prompt injection detection** blocks or neutralizes jailbreak-style input before it reaches the assistant model
 - **PII detection** redacts personally identifiable information in both user input and assistant output
 
-These protections are configurable from **Settings → Security & Privacy**. By default, the detectors reuse the selected model for each assistant. If you prefer, you can choose a separate enabled provider as the shared guardrail model for those checks. When no override is configured, or the override is unavailable, TIA Studio falls back to the assistant's selected model.
+These protections are configurable from **Settings → Security & Privacy**. If you enable them, the detectors reuse the selected model for each assistant by default. If you prefer, you can choose a separate enabled provider as the shared guardrail model for those checks. When no override is configured, or the override is unavailable, TIA Studio falls back to the assistant's selected model.
 
 ## Getting Started
 

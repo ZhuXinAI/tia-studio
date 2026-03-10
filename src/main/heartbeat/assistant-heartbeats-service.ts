@@ -50,7 +50,11 @@ export class AssistantHeartbeatsService {
   constructor(private readonly options: AssistantHeartbeatsServiceOptions) {}
 
   async getAssistantHeartbeat(assistantId: string): Promise<AppAssistantHeartbeat | null> {
-    await this.assertAssistantSupportsHeartbeat(assistantId)
+    const assistant = await this.options.assistantsRepo.getById(assistantId)
+    if (!assistant) {
+      throw new AssistantHeartbeatsServiceError(404, 'assistant_not_found', 'Assistant not found')
+    }
+
     return this.options.heartbeatsRepo.getByAssistantId(assistantId)
   }
 
@@ -115,7 +119,7 @@ export class AssistantHeartbeatsService {
       throw new AssistantHeartbeatsServiceError(404, 'assistant_not_found', 'Assistant not found')
     }
 
-    if (!hasWorkspaceRootPath(assistant.workspaceConfig)) {
+    if (!hasWorkspaceRootPath(assistant.workspaceConfig ?? {})) {
       throw new AssistantHeartbeatsServiceError(
         400,
         'assistant_workspace_required',

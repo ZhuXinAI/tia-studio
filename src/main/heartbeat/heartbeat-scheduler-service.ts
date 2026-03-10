@@ -38,6 +38,7 @@ type HeartbeatSchedulerServiceOptions = {
   runHeartbeat?: HeartbeatRunner
   ensureHeartbeatThread?: (assistantId: string, heartbeatId: string) => Promise<{ id: string }>
   writeWorkLog?: typeof appendWorkLogEntry
+  debugMode?: boolean
 }
 
 function toNonEmptyString(value: unknown): string | null {
@@ -58,10 +59,6 @@ function serializeError(error: unknown): Record<string, unknown> {
   }
 }
 
-function resolveNextRunAt(heartbeat: AppAssistantHeartbeat, now: Date): Date {
-  return new Date(now.getTime() + heartbeat.intervalMinutes * 60_000)
-}
-
 export class HeartbeatSchedulerService {
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>()
   private readonly runningHeartbeats = new Set<string>()
@@ -74,6 +71,9 @@ export class HeartbeatSchedulerService {
       return
     }
 
+    console.log('[HeartbeatScheduler] Starting heartbeat scheduler', {
+      debugMode: this.options.debugMode
+    })
     this.started = true
     await this.reload()
   }
@@ -93,6 +93,15 @@ export class HeartbeatSchedulerService {
     this.timers.clear()
 
     const heartbeats = await this.options.heartbeatsRepo.list()
+    console.log('[HeartbeatScheduler] Reloading heartbeats', {
+      count: heartbeats.length,
+      heartbeats: heartbeats.map((h) => ({
+        id: h.id,
+        assistantId: h.assistantId,
+        enabled: h.enabled,
+        intervalMinutes: h.intervalMinutes
+      }))
+    })
     for (const heartbeat of heartbeats) {
       await this.syncHeartbeat(heartbeat)
     }
@@ -105,6 +114,9 @@ export class HeartbeatSchedulerService {
     errorMessage: string | null
   }> {
     if (!this.options.assistantsRepo) {
+      console.log('[HeartbeatScheduler] No assistantsRepo provided, allowing heartbeat', {
+        assistantId
+      })
       return {
         assistantName: null,
         workspaceRootPath: null,
@@ -115,6 +127,7 @@ export class HeartbeatSchedulerService {
 
     const assistant = await this.options.assistantsRepo.getById(assistantId)
     if (!assistant) {
+      console.log('[HeartbeatScheduler] Assistant not found', { assistantId })
       return {
         assistantName: null,
         workspaceRootPath: null,
@@ -124,6 +137,10 @@ export class HeartbeatSchedulerService {
     }
 
     if (assistant.enabled === false) {
+      console.log('[HeartbeatScheduler] Assistant disabled', {
+        assistantId,
+        assistantName: assistant.name
+      })
       return {
         assistantName: assistant.name,
         workspaceRootPath: null,
@@ -133,18 +150,16 @@ export class HeartbeatSchedulerService {
     }
 
     const workspaceRootPath = toNonEmptyString(assistant.workspaceConfig.rootPath)
-    if (!workspaceRootPath) {
-      return {
-        assistantName: assistant.name,
-        workspaceRootPath: null,
-        enabled: false,
-        errorMessage: 'Assistant workspace is required for heartbeat'
-      }
-    }
+    console.log('[HeartbeatScheduler] Assistant state checked', {
+      assistantId,
+      assistantName: assistant.name,
+      workspaceRootPath,
+      e: assistant.enabled
+    })
 
     return {
       assistantName: assistant.name,
-      workspaceRootPath,
+      workspaceRootPath: workspaceRootPath || null,
       enabled: true,
       errorMessage: null
     }
@@ -154,6 +169,12 @@ export class HeartbeatSchedulerService {
     const assistantState = await this.getAssistantState(heartbeat.assistantId)
 
     if (!heartbeat.enabled || !assistantState.enabled) {
+      console.log('[HeartbeatScheduler] Heartbeat disabled or assistant disabled', {
+        heartbeatId: heartbeat.id,
+        heartbeatEnabled: heartbeat.enabled,
+        assistantEnabled: assistantState.enabled,
+        errorMessage: assistantState.errorMessage
+      })
       const updateInput: UpdateAssistantHeartbeatInput = { nextRunAt: null }
       if (assistantState.errorMessage !== null) {
         updateInput.lastError = assistantState.errorMessage
@@ -164,10 +185,24 @@ export class HeartbeatSchedulerService {
     }
 
     if (this.runningHeartbeats.has(heartbeat.id)) {
+      console.log('[HeartbeatScheduler] Heartbeat already running', {
+        heartbeatId: heartbeat.id
+      })
       return
     }
 
-    const nextRunAt = resolveNextRunAt(heartbeat, new Date())
+    // Use debug interval (2 minutes) if debugMode is enabled, otherwise use configured interval
+    const intervalMinutes = this.options.debugMode ? 2 : heartbeat.intervalMinutes
+    const nextRunAt = new Date(Date.now() + intervalMinutes * 60_000)
+
+    console.log('[HeartbeatScheduler] Scheduling heartbeat', {
+      heartbeatId: heartbeat.id,
+      assistantId: heartbeat.assistantId,
+      intervalMinutes,
+      debugMode: this.options.debugMode,
+      nextRunAt: nextRunAt.toISOString()
+    })
+
     await this.options.heartbeatsRepo.update(heartbeat.id, {
       nextRunAt: nextRunAt.toISOString()
     })
@@ -186,17 +221,33 @@ export class HeartbeatSchedulerService {
   }
 
   private async executeHeartbeat(heartbeatId: string, scheduledFor: string): Promise<void> {
+    console.log('[HeartbeatScheduler] Executing heartbeat', {
+      heartbeatId,
+      scheduledFor
+    })
+
     if (!this.started || this.runningHeartbeats.has(heartbeatId)) {
+      console.log('[HeartbeatScheduler] Skipping heartbeat execution', {
+        heartbeatId,
+        started: this.started,
+        alreadyRunning: this.runningHeartbeats.has(heartbeatId)
+      })
       return
     }
 
     const heartbeat = await this.options.heartbeatsRepo.getById(heartbeatId)
     if (!heartbeat) {
+      console.log('[HeartbeatScheduler] Heartbeat not found', { heartbeatId })
       return
     }
 
     const assistantState = await this.getAssistantState(heartbeat.assistantId)
     if (!heartbeat.enabled || !assistantState.enabled) {
+      console.log('[HeartbeatScheduler] Heartbeat or assistant disabled during execution', {
+        heartbeatId,
+        heartbeatEnabled: heartbeat.enabled,
+        assistantEnabled: assistantState.enabled
+      })
       const updateInput: UpdateAssistantHeartbeatInput = { nextRunAt: null }
       if (assistantState.errorMessage !== null) {
         updateInput.lastError = assistantState.errorMessage
@@ -207,10 +258,15 @@ export class HeartbeatSchedulerService {
     }
 
     if (!this.options.runHeartbeat) {
+      console.log('[HeartbeatScheduler] No runHeartbeat function provided', { heartbeatId })
       await this.syncHeartbeat(heartbeat)
       return
     }
 
+    console.log('[HeartbeatScheduler] Starting heartbeat execution', {
+      heartbeatId,
+      assistantId: heartbeat.assistantId
+    })
     this.runningHeartbeats.add(heartbeatId)
 
     const startedAt = new Date().toISOString()
@@ -234,8 +290,29 @@ export class HeartbeatSchedulerService {
         }
       }
 
+      console.log('[HeartbeatScheduler] Calling runHeartbeat', {
+        heartbeatId,
+        assistantId: heartbeatToRun.assistantId,
+        threadId: heartbeatToRun.threadId
+      })
+
       const result = await this.options.runHeartbeat(heartbeatToRun)
+
+      console.log('[HeartbeatScheduler] runHeartbeat returned', {
+        heartbeatId,
+        result,
+        resultType: typeof result,
+        hasOutputText: result && typeof result === 'object' && 'outputText' in result
+      })
+
       outputText = toNonEmptyString(result && typeof result === 'object' ? result.outputText : null)
+
+      console.log('[HeartbeatScheduler] Heartbeat execution completed', {
+        heartbeatId,
+        hasOutput: !!outputText,
+        outputLength: outputText?.length,
+        outputPreview: outputText?.substring(0, 100)
+      })
 
       if (assistantState.assistantName && assistantState.workspaceRootPath && outputText) {
         const writeWorkLog = this.options.writeWorkLog ?? appendWorkLogEntry
@@ -245,16 +322,35 @@ export class HeartbeatSchedulerService {
           outputText,
           occurredAt: new Date(scheduledFor)
         })
+        console.log('[HeartbeatScheduler] Work log written', {
+          heartbeatId,
+          workLogPath
+        })
       }
     } catch (error) {
       status = 'failed'
       errorPayload = serializeError(error)
+      console.error('[HeartbeatScheduler] Heartbeat execution failed', {
+        heartbeatId,
+        error: errorPayload
+      })
     } finally {
       this.runningHeartbeats.delete(heartbeatId)
 
       const now = new Date()
-      const nextRunAt = new Date(now.getTime() + heartbeat.intervalMinutes * 60_000).toISOString()
+      const intervalMinutes = this.options.debugMode ? 2 : heartbeat.intervalMinutes
+      const nextRunAt = new Date(now.getTime() + intervalMinutes * 60_000).toISOString()
       const finishedAt = now.toISOString()
+
+      console.log('[HeartbeatScheduler] Heartbeat execution finished', {
+        heartbeatId,
+        status,
+        hasOutput: !!outputText,
+        hasError: !!errorPayload,
+        nextRunAt,
+        intervalMinutes,
+        debugMode: this.options.debugMode
+      })
 
       await this.options.heartbeatsRepo.update(heartbeatId, {
         lastRunAt: scheduledFor,
@@ -264,6 +360,12 @@ export class HeartbeatSchedulerService {
       })
 
       if (this.options.heartbeatRunsRepo) {
+        console.log('[HeartbeatScheduler] Creating heartbeat run record', {
+          heartbeatId,
+          status,
+          hasOutputText: !!outputText,
+          hasError: !!errorPayload
+        })
         await this.options.heartbeatRunsRepo.create({
           heartbeatId,
           status,

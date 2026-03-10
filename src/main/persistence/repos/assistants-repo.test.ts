@@ -66,4 +66,24 @@ describe('AssistantsRepository', () => {
       enabled: true
     })
   })
+
+  it('normalizes legacy workspace path configs to rootPath', async () => {
+    const created = await repo.create({
+      name: 'Legacy Workspace Assistant',
+      providerId,
+      workspaceConfig: {
+        path: '/tmp/legacy-workspace'
+      }
+    })
+
+    expect(created.workspaceConfig).toEqual({
+      rootPath: '/tmp/legacy-workspace'
+    })
+
+    await expect(repo.getById(created.id)).resolves.toMatchObject({
+      workspaceConfig: {
+        rootPath: '/tmp/legacy-workspace'
+      }
+    })
+  })
 })

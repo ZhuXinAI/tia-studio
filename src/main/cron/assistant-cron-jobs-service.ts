@@ -41,6 +41,7 @@ type CreateCronJobInput = {
   prompt: string
   cronExpression: string
   enabled?: boolean
+  recurring?: boolean
   channelId?: string | null
   remoteChatId?: string | null
 }
@@ -72,7 +73,8 @@ export class AssistantCronJobsService {
       name: input.name,
       prompt: input.prompt,
       cronExpression: input.cronExpression,
-      enabled: input.enabled
+      enabled: input.enabled,
+      recurring: input.recurring
     })
 
     const hiddenThread = await this.options.threadsRepo.create({
@@ -86,10 +88,11 @@ export class AssistantCronJobsService {
     })
 
     await this.options.cronJobsRepo.update(cronJob.id, {
-      threadId: hiddenThread.id
+      threadId: hiddenThread.id,
+      channelId: input.channelId ?? null,
+      remoteChatId: input.remoteChatId ?? null
     })
 
-    // If channel context is provided, create a channel thread binding
     if (input.channelId && input.remoteChatId && this.options.channelThreadBindingsRepo) {
       await this.options.channelThreadBindingsRepo.create({
         channelId: input.channelId,
@@ -138,6 +141,7 @@ export class AssistantCronJobsService {
       prompt: input.prompt,
       cronExpression: input.cronExpression,
       enabled: input.enabled,
+      recurring: input.recurring,
       threadId: nextThreadId
     })
 
