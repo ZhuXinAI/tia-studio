@@ -433,13 +433,9 @@
     },
     "card": {
       "noChannelConnected": "未連接頻道",
-<<<<<<< HEAD
-      "configureChannelFirst": "請先設定頻道",
-=======
       "configureChannelFirst": "Configure a channel first",
       "statusEnabled": "Enabled",
       "statusDisabled": "Disabled",
->>>>>>> codex/security-privacy-guardrails
       "enableButton": "啟用",
       "disableButton": "停用",
       "editButton": "編輯",

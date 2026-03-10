@@ -433,13 +433,9 @@
     },
     "card": {
       "noChannelConnected": "Δεν υπάρχει συνδεδεμένο κανάλι",
-<<<<<<< HEAD
-      "configureChannelFirst": "Ρυθμίστε πρώτα ένα κανάλι",
-=======
       "configureChannelFirst": "Configure a channel first",
       "statusEnabled": "Enabled",
       "statusDisabled": "Disabled",
->>>>>>> codex/security-privacy-guardrails
       "enableButton": "Ενεργοποίηση",
       "disableButton": "Απενεργοποίηση",
       "editButton": "Επεξεργασία",

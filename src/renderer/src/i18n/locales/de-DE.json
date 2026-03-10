@@ -433,13 +433,9 @@
     },
     "card": {
       "noChannelConnected": "Kein Kanal verbunden",
-<<<<<<< HEAD
-      "configureChannelFirst": "Zuerst einen Kanal einrichten",
-=======
       "configureChannelFirst": "Configure a channel first",
       "statusEnabled": "Enabled",
       "statusDisabled": "Disabled",
->>>>>>> codex/security-privacy-guardrails
       "enableButton": "Aktivieren",
       "disableButton": "Deaktivieren",
       "editButton": "Bearbeiten",
