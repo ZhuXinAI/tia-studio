@@ -184,7 +184,8 @@ export class HeartbeatSchedulerService {
       return
     }
 
-    if (!assistantState.workspaceRootPath) {
+    // Only check workspace when assistantsRepo is provided (production mode)
+    if (this.options.assistantsRepo && !assistantState.workspaceRootPath) {
       console.log('[HeartbeatScheduler] Assistant workspace is required for heartbeat', {
         heartbeatId: heartbeat.id,
         assistantId: heartbeat.assistantId
