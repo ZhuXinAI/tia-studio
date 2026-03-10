@@ -68,7 +68,7 @@ export function ClawCronMonitorDialog({
     if (isOpen && assistantId) {
       void loadData()
     }
-  }, [isOpen, assistantId])
+  }, [isOpen, assistantId, loadData])
 
   useEffect(() => {
     if (!isOpen || !assistantId) {
@@ -82,7 +82,7 @@ export function ClawCronMonitorDialog({
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [isOpen, assistantId])
+  }, [isOpen, assistantId, loadData])
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>

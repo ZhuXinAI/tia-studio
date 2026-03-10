@@ -118,7 +118,7 @@ export class TeamRuntimeService implements TeamRuntime {
         selectedModel: supervisorModel
       }) as never,
       agents: memberAgents,
-      memory,
+      memory: memory as never,
       workspace: supervisorWorkspace
     })
 
