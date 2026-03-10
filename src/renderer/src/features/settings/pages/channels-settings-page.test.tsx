@@ -170,6 +170,60 @@ describe('channels settings page', () => {
     expect(container.textContent).toContain('Ops Telegram')
   })
 
+  it('creates a configured whatsapp channel without extra credentials', async () => {
+    vi.mocked(createClawChannel).mockResolvedValueOnce(
+      buildChannel({
+        id: 'channel-whatsapp',
+        type: 'whatsapp',
+        name: 'Ops WhatsApp'
+      })
+    )
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ChannelsSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const addButton = container.querySelector(
+      'button[id="settings-channels-add"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const typeSelect = document.body.querySelector(
+      'select[id="settings-channel-create-type"]'
+    ) as HTMLSelectElement
+    const nameInput = document.body.querySelector(
+      'input[id="settings-channel-create-name"]'
+    ) as HTMLInputElement
+    const saveButton = document.body.querySelector(
+      'button[id="settings-channel-create-save"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      setElementValue(typeSelect, 'whatsapp')
+      setElementValue(nameInput, 'Ops WhatsApp')
+    })
+
+    await act(async () => {
+      saveButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(createClawChannel).toHaveBeenCalledWith({
+      type: 'whatsapp',
+      name: 'Ops WhatsApp'
+    })
+    expect(container.textContent).toContain('Ops WhatsApp')
+  })
+
   it('edits and removes an unbound configured channel', async () => {
     await act(async () => {
       root.render(

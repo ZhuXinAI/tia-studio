@@ -21,10 +21,7 @@ const chatHistoryQuerySchema = z.object({
 type RegisterChatRouteOptions = {
   assistantRuntime: AssistantRuntime
   threadMessageEventsStore?: {
-    createAssistantStream(input: {
-      assistantId: string
-      profileId: string
-    }): ReadableStream<string>
+    createAssistantStream(input: { assistantId: string; profileId: string }): ReadableStream<string>
   }
 }
 

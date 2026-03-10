@@ -12,6 +12,7 @@ import {
   createClawChannel,
   deleteClaw,
   deleteClawChannel,
+  getClawChannelAuthState,
   listClawPairings,
   listClaws,
   rejectClawPairing,
@@ -31,6 +32,7 @@ vi.mock('../claws-query', () => ({
   deleteClaw: vi.fn(),
   deleteClawChannel: vi.fn(),
   listClawPairings: vi.fn(),
+  getClawChannelAuthState: vi.fn(),
   approveClawPairing: vi.fn(),
   rejectClawPairing: vi.fn(),
   revokeClawPairing: vi.fn()
@@ -172,6 +174,16 @@ describe('ClawsPage', () => {
           updatedAt: '2026-03-09T00:05:00.000Z'
         }
       ]
+    })
+    vi.mocked(getClawChannelAuthState).mockResolvedValue({
+      channelId: 'channel-whatsapp',
+      channelType: 'whatsapp',
+      status: 'qr_ready',
+      qrCodeDataUrl: 'data:image/png;base64,qr',
+      qrCodeValue: 'qr-value',
+      phoneNumber: null,
+      errorMessage: null,
+      updatedAt: '2026-03-10T00:00:00.000Z'
     })
     vi.mocked(approveClawPairing).mockResolvedValue({
       id: 'pairing-pending',
@@ -717,6 +729,139 @@ describe('ClawsPage', () => {
     expect(document.body.querySelector('input[id="claw-name"]')).toBeNull()
   })
 
+  it('opens whatsapp auth state and pairings immediately after saving a whatsapp claw', async () => {
+    const pendingRefresh = new Promise<never>(() => undefined)
+
+    vi.mocked(listClaws)
+      .mockResolvedValueOnce({
+        claws: [],
+        configuredChannels: []
+      })
+      .mockImplementationOnce(async () => pendingRefresh)
+    vi.mocked(createClaw).mockResolvedValue({
+      id: 'assistant-whatsapp',
+      name: 'WhatsApp Assistant',
+      description: '',
+      instructions: '',
+      providerId: 'provider-1',
+      enabled: true,
+      channel: {
+        id: 'channel-whatsapp',
+        type: 'whatsapp',
+        name: 'WhatsApp Device',
+        status: 'disconnected',
+        errorMessage: null,
+        pairedCount: 0,
+        pendingPairingCount: 0
+      }
+    })
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ClawsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const newButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('New Claw')
+    )
+
+    await act(async () => {
+      newButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const body = document.body
+    const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
+    const providerSelect = body.querySelector('select[id="claw-provider"]') as HTMLSelectElement
+
+    await act(async () => {
+      setElementValue(nameInput, 'WhatsApp Assistant')
+      setElementValue(providerSelect, 'provider-1')
+    })
+
+    const selectChannelButton = body.querySelector(
+      'button[id="claw-select-channel-button"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      selectChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const addChannelButton = body.querySelector(
+      'button[id="claw-channel-selector-add"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const channelTypeSelect = body.querySelector(
+      'select[id="claw-channel-create-type"]'
+    ) as HTMLSelectElement
+
+    await act(async () => {
+      setElementValue(channelTypeSelect, 'whatsapp')
+    })
+    await flushAsyncWork()
+
+    const channelNameInput = body.querySelector(
+      'input[id="claw-channel-create-name"]'
+    ) as HTMLInputElement
+
+    await act(async () => {
+      setElementValue(channelNameInput, 'WhatsApp Device')
+    })
+
+    vi.mocked(createClawChannel).mockResolvedValueOnce({
+      id: 'channel-whatsapp-new',
+      type: 'whatsapp',
+      name: 'WhatsApp Device',
+      assistantId: null,
+      assistantName: null,
+      status: 'disconnected',
+      errorMessage: null,
+      pairedCount: 0,
+      pendingPairingCount: 0
+    })
+
+    const createChannelButton = body.querySelector(
+      'button[id="claw-channel-create-save"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      createChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const applyChannelButton = body.querySelector(
+      'button[id="claw-channel-selector-apply"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      applyChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    const saveButton = Array.from(body.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Create Claw')
+    )
+
+    await act(async () => {
+      saveButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(listClawPairings).toHaveBeenCalledWith('assistant-whatsapp')
+    expect(getClawChannelAuthState).toHaveBeenCalledWith('assistant-whatsapp')
+    expect(document.body.querySelector('img')).not.toBeNull()
+    expect(document.body.querySelector('input[id="claw-name"]')).toBeNull()
+  })
+
   it('opens telegram pairings and approves a pending request', async () => {
     vi.mocked(listClaws).mockResolvedValue({
       claws: [
@@ -776,6 +921,54 @@ describe('ClawsPage', () => {
     await flushAsyncWork()
 
     expect(approveClawPairing).toHaveBeenCalledWith('assistant-telegram', 'pairing-pending')
+  })
+
+  it('opens whatsapp access dialog and shows qr state', async () => {
+    vi.mocked(listClaws).mockResolvedValue({
+      claws: [
+        {
+          id: 'assistant-whatsapp',
+          name: 'WhatsApp Assistant',
+          description: '',
+          instructions: '',
+          providerId: 'provider-1',
+          enabled: true,
+          channel: {
+            id: 'channel-whatsapp',
+            type: 'whatsapp',
+            name: 'WhatsApp Device',
+            status: 'disconnected',
+            errorMessage: null,
+            pairedCount: 0,
+            pendingPairingCount: 1
+          }
+        }
+      ],
+      configuredChannels: []
+    })
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ClawsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const managePairingsButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Manage Pairings')
+    )
+
+    await act(async () => {
+      managePairingsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(listClawPairings).toHaveBeenCalledWith('assistant-whatsapp')
+    expect(getClawChannelAuthState).toHaveBeenCalledWith('assistant-whatsapp')
+    expect(document.body.textContent).toContain('WhatsApp Login')
+    expect(document.body.querySelector('img')).not.toBeNull()
   })
 
   it('offers cancel, disable, and confirm delete when removing a claw', async () => {

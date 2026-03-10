@@ -53,13 +53,13 @@
       "items": {
         "general": "General",
         "providers": "Furnizor de modele",
+        "channels": "Canale",
         "cronJobs": "Joburi cron",
         "webSearch": "Căutare web",
         "mcpServers": "Servere MCP",
         "runtimeSetup": "Configurare runtime",
         "display": "Afișare",
-        "aboutFeedback": "Despre și feedback",
-        "channels": "Canale"
+        "aboutFeedback": "Despre și feedback"
       }
     },
     "general": {
@@ -392,7 +392,18 @@
       "enableButton": "Activează",
       "disableButton": "Dezactivează",
       "editButton": "Editează",
-      "deleteButton": "Șterge"
+      "deleteButton": "Șterge",
+      "deleteConfirmPrompt": "Delete \"{{name}}\"? This will also delete all of its threads.",
+      "deleteConfirmFallbackLabel": "Unnamed claw"
+    },
+    "deleteDialog": {
+      "title": "Ștergi „{{name}}”?",
+      "description": "Aceasta va șterge și tot istoricul asistentului.",
+      "actions": {
+        "cancel": "Anulează",
+        "disable": "Dezactivează în schimb",
+        "confirmDelete": "Confirmă ștergerea"
+      }
     },
     "dialog": {
       "editTitle": "Editează Claw",
@@ -419,7 +430,8 @@
       "enableAfterSaving": "Activează acest Claw după salvare",
       "channelTypes": {
         "lark": "Lark",
-        "telegram": "Telegram"
+        "telegram": "Telegram",
+        "whatsapp": "WhatsApp"
       },
       "channelActions": {
         "keep": "Păstrează canalul curent",
@@ -447,19 +459,30 @@
       "otherAssistantFallback": "another assistant",
       "actions": {
         "add": "Add Channel",
+        "edit": "Editează canalul",
         "remove": "Remove Channel",
         "clear": "Clear Selection",
         "cancel": "Cancel",
-        "apply": "Apply",
-        "edit": "Editează canalul"
+        "apply": "Apply"
       },
+      "selectedBadge": "Selectat",
       "create": {
         "title": "Add Channel",
         "description": "Create a new Telegram or Lark channel configuration.",
+        "whatsappHint": "No token is required. After saving, open Manage Pairings to scan the WhatsApp QR code.",
         "save": "Add Channel",
         "fields": {
           "type": "Channel Type"
         }
+      },
+      "edit": {
+        "title": "Editează canalul",
+        "description": "Actualizează configurația acestui canal.",
+        "save": "Salvează modificările",
+        "credentialsOptional": "Lasă câmpurile de acreditare goale pentru a păstra valorile curente.",
+        "appIdPlaceholder": "Lasă neschimbat",
+        "appSecretPlaceholder": "Lasă neschimbat",
+        "botTokenPlaceholder": "Lasă neschimbat"
       },
       "remove": {
         "title": "Remove Channel",
@@ -472,27 +495,33 @@
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "createFailed": "Failed to create channel",
-        "deleteFailed": "Failed to delete channel",
-        "updateFailed": "Nu s-a putut actualiza canalul"
-      },
-      "selectedBadge": "Selectat",
-      "edit": {
-        "title": "Editează canalul",
-        "description": "Actualizează configurația acestui canal.",
-        "save": "Salvează modificările",
-        "credentialsOptional": "Lasă câmpurile de acreditare goale pentru a păstra valorile curente.",
-        "appIdPlaceholder": "Lasă neschimbat",
-        "appSecretPlaceholder": "Lasă neschimbat",
-        "botTokenPlaceholder": "Lasă neschimbat"
+        "updateFailed": "Nu s-a putut actualiza canalul",
+        "deleteFailed": "Failed to delete channel"
       }
     },
     "pairings": {
       "title": "Gestionează asocierile",
       "description": "Revizuiește cererile de asociere Telegram pentru {{clawName}}.",
+      "whatsappDescription": "Scan the WhatsApp QR code and review pairing requests for {{clawName}}.",
       "loading": "Se încarcă asocierile...",
       "empty": "Nu există încă asocieri Telegram.",
       "senderIds": "ID expeditor: {{senderId}} · ID chat: {{chatId}}",
       "approvalCode": "Cod de aprobare: {{code}}",
+      "whatsappAuth": {
+        "title": "WhatsApp Login",
+        "description": "Scan this QR code from WhatsApp on your phone to connect the channel.",
+        "loading": "Preparing WhatsApp login...",
+        "scanHint": "Open WhatsApp on your phone, then go to Linked Devices → Link a Device.",
+        "qrAlt": "WhatsApp login QR code",
+        "phoneFallback": "your linked device",
+        "status": {
+          "disconnected": "WhatsApp is disconnected.",
+          "connecting": "Connecting to WhatsApp...",
+          "qrReady": "QR code ready to scan.",
+          "connected": "Connected as {{phoneNumber}}.",
+          "error": "WhatsApp needs attention."
+        }
+      },
       "status": {
         "pending": "În așteptarea aprobării",
         "approved": "Aprobat",
@@ -507,15 +536,6 @@
       "errors": {
         "loadFailed": "Nu s-au putut încărca asocierile",
         "updateFailed": "Nu s-a putut actualiza asocierea"
-      }
-    },
-    "deleteDialog": {
-      "title": "Ștergi „{{name}}”?",
-      "description": "Aceasta va șterge și tot istoricul asistentului.",
-      "actions": {
-        "cancel": "Anulează",
-        "disable": "Dezactivează în schimb",
-        "confirmDelete": "Confirmă ștergerea"
       }
     }
   },
@@ -699,6 +719,23 @@
         "prompt": "Prompt",
         "workspacePath": "Cale workspace (opțional)",
         "maxSteps": "Pași maximi"
+      },
+      "heartbeat": {
+        "title": "Heartbeat",
+        "description": "Run a background heartbeat on a hidden assistant thread.",
+        "loading": "Loading heartbeat...",
+        "workspaceRequired": "Save a workspace path to enable heartbeat on this assistant.",
+        "enableLabel": "Enable heartbeat",
+        "enableDescription": "Let this assistant periodically review recent work and conversations.",
+        "toggleAriaLabel": "Enable heartbeat",
+        "intervalLabel": "Interval (minutes)",
+        "intervalPlaceholder": "30",
+        "promptLabel": "Heartbeat Prompt",
+        "promptPlaceholder": "Review recent work logs and recent conversations. Follow up only if needed.",
+        "errors": {
+          "intervalInvalid": "Heartbeat interval must be a positive whole number",
+          "promptRequired": "Heartbeat prompt is required"
+        }
       },
       "placeholders": {
         "name": "Research Copilot",

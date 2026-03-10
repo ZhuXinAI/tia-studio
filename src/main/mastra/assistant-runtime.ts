@@ -40,6 +40,7 @@ import {
   createSoulMemoryTools
 } from './tools/soul-memory-tools'
 import { createWorkLogTools } from './tools/work-log-tools'
+import { createMemorySessionTools } from './tools/memory-session-tools'
 import { AttachmentUploader } from './processors/attachment-uploader'
 import { HEARTBEAT_RUN_CONTEXT_KEY } from './tool-context'
 
@@ -604,6 +605,15 @@ export class AssistantRuntimeService implements AssistantRuntime {
       selectedModel: provider.selectedModel
     })
 
+    const storage = this.options.mastra.getStorage()
+    const memory = new Memory({
+      ...(storage ? { storage } : {}),
+      options: {
+        ...this.resolveMemoryOptions(assistant.memoryConfig),
+        generateTitle: true
+      }
+    })
+
     const mcpTools = await this.buildMcpTools(assistant.id, enabledMcpServers)
     const workspaceRootPath = this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})
     const soulMemoryTools = workspaceRootPath ? createSoulMemoryTools({ workspaceRootPath }) : {}
@@ -623,17 +633,20 @@ export class AssistantRuntimeService implements AssistantRuntime {
             listRecentConversations({
               assistantId: assistant.id,
               threadsRepo: this.options.threadsRepo,
-              channelThreadBindingsRepo: this.options.channelThreadBindingsRepo as ChannelThreadBindingsRepository,
+              channelThreadBindingsRepo: this.options
+                .channelThreadBindingsRepo as ChannelThreadBindingsRepository,
               mastra: this.options.mastra
             })
         : undefined
     })
+    const memorySessionTools = createMemorySessionTools(memory)
     const tools: ToolsInput = {
       browserSearch: browserSearchTool,
       ...soulMemoryTools,
       ...workLogTools,
       ...cronTools,
       ...channelTools,
+      ...memorySessionTools,
       ...mcpTools
     }
     const now = new Date()
@@ -652,15 +665,6 @@ export class AssistantRuntimeService implements AssistantRuntime {
       ? `\nChannel delivery guidelines:\n- ${CHANNEL_SPLITTER_INSTRUCTION}\n- Keep channel replies short and natural.\n- Do not mention [[BR]] to the user.\n`
       : ''
     const agentInstructions = `${baseInstructions}\n\nCurrent date and time: ${currentDateTime}\n${channelInstructions}\n`
-
-    const storage = this.options.mastra.getStorage()
-    const memory = new Memory({
-      ...(storage ? { storage } : {}),
-      options: {
-        ...this.resolveMemoryOptions(assistant.memoryConfig),
-        generateTitle: true
-      }
-    })
     const workspace = await this.buildWorkspace(
       assistant.workspaceConfig ?? {},
       assistant.skillsConfig ?? {}

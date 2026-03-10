@@ -22,6 +22,8 @@ import { ChannelEventBus } from './channels/channel-event-bus'
 import { ChannelMessageRouter } from './channels/channel-message-router'
 import { ChannelService } from './channels/channel-service'
 import { TelegramChannel } from './channels/telegram-channel'
+import { WhatsAppAuthStateStore } from './channels/whatsapp-auth-state-store'
+import { WhatsAppChannel } from './channels/whatsapp-channel'
 import { AssistantCronJobsService } from './cron/assistant-cron-jobs-service'
 import { CronSchedulerService } from './cron/cron-scheduler-service'
 import { AssistantHeartbeatsService } from './heartbeat/assistant-heartbeats-service'
@@ -188,6 +190,7 @@ async function startLocalApiServer(): Promise<void> {
     userDataPath: app.getPath('userData')
   })
   const channelEventBus = new ChannelEventBus()
+  const whatsAppAuthStateStore = new WhatsAppAuthStateStore()
   const assistantCronJobsService = new AssistantCronJobsService({
     cronJobsRepo,
     assistantsRepo,
@@ -237,6 +240,18 @@ async function startLocalApiServer(): Promise<void> {
           id: channel.id,
           botToken,
           pairingsRepo: channelPairingsRepo,
+          onFatalError: async (error) => {
+            const message = error instanceof Error ? error.message : 'Unknown error'
+            await channelsRepo.setLastError(channel.id, message)
+          }
+        })
+      },
+      whatsapp: async (channel) => {
+        return new WhatsAppChannel({
+          id: channel.id,
+          authDirectoryPath: join(app.getPath('userData'), 'channels', 'whatsapp', channel.id),
+          pairingsRepo: channelPairingsRepo,
+          authStateStore: whatsAppAuthStateStore,
           onFatalError: async (error) => {
             const message = error instanceof Error ? error.message : 'Unknown error'
             await channelsRepo.setLastError(channel.id, message)
@@ -310,7 +325,8 @@ async function startLocalApiServer(): Promise<void> {
     threadMessageEventsStore,
     channelService,
     cronSchedulerService,
-    heartbeatSchedulerService
+    heartbeatSchedulerService,
+    whatsAppAuthStateStore
   })
 
   localApiServer = serve(

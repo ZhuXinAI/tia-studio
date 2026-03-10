@@ -1,7 +1,9 @@
 # TIA Studio
 
+[中文说明](./README_zh.md)
+
 <p align="center">
-  <img src="tia-studio.png" alt="TIA Studio Interface" width="800">
+  <img src="claws.png" alt="TIA Studio Claw Overview" width="800">
 </p>
 
 <div align="center">
@@ -11,15 +13,23 @@
 
 </div>
 
-A modern, desktop-native workspace for AI assistants, Teams, Channels, and claws. TIA Studio gives you a clean interface for running local assistants, organizing them into teams, and connecting them to real-world channels from your own machine.
+An easy way to run a local claw on your own machine — and a full-featured desktop app for building, chatting with, and operating AI assistants, teams, and channels.
 
 ## What is TIA Studio?
 
-TIA (Short for "This Is AI") Studio is an Electron-based desktop application for building and operating AI assistants on your desktop. You can chat with a single assistant, coordinate a Team of assistants, or connect an assistant to a Channel so it can participate in conversations beyond the app itself.
+TIA (short for "This Is AI") Studio is an Electron-based desktop app built to make local claws easy to run. Connect an assistant to a real-world channel and it becomes an OpenClaw-inspired local operator running close to your tools, your files, and your workflow.
 
-When an assistant is connected to a channel, it becomes a claw: an OpenClaw-inspired local operator running on your computer, close to your tools, your files, and your workflow.
+At the same time, TIA Studio is a full-featured assistant app. You can chat with a single assistant, coordinate a team of assistants, organize threaded work, and manage channels from one local-first desktop workspace.
 
 Today, TIA Studio supports Lark channels. Telegram and WhatsApp support are coming very soon, with more channels planned next.
+
+## Full Assistant Workspace
+
+When you want more than channel-connected automation, TIA Studio also gives you the full desktop workspace for assistants, teams, threads, and operations.
+
+<p align="center">
+  <img src="tia-studio.png" alt="TIA Studio Assistant Workspace" width="800">
+</p>
 
 ## Architecture
 
@@ -45,8 +55,6 @@ We intentionally kept the architecture simple:
 In TIA Studio, a claw is not a separate runtime primitive. A claw is an assistant with a channel attached to it.
 
 For a longer architecture walkthrough, see [CLAW.md](./CLAW.md).
-
-![Claw architecture](./claws.png)
 
 This keeps the model simple:
 
@@ -84,10 +92,10 @@ That means adapting an assistant into a claw does **not** fork its identity:
 
 ## Features
 
-- 🤖 Multiple AI assistants with different capabilities
+- 🦾 Easy-to-run local claws when an assistant is paired with a channel
+- 🤖 Full-featured AI assistant workspace with multiple assistants
 - 👥 Teams for coordinating assistants in one workspace
 - 📡 Channels that connect assistants to real conversations
-- 🦾 OpenClaw-inspired local operators when an assistant is paired with a channel
 - ✅ Lark support available today
 - 🚧 Telegram and WhatsApp support coming very soon, with more channels next
 - 💬 Thread-based conversation management

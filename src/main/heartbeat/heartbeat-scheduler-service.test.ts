@@ -18,12 +18,15 @@ function mergeDefined<T extends object>(base: T, overrides?: Partial<T>): T {
     return { ...base }
   }
 
-  return Object.entries(overrides).reduce<T>((result, [key, value]) => {
-    if (value !== undefined) {
-      Object.assign(result, { [key]: value })
-    }
-    return result
-  }, { ...base })
+  return Object.entries(overrides).reduce<T>(
+    (result, [key, value]) => {
+      if (value !== undefined) {
+        Object.assign(result, { [key]: value })
+      }
+      return result
+    },
+    { ...base }
+  )
 }
 
 function createHeartbeat(overrides?: Partial<MutableHeartbeat>): MutableHeartbeat {
@@ -116,9 +119,7 @@ class InMemoryAssistantHeartbeatRunsRepo {
   }
 
   async listByHeartbeatId(heartbeatId: string): Promise<AppAssistantHeartbeatRun[]> {
-    return this.runs
-      .filter((run) => run.heartbeatId === heartbeatId)
-      .map((run) => ({ ...run }))
+    return this.runs.filter((run) => run.heartbeatId === heartbeatId).map((run) => ({ ...run }))
   }
 }
 

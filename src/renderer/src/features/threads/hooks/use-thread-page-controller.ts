@@ -31,7 +31,7 @@ import {
 import {
   openAssistantMessageEventsStream,
   createThreadChatTransport,
-  listThreadChatMessages,
+  listThreadChatMessages
 } from '../chat-query'
 import {
   buildAssistantThreadBranches,

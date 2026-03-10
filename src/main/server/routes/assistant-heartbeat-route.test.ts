@@ -141,15 +141,18 @@ describe('assistant heartbeat route', () => {
   })
 
   it('rejects unknown assistants', async () => {
-    const response = await app.request('http://localhost/v1/assistants/missing-assistant/heartbeat', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        enabled: true,
-        intervalMinutes: 30,
-        prompt: 'Review recent work logs and recent conversations. Follow up only if needed.'
-      })
-    })
+    const response = await app.request(
+      'http://localhost/v1/assistants/missing-assistant/heartbeat',
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enabled: true,
+          intervalMinutes: 30,
+          prompt: 'Review recent work logs and recent conversations. Follow up only if needed.'
+        })
+      }
+    )
 
     expect(response.status).toBe(404)
     await expect(response.json()).resolves.toEqual({

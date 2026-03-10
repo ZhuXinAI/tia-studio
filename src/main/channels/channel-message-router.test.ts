@@ -45,6 +45,105 @@ function createAssistantRuntimeStub(streamChat: AssistantRuntime['streamChat']):
   }
 }
 
+function createDeferredAssistantReplyStream() {
+  let controller: ReadableStreamDefaultController<UIMessageChunk> | null = null
+  let settled = false
+
+  const stream = new ReadableStream<UIMessageChunk>({
+    start(nextController) {
+      controller = nextController
+      nextController.enqueue({ type: 'start' } as UIMessageChunk)
+      nextController.enqueue({ type: 'text-start', id: 'text-1' } as UIMessageChunk)
+    }
+  })
+
+  return {
+    stream,
+    bindAbortSignal(signal: AbortSignal | undefined) {
+      if (!signal) {
+        return
+      }
+
+      signal.addEventListener(
+        'abort',
+        () => {
+          if (!controller || settled) {
+            return
+          }
+
+          settled = true
+          const abortError = new Error('Aborted')
+          abortError.name = 'AbortError'
+          controller.error(abortError)
+        },
+        { once: true }
+      )
+    },
+    finish(text: string) {
+      if (!controller || settled) {
+        return
+      }
+
+      settled = true
+      if (text.length > 0) {
+        controller.enqueue({ type: 'text-delta', id: 'text-1', delta: text } as UIMessageChunk)
+      }
+      controller.enqueue({ type: 'text-end', id: 'text-1' } as UIMessageChunk)
+      controller.enqueue({ type: 'finish' } as UIMessageChunk)
+      controller.close()
+    },
+    failWithErrorText(errorText: string) {
+      if (!controller || settled) {
+        return
+      }
+
+      settled = true
+      controller.enqueue({ type: 'error', errorText } as UIMessageChunk)
+      controller.close()
+    }
+  }
+}
+
+async function expectEventually(assertion: () => void, timeoutMs = 1000): Promise<void> {
+  const startedAt = Date.now()
+  let lastError: unknown
+
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      assertion()
+      return
+    } catch (error) {
+      lastError = error
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    }
+  }
+
+  throw lastError
+}
+
+function createInboundEvent(input: {
+  eventId: string
+  channelId: string
+  channelType?: 'lark' | 'telegram'
+  messageId: string
+  remoteChatId?: string
+  senderId?: string
+  content: string
+}) {
+  return {
+    eventId: input.eventId,
+    channelId: input.channelId,
+    channelType: input.channelType ?? 'lark',
+    message: {
+      id: input.messageId,
+      remoteChatId: input.remoteChatId ?? 'oc_123',
+      senderId: input.senderId ?? 'ou_user',
+      content: input.content,
+      timestamp: new Date('2026-03-10T00:00:00.000Z')
+    }
+  } as const
+}
+
 describe('ChannelMessageRouter', () => {
   let db: AppDatabase
   let eventBus: ChannelEventBus
@@ -650,6 +749,275 @@ describe('ChannelMessageRouter', () => {
     expect(publishedEvents).toHaveLength(1)
     const sent = publishedEvents[0] as { content: string }
     expect(sent.content).toBe(
+      '[Error] Failed to generate a response. Please check the provider configuration.'
+    )
+  })
+
+  it('queues a second inbound message while the current run is active', async () => {
+    const firstRun = createDeferredAssistantReplyStream()
+    let callIndex = 0
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async (params) => {
+      callIndex += 1
+      if (callIndex === 1) {
+        firstRun.bindAbortSignal(params.abortSignal)
+        return firstRun.stream
+      }
+
+      return createAssistantReplyStream('Second reply')
+    })
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat),
+      interruptionDecider: vi.fn(async () => ({
+        decision: 'queue',
+        reason: 'Got it — I’ll handle this right after the current reply.'
+      }))
+    } as never)
+    const publishedEvents: string[] = []
+
+    eventBus.subscribe('channel.message.send-requested', (event) => {
+      if (typeof event.content === 'string') {
+        publishedEvents.push(event.content)
+      }
+    })
+
+    const firstPromise = router.handleInboundEvent(
+      createInboundEvent({
+        eventId: 'evt-queue-1',
+        channelId,
+        messageId: 'msg-queue-1',
+        content: 'hello'
+      })
+    )
+    await expectEventually(() => {
+      expect(streamChat).toHaveBeenCalledTimes(1)
+    })
+
+    const secondPromise = router.handleInboundEvent(
+      createInboundEvent({
+        eventId: 'evt-queue-2',
+        channelId,
+        messageId: 'msg-queue-2',
+        content: 'also tell me about pricing'
+      })
+    )
+
+    await expectEventually(() => {
+      expect(publishedEvents).toContain('Got it — I’ll handle this right after the current reply.')
+    })
+    expect(streamChat).toHaveBeenCalledTimes(1)
+
+    firstRun.finish('First reply')
+
+    await Promise.all([firstPromise, secondPromise])
+
+    expect(streamChat).toHaveBeenCalledTimes(2)
+    expect(streamChat).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        messages: [expect.objectContaining({ content: 'also tell me about pricing' })]
+      })
+    )
+  })
+
+  it('interrupts the active run and aborts it before starting the newer message', async () => {
+    const firstRun = createDeferredAssistantReplyStream()
+    let firstAbortSignal: AbortSignal | undefined
+    let callIndex = 0
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async (params) => {
+      callIndex += 1
+      if (callIndex === 1) {
+        firstAbortSignal = params.abortSignal
+        firstRun.bindAbortSignal(params.abortSignal)
+        return firstRun.stream
+      }
+
+      return createAssistantReplyStream('Interrupt reply')
+    })
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat),
+      interruptionDecider: vi.fn(async () => ({
+        decision: 'interrupt',
+        reason: 'Understood — pausing the current reply and switching now.'
+      }))
+    } as never)
+
+    const firstPromise = router.handleInboundEvent(
+      createInboundEvent({
+        eventId: 'evt-interrupt-1',
+        channelId,
+        messageId: 'msg-interrupt-1',
+        content: 'draft a long reply'
+      })
+    )
+    await expectEventually(() => {
+      expect(streamChat).toHaveBeenCalledTimes(1)
+    })
+
+    const secondPromise = router.handleInboundEvent(
+      createInboundEvent({
+        eventId: 'evt-interrupt-2',
+        channelId,
+        messageId: 'msg-interrupt-2',
+        content: 'stop and answer this instead'
+      })
+    )
+
+    await expectEventually(() => {
+      expect(firstAbortSignal?.aborted).toBe(true)
+    })
+
+    firstRun.finish('should never be sent')
+
+    await Promise.all([firstPromise, secondPromise])
+
+    expect(streamChat).toHaveBeenCalledTimes(2)
+    expect(streamChat).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        messages: [expect.objectContaining({ content: 'stop and answer this instead' })]
+      })
+    )
+  })
+
+  it('resumes the paused message instead of treating continue as a literal prompt', async () => {
+    const firstRun = createDeferredAssistantReplyStream()
+    let callIndex = 0
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async (params) => {
+      callIndex += 1
+      if (callIndex === 1) {
+        firstRun.bindAbortSignal(params.abortSignal)
+        return firstRun.stream
+      }
+
+      if (callIndex === 2) {
+        return createAssistantReplyStream('Interrupt reply')
+      }
+
+      return createAssistantReplyStream('Resumed reply')
+    })
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat),
+      interruptionDecider: vi.fn(async () => ({
+        decision: 'interrupt',
+        reason: 'Understood — pausing the current reply and switching now.'
+      }))
+    } as never)
+
+    const firstPromise = router.handleInboundEvent(
+      createInboundEvent({
+        eventId: 'evt-resume-1',
+        channelId,
+        messageId: 'msg-resume-1',
+        content: 'draft the original answer'
+      })
+    )
+    await expectEventually(() => {
+      expect(streamChat).toHaveBeenCalledTimes(1)
+    })
+
+    const interruptPromise = router.handleInboundEvent(
+      createInboundEvent({
+        eventId: 'evt-resume-2',
+        channelId,
+        messageId: 'msg-resume-2',
+        content: 'stop and answer this instead'
+      })
+    )
+
+    firstRun.finish('stale reply')
+
+    await Promise.all([firstPromise, interruptPromise])
+
+    await router.handleInboundEvent(
+      createInboundEvent({
+        eventId: 'evt-resume-3',
+        channelId,
+        messageId: 'msg-resume-3',
+        content: 'continue'
+      })
+    )
+
+    expect(streamChat).toHaveBeenCalledTimes(3)
+    expect(streamChat).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        messages: [expect.objectContaining({ content: 'draft the original answer' })]
+      })
+    )
+  })
+
+  it('does not publish a generic failure reply when an active run is intentionally interrupted', async () => {
+    const firstRun = createDeferredAssistantReplyStream()
+    let callIndex = 0
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async (params) => {
+      callIndex += 1
+      if (callIndex === 1) {
+        firstRun.bindAbortSignal(params.abortSignal)
+        return firstRun.stream
+      }
+
+      return createAssistantReplyStream('Interrupt reply')
+    })
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat),
+      interruptionDecider: vi.fn(async () => ({
+        decision: 'interrupt',
+        reason: 'Understood — pausing the current reply and switching now.'
+      }))
+    } as never)
+    const publishedEvents: string[] = []
+
+    eventBus.subscribe('channel.message.send-requested', (event) => {
+      if (typeof event.content === 'string') {
+        publishedEvents.push(event.content)
+      }
+    })
+
+    const firstPromise = router.handleInboundEvent(
+      createInboundEvent({
+        eventId: 'evt-abort-1',
+        channelId,
+        messageId: 'msg-abort-1',
+        content: 'work on the original task'
+      })
+    )
+    await expectEventually(() => {
+      expect(streamChat).toHaveBeenCalledTimes(1)
+    })
+
+    const secondPromise = router.handleInboundEvent(
+      createInboundEvent({
+        eventId: 'evt-abort-2',
+        channelId,
+        messageId: 'msg-abort-2',
+        content: 'stop and switch right now'
+      })
+    )
+    await expectEventually(() => {
+      expect(streamChat).toHaveBeenCalledTimes(2)
+    })
+
+    firstRun.failWithErrorText('aborted')
+
+    await Promise.all([firstPromise, secondPromise])
+
+    expect(publishedEvents).not.toContain(
       '[Error] Failed to generate a response. Please check the provider configuration.'
     )
   })

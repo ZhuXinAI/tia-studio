@@ -250,8 +250,8 @@ export function AssistantEditor({
   const [heartbeatValues, setHeartbeatValues] = useState<AssistantHeartbeatValues>(() =>
     toInitialHeartbeatValues(null)
   )
-  const [initialHeartbeatValues, setInitialHeartbeatValues] = useState<AssistantHeartbeatValues>(() =>
-    toInitialHeartbeatValues(null)
+  const [initialHeartbeatValues, setInitialHeartbeatValues] = useState<AssistantHeartbeatValues>(
+    () => toInitialHeartbeatValues(null)
   )
   const [isHeartbeatLoading, setIsHeartbeatLoading] = useState(false)
   const [heartbeatError, setHeartbeatError] = useState<string | null>(null)
@@ -467,20 +467,23 @@ export function AssistantEditor({
         ? nextHeartbeatInput
         : null
 
-    await onSubmit({
-      name: values.name.trim(),
-      description: values.description.trim(),
-      instructions: values.instructions.trim(),
-      providerId: values.providerId,
-      workspaceConfig:
-        workspacePath.length > 0
-          ? {
-              rootPath: workspacePath
-            }
-          : undefined,
-      mcpConfig: nextMcpConfig,
-      maxSteps
-    }, heartbeatInput)
+    await onSubmit(
+      {
+        name: values.name.trim(),
+        description: values.description.trim(),
+        instructions: values.instructions.trim(),
+        providerId: values.providerId,
+        workspaceConfig:
+          workspacePath.length > 0
+            ? {
+                rootPath: workspacePath
+              }
+            : undefined,
+        mcpConfig: nextMcpConfig,
+        maxSteps
+      },
+      heartbeatInput
+    )
   }
 
   const handleSelectWorkspacePath = async (): Promise<void> => {

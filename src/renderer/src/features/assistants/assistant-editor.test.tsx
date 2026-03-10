@@ -35,10 +35,7 @@ async function flushAsyncWork(): Promise<void> {
   })
 }
 
-function setInputValue(
-  element: HTMLInputElement | HTMLTextAreaElement,
-  value: string
-): void {
+function setInputValue(element: HTMLInputElement | HTMLTextAreaElement, value: string): void {
   const prototype =
     element instanceof HTMLTextAreaElement
       ? HTMLTextAreaElement.prototype
