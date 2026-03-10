@@ -6,6 +6,7 @@ import type { AgentExecutionOptions, ToolsInput } from '@mastra/core/agent'
 import type { MessageInput, MessageListInput } from '@mastra/core/agent/message-list'
 import type { MemoryConfig } from '@mastra/core/memory'
 import type { Mastra } from '@mastra/core/mastra'
+import { BatchPartsProcessor, PIIDetector, PromptInjectionDetector } from '@mastra/core/processors'
 import { RequestContext } from '@mastra/core/request-context'
 import { LocalFilesystem, LocalSandbox, Workspace } from '@mastra/core/workspace'
 import { handleChatStream } from '@mastra/ai-sdk'
@@ -26,7 +27,8 @@ import type {
   ManagedRuntimesState
 } from '../persistence/repos/managed-runtimes-repo'
 import type { AppMcpServer, McpServersRepository } from '../persistence/repos/mcp-servers-repo'
-import type { ProvidersRepository } from '../persistence/repos/providers-repo'
+import type { AppProvider, ProvidersRepository } from '../persistence/repos/providers-repo'
+import type { SecuritySettingsRepository } from '../persistence/repos/security-settings-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import { ChatRouteError } from '../server/chat/chat-errors'
@@ -85,6 +87,8 @@ type AssistantContext = {
 const CHANNEL_BREAK_TAG = '[[BR]]'
 const CHANNEL_SPLITTER_INSTRUCTION =
   'When you want to split a reply into multiple channel messages, insert [[BR]] between chunks.'
+const PROMPT_INJECTION_THRESHOLD = 0.8
+const PII_THRESHOLD = 0.6
 
 const ONBOARDING_INSTRUCTIONS = `
 # First Conversation Onboarding
@@ -126,8 +130,20 @@ type AssistantRuntimeServiceOptions = {
   threadsRepo: ThreadsRepository
   channelThreadBindingsRepo?: ChannelThreadBindingsRepository
   webSearchSettingsRepo: WebSearchSettingsRepository
+  securitySettingsRepo?: Pick<SecuritySettingsRepository, 'getSettings'>
   mcpServersRepo: McpServersRepository
+  channelsRepo?: {
+    getByAssistantId(assistantId: string): Promise<{ id: string; type: string } | null>
+  }
   channelEventBus?: ChannelEventBus
+  threadMessageEventsStore?: {
+    appendMessagesUpdated(input: {
+      assistantId: string
+      threadId: string
+      profileId: string
+      source?: 'channel' | 'cron' | 'heartbeat'
+    }): void
+  }
   cronJobService?: Pick<
     AssistantCronJobsService,
     'createCronJob' | 'listAssistantCronJobs' | 'removeAssistantCronJob'
@@ -147,6 +163,14 @@ type AssistantRuntimeServiceOptions = {
 }
 
 type JsonObject = Record<string, unknown>
+
+type ResolvedGuardrailConfig = {
+  promptInjectionEnabled: boolean
+  piiDetectionEnabled: boolean
+  requestedProviderId: string | null
+  provider: AppProvider
+  source: 'assistant' | 'override'
+}
 
 export class AssistantRuntimeService implements AssistantRuntime {
   private readonly registeredAgentSignatures = new Map<string, string>()
@@ -170,6 +194,16 @@ export class AssistantRuntimeService implements AssistantRuntime {
       channelDeliveryEnabled: Boolean(params.channelTarget)
     })
 
+    // Create request context with channel context if available
+    const requestContext = new RequestContext()
+    if (params.channelTarget) {
+      requestContext.set('channelContext', {
+        channelId: params.channelTarget.channelId,
+        chatId: params.channelTarget.remoteChatId,
+        userId: params.profileId
+      })
+    }
+
     const stream = await handleChatStream({
       mastra: this.options.mastra,
       agentId: assistant.id,
@@ -179,6 +213,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
         abortSignal: params.abortSignal,
         maxSteps: assistant.maxSteps,
         providerOptions: this.buildProviderOptions(provider.type),
+        requestContext,
         memory: {
           thread: params.threadId,
           resource: params.profileId,
@@ -198,14 +233,37 @@ export class AssistantRuntimeService implements AssistantRuntime {
   }
 
   async runCronJob(params: RunCronJobParams): Promise<CronJobRunResult> {
+    console.log(
+      `[AssistantRuntime] Running cron job for assistant "${params.assistantId}" with prompt: "${params.prompt}"`
+    )
+
     const { assistant, provider } = await this.getAssistantContext(params.assistantId)
-    await this.getThreadForAssistant({
+    const thread = await this.getThreadForAssistant({
       assistantId: params.assistantId,
       threadId: params.threadId
     })
+
+    console.log(`[AssistantRuntime] Cron job thread ID: ${params.threadId}`)
+
+    // Check if this thread has a channel binding
+    const bindings =
+      (await this.options.channelThreadBindingsRepo?.listByThreadIds([params.threadId])) ?? []
+
+    console.log(`[AssistantRuntime] Found ${bindings.length} binding(s) for thread ${params.threadId}`)
+    if (bindings.length > 0) {
+      console.log(`[AssistantRuntime] Binding: channelId=${bindings[0].channelId}, remoteChatId=${bindings[0].remoteChatId}`)
+    }
+
+    const binding = bindings[0]
+    const hasChannelTarget = Boolean(binding)
+
     await this.ensureAgentRegistered(assistant, provider, {
-      channelDeliveryEnabled: false
+      channelDeliveryEnabled: hasChannelTarget
     })
+
+    console.log(
+      `[AssistantRuntime] Agent registered, starting chat stream (model: ${provider.selectedModel}, channel: ${hasChannelTarget ? 'yes' : 'no'})`
+    )
 
     const requestContext = new RequestContext()
 
@@ -220,19 +278,62 @@ export class AssistantRuntimeService implements AssistantRuntime {
         }),
         maxSteps: assistant.maxSteps,
         providerOptions: this.buildProviderOptions(provider.type),
-        requestContext
+        requestContext,
+        memory: {
+          thread: params.threadId,
+          resource: thread.resourceId,
+          options: {
+            generateTitle: false,
+            readOnly: true
+          }
+        }
       },
       sendReasoning: true
     })
 
+    const outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>)
+
+    // If thread has a channel binding, send output to that channel conversation
+    if (hasChannelTarget && binding && outputText.trim().length > 0) {
+      console.log(
+        `[AssistantRuntime] Sending cron output to channel ${binding.channelId} chat ${binding.remoteChatId}`
+      )
+
+      const channel = await this.options.channelsRepo?.getByAssistantId(params.assistantId)
+      if (channel) {
+        await this.channelEventBus.publish('channel.message.send-requested', {
+          eventId: randomUUID(),
+          channelId: binding.channelId,
+          channelType: channel.type,
+          remoteChatId: binding.remoteChatId,
+          content: outputText,
+          payload: {
+            type: 'text',
+            text: outputText
+          }
+        })
+      }
+    }
+
+    console.log(
+      `[AssistantRuntime] Cron job completed, collected ${outputText.length} chars${hasChannelTarget ? ', sent to channel' : ''}`
+    )
+    // Notify UI that thread has new messages
+    this.options.threadMessageEventsStore?.appendMessagesUpdated({
+      assistantId: params.assistantId,
+      threadId: params.threadId,
+      profileId: thread.resourceId,
+      source: 'cron'
+    })
+
     return {
-      outputText: await this.collectStreamText(stream as ReadableStream<UIMessageChunk>)
+      outputText
     }
   }
 
   async runHeartbeat(params: RunHeartbeatParams): Promise<CronJobRunResult> {
     const { assistant, provider } = await this.getAssistantContext(params.assistantId)
-    await this.getThreadForAssistant({
+    const thread = await this.getThreadForAssistant({
       assistantId: params.assistantId,
       threadId: params.threadId
     })
@@ -266,8 +367,18 @@ export class AssistantRuntimeService implements AssistantRuntime {
       sendReasoning: true
     })
 
+    const outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>)
+
+    // Notify UI that thread has new messages
+    this.options.threadMessageEventsStore?.appendMessagesUpdated({
+      assistantId: params.assistantId,
+      threadId: params.threadId,
+      profileId: thread.resourceId,
+      source: 'heartbeat'
+    })
+
     return {
-      outputText: await this.collectStreamText(stream as ReadableStream<UIMessageChunk>)
+      outputText
     }
   }
 
@@ -593,6 +704,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
   ): Promise<void> {
     const enabledMcpServers = await this.resolveEnabledMcpServers(assistant.mcpConfig ?? {})
     const mcpServersSignature = JSON.stringify(enabledMcpServers)
+    const guardrailConfig = await this.resolveGuardrailConfig(provider)
     const nextSignature = [
       assistant.id,
       assistant.updatedAt,
@@ -608,6 +720,15 @@ export class AssistantRuntimeService implements AssistantRuntime {
       assistant.maxSteps,
       JSON.stringify(assistant.memoryConfig ?? {}),
       mcpServersSignature,
+      guardrailConfig.promptInjectionEnabled ? 'prompt-injection:on' : 'prompt-injection:off',
+      guardrailConfig.piiDetectionEnabled ? 'pii:on' : 'pii:off',
+      guardrailConfig.requestedProviderId ?? '',
+      guardrailConfig.source,
+      guardrailConfig.provider.id,
+      guardrailConfig.provider.updatedAt,
+      guardrailConfig.provider.type,
+      guardrailConfig.provider.selectedModel,
+      guardrailConfig.provider.apiHost ?? '',
       options.channelDeliveryEnabled ? 'channel-delivery:on' : 'channel-delivery:off'
     ].join('|')
 
@@ -629,6 +750,12 @@ export class AssistantRuntimeService implements AssistantRuntime {
       apiKey: provider.apiKey,
       apiHost: provider.apiHost,
       selectedModel: provider.selectedModel
+    })
+    const guardrailModel = resolveModel({
+      type: guardrailConfig.provider.type,
+      apiKey: guardrailConfig.provider.apiKey,
+      apiHost: guardrailConfig.provider.apiHost,
+      selectedModel: guardrailConfig.provider.selectedModel
     })
 
     const storage = this.options.mastra.getStorage()
@@ -687,7 +814,11 @@ export class AssistantRuntimeService implements AssistantRuntime {
       timeZoneName: 'short'
     })
 
-    const isFirstConversation = !(await this.options.threadsRepo.hasAnyThreads(assistant.id))
+    const hasAnyThreads =
+      typeof this.options.threadsRepo.hasAnyThreads === 'function'
+        ? await this.options.threadsRepo.hasAnyThreads(assistant.id)
+        : true
+    const isFirstConversation = !hasAnyThreads
     const baseInstructions = assistant.instructions || 'You are a helpful assistant.'
     const onboardingInstructions = isFirstConversation ? `\n\n${ONBOARDING_INSTRUCTIONS}\n` : ''
     const channelInstructions = options.channelDeliveryEnabled
@@ -702,8 +833,40 @@ export class AssistantRuntimeService implements AssistantRuntime {
       ...(workspaceRootPath
         ? [assistantWorkspaceContextInputProcessor({ workspaceRootPath })]
         : []),
+      ...(guardrailConfig.promptInjectionEnabled
+        ? [
+            new PromptInjectionDetector({
+              model: guardrailModel,
+              threshold: PROMPT_INJECTION_THRESHOLD,
+              strategy: 'warn'
+            })
+          ]
+        : []),
+      ...(guardrailConfig.piiDetectionEnabled
+        ? [
+            new PIIDetector({
+              model: guardrailModel,
+              threshold: PII_THRESHOLD,
+              strategy: 'redact',
+              redactionMethod: 'mask'
+            })
+          ]
+        : []),
       new AttachmentUploader()
     ]
+    const outputProcessors = guardrailConfig.piiDetectionEnabled
+      ? [
+          new BatchPartsProcessor({
+            batchSize: 10
+          }),
+          new PIIDetector({
+            model: guardrailModel,
+            threshold: PII_THRESHOLD,
+            strategy: 'redact',
+            redactionMethod: 'mask'
+          })
+        ]
+      : []
 
     const agent = new Agent({
       id: assistant.id,
@@ -713,11 +876,59 @@ export class AssistantRuntimeService implements AssistantRuntime {
       memory,
       ...(workspace ? { workspace } : {}),
       tools,
-      inputProcessors
+      inputProcessors,
+      ...(outputProcessors.length > 0 ? { outputProcessors } : {})
     })
 
     this.options.mastra.addAgent(agent, assistant.id)
     this.registeredAgentSignatures.set(assistant.id, nextSignature)
+  }
+
+  private async resolveGuardrailConfig(
+    assistantProvider: AssistantContext['provider']
+  ): Promise<ResolvedGuardrailConfig> {
+    const defaultSettings = {
+      promptInjectionEnabled: true,
+      piiDetectionEnabled: true,
+      guardrailProviderId: null
+    }
+    const settings = this.options.securitySettingsRepo
+      ? await this.options.securitySettingsRepo.getSettings()
+      : defaultSettings
+    const requestedProviderId = this.toNonEmptyString(settings.guardrailProviderId)
+
+    if (!requestedProviderId) {
+      return {
+        promptInjectionEnabled: settings.promptInjectionEnabled,
+        piiDetectionEnabled: settings.piiDetectionEnabled,
+        requestedProviderId: null,
+        provider: assistantProvider,
+        source: 'assistant'
+      }
+    }
+
+    const overrideProvider = await this.options.providersRepo.getById(requestedProviderId)
+    if (!this.isUsableGuardrailProvider(overrideProvider)) {
+      return {
+        promptInjectionEnabled: settings.promptInjectionEnabled,
+        piiDetectionEnabled: settings.piiDetectionEnabled,
+        requestedProviderId,
+        provider: assistantProvider,
+        source: 'assistant'
+      }
+    }
+
+    return {
+      promptInjectionEnabled: settings.promptInjectionEnabled,
+      piiDetectionEnabled: settings.piiDetectionEnabled,
+      requestedProviderId,
+      provider: overrideProvider,
+      source: 'override'
+    }
+  }
+
+  private isUsableGuardrailProvider(provider: AppProvider | null): provider is AppProvider {
+    return Boolean(provider && provider.enabled && provider.selectedModel.trim().length > 0)
   }
 
   private async buildWorkspace(

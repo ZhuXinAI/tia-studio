@@ -7,6 +7,7 @@ import type { ChannelPairingsRepository } from '../persistence/repos/channel-pai
 import type { CronJobsRepository } from '../persistence/repos/cron-jobs-repo'
 import type { McpServersRepository } from '../persistence/repos/mcp-servers-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
+import type { SecuritySettingsRepository } from '../persistence/repos/security-settings-repo'
 import type { TeamThreadsRepository } from '../persistence/repos/team-threads-repo'
 import type { TeamWorkspacesRepository } from '../persistence/repos/team-workspaces-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
@@ -25,6 +26,7 @@ import { registerCronJobsRoute } from './routes/cron-jobs-route'
 import { registerHealthRoute } from './routes/health-route'
 import { registerMcpServersRoute } from './routes/mcp-servers-route'
 import { registerProvidersRoute } from './routes/providers-route'
+import { registerSecuritySettingsRoute } from './routes/security-settings-route'
 import { registerTeamChatRoute } from './routes/team-chat-route'
 import { registerTeamThreadsRoute } from './routes/team-threads-route'
 import { registerTeamWorkspacesRoute } from './routes/team-workspaces-route'
@@ -40,6 +42,7 @@ type CreateAppOptions = {
     teamWorkspaces: TeamWorkspacesRepository
     teamThreads: TeamThreadsRepository
     webSearchSettings: WebSearchSettingsRepository
+    securitySettings?: SecuritySettingsRepository
     mcpServers: McpServersRepository
     channels: ChannelsRepository
     pairings: ChannelPairingsRepository
@@ -135,6 +138,12 @@ export function createApp(options: CreateAppOptions): Hono {
     registerWebSearchSettingsRoute(app, {
       webSearchSettingsRepo: options.repositories.webSearchSettings
     })
+    if (options.repositories.securitySettings) {
+      registerSecuritySettingsRoute(app, {
+        securitySettingsRepo: options.repositories.securitySettings,
+        providersRepo: options.repositories.providers
+      })
+    }
     registerMcpServersRoute(app, {
       mcpServersRepo: options.repositories.mcpServers
     })

@@ -103,7 +103,7 @@ export const BUILT_IN_PROVIDERS: BuiltInProviderConfig[] = [
   },
   {
     id: 'built-in-kimi-coding-plan',
-    name: 'Kimi',
+    name: 'Kimi Coding Plan',
     type: 'anthropic',
     icon: 'kimi',
     officialSite: 'https://kimi.com',

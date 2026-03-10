@@ -53,6 +53,7 @@
       "items": {
         "general": "General",
         "providers": "Model Provider",
+        "security": "Security & Privacy",
         "channels": "Channels",
         "cronJobs": "Cron Jobs",
         "webSearch": "Web Search",
@@ -69,6 +70,39 @@
       "languageDescription": "Choose how TIA Studio displays renderer UI text.",
       "systemDefault": "System Default",
       "currentSystemLanguage": "Currently using {{language}} from your system settings."
+    },
+    "security": {
+      "title": "Security & Privacy",
+      "description": "Configure LLM guardrails for prompt injection and PII redaction.",
+      "loading": "Loading security settings...",
+      "guardrails": {
+        "title": "Guardrails",
+        "description": "Prompt injection checks run on incoming messages, and PII protection redacts both incoming and outgoing content."
+      },
+      "promptInjection": {
+        "title": "Prompt Injection Detector",
+        "description": "Detects jailbreaks, instruction overrides, and prompt injection attempts before the assistant model runs."
+      },
+      "pii": {
+        "title": "PII Detector",
+        "description": "Redacts personally identifiable information in user input and assistant output."
+      },
+      "provider": {
+        "title": "Guardrail Model",
+        "description": "Use each assistant's selected model by default, or choose a separate enabled provider for the detector checks.",
+        "label": "Security provider",
+        "defaultOption": "Use assistant model",
+        "hint": "When no override is selected, TIA Studio falls back to the assistant's configured model.",
+        "empty": "No enabled providers with a selected model are currently available."
+      },
+      "toasts": {
+        "promptInjectionEnabled": "Prompt injection protection is now enabled.",
+        "promptInjectionDisabled": "Prompt injection protection is now disabled.",
+        "piiEnabled": "PII protection is now enabled.",
+        "piiDisabled": "PII protection is now disabled.",
+        "providerUpdated": "Guardrail provider updated.",
+        "unexpectedError": "Unexpected request error"
+      }
     },
     "display": {
       "title": "Display Settings",
@@ -400,6 +434,8 @@
     "card": {
       "noChannelConnected": "No channel connected",
       "configureChannelFirst": "Configure a channel first",
+      "statusEnabled": "Enabled",
+      "statusDisabled": "Disabled",
       "enableButton": "Enable",
       "disableButton": "Disable",
       "editButton": "Edit",
@@ -532,12 +568,26 @@
       "disabled": "Disabled",
       "actions": {
         "add": "Add Provider",
+        "addFromTemplate": "Add from Template",
+        "addCustom": "Add Custom Provider",
         "edit": "Edit Provider",
         "clear": "Clear Selection",
         "cancel": "Cancel",
         "apply": "Apply"
       },
       "selectedBadge": "Selected",
+      "templates": {
+        "title": "Choose Provider Template",
+        "description": "Select a prebuilt provider configuration. You'll just need to add your API key.",
+        "empty": "All built-in providers are already configured."
+      },
+      "template": {
+        "title": "Configure Provider",
+        "description": "Add your API key to activate this provider.",
+        "getApiKeyPrompt": "Get your API key from",
+        "apiKeyHint": "Enter your API key to activate this provider.",
+        "save": "Add Provider"
+      },
       "create": {
         "title": "Add Provider",
         "description": "Create a new model provider configuration.",

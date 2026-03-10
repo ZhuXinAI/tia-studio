@@ -53,6 +53,7 @@
       "items": {
         "general": "常规",
         "providers": "模型提供商",
+        "security": "Security & Privacy",
         "channels": "频道",
         "cronJobs": "定时任务",
         "webSearch": "网络搜索",
@@ -69,6 +70,39 @@
       "languageDescription": "选择 TIA Studio 界面文本的显示语言。",
       "systemDefault": "跟随系统",
       "currentSystemLanguage": "当前根据系统设置使用 {{language}}。"
+    },
+    "security": {
+      "title": "Security & Privacy",
+      "description": "Configure LLM guardrails for prompt injection and PII redaction.",
+      "loading": "Loading security settings...",
+      "guardrails": {
+        "title": "Guardrails",
+        "description": "Prompt injection checks run on incoming messages, and PII protection redacts both incoming and outgoing content."
+      },
+      "promptInjection": {
+        "title": "Prompt Injection Detector",
+        "description": "Detects jailbreaks, instruction overrides, and prompt injection attempts before the assistant model runs."
+      },
+      "pii": {
+        "title": "PII Detector",
+        "description": "Redacts personally identifiable information in user input and assistant output."
+      },
+      "provider": {
+        "title": "Guardrail Model",
+        "description": "Use each assistant's selected model by default, or choose a separate enabled provider for the detector checks.",
+        "label": "Security provider",
+        "defaultOption": "Use assistant model",
+        "hint": "When no override is selected, TIA Studio falls back to the assistant's configured model.",
+        "empty": "No enabled providers with a selected model are currently available."
+      },
+      "toasts": {
+        "promptInjectionEnabled": "Prompt injection protection is now enabled.",
+        "promptInjectionDisabled": "Prompt injection protection is now disabled.",
+        "piiEnabled": "PII protection is now enabled.",
+        "piiDisabled": "PII protection is now disabled.",
+        "providerUpdated": "Guardrail provider updated.",
+        "unexpectedError": "Unexpected request error"
+      }
     },
     "display": {
       "title": "显示设置",
@@ -400,6 +434,8 @@
     "card": {
       "noChannelConnected": "未连接频道",
       "configureChannelFirst": "请先配置频道",
+      "statusEnabled": "已启用",
+      "statusDisabled": "已禁用",
       "enableButton": "启用",
       "disableButton": "禁用",
       "editButton": "编辑",
@@ -532,12 +568,26 @@
       "disabled": "已禁用",
       "actions": {
         "add": "添加提供商",
+        "addFromTemplate": "从模板添加",
+        "addCustom": "添加自定义提供商",
         "edit": "编辑提供商",
         "clear": "清除选择",
         "cancel": "取消",
         "apply": "应用"
       },
       "selectedBadge": "已选择",
+      "templates": {
+        "title": "选择提供商模板",
+        "description": "选择预置的提供商配置，您只需添加 API 密钥即可。",
+        "empty": "所有内置提供商已配置完成。"
+      },
+      "template": {
+        "title": "配置提供商",
+        "description": "添加您的 API 密钥以激活此提供商。",
+        "getApiKeyPrompt": "从以下地址获取您的 API 密钥",
+        "apiKeyHint": "输入您的 API 密钥以激活此提供商。",
+        "save": "添加提供商"
+      },
       "create": {
         "title": "添加提供商",
         "description": "创建新的模型提供商配置。",

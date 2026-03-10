@@ -54,9 +54,18 @@ describe('app router', () => {
     expect(html).toContain('PROVIDERS')
     expect(html).toContain('Search providers...')
     expect(html).toContain('Model Provider')
+    expect(html).toContain('Security &amp; Privacy')
     expect(html).toContain('Web Search')
     expect(html).toContain('MCP Servers')
     expect(html).toContain('About &amp; Feedback')
+  })
+
+  it('renders security settings route', () => {
+    const html = renderRouter(['/settings/security'])
+
+    expect(html).toContain('Security &amp; Privacy')
+    expect(html).toContain('Configure LLM guardrails')
+    expect(html).toContain('Loading security settings...')
   })
 
   it('renders web search settings route', () => {
