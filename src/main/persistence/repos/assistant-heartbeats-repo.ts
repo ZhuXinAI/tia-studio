@@ -112,9 +112,7 @@ export class AssistantHeartbeatsRepository {
     return parseAssistantHeartbeatRow(row as Record<string, unknown>)
   }
 
-  async upsertForAssistant(
-    input: UpsertAssistantHeartbeatInput
-  ): Promise<AppAssistantHeartbeat> {
+  async upsertForAssistant(input: UpsertAssistantHeartbeatInput): Promise<AppAssistantHeartbeat> {
     const existing = await this.getByAssistantId(input.assistantId)
 
     if (existing) {

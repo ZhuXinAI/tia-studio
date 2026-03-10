@@ -1,14 +1,15 @@
 import { rm } from 'node:fs/promises'
-import makeWASocket, {
+import {
   Browsers,
   DisconnectReason,
+  useMultiFileAuthState as createMultiFileAuthState,
   getContentType,
   isJidBroadcast,
   isJidGroup,
   jidDecode,
   jidNormalizedUser,
+  makeWASocket,
   normalizeMessageContent,
-  useMultiFileAuthState,
   type ConnectionState,
   type WAMessage,
   type WASocket
@@ -206,7 +207,7 @@ async function createWhatsAppClient(authDirectoryPath: string): Promise<WhatsApp
       handleText = handler
     },
     async connect() {
-      const { state, saveCreds } = await useMultiFileAuthState(authDirectoryPath)
+      const { state, saveCreds } = await createMultiFileAuthState(authDirectoryPath)
       socket = makeWASocket({
         auth: state,
         browser: Browsers.macOS('TIA Studio'),

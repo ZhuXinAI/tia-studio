@@ -87,16 +87,13 @@ export class AssistantHeartbeatRunsRepository {
       [heartbeatId]
     )
 
-    return result.rows.map((row) =>
-      parseAssistantHeartbeatRunRow(row as Record<string, unknown>)
-    )
+    return result.rows.map((row) => parseAssistantHeartbeatRunRow(row as Record<string, unknown>))
   }
 
   async getById(id: string): Promise<AppAssistantHeartbeatRun | null> {
-    const result = await this.db.execute(
-      `${ASSISTANT_HEARTBEAT_RUN_SELECT} WHERE id = ? LIMIT 1`,
-      [id]
-    )
+    const result = await this.db.execute(`${ASSISTANT_HEARTBEAT_RUN_SELECT} WHERE id = ? LIMIT 1`, [
+      id
+    ])
     const row = result.rows.at(0)
 
     if (!row) {

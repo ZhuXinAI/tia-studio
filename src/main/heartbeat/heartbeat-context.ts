@@ -37,9 +37,7 @@ function parseWorkLogEntries(content: string): ParsedWorkLogEntry[] {
   }
 
   for (const line of lines) {
-    const headingMatch = line.match(
-      /^## (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z)\b/
-    )
+    const headingMatch = line.match(/^## (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z)\b/)
 
     if (headingMatch) {
       flushCurrentEntry()

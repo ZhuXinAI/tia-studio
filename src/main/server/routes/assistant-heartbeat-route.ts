@@ -33,7 +33,9 @@ export function registerAssistantHeartbeatRoute(
 
   app.get('/v1/assistants/:assistantId/heartbeat', async (context) => {
     try {
-      const heartbeat = await heartbeatsService.getAssistantHeartbeat(context.req.param('assistantId'))
+      const heartbeat = await heartbeatsService.getAssistantHeartbeat(
+        context.req.param('assistantId')
+      )
       return context.json(heartbeat)
     } catch (error) {
       if (isAssistantHeartbeatsServiceError(error)) {

@@ -61,9 +61,7 @@ type ChannelMessageRouterOptions = {
     }): unknown
   }
   interruptionDecider?:
-    | ((
-        input: InterruptionDecisionInput
-      ) => InterruptionDecision | Promise<InterruptionDecision>)
+    | ((input: InterruptionDecisionInput) => InterruptionDecision | Promise<InterruptionDecision>)
     | undefined
 }
 
@@ -173,9 +171,7 @@ function describeWorkItem(item: InboundConversationWorkItem): string {
   return content.length > 0 ? content : '(empty user message)'
 }
 
-function decideInterruptionHeuristically(
-  input: InterruptionDecisionInput
-): InterruptionDecision {
+function decideInterruptionHeuristically(input: InterruptionDecisionInput): InterruptionDecision {
   const message = input.incomingMessage.trim()
   if (message.length === 0) {
     return {

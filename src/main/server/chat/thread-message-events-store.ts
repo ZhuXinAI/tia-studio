@@ -16,10 +16,7 @@ type ThreadEventsState = {
 
 const DEFAULT_MAX_BUFFERED_EVENTS = 20
 
-function toStateKey(input: {
-  assistantId: string
-  profileId: string
-}): string {
+function toStateKey(input: { assistantId: string; profileId: string }): string {
   return `${input.assistantId}:${input.profileId}`
 }
 
@@ -60,10 +57,7 @@ export class ThreadMessageEventsStore {
     return event
   }
 
-  createAssistantStream(input: {
-    assistantId: string
-    profileId: string
-  }): ReadableStream<string> {
+  createAssistantStream(input: { assistantId: string; profileId: string }): ReadableStream<string> {
     const state = this.getOrCreateState(input)
     let listener: ((event: ThreadMessagesUpdatedEvent) => void) | null = null
 
@@ -92,10 +86,7 @@ export class ThreadMessageEventsStore {
     })
   }
 
-  private getOrCreateState(input: {
-    assistantId: string
-    profileId: string
-  }): ThreadEventsState {
+  private getOrCreateState(input: { assistantId: string; profileId: string }): ThreadEventsState {
     const key = toStateKey(input)
     const existing = this.states.get(key)
     if (existing) {

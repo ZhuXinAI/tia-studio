@@ -68,14 +68,17 @@ function resolveLastUserMessageAt(messages: unknown[]): Date | null {
 export async function listRecentConversations(
   input: ListRecentConversationsInput
 ): Promise<RecentConversation[]> {
-  const threads = (await input.threadsRepo.listByAssistant(input.assistantId, { includeHidden: true }))
-    .filter((thread) => !isHiddenThread(thread))
+  const threads = (
+    await input.threadsRepo.listByAssistant(input.assistantId, { includeHidden: true })
+  ).filter((thread) => !isHiddenThread(thread))
 
   if (threads.length === 0) {
     return []
   }
 
-  const bindings = await input.channelThreadBindingsRepo.listByThreadIds(threads.map((thread) => thread.id))
+  const bindings = await input.channelThreadBindingsRepo.listByThreadIds(
+    threads.map((thread) => thread.id)
+  )
   if (bindings.length === 0) {
     return []
   }

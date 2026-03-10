@@ -1,7 +1,5 @@
 import { appendWorkLogEntry } from '../cron/work-log-writer'
-import type {
-  CreateAssistantHeartbeatRunInput
-} from '../persistence/repos/assistant-heartbeat-runs-repo'
+import type { CreateAssistantHeartbeatRunInput } from '../persistence/repos/assistant-heartbeat-runs-repo'
 import type {
   AppAssistantHeartbeat,
   UpdateAssistantHeartbeatInput
