@@ -53,6 +53,7 @@
       "items": {
         "general": "Γενικά",
         "providers": "Πάροχος μοντέλων",
+        "security": "Security & Privacy",
         "channels": "Κανάλια",
         "cronJobs": "Εργασίες cron",
         "webSearch": "Αναζήτηση ιστού",
@@ -69,6 +70,39 @@
       "languageDescription": "Επιλέξτε πώς το TIA Studio εμφανίζει το κείμενο του περιβάλλοντος χρήστη.",
       "systemDefault": "Προεπιλογή συστήματος",
       "currentSystemLanguage": "Αυτή τη στιγμή χρησιμοποιείται η {{language}} από τις ρυθμίσεις συστήματος."
+    },
+    "security": {
+      "title": "Security & Privacy",
+      "description": "Configure LLM guardrails for prompt injection and PII redaction.",
+      "loading": "Loading security settings...",
+      "guardrails": {
+        "title": "Guardrails",
+        "description": "Prompt injection checks run on incoming messages, and PII protection redacts both incoming and outgoing content."
+      },
+      "promptInjection": {
+        "title": "Prompt Injection Detector",
+        "description": "Detects jailbreaks, instruction overrides, and prompt injection attempts before the assistant model runs."
+      },
+      "pii": {
+        "title": "PII Detector",
+        "description": "Redacts personally identifiable information in user input and assistant output."
+      },
+      "provider": {
+        "title": "Guardrail Model",
+        "description": "Use each assistant's selected model by default, or choose a separate enabled provider for the detector checks.",
+        "label": "Security provider",
+        "defaultOption": "Use assistant model",
+        "hint": "When no override is selected, TIA Studio falls back to the assistant's configured model.",
+        "empty": "No enabled providers with a selected model are currently available."
+      },
+      "toasts": {
+        "promptInjectionEnabled": "Prompt injection protection is now enabled.",
+        "promptInjectionDisabled": "Prompt injection protection is now disabled.",
+        "piiEnabled": "PII protection is now enabled.",
+        "piiDisabled": "PII protection is now disabled.",
+        "providerUpdated": "Guardrail provider updated.",
+        "unexpectedError": "Unexpected request error"
+      }
     },
     "display": {
       "title": "Ρυθμίσεις εμφάνισης",
@@ -275,9 +309,20 @@
         "anthropic": "Anthropic",
         "ollama": "Ollama"
       },
+      "typeDescriptions": {
+        "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
+        "openai-response": "For services using OpenAI response format. Use this for third-party APIs that return OpenAI-compatible responses.",
+        "gemini": "For Google Gemini models. Requires Google AI API key from ai.google.dev.",
+        "anthropic": "For Claude models from Anthropic. Requires Anthropic API key from console.anthropic.com.",
+        "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint."
+      },
       "form": {
         "errors": {
-          "selectedModelRequired": "Selected model is required"
+          "selectedModelRequired": "Selected model is required",
+          "nameRequired": "Provider name is required",
+          "apiKeyRequired": "API key is required",
+          "createFailed": "Failed to create provider",
+          "updateFailed": "Failed to update provider"
         },
         "enableProvider": "Enable Provider",
         "enableProviderDescription": "Show this provider in model selection",
@@ -389,6 +434,8 @@
     "card": {
       "noChannelConnected": "Δεν υπάρχει συνδεδεμένο κανάλι",
       "configureChannelFirst": "Configure a channel first",
+      "statusEnabled": "Enabled",
+      "statusDisabled": "Disabled",
       "enableButton": "Ενεργοποίηση",
       "disableButton": "Απενεργοποίηση",
       "editButton": "Επεξεργασία",
@@ -416,6 +463,7 @@
         "assistantName": "Όνομα βοηθού",
         "provider": "Πάροχος",
         "instructions": "Οδηγίες",
+        "workspacePath": "Workspace Path",
         "channelAction": "Ενέργεια καναλιού",
         "existingChannel": "Υπάρχον κανάλι",
         "channelType": "Τύπος καναλιού",
@@ -425,6 +473,10 @@
         "appId": "ID εφαρμογής",
         "appSecret": "Μυστικό εφαρμογής"
       },
+      "pickFolder": "Browse",
+      "workspacePathPlaceholder": "Auto-generated from assistant name",
+      "workspacePathHint": "Leave empty to auto-generate from assistant name, or pick a custom folder",
+      "workspacePathReadOnly": "Workspace path is set automatically and cannot be changed",
       "selectProvider": "Επιλέξτε πάροχο",
       "selectChannel": "Επιλέξτε κανάλι",
       "enableAfterSaving": "Ενεργοποίηση αυτού του Claw μετά την αποθήκευση",
@@ -445,8 +497,14 @@
         "providerRequired": "Ο πάροχος είναι υποχρεωτικός",
         "channelRequired": "Επιλέξτε κανάλι για σύνδεση",
         "channelCredentialsRequired": "Απαιτούνται όνομα καναλιού Lark, ID εφαρμογής και μυστικό εφαρμογής",
-        "telegramCredentialsRequired": "Απαιτούνται όνομα καναλιού Telegram και διακριτικό bot"
+        "telegramCredentialsRequired": "Απαιτούνται όνομα καναλιού Telegram και διακριτικό bot",
+        "pickFolderFailed": "Failed to pick folder"
       }
+    },
+    "channelStatus": {
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "error": "Needs attention"
     },
     "channelSelector": {
       "title": "Select Channel",
@@ -497,6 +555,56 @@
         "createFailed": "Failed to create channel",
         "updateFailed": "Αποτυχία ενημέρωσης καναλιού",
         "deleteFailed": "Failed to delete channel"
+      }
+    },
+    "providerSelector": {
+      "title": "Select Provider",
+      "description": "Choose from configured providers or add a new one.",
+      "openButton": "Select Provider",
+      "noProviderSelected": "No provider selected",
+      "required": "Provider is required",
+      "empty": "No configured providers yet.",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "actions": {
+        "add": "Add Provider",
+        "addFromTemplate": "Add from Template",
+        "addCustom": "Add Custom Provider",
+        "edit": "Edit Provider",
+        "clear": "Clear Selection",
+        "cancel": "Cancel",
+        "apply": "Apply"
+      },
+      "selectedBadge": "Selected",
+      "templates": {
+        "title": "Choose Provider Template",
+        "description": "Select a prebuilt provider configuration. You'll just need to add your API key.",
+        "empty": "All built-in providers are already configured."
+      },
+      "template": {
+        "title": "Configure Provider",
+        "description": "Add your API key to activate this provider.",
+        "getApiKeyPrompt": "Get your API key from",
+        "apiKeyHint": "Enter your API key to activate this provider.",
+        "save": "Add Provider"
+      },
+      "create": {
+        "title": "Add Provider",
+        "description": "Create a new model provider configuration.",
+        "save": "Add Provider"
+      },
+      "edit": {
+        "title": "Edit Provider",
+        "description": "Update this provider configuration.",
+        "save": "Save Changes",
+        "apiKeyOptional": "Leave API key blank to keep the current value.",
+        "apiKeyPlaceholder": "Leave unchanged"
+      },
+      "errors": {
+        "nameRequired": "Provider name is required",
+        "apiKeyRequired": "API key is required",
+        "createFailed": "Failed to create provider",
+        "updateFailed": "Failed to update provider"
       }
     },
     "pairings": {

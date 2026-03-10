@@ -108,6 +108,15 @@ That means adapting an assistant into a claw does **not** fork its identity:
 - 🔒 Local-first architecture
 - ⚡ Fast, native desktop performance
 
+## Security
+
+TIA Studio now includes two Mastra-based LLM guardrails that are enabled by default:
+
+- **Prompt injection detection** blocks or neutralizes jailbreak-style input before it reaches the assistant model
+- **PII detection** redacts personally identifiable information in both user input and assistant output
+
+These protections are configurable from **Settings → Security & Privacy**. By default, the detectors reuse the selected model for each assistant. If you prefer, you can choose a separate enabled provider as the shared guardrail model for those checks. When no override is configured, or the override is unavailable, TIA Studio falls back to the assistant's selected model.
+
 ## Getting Started
 
 ### Prerequisites

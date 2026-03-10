@@ -11,6 +11,7 @@ import { AboutSettingsPage } from '../features/settings/pages/about-settings-pag
 import { DisplaySettingsPage } from '../features/settings/pages/display-settings-page'
 import { GeneralSettingsPage } from '../features/settings/pages/general-settings-page'
 import { RuntimeSetupPage } from '../features/settings/pages/runtime-setup-page'
+import { SecuritySettingsPage } from '../features/settings/pages/security-settings-page'
 import { SettingsPageLayout } from '../features/settings/pages/settings-page-layout'
 import { RouteError } from '../components/route-error'
 import { TeamPage } from '../features/team/pages/team-page'
@@ -61,6 +62,10 @@ export const appRoutes: RouteObject[] = [
           {
             path: 'providers',
             element: <ProvidersSettingsPage />
+          },
+          {
+            path: 'security',
+            element: <SecuritySettingsPage />
           },
           {
             path: 'channels',

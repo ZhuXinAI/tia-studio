@@ -15,6 +15,7 @@ import { ChannelEventBus } from '../channels/channel-event-bus'
 import { appendWorkLogEntry } from '../cron/work-log-writer'
 import type { AssistantCronJobsService } from '../cron/assistant-cron-jobs-service'
 import { AssistantRuntimeService } from './assistant-runtime'
+import * as modelResolver from './model-resolver'
 import { createMastraInstance } from './store'
 import { HEARTBEAT_RUN_CONTEXT_KEY } from './tool-context'
 
@@ -453,12 +454,136 @@ describe('AssistantRuntimeService', () => {
       const workspaceContextProcessor = await agent.resolveProcessorById(
         'assistant-workspace-context'
       )
+      const promptInjectionProcessor = await agent.resolveProcessorById('prompt-injection-detector')
+      const piiProcessor = await agent.resolveProcessorById('pii-detector')
+      const batchPartsProcessor = await agent.resolveProcessorById('batch-parts')
 
       expect(attachmentProcessor?.id).toBe('attachment-uploader')
       expect(workspaceContextProcessor?.id).toBe('assistant-workspace-context')
+      expect(promptInjectionProcessor?.id).toBe('prompt-injection-detector')
+      expect(piiProcessor?.id).toBe('pii-detector')
+      expect(batchPartsProcessor?.id).toBe('batch-parts')
     } finally {
       await rm(workspaceRoot, { recursive: true, force: true })
     }
+  })
+
+  it('uses the configured guardrail provider for detector models', async () => {
+    const resolveModelSpy = vi.spyOn(modelResolver, 'resolveModel')
+    const assistant = buildAssistant({
+      workspaceConfig: {
+        rootPath: '/tmp'
+      }
+    })
+    const assistantProvider = buildProvider({
+      id: 'assistant-provider',
+      selectedModel: 'assistant-model'
+    })
+    const guardrailProvider = buildProvider({
+      id: 'guardrail-provider',
+      name: 'guardrail',
+      selectedModel: 'guardrail-model'
+    })
+    const mastra = await createMastraInstance(':memory:')
+    const runtime = new AssistantRuntimeService({
+      mastra,
+      assistantsRepo: {} as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async (providerId: string) =>
+          providerId === guardrailProvider.id ? guardrailProvider : null
+        )
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        hasAnyThreads: vi.fn(async () => true)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing')
+      } as unknown as WebSearchSettingsRepository,
+      securitySettingsRepo: {
+        getSettings: vi.fn(async () => ({
+          promptInjectionEnabled: true,
+          piiDetectionEnabled: true,
+          guardrailProviderId: guardrailProvider.id
+        }))
+      },
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    try {
+      await (
+        runtime as unknown as {
+          ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+        }
+      ).ensureAgentRegistered(assistant, assistantProvider)
+
+      expect(
+        resolveModelSpy.mock.calls.some(
+          ([config]) =>
+            config.type === assistantProvider.type &&
+            config.apiKey === assistantProvider.apiKey &&
+            config.apiHost === assistantProvider.apiHost &&
+            config.selectedModel === assistantProvider.selectedModel
+        )
+      ).toBe(true)
+      expect(
+        resolveModelSpy.mock.calls.some(
+          ([config]) =>
+            config.type === guardrailProvider.type &&
+            config.apiKey === guardrailProvider.apiKey &&
+            config.apiHost === guardrailProvider.apiHost &&
+            config.selectedModel === guardrailProvider.selectedModel
+        )
+      ).toBe(true)
+    } finally {
+      resolveModelSpy.mockRestore()
+    }
+  })
+
+  it('omits security processors when both guardrails are disabled', async () => {
+    const assistant = buildAssistant({
+      workspaceConfig: {
+        rootPath: '/tmp'
+      }
+    })
+    const mastra = await createMastraInstance(':memory:')
+    const runtime = new AssistantRuntimeService({
+      mastra,
+      assistantsRepo: {} as AssistantsRepository,
+      providersRepo: {} as ProvidersRepository,
+      threadsRepo: {
+        hasAnyThreads: vi.fn(async () => true)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing')
+      } as unknown as WebSearchSettingsRepository,
+      securitySettingsRepo: {
+        getSettings: vi.fn(async () => ({
+          promptInjectionEnabled: false,
+          piiDetectionEnabled: false,
+          guardrailProviderId: null
+        }))
+      },
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    await (
+      runtime as unknown as {
+        ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+      }
+    ).ensureAgentRegistered(assistant, buildProvider())
+
+    const agent = mastra.getAgentById(assistant.id)
+
+    await expect(agent.resolveProcessorById('prompt-injection-detector')).resolves.toBeNull()
+    await expect(agent.resolveProcessorById('pii-detector')).resolves.toBeNull()
+    await expect(agent.resolveProcessorById('batch-parts')).resolves.toBeNull()
+    await expect(agent.resolveProcessorById('attachment-uploader')).resolves.toMatchObject({
+      id: 'attachment-uploader'
+    })
   })
 
   it('re-registers an agent when provider configuration changes', async () => {

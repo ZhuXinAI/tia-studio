@@ -7,6 +7,7 @@ import {
   MessageCircleMore,
   Monitor,
   Search,
+  Shield,
   Wrench
 } from 'lucide-react'
 import type { ComponentType } from 'react'
@@ -39,6 +40,11 @@ const settingsNavItems: SettingsNavItem[] = [
     titleKey: 'settings.sidebar.items.providers',
     icon: Cloud,
     to: '/settings/providers'
+  },
+  {
+    titleKey: 'settings.sidebar.items.security',
+    icon: Shield,
+    to: '/settings/security'
   },
   {
     titleKey: 'settings.sidebar.items.channels',

@@ -46,6 +46,7 @@ import {
 } from './persistence/repos/managed-runtimes-repo'
 import { McpServersRepository } from './persistence/repos/mcp-servers-repo'
 import { ProvidersRepository } from './persistence/repos/providers-repo'
+import { SecuritySettingsRepository } from './persistence/repos/security-settings-repo'
 import { TeamThreadsRepository } from './persistence/repos/team-threads-repo'
 import { TeamWorkspacesRepository } from './persistence/repos/team-workspaces-repo'
 import { ThreadsRepository } from './persistence/repos/threads-repo'
@@ -175,6 +176,7 @@ async function startLocalApiServer(): Promise<void> {
   const teamWorkspacesRepo = new TeamWorkspacesRepository(db)
   const teamThreadsRepo = new TeamThreadsRepository(db)
   const webSearchSettingsRepo = new WebSearchSettingsRepository(db)
+  const securitySettingsRepo = new SecuritySettingsRepository(db)
   const mcpServersRepo = new McpServersRepository(join(app.getPath('userData'), 'mcp.json'))
   const managedRuntimesRepo = new ManagedRuntimesRepository(
     join(app.getPath('userData'), 'managed-runtimes.json')
@@ -204,6 +206,7 @@ async function startLocalApiServer(): Promise<void> {
     reloadScheduler: async () => heartbeatSchedulerService?.reload()
   })
   const mastra = await createMastraInstance(join(app.getPath('userData'), 'mastra.db'))
+  const threadMessageEventsStore = new ThreadMessageEventsStore()
   const assistantRuntime = new AssistantRuntimeService({
     mastra,
     assistantsRepo,
@@ -211,13 +214,15 @@ async function startLocalApiServer(): Promise<void> {
     threadsRepo,
     channelThreadBindingsRepo,
     webSearchSettingsRepo,
+    securitySettingsRepo,
     mcpServersRepo,
+    channelsRepo,
     channelEventBus,
+    threadMessageEventsStore,
     cronJobService: assistantCronJobsService,
     managedRuntimeResolver: managedRuntimeService
   })
   const teamRunStatusStore = new TeamRunStatusStore()
-  const threadMessageEventsStore = new ThreadMessageEventsStore()
   const teamRuntime = new TeamRuntimeService({
     mastra,
     assistantsRepo,
@@ -317,6 +322,7 @@ async function startLocalApiServer(): Promise<void> {
       teamWorkspaces: teamWorkspacesRepo,
       teamThreads: teamThreadsRepo,
       webSearchSettings: webSearchSettingsRepo,
+      securitySettings: securitySettingsRepo,
       mcpServers: mcpServersRepo
     },
     assistantRuntime,
