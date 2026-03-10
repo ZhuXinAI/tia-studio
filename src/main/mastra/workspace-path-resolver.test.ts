@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { app } from 'electron'
 import {
@@ -51,6 +52,10 @@ describe('toSnakeCase', () => {
 })
 
 describe('resolveDefaultAssistantWorkspacePath', () => {
+  function expectedWorkspacePath(name: string): string {
+    return path.join('/Users/test/Library/Application Support/tia-studio', 'assistants', name)
+  }
+
   beforeEach(() => {
     vi.mocked(app.getPath).mockReturnValue('/Users/test/Library/Application Support/tia-studio')
   })
@@ -61,23 +66,17 @@ describe('resolveDefaultAssistantWorkspacePath', () => {
 
   it('creates path with snake_case name', () => {
     const result = resolveDefaultAssistantWorkspacePath('My Assistant')
-    expect(result).toBe(
-      '/Users/test/Library/Application Support/tia-studio/assistants/my_assistant'
-    )
+    expect(result).toBe(expectedWorkspacePath('my_assistant'))
   })
 
   it('handles empty name with fallback', () => {
     const result = resolveDefaultAssistantWorkspacePath('')
-    expect(result).toBe(
-      '/Users/test/Library/Application Support/tia-studio/assistants/unnamed_assistant'
-    )
+    expect(result).toBe(expectedWorkspacePath('unnamed_assistant'))
   })
 
   it('handles special characters', () => {
     const result = resolveDefaultAssistantWorkspacePath('Customer Support Bot!')
-    expect(result).toBe(
-      '/Users/test/Library/Application Support/tia-studio/assistants/customer_support_bot'
-    )
+    expect(result).toBe(expectedWorkspacePath('customer_support_bot'))
   })
 
   it('calls app.getPath with userData', () => {
@@ -87,6 +86,10 @@ describe('resolveDefaultAssistantWorkspacePath', () => {
 })
 
 describe('createDefaultWorkspaceConfig', () => {
+  function expectedWorkspacePath(name: string): string {
+    return path.join('/Users/test/Library/Application Support/tia-studio', 'assistants', name)
+  }
+
   beforeEach(() => {
     vi.mocked(app.getPath).mockReturnValue('/Users/test/Library/Application Support/tia-studio')
   })
@@ -98,7 +101,7 @@ describe('createDefaultWorkspaceConfig', () => {
   it('creates config with rootPath property', () => {
     const result = createDefaultWorkspaceConfig('My Assistant')
     expect(result).toEqual({
-      rootPath: '/Users/test/Library/Application Support/tia-studio/assistants/my_assistant'
+      rootPath: expectedWorkspacePath('my_assistant')
     })
   })
 
