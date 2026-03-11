@@ -26,7 +26,18 @@ TIA (short for "This Is AI") Studio is an Electron-based desktop app built to ma
 
 At the same time, TIA Studio is a full-featured assistant app. You can chat with a single assistant, coordinate a team of assistants, organize threaded work, and manage channels from one local-first desktop workspace.
 
-Today, TIA Studio supports Lark, Telegram, and WhatsApp channels, with more channels planned next.
+Today, TIA Studio supports Lark, Telegram, WhatsApp, and Wecom channels, with more channels planned next.
+
+### Channel Support
+
+| Channel | Direct Chat | Group Chat | Group Trigger |
+| ------- | ----------- | ---------- | ------------- |
+| Lark | ✅ | ✅ | Replies only when the bot is `@` mentioned by default |
+| Telegram | ✅ | 🚫 | Group support is currently disabled |
+| WhatsApp | ✅ | ✅ | Replies only when the bot is `@` mentioned by default |
+| Wecom | ✅ | ✅ | Replies only when the bot is `@` mentioned by default |
+
+For more, check [CHANNEL.md](./CHANNEL.md).
 
 ## Full Assistant Workspace
 
@@ -71,7 +82,7 @@ This keeps the model simple:
 
 Claws are implemented by composing existing assistant and channel records instead of introducing a new database entity:
 
-1. **Assistant-first creation** - `POST /v1/claws` creates a normal assistant, then either creates a new Lark channel or attaches an existing unbound channel to that assistant.
+1. **Assistant-first creation** - `POST /v1/claws` creates a normal assistant, then either creates a new supported channel or attaches an existing unbound channel to that assistant.
 2. **Channel binding as the link** - The claw relationship lives on `channel.assistantId`, which gives each channel a single active assistant owner while keeping detached channels reusable.
 3. **Built-in assistants stay out of the claw list** - The claws route only exposes user-managed assistants, so built-in agents keep their own lifecycle and do not show up as claws.
 4. **Runtime reload on every claw change** - After create, update, or delete, TIA Studio reloads both the channel service and the cron scheduler so routing and schedules immediately reflect the new attachment state.
@@ -101,7 +112,7 @@ That means adapting an assistant into a claw does **not** fork its identity:
 - 🤖 Full-featured AI assistant workspace with multiple assistants
 - 👥 Teams for coordinating assistants in one workspace
 - 📡 Channels that connect assistants to real conversations
-- ✅ Lark, Telegram, and WhatsApp support available today
+- ✅ Lark, Telegram, WhatsApp, and Wecom support available today
 - 🚧 More channels coming soon
 - 💬 Thread-based conversation management
 - 🎨 Clean, dark-themed interface

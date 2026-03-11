@@ -558,6 +558,10 @@
         "appSecretPlaceholder": "Leave unchanged",
         "botTokenPlaceholder": "Leave unchanged"
       },
+      "groupRequireMention": {
+        "label": "Require @mentions in group chats",
+        "description": "When enabled, the assistant only replies in group chats when the bot is mentioned. Direct chats still work normally."
+      },
       "remove": {
         "title": "Remove Channel",
         "description": "Remove {{channelName}} from configured channels?",

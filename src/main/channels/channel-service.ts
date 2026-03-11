@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { AppChannel } from '../persistence/repos/channels-repo'
 import { ChannelEventBus } from './channel-event-bus'
+import { resolveGroupRequireMention } from './channel-config'
 import { LarkChannel } from './lark-channel'
 import { WeComChannel } from './wecom-channel'
 import type {
@@ -139,7 +140,8 @@ export class ChannelService {
       return new LarkChannel({
         id: channel.id,
         appId: this.getRequiredConfigString(channel, 'appId'),
-        appSecret: this.getRequiredConfigString(channel, 'appSecret')
+        appSecret: this.getRequiredConfigString(channel, 'appSecret'),
+        groupRequireMention: this.getConfigBoolean(channel, 'groupRequireMention')
       })
     }
 
@@ -147,7 +149,8 @@ export class ChannelService {
       return new WeComChannel({
         id: channel.id,
         botId: this.getRequiredConfigString(channel, 'botId'),
-        secret: this.getRequiredConfigString(channel, 'secret')
+        secret: this.getRequiredConfigString(channel, 'secret'),
+        groupRequireMention: this.getConfigBoolean(channel, 'groupRequireMention')
       })
     }
 
@@ -190,5 +193,14 @@ export class ChannelService {
     }
 
     throw new Error(`Channel ${channel.id} is missing required config: ${key}`)
+  }
+
+  private getConfigBoolean(channel: AppChannel, key: string): boolean {
+    if (key === 'groupRequireMention') {
+      return resolveGroupRequireMention(channel.config)
+    }
+
+    const value = channel.config[key]
+    return typeof value === 'boolean' ? value : false
   }
 }

@@ -558,6 +558,10 @@
         "appSecretPlaceholder": "変更しない",
         "botTokenPlaceholder": "変更しない"
       },
+      "groupRequireMention": {
+        "label": "グループでは @メンションを必須にする",
+        "description": "有効にすると、グループチャットではボットがメンションされた場合のみ返信します。ダイレクトチャットは通常どおり動作します。"
+      },
       "remove": {
         "title": "Remove Channel",
         "description": "Remove {{channelName}} from configured channels?",

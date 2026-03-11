@@ -20,6 +20,7 @@ import {
   updateConfiguredChannelSchema,
   updateClawSchema
 } from '../validators/claws-validator'
+import { resolveGroupRequireMention } from '../../channels/channel-config'
 
 type ChannelServiceLike = {
   reload(): Promise<void>
@@ -110,6 +111,7 @@ type ConfiguredChannelResponse = {
   id: string
   type: string
   name: string
+  groupRequireMention: boolean
   assistantId: string | null
   assistantName: string | null
   status: 'connected' | 'disconnected' | 'error'
@@ -271,6 +273,7 @@ async function listConfiguredChannels(
         id: channel.id,
         type: channel.type,
         name: channel.name,
+        groupRequireMention: resolveGroupRequireMention(channel.config),
         assistantId: channel.assistantId,
         assistantName: assistant?.name ?? null,
         status: await toChannelStatus(channel, assistant?.enabled ?? false, options),
@@ -303,6 +306,7 @@ async function toConfiguredChannelResponse(
     id: channel.id,
     type: channel.type,
     name: channel.name,
+    groupRequireMention: resolveGroupRequireMention(channel.config),
     assistantId: channel.assistantId,
     assistantName: assistant?.name ?? null,
     status: await toChannelStatus(channel, assistant?.enabled ?? false, options),
@@ -381,52 +385,66 @@ function toPairingResponse(pairing: AppChannelPairing): ClawPairingResponse {
 
 function buildChannelConfig(
   channel:
-    | { type: 'lark'; appId: string; appSecret: string }
-    | { type: 'telegram'; botToken: string }
-    | { type: 'whatsapp' }
-    | { type: 'wecom'; botId: string; secret: string }
+    | { type: 'lark'; appId: string; appSecret: string; groupRequireMention?: boolean }
+    | { type: 'telegram'; botToken: string; groupRequireMention?: boolean }
+    | { type: 'whatsapp'; groupRequireMention?: boolean }
+    | { type: 'wecom'; botId: string; secret: string; groupRequireMention?: boolean }
 ): Record<string, unknown> {
+  const groupRequireMention = channel.groupRequireMention ?? true
+
   if (channel.type === 'telegram') {
     return {
-      botToken: channel.botToken
+      botToken: channel.botToken,
+      groupRequireMention
     }
   }
 
   if (channel.type === 'whatsapp') {
-    return {}
+    return {
+      groupRequireMention
+    }
   }
 
   if (channel.type === 'wecom') {
     return {
       botId: channel.botId,
-      secret: channel.secret
+      secret: channel.secret,
+      groupRequireMention
     }
   }
 
   return {
     appId: channel.appId,
-    appSecret: channel.appSecret
+    appSecret: channel.appSecret,
+    groupRequireMention
   }
 }
 
 function mergeChannelConfig(
   existingChannel: AppChannel,
   channel:
-    | { type: 'lark'; appId?: string; appSecret?: string }
-    | { type: 'telegram'; botToken?: string }
-    | { type: 'whatsapp' }
-    | { type: 'wecom'; botId?: string; secret?: string }
+    | { type: 'lark'; appId?: string; appSecret?: string; groupRequireMention?: boolean }
+    | { type: 'telegram'; botToken?: string; groupRequireMention?: boolean }
+    | { type: 'whatsapp'; groupRequireMention?: boolean }
+    | { type: 'wecom'; botId?: string; secret?: string; groupRequireMention?: boolean }
 ): Record<string, unknown> {
+  const groupRequireMention =
+    channel.groupRequireMention ?? resolveGroupRequireMention(existingChannel.config)
+
   if (channel.type === 'telegram') {
     return {
       botToken:
         channel.botToken ??
-        (typeof existingChannel.config.botToken === 'string' ? existingChannel.config.botToken : '')
+        (typeof existingChannel.config.botToken === 'string' ? existingChannel.config.botToken : ''),
+      groupRequireMention
     }
   }
 
   if (channel.type === 'whatsapp') {
-    return existingChannel.config
+    return {
+      ...existingChannel.config,
+      groupRequireMention
+    }
   }
 
   if (channel.type === 'wecom') {
@@ -436,7 +454,8 @@ function mergeChannelConfig(
         (typeof existingChannel.config.botId === 'string' ? existingChannel.config.botId : ''),
       secret:
         channel.secret ??
-        (typeof existingChannel.config.secret === 'string' ? existingChannel.config.secret : '')
+        (typeof existingChannel.config.secret === 'string' ? existingChannel.config.secret : ''),
+      groupRequireMention
     }
   }
 
@@ -446,7 +465,8 @@ function mergeChannelConfig(
       (typeof existingChannel.config.appId === 'string' ? existingChannel.config.appId : ''),
     appSecret:
       channel.appSecret ??
-      (typeof existingChannel.config.appSecret === 'string' ? existingChannel.config.appSecret : '')
+      (typeof existingChannel.config.appSecret === 'string' ? existingChannel.config.appSecret : ''),
+    groupRequireMention
   }
 }
 

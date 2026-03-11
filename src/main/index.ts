@@ -20,6 +20,7 @@ import { ensureBuiltInDefaultAgent } from './default-agent/default-agent-bootstr
 import { ensureBuiltInProviders } from './default-agent/built-in-providers-bootstrap'
 import { logger } from './utils/logger'
 import { ChannelEventBus } from './channels/channel-event-bus'
+import { resolveGroupRequireMention } from './channels/channel-config'
 import { ChannelMessageRouter } from './channels/channel-message-router'
 import { ChannelService } from './channels/channel-service'
 import { TelegramChannel } from './channels/telegram-channel'
@@ -248,6 +249,7 @@ async function startLocalApiServer(): Promise<void> {
           id: channel.id,
           botToken,
           pairingsRepo: channelPairingsRepo,
+          groupRequireMention: resolveGroupRequireMention(channel.config),
           onFatalError: async (error) => {
             const message = error instanceof Error ? error.message : 'Unknown error'
             await channelsRepo.setLastError(channel.id, message)
@@ -269,6 +271,7 @@ async function startLocalApiServer(): Promise<void> {
           id: channel.id,
           botId,
           secret,
+          groupRequireMention: resolveGroupRequireMention(channel.config),
           onFatalError: async (error) => {
             const message = error instanceof Error ? error.message : 'Unknown error'
             await channelsRepo.setLastError(channel.id, message)
@@ -281,6 +284,7 @@ async function startLocalApiServer(): Promise<void> {
           authDirectoryPath: join(app.getPath('userData'), 'channels', 'whatsapp', channel.id),
           pairingsRepo: channelPairingsRepo,
           authStateStore: whatsAppAuthStateStore,
+          groupRequireMention: resolveGroupRequireMention(channel.config),
           onFatalError: async (error) => {
             const message = error instanceof Error ? error.message : 'Unknown error'
             await channelsRepo.setLastError(channel.id, message)

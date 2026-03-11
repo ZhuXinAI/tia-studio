@@ -67,6 +67,7 @@ describe('WeComChannel', () => {
       metadata: {
         wecomChatId: null,
         wecomChatType: 'single',
+        wecomIsBotMentioned: true,
         wecomMessageId: 'msg-1'
       }
     })
@@ -84,10 +85,12 @@ describe('WeComChannel', () => {
 
     await channel.start()
 
-    expect(sdkStub.wsClientCtor).toHaveBeenCalledWith({
-      botId: 'bot-123',
-      secret: 'secret-123'
-    })
+    expect(sdkStub.wsClientCtor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        botId: 'bot-123',
+        secret: 'secret-123'
+      })
+    )
     expect(sdkStub.connect).toHaveBeenCalledOnce()
   })
 
@@ -148,5 +151,112 @@ describe('WeComChannel', () => {
 
     expect(sdkStub.disconnect).toHaveBeenCalledOnce()
     expect(onFatalError).not.toHaveBeenCalled()
+  })
+
+  it('ignores group messages without a bot mention by default', async () => {
+    const sdkStub = createSdkStub()
+    const channel = new WeComChannel({
+      id: 'channel-wecom',
+      botId: 'bot-123',
+      secret: 'secret-123',
+      sdk: sdkStub.sdk
+    })
+
+    const message = channel['toChannelMessage']({
+      body: {
+        msgid: 'msg-group-1',
+        chatid: 'chat-group-1',
+        chattype: 'group',
+        from: {
+          userid: 'user-1'
+        },
+        create_time: 1_773_187_200,
+        msgtype: 'text',
+        text: {
+          content: 'hello everyone'
+        }
+      }
+    })
+
+    expect(message).toBeNull()
+  })
+
+  it('forwards group messages when the bot is mentioned', () => {
+    const sdkStub = createSdkStub()
+    const channel = new WeComChannel({
+      id: 'channel-wecom',
+      botId: 'bot-123',
+      secret: 'secret-123',
+      sdk: sdkStub.sdk
+    })
+
+    const message = channel['toChannelMessage']({
+      body: {
+        msgid: 'msg-group-2',
+        chatid: 'chat-group-1',
+        chattype: 'group',
+        from: {
+          userid: 'user-1'
+        },
+        create_time: 1_773_187_200,
+        msgtype: 'text',
+        text: {
+          content: '<@bot-123> hello from wecom group'
+        }
+      }
+    })
+
+    expect(message).toMatchObject({
+      id: 'msg-group-2',
+      remoteChatId: 'chat-group-1',
+      senderId: 'user-1',
+      content: '<@bot-123> hello from wecom group',
+      metadata: {
+        wecomChatId: 'chat-group-1',
+        wecomChatType: 'group',
+        wecomIsBotMentioned: true,
+        wecomMessageId: 'msg-group-2'
+      }
+    })
+  })
+
+  it('can allow every group message when mention gating is disabled', () => {
+    const sdkStub = createSdkStub()
+    const channel = new WeComChannel({
+      id: 'channel-wecom',
+      botId: 'bot-123',
+      secret: 'secret-123',
+      sdk: sdkStub.sdk,
+      groupRequireMention: false
+    })
+
+    const message = channel['toChannelMessage']({
+      body: {
+        msgid: 'msg-group-3',
+        chatid: 'chat-group-1',
+        chattype: 'group',
+        from: {
+          userid: 'user-1'
+        },
+        create_time: 1_773_187_200,
+        msgtype: 'text',
+        text: {
+          content: 'plain group hello'
+        }
+      }
+    })
+
+    expect(message).toMatchObject({
+      id: 'msg-group-3',
+      remoteChatId: 'chat-group-1',
+      senderId: 'user-1',
+      content: 'plain group hello',
+      metadata: {
+        wecomChatId: 'chat-group-1',
+        wecomChatType: 'group',
+        wecomIsBotMentioned: false,
+        wecomMessageId: 'msg-group-3'
+      }
+    })
   })
 })

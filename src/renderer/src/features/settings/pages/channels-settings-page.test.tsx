@@ -45,6 +45,7 @@ function buildChannel(
     id: 'channel-1',
     type: 'lark',
     name: 'Ops Lark',
+    groupRequireMention: true,
     assistantId: null,
     assistantName: null,
     status: 'disconnected',
@@ -145,6 +146,10 @@ describe('channels settings page', () => {
     })
     await flushAsyncWork()
 
+    expect(
+      document.body.querySelector('button[id="settings-channel-create-group-require-mention"]')
+    ).toBeNull()
+
     const tokenInput = document.body.querySelector(
       'input[id="settings-channel-create-bot-token"]'
     ) as HTMLInputElement
@@ -168,6 +173,71 @@ describe('channels settings page', () => {
       botToken: '123456:test-token'
     })
     expect(container.textContent).toContain('Ops Telegram')
+  })
+
+  it('lets the user disable group mention gating for supported channels', async () => {
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ChannelsSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const addButton = container.querySelector(
+      'button[id="settings-channels-add"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const typeSelect = document.body.querySelector(
+      'select[id="settings-channel-create-type"]'
+    ) as HTMLSelectElement
+    const nameInput = document.body.querySelector(
+      'input[id="settings-channel-create-name"]'
+    ) as HTMLInputElement
+    const saveButton = document.body.querySelector(
+      'button[id="settings-channel-create-save"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      setElementValue(typeSelect, 'lark')
+    })
+    await flushAsyncWork()
+
+    const appIdInput = document.body.querySelector(
+      'input[id="settings-channel-create-app-id"]'
+    ) as HTMLInputElement
+    const appSecretInput = document.body.querySelector(
+      'input[id="settings-channel-create-app-secret"]'
+    ) as HTMLInputElement
+    const mentionSwitch = document.body.querySelector(
+      'button[id="settings-channel-create-group-require-mention"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      setElementValue(nameInput, 'Lark No Mention')
+      setElementValue(appIdInput, 'cli_123')
+      setElementValue(appSecretInput, 'secret_123')
+      mentionSwitch.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    await act(async () => {
+      saveButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(createClawChannel).toHaveBeenCalledWith({
+      type: 'lark',
+      name: 'Lark No Mention',
+      appId: 'cli_123',
+      appSecret: 'secret_123',
+      groupRequireMention: false
+    })
   })
 
   it('creates a configured whatsapp channel without extra credentials', async () => {
@@ -219,7 +289,8 @@ describe('channels settings page', () => {
 
     expect(createClawChannel).toHaveBeenCalledWith({
       type: 'whatsapp',
-      name: 'Ops WhatsApp'
+      name: 'Ops WhatsApp',
+      groupRequireMention: true
     })
     expect(container.textContent).toContain('Ops WhatsApp')
   })
@@ -283,7 +354,8 @@ describe('channels settings page', () => {
       type: 'wecom',
       name: 'Ops Wecom',
       botId: 'bot-123',
-      secret: 'secret-123'
+      secret: 'secret-123',
+      groupRequireMention: true
     })
     expect(container.textContent).toContain('Ops Wecom')
     expect(container.textContent).toContain('Wecom')
@@ -326,7 +398,8 @@ describe('channels settings page', () => {
 
     expect(updateClawChannel).toHaveBeenCalledWith('channel-1', {
       type: 'lark',
-      name: 'Renamed Lark'
+      name: 'Renamed Lark',
+      groupRequireMention: true
     })
     expect(container.textContent).toContain('Renamed Lark')
 

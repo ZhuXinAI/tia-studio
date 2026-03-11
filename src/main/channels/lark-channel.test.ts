@@ -4,6 +4,12 @@ import { LarkChannel } from './lark-channel'
 function createSdkStub() {
   const messageCreate = vi.fn(async () => undefined)
   const messageReactionCreate = vi.fn(async () => undefined)
+  const request = vi.fn(async () => ({
+    code: 0,
+    bot: {
+      open_id: 'ou_bot_123'
+    }
+  }))
   const clientInstance = {
     im: {
       v1: {
@@ -14,7 +20,8 @@ function createSdkStub() {
           create: messageReactionCreate
         }
       }
-    }
+    },
+    request
   }
   const wsStart = vi.fn(async () => undefined)
   const wsClose = vi.fn(() => undefined)
@@ -56,6 +63,7 @@ function createSdkStub() {
     wsClose,
     messageCreate,
     messageReactionCreate,
+    request,
     getRegisteredHandlers: () => registeredHandlers
   }
 }
@@ -156,6 +164,10 @@ describe('LarkChannel', () => {
         'im.message.receive_v1': expect.any(Function)
       })
     )
+    expect(sdkStub.request).toHaveBeenCalledWith({
+      method: 'GET',
+      url: '/open-apis/bot/v3/info'
+    })
     expect(sdkStub.wsStart).toHaveBeenCalledWith({
       eventDispatcher: sdkStub.eventDispatcherInstance
     })
@@ -363,5 +375,134 @@ describe('LarkChannel', () => {
     )
 
     expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('ignores group messages without a bot mention by default', async () => {
+    const sdkStub = createSdkStub()
+    const handler = vi.fn()
+    const channel = new LarkChannel({
+      id: 'channel-lark',
+      appId: 'cli_xxx',
+      appSecret: 'secret',
+      sdk: sdkStub.sdk
+    })
+    channel.onMessage = handler
+
+    await channel.start()
+
+    const receiveHandler = sdkStub.getRegisteredHandlers()['im.message.receive_v1']
+    await receiveHandler?.(
+      createMessageEvent({
+        message: {
+          message_id: 'om_group_1',
+          chat_id: 'oc_group_1',
+          thread_id: 'omt_789',
+          create_time: String(Date.now()),
+          chat_type: 'group',
+          message_type: 'text',
+          content: JSON.stringify({
+            text: 'hello group'
+          }),
+          mentions: []
+        }
+      })
+    )
+
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('forwards group messages when the bot is mentioned', async () => {
+    const sdkStub = createSdkStub()
+    const handler = vi.fn()
+    const channel = new LarkChannel({
+      id: 'channel-lark',
+      appId: 'cli_xxx',
+      appSecret: 'secret',
+      sdk: sdkStub.sdk
+    })
+    channel.onMessage = handler
+
+    await channel.start()
+
+    const receiveHandler = sdkStub.getRegisteredHandlers()['im.message.receive_v1']
+    await receiveHandler?.(
+      createMessageEvent({
+        message: {
+          message_id: 'om_group_2',
+          chat_id: 'oc_group_1',
+          thread_id: 'omt_789',
+          create_time: String(Date.now()),
+          chat_type: 'group',
+          message_type: 'text',
+          content: JSON.stringify({
+            text: '@tia hello group'
+          }),
+          mentions: [
+            {
+              id: {
+                open_id: 'ou_bot_123'
+              }
+            }
+          ]
+        }
+      })
+    )
+
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'om_group_2',
+        remoteChatId: 'oc_group_1',
+        content: '@tia hello group',
+        metadata: expect.objectContaining({
+          larkChatType: 'group',
+          larkIsBotMentioned: true
+        })
+      })
+    )
+  })
+
+  it('can allow every group message when mention gating is disabled', async () => {
+    const sdkStub = createSdkStub()
+    const handler = vi.fn()
+    const channel = new LarkChannel({
+      id: 'channel-lark',
+      appId: 'cli_xxx',
+      appSecret: 'secret',
+      sdk: sdkStub.sdk,
+      groupRequireMention: false
+    })
+    channel.onMessage = handler
+
+    await channel.start()
+
+    const receiveHandler = sdkStub.getRegisteredHandlers()['im.message.receive_v1']
+    await receiveHandler?.(
+      createMessageEvent({
+        message: {
+          message_id: 'om_group_3',
+          chat_id: 'oc_group_1',
+          thread_id: 'omt_789',
+          create_time: String(Date.now()),
+          chat_type: 'group',
+          message_type: 'text',
+          content: JSON.stringify({
+            text: 'plain group hello'
+          }),
+          mentions: []
+        }
+      })
+    )
+
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'om_group_3',
+        remoteChatId: 'oc_group_1',
+        content: 'plain group hello',
+        metadata: expect.objectContaining({
+          larkChatType: 'group',
+          larkIsBotMentioned: false
+        })
+      })
+    )
   })
 })

@@ -5,6 +5,7 @@ export type ClawChannelRecord = {
   id: string
   type: string
   name: string
+  groupRequireMention?: boolean
   status: 'connected' | 'disconnected' | 'error'
   errorMessage: string | null
   pairedCount?: number
@@ -25,6 +26,7 @@ export type ConfiguredClawChannelRecord = {
   id: string
   type: string
   name: string
+  groupRequireMention?: boolean
   assistantId: string | null
   assistantName: string | null
   status: 'connected' | 'disconnected' | 'error'
@@ -85,17 +87,20 @@ export type SaveClawInput = {
         name: string
         appId: string
         appSecret: string
+        groupRequireMention?: boolean
       }
     | {
         mode: 'create'
         type: 'telegram'
         name: string
         botToken: string
+        groupRequireMention?: boolean
       }
     | {
         mode: 'create'
         type: 'whatsapp'
         name: string
+        groupRequireMention?: boolean
       }
     | {
         mode: 'create'
@@ -103,6 +108,7 @@ export type SaveClawInput = {
         name: string
         botId: string
         secret: string
+        groupRequireMention?: boolean
       }
     | {
         mode: 'attach'
@@ -122,21 +128,25 @@ export type CreateClawChannelInput =
       name: string
       appId: string
       appSecret: string
+      groupRequireMention?: boolean
     }
   | {
       type: 'telegram'
       name: string
       botToken: string
+      groupRequireMention?: boolean
     }
   | {
       type: 'whatsapp'
       name: string
+      groupRequireMention?: boolean
     }
   | {
       type: 'wecom'
       name: string
       botId: string
       secret: string
+      groupRequireMention?: boolean
     }
 
 export type UpdateClawChannelInput =
@@ -145,21 +155,25 @@ export type UpdateClawChannelInput =
       name: string
       appId?: string
       appSecret?: string
+      groupRequireMention?: boolean
     }
   | {
       type: 'telegram'
       name: string
       botToken?: string
+      groupRequireMention?: boolean
     }
   | {
       type: 'whatsapp'
       name: string
+      groupRequireMention?: boolean
     }
   | {
       type: 'wecom'
       name: string
       botId?: string
       secret?: string
+      groupRequireMention?: boolean
     }
 
 const apiClient = createApiClient()

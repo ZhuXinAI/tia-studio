@@ -558,6 +558,10 @@
         "appSecretPlaceholder": "Оставить без изменений",
         "botTokenPlaceholder": "Оставить без изменений"
       },
+      "groupRequireMention": {
+        "label": "Требовать @упоминание в группах",
+        "description": "Если включено, ассистент отвечает в групповых чатах только при упоминании бота. Личные чаты работают как обычно."
+      },
       "remove": {
         "title": "Remove Channel",
         "description": "Remove {{channelName}} from configured channels?",

@@ -233,9 +233,10 @@ describe('TelegramChannel', () => {
     })
 
     await channel.start()
-    await channel.stop()
+    await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(client.launch).toHaveBeenCalledOnce()
+    await channel.stop()
     expect(client.stop).toHaveBeenCalledOnce()
   })
 
@@ -381,6 +382,38 @@ describe('TelegramChannel', () => {
     expect(client.lastReplies).toHaveLength(0)
   })
 
+  it('still ignores non-private chats when mention gating is disabled', async () => {
+    const client = new TelegramClientStub()
+    const pairingsRepo = new PairingsRepoStub()
+    pairingsRepo.setPairing({
+      ...createApprovedPairing(),
+      remoteChatId: '-1001',
+      senderId: '1001'
+    })
+    const onMessage = vi.fn()
+    const channel = new TelegramChannel({
+      id: 'channel-telegram',
+      botToken: '123456:test-token',
+      client,
+      pairingsRepo,
+      groupRequireMention: false
+    })
+    channel.onMessage = onMessage
+
+    await channel.start()
+    await client.deliverText({
+      chatId: '-1001',
+      chatType: 'supergroup',
+      senderId: '1001',
+      senderDisplayName: 'Alice',
+      senderUsername: 'alice',
+      text: 'hello group anyway'
+    })
+
+    expect(onMessage).not.toHaveBeenCalled()
+    expect(client.lastReplies).toHaveLength(0)
+  })
+
   it('forwards approved private text messages to the shared channel contract', async () => {
     const client = new TelegramClientStub()
     const pairingsRepo = new PairingsRepoStub()
@@ -413,6 +446,8 @@ describe('TelegramChannel', () => {
       timestamp: new Date('2026-03-09T00:10:00.000Z'),
       metadata: {
         telegramChatId: '1001',
+        telegramChatType: 'private',
+        telegramIsBotMentioned: true,
         telegramMessageId: '42',
         telegramUsername: 'alice',
         telegramDisplayName: 'Alice'

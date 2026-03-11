@@ -45,6 +45,7 @@ export type WeComChannelOptions = {
   id: string
   botId: string
   secret: string
+  groupRequireMention?: boolean
   sdk?: WeComSdkLike
   onFatalError?: (error: unknown) => Promise<void> | void
 }
@@ -65,8 +66,19 @@ function toTimestamp(value: number | undefined): Date {
   return timestamp
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function isBotMentioned(content: string, botId: string): boolean {
+  const escapedBotId = escapeRegExp(botId)
+  const pattern = new RegExp(`(?:<@${escapedBotId}>|[＠@]${escapedBotId}(?=\\s|$))`)
+  return pattern.test(content)
+}
+
 export class WeComChannel extends AbstractChannel {
   private readonly client: WeComClientLike
+  private readonly groupRequireMention: boolean
   private started = false
   private stopping = false
 
@@ -74,9 +86,16 @@ export class WeComChannel extends AbstractChannel {
     super(options.id, 'wecom')
 
     const sdk = options.sdk ?? { WSClient }
+    this.groupRequireMention = options.groupRequireMention ?? true
     this.client = new sdk.WSClient({
       botId: options.botId,
-      secret: options.secret
+      secret: options.secret,
+      logger: {
+        debug: () => {},
+        info: console.log,
+        warn: console.warn,
+        error: console.error
+      }
     })
 
     this.client.on('message.text', (frame) => {
@@ -144,6 +163,10 @@ export class WeComChannel extends AbstractChannel {
       return null
     }
 
+    if (body.chattype === 'group' && this.groupRequireMention && !isBotMentioned(content, this.options.botId)) {
+      return null
+    }
+
     const senderId = body.from?.userid ?? ''
     const remoteChatId =
       typeof body.chatid === 'string' && body.chatid.trim().length > 0 ? body.chatid : senderId
@@ -161,6 +184,8 @@ export class WeComChannel extends AbstractChannel {
       metadata: {
         wecomChatId: body.chatid ?? null,
         wecomChatType: body.chattype ?? null,
+        wecomIsBotMentioned:
+          body.chattype === 'group' ? isBotMentioned(content, this.options.botId) : true,
         wecomMessageId: body.msgid
       }
     }

@@ -119,16 +119,18 @@ class PairingsRepoStub {
 type ConnectionUpdate =
   | { status: 'connecting' }
   | { status: 'qr_ready'; qrCodeValue: string; qrCodeDataUrl: string }
-  | { status: 'connected'; phoneNumber: string | null }
+  | { status: 'connected'; phoneNumber: string | null; botJid: string | null }
   | { status: 'disconnected'; errorMessage: string | null; disconnectReason: number | null }
   | { status: 'error'; errorMessage: string }
 
 type InboundTextMessage = {
   id: string
   chatId: string
+  isGroup: boolean
   senderId: string
   senderUsername: string | null
   senderDisplayName: string
+  mentionedJids: string[]
   text: string
   timestamp: Date
 }
@@ -166,15 +168,18 @@ class WhatsAppClientStub {
     chatId: string
     senderId: string
     senderDisplayName: string
+    mentionedJids?: string[]
     text: string
     timestamp?: Date
   }): Promise<void> {
     await this.textHandler?.({
       id: input.id ?? 'wam-msg-1',
       chatId: input.chatId,
+      isGroup: input.chatId.endsWith('@g.us'),
       senderId: input.senderId,
       senderUsername: null,
       senderDisplayName: input.senderDisplayName,
+      mentionedJids: input.mentionedJids ?? [],
       text: input.text,
       timestamp: input.timestamp ?? new Date('2026-03-10T00:00:00.000Z')
     })
@@ -387,7 +392,144 @@ describe('WhatsAppChannel', () => {
       timestamp: new Date('2026-03-10T00:10:00.000Z'),
       metadata: {
         whatsappChatId: '8613800138000@s.whatsapp.net',
+        whatsappChatType: 'direct',
+        whatsappIsBotMentioned: true,
         whatsappMessageId: 'wam-msg-42',
+        whatsappPhoneNumber: '8613800138000',
+        whatsappDisplayName: 'Alice'
+      }
+    })
+  })
+
+  it('ignores group messages without a bot mention by default', async () => {
+    const client = new WhatsAppClientStub()
+    const pairingsRepo = new PairingsRepoStub()
+    pairingsRepo.setPairing({
+      ...createApprovedPairing(),
+      remoteChatId: '12345-67890@g.us',
+      senderId: '8613800138000@s.whatsapp.net'
+    })
+    const onMessage = vi.fn()
+    const channel = new WhatsAppChannel({
+      id: 'channel-whatsapp',
+      authDirectoryPath: '/tmp/channel-whatsapp',
+      clientFactory: async () => client,
+      authStateStore: new WhatsAppAuthStateStore(),
+      pairingsRepo
+    })
+    channel.onMessage = onMessage
+
+    await channel.start()
+    await Promise.resolve()
+    await client.emitConnection({
+      status: 'connected',
+      phoneNumber: '8613800999000',
+      botJid: '8613800999000@s.whatsapp.net'
+    })
+    await client.deliverText({
+      id: 'wam-msg-group-1',
+      chatId: '12345-67890@g.us',
+      senderId: '8613800138000@s.whatsapp.net',
+      senderDisplayName: 'Alice',
+      text: 'hello group'
+    })
+
+    expect(onMessage).not.toHaveBeenCalled()
+  })
+
+  it('forwards approved group messages when the bot is mentioned', async () => {
+    const client = new WhatsAppClientStub()
+    const pairingsRepo = new PairingsRepoStub()
+    pairingsRepo.setPairing({
+      ...createApprovedPairing(),
+      remoteChatId: '12345-67890@g.us',
+      senderId: '8613800138000@s.whatsapp.net'
+    })
+    const onMessage = vi.fn()
+    const channel = new WhatsAppChannel({
+      id: 'channel-whatsapp',
+      authDirectoryPath: '/tmp/channel-whatsapp',
+      clientFactory: async () => client,
+      authStateStore: new WhatsAppAuthStateStore(),
+      pairingsRepo
+    })
+    channel.onMessage = onMessage
+
+    await channel.start()
+    await Promise.resolve()
+    await client.emitConnection({
+      status: 'connected',
+      phoneNumber: '8613800999000',
+      botJid: '8613800999000@s.whatsapp.net'
+    })
+    await client.deliverText({
+      id: 'wam-msg-group-2',
+      chatId: '12345-67890@g.us',
+      senderId: '8613800138000@s.whatsapp.net',
+      senderDisplayName: 'Alice',
+      mentionedJids: ['8613800999000@s.whatsapp.net'],
+      text: '@8613800999000 hello group',
+      timestamp: new Date('2026-03-10T00:11:00.000Z')
+    })
+
+    expect(onMessage).toHaveBeenCalledWith({
+      id: 'wam-msg-group-2',
+      remoteChatId: '12345-67890@g.us',
+      senderId: '8613800138000@s.whatsapp.net',
+      content: '@8613800999000 hello group',
+      timestamp: new Date('2026-03-10T00:11:00.000Z'),
+      metadata: {
+        whatsappChatId: '12345-67890@g.us',
+        whatsappChatType: 'group',
+        whatsappIsBotMentioned: true,
+        whatsappMessageId: 'wam-msg-group-2',
+        whatsappPhoneNumber: '8613800138000',
+        whatsappDisplayName: 'Alice'
+      }
+    })
+  })
+
+  it('can allow every group message when mention gating is disabled', async () => {
+    const client = new WhatsAppClientStub()
+    const pairingsRepo = new PairingsRepoStub()
+    pairingsRepo.setPairing({
+      ...createApprovedPairing(),
+      remoteChatId: '12345-67890@g.us',
+      senderId: '8613800138000@s.whatsapp.net'
+    })
+    const onMessage = vi.fn()
+    const channel = new WhatsAppChannel({
+      id: 'channel-whatsapp',
+      authDirectoryPath: '/tmp/channel-whatsapp',
+      clientFactory: async () => client,
+      authStateStore: new WhatsAppAuthStateStore(),
+      pairingsRepo,
+      groupRequireMention: false
+    })
+    channel.onMessage = onMessage
+
+    await channel.start()
+    await Promise.resolve()
+    await client.deliverText({
+      id: 'wam-msg-group-3',
+      chatId: '12345-67890@g.us',
+      senderId: '8613800138000@s.whatsapp.net',
+      senderDisplayName: 'Alice',
+      text: 'group hello everyone',
+      timestamp: new Date('2026-03-10T00:12:00.000Z')
+    })
+
+    expect(onMessage).toHaveBeenCalledWith({
+      id: 'wam-msg-group-3',
+      remoteChatId: '12345-67890@g.us',
+      senderId: '8613800138000@s.whatsapp.net',
+      content: 'group hello everyone',
+      timestamp: new Date('2026-03-10T00:12:00.000Z'),
+      metadata: {
+        whatsappChatId: '12345-67890@g.us',
+        whatsappChatType: 'group',
+        whatsappIsBotMentioned: false,
+        whatsappMessageId: 'wam-msg-group-3',
         whatsappPhoneNumber: '8613800138000',
         whatsappDisplayName: 'Alice'
       }

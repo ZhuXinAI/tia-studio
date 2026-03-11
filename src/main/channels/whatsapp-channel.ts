@@ -39,9 +39,11 @@ type WhatsAppAuthStateStoreLike = Pick<
 type WhatsAppInboundTextMessage = {
   id: string
   chatId: string
+  isGroup: boolean
   senderId: string
   senderUsername: string | null
   senderDisplayName: string
+  mentionedJids: string[]
   text: string
   timestamp: Date
 }
@@ -49,7 +51,7 @@ type WhatsAppInboundTextMessage = {
 type WhatsAppConnectionUpdate =
   | { status: 'connecting' }
   | { status: 'qr_ready'; qrCodeValue: string; qrCodeDataUrl: string }
-  | { status: 'connected'; phoneNumber: string | null }
+  | { status: 'connected'; phoneNumber: string | null; botJid: string | null }
   | { status: 'disconnected'; errorMessage: string | null; disconnectReason: number | null }
   | { status: 'error'; errorMessage: string }
 
@@ -67,6 +69,7 @@ export type WhatsAppChannelOptions = {
   authDirectoryPath: string
   pairingsRepo: ChannelPairingsRepositoryLike
   authStateStore: WhatsAppAuthStateStoreLike
+  groupRequireMention?: boolean
   clientFactory?: (authDirectoryPath: string) => Promise<WhatsAppClientLike>
   now?: () => Date
   generateCode?: () => string
@@ -124,6 +127,10 @@ function resolvePhoneNumber(jid: string | undefined): string | null {
   return typeof decoded?.user === 'string' && decoded.user.trim().length > 0 ? decoded.user : null
 }
 
+function normalizeMentionJid(value: string): string {
+  return jidNormalizedUser(value)
+}
+
 function resolveTimestamp(value: unknown): Date {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return new Date(value * 1000)
@@ -158,9 +165,11 @@ function normalizeInboundTextMessage(message: WAMessage): WhatsAppInboundTextMes
   }
 
   const chatId = message.key.remoteJid
-  if (!chatId || isJidGroup(chatId) || isJidBroadcast(chatId)) {
+  if (!chatId || isJidBroadcast(chatId)) {
     return null
   }
+
+  const isGroup = Boolean(isJidGroup(chatId))
 
   const normalizedContent = normalizeMessageContent(message.message)
   const contentType = getContentType(normalizedContent)
@@ -181,13 +190,22 @@ function normalizeInboundTextMessage(message: WAMessage): WhatsAppInboundTextMes
   }
 
   const senderId = jidNormalizedUser(message.key.participant ?? chatId)
+  const mentionedJids =
+    contentType === 'extendedTextMessage' &&
+    Array.isArray(normalizedContent?.extendedTextMessage?.contextInfo?.mentionedJid)
+      ? normalizedContent.extendedTextMessage.contextInfo.mentionedJid
+          .filter((jid): jid is string => typeof jid === 'string' && jid.length > 0)
+          .map((jid) => normalizeMentionJid(jid))
+      : []
 
   return {
     id: message.key.id ?? `${chatId}:${String(message.messageTimestamp ?? Date.now())}`,
     chatId,
+    isGroup,
     senderId,
     senderUsername: null,
     senderDisplayName: buildSenderDisplayName(message, senderId),
+    mentionedJids,
     text: trimmedText,
     timestamp: resolveTimestamp(message.messageTimestamp)
   }
@@ -237,7 +255,8 @@ async function createWhatsAppClient(authDirectoryPath: string): Promise<WhatsApp
           if (update.connection === 'open') {
             await handleConnectionUpdate({
               status: 'connected',
-              phoneNumber: resolvePhoneNumber(socket?.user?.id)
+              phoneNumber: resolvePhoneNumber(socket?.user?.id),
+              botJid: typeof socket?.user?.id === 'string' ? jidNormalizedUser(socket.user.id) : null
             })
             return
           }
@@ -287,11 +306,13 @@ export class WhatsAppChannel extends AbstractChannel {
   private readonly now: () => Date
   private readonly generateCode: () => string
   private readonly reconnectDelayMs: number
+  private readonly groupRequireMention: boolean
   private client: WhatsAppClientLike | null = null
   private started = false
   private stopping = false
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private generation = 0
+  private readonly botMentionJids = new Set<string>()
 
   constructor(private readonly options: WhatsAppChannelOptions) {
     super(options.id, 'whatsapp')
@@ -301,6 +322,7 @@ export class WhatsAppChannel extends AbstractChannel {
     this.now = options.now ?? (() => new Date())
     this.generateCode = options.generateCode ?? defaultGenerateCode
     this.reconnectDelayMs = options.reconnectDelayMs ?? RECONNECT_DELAY_MS
+    this.groupRequireMention = options.groupRequireMention ?? true
   }
 
   async start(): Promise<void> {
@@ -397,6 +419,12 @@ export class WhatsAppChannel extends AbstractChannel {
     }
 
     if (update.status === 'connected') {
+      this.botMentionJids.clear()
+      for (const jid of [update.botJid, update.phoneNumber ? `${update.phoneNumber}@s.whatsapp.net` : null]) {
+        if (typeof jid === 'string' && jid.length > 0) {
+          this.botMentionJids.add(jidNormalizedUser(jid))
+        }
+      }
       this.authStateStore.setConnected(this.id, update.phoneNumber)
       return
     }
@@ -408,6 +436,7 @@ export class WhatsAppChannel extends AbstractChannel {
     }
 
     this.authStateStore.setDisconnected(this.id)
+    this.botMentionJids.clear()
 
     if (!this.started || this.stopping) {
       return
@@ -448,6 +477,10 @@ export class WhatsAppChannel extends AbstractChannel {
   }
 
   private async handleInboundMessage(message: WhatsAppInboundTextMessage): Promise<void> {
+    if (message.isGroup && this.groupRequireMention && !this.isBotMentioned(message)) {
+      return
+    }
+
     const now = this.now()
     const nowIso = now.toISOString()
     const pairing = await this.options.pairingsRepo.getByChannelAndSender(
@@ -505,6 +538,8 @@ export class WhatsAppChannel extends AbstractChannel {
       timestamp: message.timestamp,
       metadata: {
         whatsappChatId: message.chatId,
+        whatsappChatType: message.isGroup ? 'group' : 'direct',
+        whatsappIsBotMentioned: message.isGroup ? this.isBotMentioned(message) : true,
         whatsappMessageId: message.id,
         whatsappPhoneNumber: resolvePhoneNumber(message.senderId),
         whatsappDisplayName: message.senderDisplayName
@@ -512,5 +547,17 @@ export class WhatsAppChannel extends AbstractChannel {
     }
 
     await this.emitMessage(normalized)
+  }
+
+  private isBotMentioned(message: WhatsAppInboundTextMessage): boolean {
+    if (message.mentionedJids.length === 0) {
+      return false
+    }
+
+    if (this.botMentionJids.size === 0) {
+      return true
+    }
+
+    return message.mentionedJids.some((jid) => this.botMentionJids.has(jidNormalizedUser(jid)))
   }
 }

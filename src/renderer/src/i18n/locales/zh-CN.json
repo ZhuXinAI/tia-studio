@@ -558,6 +558,10 @@
         "appSecretPlaceholder": "保持不变",
         "botTokenPlaceholder": "保持不变"
       },
+      "groupRequireMention": {
+        "label": "群聊中要求 @ 提及",
+        "description": "开启后，助手只会在群聊里被提及机器人时回复。私聊仍会正常工作。"
+      },
       "remove": {
         "title": "移除频道",
         "description": "要从已配置频道中移除 {{channelName}} 吗？",

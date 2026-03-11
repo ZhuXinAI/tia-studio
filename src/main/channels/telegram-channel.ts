@@ -38,6 +38,7 @@ export type TelegramChannelOptions = {
   id: string
   botToken: string
   pairingsRepo: ChannelPairingsRepositoryLike
+  groupRequireMention?: boolean
   client?: TelegramClientLike
   now?: () => Date
   generateCode?: () => string
@@ -134,6 +135,10 @@ function createBlockedReply(): string {
   return 'This chat is not approved for this assistant.'
 }
 
+function isPrivateChat(chatType: string): boolean {
+  return chatType === 'private'
+}
+
 export class TelegramChannel extends AbstractChannel {
   private readonly client: TelegramClientLike
   private readonly now: () => Date
@@ -192,7 +197,7 @@ export class TelegramChannel extends AbstractChannel {
   }
 
   private async handleInboundMessage(message: TelegramInboundTextMessage): Promise<void> {
-    if (message.chatType !== 'private') {
+    if (!isPrivateChat(message.chatType)) {
       return
     }
 
@@ -261,6 +266,8 @@ export class TelegramChannel extends AbstractChannel {
       timestamp: message.timestamp,
       metadata: {
         telegramChatId: message.chatId,
+        telegramChatType: message.chatType,
+        telegramIsBotMentioned: true,
         telegramMessageId: message.id,
         telegramUsername: message.senderUsername,
         telegramDisplayName: message.senderDisplayName

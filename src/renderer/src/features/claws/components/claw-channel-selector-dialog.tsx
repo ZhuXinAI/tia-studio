@@ -10,6 +10,7 @@ import {
   DialogTitle
 } from '../../../components/ui/dialog'
 import { Input } from '../../../components/ui/input'
+import { Switch } from '../../../components/ui/switch'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { cn } from '../../../lib/utils'
 import { channelStatusLabel, channelTypeLabel } from '../claw-labels'
@@ -51,6 +52,11 @@ type ChannelFormState = {
   botToken: string
   botId: string
   secret: string
+  groupRequireMention: boolean
+}
+
+function supportsGroupMentionSetting(type: ChannelType): boolean {
+  return type !== 'telegram'
 }
 
 function isDisabledForAssistant(
@@ -72,7 +78,8 @@ function emptyFormState(): ChannelFormState {
     appSecret: '',
     botToken: '',
     botId: '',
-    secret: ''
+    secret: '',
+    groupRequireMention: true
   }
 }
 
@@ -93,7 +100,8 @@ function toEditFormState(channel: ConfiguredClawChannelRecord): ChannelFormState
     appSecret: '',
     botToken: '',
     botId: '',
-    secret: ''
+    secret: '',
+    groupRequireMention: channel.groupRequireMention !== false
   }
 }
 
@@ -109,7 +117,8 @@ function buildCreateInput(formState: ChannelFormState): CreateClawChannelInput {
   if (formState.type === 'whatsapp') {
     return {
       type: 'whatsapp',
-      name: formState.name.trim()
+      name: formState.name.trim(),
+      groupRequireMention: formState.groupRequireMention
     }
   }
 
@@ -118,7 +127,8 @@ function buildCreateInput(formState: ChannelFormState): CreateClawChannelInput {
       type: 'wecom',
       name: formState.name.trim(),
       botId: formState.botId.trim(),
-      secret: formState.secret.trim()
+      secret: formState.secret.trim(),
+      groupRequireMention: formState.groupRequireMention
     }
   }
 
@@ -126,7 +136,8 @@ function buildCreateInput(formState: ChannelFormState): CreateClawChannelInput {
     type: 'lark',
     name: formState.name.trim(),
     appId: formState.appId.trim(),
-    appSecret: formState.appSecret.trim()
+    appSecret: formState.appSecret.trim(),
+    groupRequireMention: formState.groupRequireMention
   }
 }
 
@@ -142,7 +153,8 @@ function buildUpdateInput(formState: ChannelFormState): UpdateClawChannelInput {
   if (formState.type === 'whatsapp') {
     return {
       type: 'whatsapp',
-      name: formState.name.trim()
+      name: formState.name.trim(),
+      groupRequireMention: formState.groupRequireMention
     }
   }
 
@@ -151,7 +163,8 @@ function buildUpdateInput(formState: ChannelFormState): UpdateClawChannelInput {
       type: 'wecom',
       name: formState.name.trim(),
       ...(formState.botId.trim().length > 0 ? { botId: formState.botId.trim() } : {}),
-      ...(formState.secret.trim().length > 0 ? { secret: formState.secret.trim() } : {})
+      ...(formState.secret.trim().length > 0 ? { secret: formState.secret.trim() } : {}),
+      groupRequireMention: formState.groupRequireMention
     }
   }
 
@@ -159,7 +172,8 @@ function buildUpdateInput(formState: ChannelFormState): UpdateClawChannelInput {
     type: 'lark',
     name: formState.name.trim(),
     ...(formState.appId.trim().length > 0 ? { appId: formState.appId.trim() } : {}),
-    ...(formState.appSecret.trim().length > 0 ? { appSecret: formState.appSecret.trim() } : {})
+    ...(formState.appSecret.trim().length > 0 ? { appSecret: formState.appSecret.trim() } : {}),
+    groupRequireMention: formState.groupRequireMention
   }
 }
 
@@ -668,6 +682,29 @@ export function ClawChannelSelectorDialog({
         <p className="text-xs text-muted-foreground">
           {t('claws.channelSelector.edit.credentialsOptional')}
         </p>
+      ) : null}
+
+      {supportsGroupMentionSetting(formState.type) ? (
+        <div className="flex items-start justify-between gap-4 rounded-lg border p-4">
+          <div className="grid gap-1">
+            <label htmlFor="claw-channel-group-require-mention" className="text-sm font-medium">
+              {t('claws.channelSelector.groupRequireMention.label')}
+            </label>
+            <p className="text-xs text-muted-foreground">
+              {t('claws.channelSelector.groupRequireMention.description')}
+            </p>
+          </div>
+          <Switch
+            id="claw-channel-group-require-mention"
+            checked={formState.groupRequireMention}
+            onCheckedChange={(checked) =>
+              setFormState((currentState) => ({
+                ...currentState,
+                groupRequireMention: checked
+              }))
+            }
+          />
+        </div>
       ) : null}
     </div>
   )

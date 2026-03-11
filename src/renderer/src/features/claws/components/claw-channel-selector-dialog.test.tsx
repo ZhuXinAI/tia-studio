@@ -31,6 +31,7 @@ function buildChannel(
     id: 'channel-1',
     type: 'lark',
     name: 'Channel',
+    groupRequireMention: true,
     assistantId: null,
     assistantName: null,
     status: 'disconnected',
@@ -257,6 +258,10 @@ describe('ClawChannelSelectorDialog', () => {
     })
     await flushAsyncWork()
 
+    expect(
+      document.body.querySelector('button[id="claw-channel-group-require-mention"]')
+    ).toBeNull()
+
     const botTokenInput = document.body.querySelector(
       'input[id="claw-channel-create-bot-token"]'
     ) as HTMLInputElement
@@ -347,6 +352,10 @@ describe('ClawChannelSelectorDialog', () => {
       setElementValue(tokenInput, '123456:updated-token')
     })
 
+    expect(
+      document.body.querySelector('button[id="claw-channel-group-require-mention"]')
+    ).toBeNull()
+
     await act(async () => {
       saveButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
@@ -424,7 +433,8 @@ describe('ClawChannelSelectorDialog', () => {
 
     expect(onCreateChannel).toHaveBeenCalledWith({
       type: 'whatsapp',
-      name: 'WhatsApp Device'
+      name: 'WhatsApp Device',
+      groupRequireMention: true
     })
   })
 
@@ -498,7 +508,8 @@ describe('ClawChannelSelectorDialog', () => {
       type: 'wecom',
       name: 'Wecom Bot',
       botId: 'bot-123',
-      secret: 'secret-123'
+      secret: 'secret-123',
+      groupRequireMention: true
     })
   })
 

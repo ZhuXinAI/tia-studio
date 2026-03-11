@@ -30,6 +30,7 @@ type LarkClientLike = {
       }
     }
   }
+  request?(input: { method: 'GET'; url: string }): Promise<unknown>
 }
 
 type LarkWsClientLike = {
@@ -68,10 +69,28 @@ type LarkMessageReceiveEvent = {
   message: {
     message_id: string
     chat_id: string
+    chat_type?: string
     thread_id?: string
     create_time?: string
     message_type: string
     content: string
+    mentions?: Array<{
+      id?: {
+        user_id?: string
+        open_id?: string
+        union_id?: string
+      }
+    }>
+  }
+}
+
+type LarkBotInfoResponse = {
+  code?: number
+  msg?: string
+  bot?: {
+    user_id?: string
+    open_id?: string
+    union_id?: string
   }
 }
 
@@ -79,6 +98,7 @@ export type LarkChannelOptions = {
   id: string
   appId: string
   appSecret: string
+  groupRequireMention?: boolean
   sdk?: LarkSdkLike
 }
 
@@ -106,10 +126,16 @@ function isStaleMessage(timestamp: Date): boolean {
   return Date.now() - timestamp.getTime() >= STALE_MESSAGE_MAX_AGE_MS
 }
 
+function isGroupChat(chatType: string | undefined): boolean {
+  return chatType === 'group'
+}
+
 export class LarkChannel extends AbstractChannel {
   private readonly client: LarkClientLike
   private readonly wsClient: LarkWsClientLike
   private readonly eventDispatcher: LarkEventDispatcherLike
+  private readonly groupRequireMention: boolean
+  private readonly botMentionIds = new Set<string>()
 
   constructor(options: LarkChannelOptions) {
     super(options.id, 'lark')
@@ -130,9 +156,12 @@ export class LarkChannel extends AbstractChannel {
     this.eventDispatcher = new sdk.EventDispatcher({
       loggerLevel
     })
+    this.groupRequireMention = options.groupRequireMention ?? true
   }
 
   async start(): Promise<void> {
+    await this.loadBotMentionIds()
+
     this.eventDispatcher.register({
       'im.message.receive_v1': async (event: unknown) => {
         const message = this.toChannelMessage(event as LarkMessageReceiveEvent)
@@ -185,6 +214,14 @@ export class LarkChannel extends AbstractChannel {
       return null
     }
 
+    if (
+      this.groupRequireMention &&
+      isGroupChat(event.message.chat_type) &&
+      !this.isBotMentioned(event.message)
+    ) {
+      return null
+    }
+
     let content = event.message.content
     try {
       const parsed = JSON.parse(event.message.content) as { text?: unknown }
@@ -207,9 +244,57 @@ export class LarkChannel extends AbstractChannel {
       timestamp: toTimestamp(event.message.create_time ?? event.create_time),
       metadata: {
         larkChatId: event.message.chat_id,
+        larkChatType: event.message.chat_type ?? null,
+        larkIsBotMentioned: isGroupChat(event.message.chat_type)
+          ? this.isBotMentioned(event.message)
+          : true,
         larkMessageId: event.message.message_id,
         larkThreadId: event.message.thread_id ?? null
       }
+    }
+  }
+
+  private isBotMentioned(message: LarkMessageReceiveEvent['message']): boolean {
+    const mentions = Array.isArray(message.mentions) ? message.mentions : []
+    if (mentions.length === 0) {
+      return false
+    }
+
+    if (this.botMentionIds.size === 0) {
+      return true
+    }
+
+    return mentions.some((mention) => {
+      const mentionIds = [mention.id?.user_id, mention.id?.open_id, mention.id?.union_id]
+      return mentionIds.some((id) => (id ? this.botMentionIds.has(id) : false))
+    })
+  }
+
+  private async loadBotMentionIds(): Promise<void> {
+    if (typeof this.client.request !== 'function') {
+      return
+    }
+
+    try {
+      const response = (await this.client.request({
+        method: 'GET',
+        url: '/open-apis/bot/v3/info'
+      })) as LarkBotInfoResponse
+
+      if (response.code !== 0) {
+        logger.warn(
+          `[LarkChannel] Failed to fetch bot info for mention detection: ${response.msg ?? 'unknown error'}`
+        )
+        return
+      }
+
+      for (const id of [response.bot?.user_id, response.bot?.open_id, response.bot?.union_id]) {
+        if (typeof id === 'string' && id.length > 0) {
+          this.botMentionIds.add(id)
+        }
+      }
+    } catch (error) {
+      logger.warn('[LarkChannel] Failed to fetch bot info for mention detection:', error)
     }
   }
 }
