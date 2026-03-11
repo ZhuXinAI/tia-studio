@@ -79,6 +79,7 @@ describe('ClawEditorDialog', () => {
     document.body.innerHTML = ''
     delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT
     vi.clearAllMocks()
+    vi.useRealTimers()
   })
 
   it('guides create flow through the stepper and submits the selected provider and channel', async () => {
@@ -175,6 +176,7 @@ describe('ClawEditorDialog', () => {
   })
 
   it('does not allow submitting before the details step', async () => {
+    vi.useFakeTimers()
     const onSubmit = vi.fn(async () => undefined)
 
     await act(async () => {
@@ -239,7 +241,9 @@ describe('ClawEditorDialog', () => {
     expect(document.body.querySelector('input[id="claw-name"]')).not.toBeNull()
     expect(document.body.querySelector('button[id="claw-create-next"]')).toBeNull()
 
-    await flushTimerWork()
+    await act(async () => {
+      vi.runAllTimers()
+    })
     expect(submitButton?.disabled).toBe(false)
   })
 
