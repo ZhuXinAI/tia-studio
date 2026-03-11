@@ -4,6 +4,7 @@ import type {
   AppAssistantHeartbeat,
   UpdateAssistantHeartbeatInput
 } from '../persistence/repos/assistant-heartbeats-repo'
+import { logger } from '../utils/logger'
 
 type HeartbeatExecutionResult = {
   outputText?: string | null
@@ -71,11 +72,30 @@ export class HeartbeatSchedulerService {
       return
     }
 
-    console.log('[HeartbeatScheduler] Starting heartbeat scheduler', {
+    logger.info('[HeartbeatScheduler] Starting heartbeat scheduler', {
       debugMode: this.options.debugMode
     })
     this.started = true
     await this.reload()
+
+    // Trigger all enabled heartbeats once on startup
+    const heartbeats = await this.options.heartbeatsRepo.list()
+    for (const heartbeat of heartbeats) {
+      const assistantState = await this.getAssistantState(heartbeat.assistantId)
+      if (heartbeat.enabled && assistantState.enabled) {
+        logger.info('[HeartbeatScheduler] Triggering initial heartbeat on startup', {
+          heartbeatId: heartbeat.id,
+          assistantId: heartbeat.assistantId
+        })
+        // Execute immediately without waiting
+        void this.executeHeartbeat(heartbeat.id, new Date().toISOString()).catch((error) => {
+          logger.error('[HeartbeatScheduler] Initial heartbeat execution failed', {
+            heartbeatId: heartbeat.id,
+            error
+          })
+        })
+      }
+    }
   }
 
   async stop(): Promise<void> {
@@ -93,7 +113,7 @@ export class HeartbeatSchedulerService {
     this.timers.clear()
 
     const heartbeats = await this.options.heartbeatsRepo.list()
-    console.log('[HeartbeatScheduler] Reloading heartbeats', {
+    logger.debug('[HeartbeatScheduler] Reloading heartbeats', {
       count: heartbeats.length,
       heartbeats: heartbeats.map((h) => ({
         id: h.id,
@@ -114,7 +134,7 @@ export class HeartbeatSchedulerService {
     errorMessage: string | null
   }> {
     if (!this.options.assistantsRepo) {
-      console.log('[HeartbeatScheduler] No assistantsRepo provided, allowing heartbeat', {
+      logger.debug('[HeartbeatScheduler] No assistantsRepo provided, allowing heartbeat', {
         assistantId
       })
       return {
@@ -127,7 +147,7 @@ export class HeartbeatSchedulerService {
 
     const assistant = await this.options.assistantsRepo.getById(assistantId)
     if (!assistant) {
-      console.log('[HeartbeatScheduler] Assistant not found', { assistantId })
+      logger.debug('[HeartbeatScheduler] Assistant not found', { assistantId })
       return {
         assistantName: null,
         workspaceRootPath: null,
@@ -137,7 +157,7 @@ export class HeartbeatSchedulerService {
     }
 
     if (assistant.enabled === false) {
-      console.log('[HeartbeatScheduler] Assistant disabled', {
+      logger.debug('[HeartbeatScheduler] Assistant disabled', {
         assistantId,
         assistantName: assistant.name
       })
@@ -150,7 +170,7 @@ export class HeartbeatSchedulerService {
     }
 
     const workspaceRootPath = toNonEmptyString(assistant.workspaceConfig.rootPath)
-    console.log('[HeartbeatScheduler] Assistant state checked', {
+    logger.debug('[HeartbeatScheduler] Assistant state checked', {
       assistantId,
       assistantName: assistant.name,
       workspaceRootPath,
@@ -169,7 +189,7 @@ export class HeartbeatSchedulerService {
     const assistantState = await this.getAssistantState(heartbeat.assistantId)
 
     if (!heartbeat.enabled || !assistantState.enabled) {
-      console.log('[HeartbeatScheduler] Heartbeat disabled or assistant disabled', {
+      logger.debug('[HeartbeatScheduler] Heartbeat disabled or assistant disabled', {
         heartbeatId: heartbeat.id,
         heartbeatEnabled: heartbeat.enabled,
         assistantEnabled: assistantState.enabled,
@@ -186,7 +206,7 @@ export class HeartbeatSchedulerService {
 
     // Only check workspace when assistantsRepo is provided (production mode)
     if (this.options.assistantsRepo && !assistantState.workspaceRootPath) {
-      console.log('[HeartbeatScheduler] Assistant workspace is required for heartbeat', {
+      logger.debug('[HeartbeatScheduler] Assistant workspace is required for heartbeat', {
         heartbeatId: heartbeat.id,
         assistantId: heartbeat.assistantId
       })
@@ -198,7 +218,7 @@ export class HeartbeatSchedulerService {
     }
 
     if (this.runningHeartbeats.has(heartbeat.id)) {
-      console.log('[HeartbeatScheduler] Heartbeat already running', {
+      logger.debug('[HeartbeatScheduler] Heartbeat already running', {
         heartbeatId: heartbeat.id
       })
       return
@@ -208,7 +228,7 @@ export class HeartbeatSchedulerService {
     const intervalMinutes = this.options.debugMode ? 2 : heartbeat.intervalMinutes
     const nextRunAt = new Date(Date.now() + intervalMinutes * 60_000)
 
-    console.log('[HeartbeatScheduler] Scheduling heartbeat', {
+    logger.debug('[HeartbeatScheduler] Scheduling heartbeat', {
       heartbeatId: heartbeat.id,
       assistantId: heartbeat.assistantId,
       intervalMinutes,
@@ -234,13 +254,13 @@ export class HeartbeatSchedulerService {
   }
 
   private async executeHeartbeat(heartbeatId: string, scheduledFor: string): Promise<void> {
-    console.log('[HeartbeatScheduler] Executing heartbeat', {
+    logger.debug('[HeartbeatScheduler] Executing heartbeat', {
       heartbeatId,
       scheduledFor
     })
 
     if (!this.started || this.runningHeartbeats.has(heartbeatId)) {
-      console.log('[HeartbeatScheduler] Skipping heartbeat execution', {
+      logger.debug('[HeartbeatScheduler] Skipping heartbeat execution', {
         heartbeatId,
         started: this.started,
         alreadyRunning: this.runningHeartbeats.has(heartbeatId)
@@ -250,13 +270,13 @@ export class HeartbeatSchedulerService {
 
     const heartbeat = await this.options.heartbeatsRepo.getById(heartbeatId)
     if (!heartbeat) {
-      console.log('[HeartbeatScheduler] Heartbeat not found', { heartbeatId })
+      logger.debug('[HeartbeatScheduler] Heartbeat not found', { heartbeatId })
       return
     }
 
     const assistantState = await this.getAssistantState(heartbeat.assistantId)
     if (!heartbeat.enabled || !assistantState.enabled) {
-      console.log('[HeartbeatScheduler] Heartbeat or assistant disabled during execution', {
+      logger.debug('[HeartbeatScheduler] Heartbeat or assistant disabled during execution', {
         heartbeatId,
         heartbeatEnabled: heartbeat.enabled,
         assistantEnabled: assistantState.enabled
@@ -271,12 +291,12 @@ export class HeartbeatSchedulerService {
     }
 
     if (!this.options.runHeartbeat) {
-      console.log('[HeartbeatScheduler] No runHeartbeat function provided', { heartbeatId })
+      logger.debug('[HeartbeatScheduler] No runHeartbeat function provided', { heartbeatId })
       await this.syncHeartbeat(heartbeat)
       return
     }
 
-    console.log('[HeartbeatScheduler] Starting heartbeat execution', {
+    logger.debug('[HeartbeatScheduler] Starting heartbeat execution', {
       heartbeatId,
       assistantId: heartbeat.assistantId
     })
@@ -303,7 +323,7 @@ export class HeartbeatSchedulerService {
         }
       }
 
-      console.log('[HeartbeatScheduler] Calling runHeartbeat', {
+      logger.debug('[HeartbeatScheduler] Calling runHeartbeat', {
         heartbeatId,
         assistantId: heartbeatToRun.assistantId,
         threadId: heartbeatToRun.threadId
@@ -311,7 +331,7 @@ export class HeartbeatSchedulerService {
 
       const result = await this.options.runHeartbeat(heartbeatToRun)
 
-      console.log('[HeartbeatScheduler] runHeartbeat returned', {
+      logger.debug('[HeartbeatScheduler] runHeartbeat returned', {
         heartbeatId,
         result,
         resultType: typeof result,
@@ -320,7 +340,7 @@ export class HeartbeatSchedulerService {
 
       outputText = toNonEmptyString(result && typeof result === 'object' ? result.outputText : null)
 
-      console.log('[HeartbeatScheduler] Heartbeat execution completed', {
+      logger.debug('[HeartbeatScheduler] Heartbeat execution completed', {
         heartbeatId,
         hasOutput: !!outputText,
         outputLength: outputText?.length,
@@ -335,7 +355,7 @@ export class HeartbeatSchedulerService {
           outputText,
           occurredAt: new Date(scheduledFor)
         })
-        console.log('[HeartbeatScheduler] Work log written', {
+        logger.debug('[HeartbeatScheduler] Work log written', {
           heartbeatId,
           workLogPath
         })
@@ -343,7 +363,7 @@ export class HeartbeatSchedulerService {
     } catch (error) {
       status = 'failed'
       errorPayload = serializeError(error)
-      console.error('[HeartbeatScheduler] Heartbeat execution failed', {
+      logger.error('[HeartbeatScheduler] Heartbeat execution failed', {
         heartbeatId,
         error: errorPayload
       })
@@ -355,7 +375,7 @@ export class HeartbeatSchedulerService {
       const nextRunAt = new Date(now.getTime() + intervalMinutes * 60_000).toISOString()
       const finishedAt = now.toISOString()
 
-      console.log('[HeartbeatScheduler] Heartbeat execution finished', {
+      logger.debug('[HeartbeatScheduler] Heartbeat execution finished', {
         heartbeatId,
         status,
         hasOutput: !!outputText,
@@ -373,7 +393,7 @@ export class HeartbeatSchedulerService {
       })
 
       if (this.options.heartbeatRunsRepo) {
-        console.log('[HeartbeatScheduler] Creating heartbeat run record', {
+        logger.debug('[HeartbeatScheduler] Creating heartbeat run record', {
           heartbeatId,
           status,
           hasOutputText: !!outputText,

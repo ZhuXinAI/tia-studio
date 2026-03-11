@@ -3,6 +3,7 @@ import { appendWorkLogEntry } from './work-log-writer'
 import type { CreateCronJobRunInput } from '../persistence/repos/cron-job-runs-repo'
 import type { AppCronJob, UpdateCronJobInput } from '../persistence/repos/cron-jobs-repo'
 import { getNextCronRunAt } from './cron-expression'
+import { logger } from '../utils/logger'
 
 type CronJobExecutionResult = {
   outputText?: string | null
@@ -85,7 +86,7 @@ export class NodeCronSchedulerService {
     this.tasks.clear()
 
     const jobs = await this.options.cronJobsRepo.list()
-    console.log(`[NodeCronScheduler] Loaded ${jobs.length} cron job(s)`)
+    logger.info(`[NodeCronScheduler] Loaded ${jobs.length} cron job(s)`)
 
     for (const job of jobs) {
       await this.syncJob(job)
@@ -127,7 +128,7 @@ export class NodeCronSchedulerService {
       return
     }
 
-    console.log(
+    logger.debug(
       `[NodeCronScheduler] Scheduled "${job.name}" (${job.cronExpression}) for ${nextRunAt.toISOString()}`
     )
 
@@ -138,7 +139,7 @@ export class NodeCronSchedulerService {
       async () => {
         const scheduledFor = new Date().toISOString()
         await this.executeJob(job.id, scheduledFor).catch((error) => {
-          console.error(`[NodeCronScheduler] Unhandled error in job ${job.id}:`, error)
+          logger.error(`[NodeCronScheduler] Unhandled error in job ${job.id}:`, error)
         })
       },
       {
@@ -159,7 +160,7 @@ export class NodeCronSchedulerService {
       return
     }
 
-    console.log(`[NodeCronScheduler] Executing "${job.name}" with prompt: "${job.prompt}"`)
+    logger.debug(`[NodeCronScheduler] Executing "${job.name}" with prompt: "${job.prompt}"`)
 
     if (!job.enabled || !(await this.isAssistantEnabled(job.assistantId))) {
       await this.options.cronJobsRepo.update(jobId, { nextRunAt: null })
@@ -186,11 +187,11 @@ export class NodeCronSchedulerService {
       const workspaceRootPath = toNonEmptyString(assistant?.workspaceConfig?.rootPath)
 
       if (outputText) {
-        console.log(
+        logger.debug(
           `[NodeCronScheduler] Job "${job.name}" generated output (${outputText.length} chars)`
         )
       } else {
-        console.log(`[NodeCronScheduler] Job "${job.name}" completed with no output`)
+        logger.debug(`[NodeCronScheduler] Job "${job.name}" completed with no output`)
       }
 
       if (assistant && workspaceRootPath && outputText) {
@@ -202,14 +203,14 @@ export class NodeCronSchedulerService {
           outputText,
           occurredAt: new Date(scheduledFor)
         })
-        console.log(`[NodeCronScheduler] Work log written to: ${workLogPath}`)
+        logger.debug(`[NodeCronScheduler] Work log written to: ${workLogPath}`)
       } else if (!workspaceRootPath) {
-        console.log(`[NodeCronScheduler] No workspace configured, skipping work log`)
+        logger.debug(`[NodeCronScheduler] No workspace configured, skipping work log`)
       }
     } catch (error) {
       status = 'failed'
       errorPayload = serializeError(error)
-      console.error(`[NodeCronScheduler] Job "${job.name}" failed:`, error)
+      logger.error(`[NodeCronScheduler] Job "${job.name}" failed:`, error)
     } finally {
       this.runningJobs.delete(jobId)
 

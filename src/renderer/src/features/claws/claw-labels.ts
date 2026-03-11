@@ -10,6 +10,8 @@ export function channelTypeLabel(type: string, translate: Translate): string {
       return translate('claws.dialog.channelTypes.telegram')
     case 'whatsapp':
       return translate('claws.dialog.channelTypes.whatsapp')
+    case 'wecom':
+      return translate('claws.dialog.channelTypes.wecom')
     default:
       return type
   }

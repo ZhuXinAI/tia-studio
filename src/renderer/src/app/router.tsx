@@ -25,7 +25,7 @@ export const appRoutes: RouteObject[] = [
     children: [
       {
         index: true,
-        loader: () => redirect('/chat')
+        loader: () => redirect('/claws')
       },
       {
         path: 'chat',
@@ -106,7 +106,7 @@ export function createAppRouter(): ReturnType<typeof createHashRouter> {
 }
 
 export function createAppMemoryRouter(
-  initialEntries: string[] = ['/chat']
+  initialEntries: string[] = ['/claws']
 ): ReturnType<typeof createMemoryRouter> {
   return createMemoryRouter(appRoutes, {
     initialEntries

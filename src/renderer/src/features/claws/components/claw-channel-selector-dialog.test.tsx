@@ -120,12 +120,12 @@ describe('ClawChannelSelectorDialog', () => {
         <ClawChannelSelectorDialog
           isOpen
           currentAssistantId={null}
-          selectedChannelId="channel-lark"
+          selectedChannelId="channel-wecom"
           channels={[
             buildChannel({
-              id: 'channel-lark',
-              name: 'Lark 频道',
-              type: 'lark',
+              id: 'channel-wecom',
+              name: '企业微信频道',
+              type: 'wecom',
               status: 'connected'
             })
           ]}
@@ -142,7 +142,7 @@ describe('ClawChannelSelectorDialog', () => {
     await flushAsyncWork()
 
     expect(document.body.textContent).toContain('选择频道')
-    expect(document.body.textContent).toContain('Lark · 已连接')
+    expect(document.body.textContent).toContain('企业微信 · 已连接')
     expect(document.body.textContent).toContain('可用')
     expect(document.body.textContent).toContain('添加频道')
   })
@@ -425,6 +425,80 @@ describe('ClawChannelSelectorDialog', () => {
     expect(onCreateChannel).toHaveBeenCalledWith({
       type: 'whatsapp',
       name: 'WhatsApp Device'
+    })
+  })
+
+  it('creates a new wecom channel with bot credentials', async () => {
+    const onCreateChannel = vi.fn(async () =>
+      buildChannel({
+        id: 'channel-wecom',
+        type: 'wecom',
+        name: 'Wecom Bot',
+        status: 'disconnected'
+      })
+    )
+
+    await act(async () => {
+      root.render(
+        <ClawChannelSelectorDialog
+          isOpen
+          currentAssistantId={null}
+          selectedChannelId=""
+          channels={[]}
+          isMutating={false}
+          errorMessage={null}
+          onClose={() => undefined}
+          onApply={() => undefined}
+          onCreateChannel={onCreateChannel}
+          onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onDeleteChannel={vi.fn(async () => undefined)}
+        />
+      )
+    })
+    await flushAsyncWork()
+
+    const addButton = document.body.querySelector(
+      'button[id="claw-channel-selector-add"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const typeSelect = document.body.querySelector(
+      'select[id="claw-channel-create-type"]'
+    ) as HTMLSelectElement
+    const nameInput = document.body.querySelector(
+      'input[id="claw-channel-create-name"]'
+    ) as HTMLInputElement
+    const botIdInput = document.body.querySelector(
+      'input[id="claw-channel-create-app-id"]'
+    ) as HTMLInputElement
+    const secretInput = document.body.querySelector(
+      'input[id="claw-channel-create-app-secret"]'
+    ) as HTMLInputElement
+    const createButton = document.body.querySelector(
+      'button[id="claw-channel-create-save"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      setElementValue(typeSelect, 'wecom')
+      setElementValue(nameInput, 'Wecom Bot')
+      setElementValue(botIdInput, 'bot-123')
+      setElementValue(secretInput, 'secret-123')
+    })
+
+    await act(async () => {
+      createButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(onCreateChannel).toHaveBeenCalledWith({
+      type: 'wecom',
+      name: 'Wecom Bot',
+      botId: 'bot-123',
+      secret: 'secret-123'
     })
   })
 

@@ -98,6 +98,13 @@ export type SaveClawInput = {
         name: string
       }
     | {
+        mode: 'create'
+        type: 'wecom'
+        name: string
+        botId: string
+        secret: string
+      }
+    | {
         mode: 'attach'
         channelId: string
       }
@@ -125,6 +132,12 @@ export type CreateClawChannelInput =
       type: 'whatsapp'
       name: string
     }
+  | {
+      type: 'wecom'
+      name: string
+      botId: string
+      secret: string
+    }
 
 export type UpdateClawChannelInput =
   | {
@@ -141,6 +154,12 @@ export type UpdateClawChannelInput =
   | {
       type: 'whatsapp'
       name: string
+    }
+  | {
+      type: 'wecom'
+      name: string
+      botId?: string
+      secret?: string
     }
 
 const apiClient = createApiClient()

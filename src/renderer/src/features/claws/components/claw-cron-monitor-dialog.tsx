@@ -95,7 +95,7 @@ export function ClawCronMonitorDialog({
           <DialogDescription>Recent cron job executions and their status</DialogDescription>
         </DialogHeader>
 
-        {isLoading && runs.length === 0 ? (
+        {isLoading ? (
           <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>
         ) : errorMessage ? (
           <div className="py-4 text-sm text-destructive">{errorMessage}</div>

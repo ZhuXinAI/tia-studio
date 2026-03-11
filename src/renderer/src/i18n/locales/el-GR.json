@@ -469,6 +469,8 @@
         "channelType": "Τύπος καναλιού",
         "channelName": "Όνομα καναλιού",
         "botToken": "Διακριτικό bot",
+        "botId": "Bot ID",
+        "secret": "Secret",
         "larkChannelName": "Όνομα καναλιού Lark",
         "appId": "ID εφαρμογής",
         "appSecret": "Μυστικό εφαρμογής"
@@ -480,10 +482,24 @@
       "selectProvider": "Επιλέξτε πάροχο",
       "selectChannel": "Επιλέξτε κανάλι",
       "enableAfterSaving": "Ενεργοποίηση αυτού του Claw μετά την αποθήκευση",
+      "defaultAssistantName": "Ο πρώτος μου βοηθός",
+      "stepper": {
+        "steps": {
+          "provider": "Πάροχος",
+          "channel": "Κανάλι",
+          "details": "Όνομα και χώρος εργασίας"
+        },
+        "actions": {
+          "back": "Πίσω",
+          "next": "Επόμενο"
+        },
+        "detailsDescription": "Ορίστε το όνομα του βοηθού και προαιρετικά επιλέξτε έναν φάκελο χώρου εργασίας."
+      },
       "channelTypes": {
         "lark": "Lark",
         "telegram": "Telegram",
-        "whatsapp": "WhatsApp"
+        "whatsapp": "WhatsApp",
+        "wecom": "Wecom"
       },
       "channelActions": {
         "keep": "Διατήρηση τρέχοντος καναλιού",
@@ -552,6 +568,7 @@
         "nameRequired": "Απαιτείται όνομα καναλιού",
         "larkCredentialsRequired": "Απαιτούνται App ID και app secret για κανάλια Lark",
         "telegramCredentialsRequired": "Απαιτείται διακριτικό bot για κανάλια Telegram",
+        "wecomCredentialsRequired": "Bot ID and secret are required for Wecom channels",
         "createFailed": "Αποτυχία δημιουργίας καναλιού",
         "updateFailed": "Αποτυχία ενημέρωσης καναλιού",
         "deleteFailed": "Αποτυχία διαγραφής καναλιού"

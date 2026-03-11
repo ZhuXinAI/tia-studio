@@ -2,6 +2,7 @@ import { appendWorkLogEntry } from './work-log-writer'
 import type { CreateCronJobRunInput } from '../persistence/repos/cron-job-runs-repo'
 import type { AppCronJob, UpdateCronJobInput } from '../persistence/repos/cron-jobs-repo'
 import { getNextCronRunAt } from './cron-expression'
+import { logger } from '../utils/logger'
 
 type CronJobExecutionResult = {
   outputText?: string | null
@@ -65,7 +66,7 @@ export class CronSchedulerService {
       return
     }
 
-    console.log('[CronScheduler] Starting cron scheduler...')
+    logger.info('[CronScheduler] Starting cron scheduler...')
     this.started = true
     await this.reload()
   }
@@ -85,7 +86,7 @@ export class CronSchedulerService {
     this.timers.clear()
 
     const jobs = await this.options.cronJobsRepo.list()
-    console.log(`[CronScheduler] Reloading ${jobs.length} cron job(s)`)
+    logger.debug(`[CronScheduler] Reloading ${jobs.length} cron job(s)`)
     for (const job of jobs) {
       await this.syncJob(job)
     }
@@ -104,7 +105,7 @@ export class CronSchedulerService {
     const assistantEnabled = await this.isAssistantEnabled(job.assistantId)
 
     if (!job.enabled) {
-      console.log(`[CronScheduler] Job "${job.name}" (${job.id}) is disabled, skipping`)
+      logger.debug(`[CronScheduler] Job "${job.name}" (${job.id}) is disabled, skipping`)
       if (job.nextRunAt !== null) {
         await this.options.cronJobsRepo.update(job.id, { nextRunAt: null })
       }
@@ -112,7 +113,7 @@ export class CronSchedulerService {
     }
 
     if (!assistantEnabled) {
-      console.log(`[CronScheduler] Job "${job.name}" (${job.id}) has disabled assistant, skipping`)
+      logger.debug(`[CronScheduler] Job "${job.name}" (${job.id}) has disabled assistant, skipping`)
       if (job.nextRunAt !== null) {
         await this.options.cronJobsRepo.update(job.id, { nextRunAt: null })
       }
@@ -120,7 +121,7 @@ export class CronSchedulerService {
     }
 
     if (this.runningJobs.has(job.id)) {
-      console.log(`[CronScheduler] Job "${job.name}" (${job.id}) is already running, skipping`)
+      logger.debug(`[CronScheduler] Job "${job.name}" (${job.id}) is already running, skipping`)
       return
     }
 
@@ -130,14 +131,14 @@ export class CronSchedulerService {
     })
 
     if (!this.started || !nextRunAt) {
-      console.log(
+      logger.debug(
         `[CronScheduler] Job "${job.name}" (${job.id}) - scheduler not started or no next run time`
       )
       return
     }
 
     const delay = Math.max(0, nextRunAt.getTime() - Date.now())
-    console.log(
+    logger.debug(
       `[CronScheduler] Job "${job.name}" (${job.id}) scheduled for ${nextRunAt.toISOString()} (in ${Math.round(delay / 1000)}s)`
     )
 
@@ -156,16 +157,16 @@ export class CronSchedulerService {
 
     const job = await this.options.cronJobsRepo.getById(jobId)
     if (!job) {
-      console.log(`[CronScheduler] Job ${jobId} not found, skipping execution`)
+      logger.debug(`[CronScheduler] Job ${jobId} not found, skipping execution`)
       return
     }
 
-    console.log(
+    logger.debug(
       `[CronScheduler] Executing job "${job.name}" (${job.id}) scheduled for ${scheduledFor}`
     )
 
     if (!job.enabled || !(await this.isAssistantEnabled(job.assistantId))) {
-      console.log(
+      logger.debug(
         `[CronScheduler] Job "${job.name}" (${job.id}) is disabled or assistant is disabled, skipping`
       )
       await this.options.cronJobsRepo.update(jobId, { nextRunAt: null })
@@ -173,7 +174,7 @@ export class CronSchedulerService {
     }
 
     if (!this.options.runJob) {
-      console.log(`[CronScheduler] No runJob handler configured, rescheduling`)
+      logger.debug(`[CronScheduler] No runJob handler configured, rescheduling`)
       await this.syncJob(job)
       return
     }
@@ -187,10 +188,10 @@ export class CronSchedulerService {
     let workLogPath: string | null = null
 
     try {
-      console.log(`[CronScheduler] Running job "${job.name}" (${job.id})...`)
+      logger.debug(`[CronScheduler] Running job "${job.name}" (${job.id})...`)
       const result = await this.options.runJob(job)
       outputText = toNonEmptyString(result && typeof result === 'object' ? result.outputText : null)
-      console.log(`[CronScheduler] Job "${job.name}" (${job.id}) completed successfully`)
+      logger.debug(`[CronScheduler] Job "${job.name}" (${job.id}) completed successfully`)
 
       const assistant = await this.options.assistantsRepo?.getById(job.assistantId)
       const workspaceRootPath = toNonEmptyString(assistant?.workspaceConfig?.rootPath)
@@ -207,7 +208,7 @@ export class CronSchedulerService {
     } catch (error) {
       status = 'failed'
       errorPayload = serializeError(error)
-      console.error(`[CronScheduler] Job "${job.name}" (${job.id}) failed:`, error)
+      logger.error(`[CronScheduler] Job "${job.name}" (${job.id}) failed:`, error)
     } finally {
       this.runningJobs.delete(jobId)
 

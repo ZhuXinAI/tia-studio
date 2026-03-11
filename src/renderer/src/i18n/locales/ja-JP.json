@@ -469,6 +469,8 @@
         "channelType": "チャンネル種別",
         "channelName": "チャンネル名",
         "botToken": "Bot トークン",
+        "botId": "Bot ID",
+        "secret": "Secret",
         "larkChannelName": "Lark チャンネル名",
         "appId": "アプリ ID",
         "appSecret": "アプリシークレット"
@@ -480,10 +482,24 @@
       "selectProvider": "プロバイダーを選択",
       "selectChannel": "チャンネルを選択",
       "enableAfterSaving": "保存後にこの Claw を有効化",
+      "defaultAssistantName": "はじめてのアシスタント",
+      "stepper": {
+        "steps": {
+          "provider": "プロバイダー",
+          "channel": "チャンネル",
+          "details": "名前とワークスペース"
+        },
+        "actions": {
+          "back": "戻る",
+          "next": "次へ"
+        },
+        "detailsDescription": "アシスタント名を入力し、必要に応じてワークスペースフォルダーを選択します。"
+      },
       "channelTypes": {
         "lark": "Lark",
         "telegram": "Telegram",
-        "whatsapp": "WhatsApp"
+        "whatsapp": "WhatsApp",
+        "wecom": "Wecom"
       },
       "channelActions": {
         "keep": "現在のチャンネルを維持",
@@ -552,6 +568,7 @@
         "nameRequired": "Channel name is required",
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
+        "wecomCredentialsRequired": "Bot ID and secret are required for Wecom channels",
         "createFailed": "Failed to create channel",
         "updateFailed": "チャンネルの更新に失敗しました",
         "deleteFailed": "Failed to delete channel"

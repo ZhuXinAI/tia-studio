@@ -18,10 +18,12 @@ import { AutoUpdateService } from './auto-updater'
 import { resolveServerConfig } from './config/server-config'
 import { ensureBuiltInDefaultAgent } from './default-agent/default-agent-bootstrap'
 import { ensureBuiltInProviders } from './default-agent/built-in-providers-bootstrap'
+import { logger } from './utils/logger'
 import { ChannelEventBus } from './channels/channel-event-bus'
 import { ChannelMessageRouter } from './channels/channel-message-router'
 import { ChannelService } from './channels/channel-service'
 import { TelegramChannel } from './channels/telegram-channel'
+import { WeComChannel } from './channels/wecom-channel'
 import { WhatsAppAuthStateStore } from './channels/whatsapp-auth-state-store'
 import { WhatsAppChannel } from './channels/whatsapp-channel'
 import { AssistantCronJobsService } from './cron/assistant-cron-jobs-service'
@@ -252,6 +254,27 @@ async function startLocalApiServer(): Promise<void> {
           }
         })
       },
+      wecom: async (channel) => {
+        const botId = channel.config.botId
+        if (typeof botId !== 'string' || botId.trim().length === 0) {
+          throw new Error(`Channel ${channel.id} is missing required config: botId`)
+        }
+
+        const secret = channel.config.secret
+        if (typeof secret !== 'string' || secret.trim().length === 0) {
+          throw new Error(`Channel ${channel.id} is missing required config: secret`)
+        }
+
+        return new WeComChannel({
+          id: channel.id,
+          botId,
+          secret,
+          onFatalError: async (error) => {
+            const message = error instanceof Error ? error.message : 'Unknown error'
+            await channelsRepo.setLastError(channel.id, message)
+          }
+        })
+      },
       whatsapp: async (channel) => {
         return new WhatsAppChannel({
           id: channel.id,
@@ -365,11 +388,11 @@ async function startLocalApiServer(): Promise<void> {
       port: serverConfig.port
     },
     (serverInfo) => {
-      console.log(
+      logger.info(
         `Tia local API is running on http://${serverInfo.address}:${serverInfo.port} (localhost only)`
       )
       if (persistenceDatabasePath) {
-        console.log(`Tia database path: ${persistenceDatabasePath}`)
+        logger.info(`Tia database path: ${persistenceDatabasePath}`)
       }
     }
   )
@@ -534,7 +557,7 @@ app.whenReady().then(async () => {
   })
 
   // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  ipcMain.on('ping', () => logger.debug('pong'))
   ipcMain.handle('tia:get-desktop-config', () => {
     return {
       baseUrl: `http://${serverConfig.host}:${serverConfig.port}`,
@@ -662,7 +685,7 @@ app.whenReady().then(async () => {
   createTray()
   if (autoUpdateService.getState().enabled && app.isPackaged) {
     void autoUpdateService.checkForUpdates().catch((error) => {
-      console.error('Initial auto update check failed:', error)
+      logger.error('Initial auto update check failed:', error)
     })
   }
 

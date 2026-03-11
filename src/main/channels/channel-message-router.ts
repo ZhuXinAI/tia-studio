@@ -7,6 +7,7 @@ import type { ChannelsRepository } from '../persistence/repos/channels-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import { ChannelEventBus } from './channel-event-bus'
 import type { ChannelMessageReceivedEvent } from './types'
+import { logger } from '../utils/logger'
 
 type InterruptionDecision = {
   decision: 'interrupt' | 'queue'
@@ -510,7 +511,7 @@ export class ChannelMessageRouter {
           source: 'channel'
         })
       } catch (error) {
-        console.error(
+        logger.error(
           `[ChannelMessageRouter] appendMessagesUpdated failed: ${toErrorLogMessage(error)}`
         )
       }
@@ -524,7 +525,7 @@ export class ChannelMessageRouter {
       }
 
       const rawMessage = toErrorLogMessage(error)
-      console.error(`[ChannelMessageRouter] streamChat failed: ${rawMessage}`)
+      logger.error(`[ChannelMessageRouter] streamChat failed: ${rawMessage}`)
       await this.publishReply(item.event, `[Error] ${toFriendlyErrorMessage(rawMessage)}`)
     }
   }
@@ -626,7 +627,7 @@ export class ChannelMessageRouter {
         (await this.options.interruptionDecider?.(input)) ?? decideInterruptionHeuristically(input)
       )
     } catch (error) {
-      console.error(
+      logger.error(
         `[ChannelMessageRouter] interruptionDecider failed: ${toErrorLogMessage(error)}`
       )
       return decideInterruptionHeuristically(input)
@@ -659,7 +660,7 @@ export class ChannelMessageRouter {
       input.remoteChatId
     )
 
-    console.log(`[ChannelMessageRouter] existingBinding: ${JSON.stringify(existingBinding)}`)
+    logger.debug(`[ChannelMessageRouter] existingBinding: ${JSON.stringify(existingBinding)}`)
     if (existingBinding) {
       return existingBinding.threadId
     }

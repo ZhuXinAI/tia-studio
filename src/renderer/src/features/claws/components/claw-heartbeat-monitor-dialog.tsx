@@ -156,10 +156,14 @@ export function ClawHeartbeatMonitorDialog({
           <DialogDescription>Configure and monitor heartbeat executions</DialogDescription>
         </DialogHeader>
 
-        {isLoading && !heartbeat ? (
+        {isLoading ? (
           <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>
         ) : errorMessage ? (
           <div className="py-4 text-sm text-destructive">{errorMessage}</div>
+        ) : !heartbeat ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            No heartbeat configured for this assistant
+          </div>
         ) : (
           <div className="space-y-4">
             {heartbeat ? (

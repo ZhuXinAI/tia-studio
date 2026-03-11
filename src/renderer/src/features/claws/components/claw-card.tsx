@@ -1,4 +1,4 @@
-import { Link2, MoreVertical } from 'lucide-react'
+import { Link2, MoreVertical, Activity, Clock } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import {
   Card,
@@ -14,6 +14,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '../../../components/ui/dropdown-menu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from '../../../components/ui/tooltip'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import type { ClawRecord } from '../claws-query'
 
@@ -66,43 +72,68 @@ export function ClawCard({
             </div>
             <CardDescription className="truncate">{claw.description || '\u00A0'}</CardDescription>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" disabled={isSubmitting}>
-                <MoreVertical className="size-4" />
-                <span className="sr-only">Actions</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                disabled={isSubmitting || claw.channel === null}
-                onClick={onToggleEnabled}
-              >
-                {claw.enabled ? t('claws.card.disableButton') : t('claws.card.enableButton')}
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled={isSubmitting} onClick={onEdit}>
-                {t('claws.card.editButton')}
-              </DropdownMenuItem>
+          <div className="flex items-center gap-1">
+            <TooltipProvider>
               {onViewHeartbeat ? (
-                <DropdownMenuItem disabled={isSubmitting} onClick={onViewHeartbeat}>
-                  View Heartbeat
-                </DropdownMenuItem>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={isSubmitting}
+                      onClick={onViewHeartbeat}
+                    >
+                      <Activity className="size-4" />
+                      <span className="sr-only">View Heartbeat</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>View Heartbeat</p>
+                  </TooltipContent>
+                </Tooltip>
               ) : null}
               {onViewCron ? (
-                <DropdownMenuItem disabled={isSubmitting} onClick={onViewCron}>
-                  View Cron
-                </DropdownMenuItem>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" disabled={isSubmitting} onClick={onViewCron}>
+                      <Clock className="size-4" />
+                      <span className="sr-only">View Cron</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>View Cron</p>
+                  </TooltipContent>
+                </Tooltip>
               ) : null}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                disabled={isSubmitting}
-                onClick={onDelete}
-                className="text-destructive focus:text-destructive"
-              >
-                {t('claws.card.deleteButton')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </TooltipProvider>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" disabled={isSubmitting}>
+                  <MoreVertical className="size-4" />
+                  <span className="sr-only">Actions</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  disabled={isSubmitting || claw.channel === null}
+                  onClick={onToggleEnabled}
+                >
+                  {claw.enabled ? t('claws.card.disableButton') : t('claws.card.enableButton')}
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={isSubmitting} onClick={onEdit}>
+                  {t('claws.card.editButton')}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  disabled={isSubmitting}
+                  onClick={onDelete}
+                  className="text-destructive focus:text-destructive"
+                >
+                  {t('claws.card.deleteButton')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </CardHeader>
       <CardContent>

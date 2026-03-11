@@ -18,6 +18,7 @@ import type { ChannelPairingsRepository } from '../persistence/repos/channel-pai
 import { AbstractChannel } from './abstract-channel'
 import type { ChannelMessage } from './types'
 import type { WhatsAppAuthStateStore } from './whatsapp-auth-state-store'
+import { logger } from '../utils/logger'
 
 const PENDING_PAIRING_LIMIT = 3
 const PAIRING_TTL_MS = 60 * 60 * 1000
@@ -457,7 +458,7 @@ export class WhatsAppChannel extends AbstractChannel {
 
     if (pairing?.status === 'approved') {
       void this.emitApprovedMessage(message).catch((error) => {
-        console.error(`[WhatsAppChannel] Failed to process inbound message ${message.id}:`, error)
+        logger.error(`[WhatsAppChannel] Failed to process inbound message ${message.id}:`, error)
       })
       return
     }

@@ -13,6 +13,7 @@ import type {
 } from '../../persistence/repos/channel-pairings-repo'
 import type { AppChannel, ChannelsRepository } from '../../persistence/repos/channels-repo'
 import type { ProvidersRepository } from '../../persistence/repos/providers-repo'
+import { logger } from '../../utils/logger'
 import {
   createClawSchema,
   createConfiguredChannelSchema,
@@ -134,6 +135,10 @@ function hasValidChannelConfig(
       channel.config.appId.trim().length > 0 &&
       typeof channel.config.appSecret === 'string' &&
       channel.config.appSecret.trim().length > 0) ||
+    (typeof channel.config.botId === 'string' &&
+      channel.config.botId.trim().length > 0 &&
+      typeof channel.config.secret === 'string' &&
+      channel.config.secret.trim().length > 0) ||
     (typeof channel.config.botToken === 'string' && channel.config.botToken.trim().length > 0) ||
     channelType === 'whatsapp'
   )
@@ -379,6 +384,7 @@ function buildChannelConfig(
     | { type: 'lark'; appId: string; appSecret: string }
     | { type: 'telegram'; botToken: string }
     | { type: 'whatsapp' }
+    | { type: 'wecom'; botId: string; secret: string }
 ): Record<string, unknown> {
   if (channel.type === 'telegram') {
     return {
@@ -388,6 +394,13 @@ function buildChannelConfig(
 
   if (channel.type === 'whatsapp') {
     return {}
+  }
+
+  if (channel.type === 'wecom') {
+    return {
+      botId: channel.botId,
+      secret: channel.secret
+    }
   }
 
   return {
@@ -402,6 +415,7 @@ function mergeChannelConfig(
     | { type: 'lark'; appId?: string; appSecret?: string }
     | { type: 'telegram'; botToken?: string }
     | { type: 'whatsapp' }
+    | { type: 'wecom'; botId?: string; secret?: string }
 ): Record<string, unknown> {
   if (channel.type === 'telegram') {
     return {
@@ -413,6 +427,17 @@ function mergeChannelConfig(
 
   if (channel.type === 'whatsapp') {
     return existingChannel.config
+  }
+
+  if (channel.type === 'wecom') {
+    return {
+      botId:
+        channel.botId ??
+        (typeof existingChannel.config.botId === 'string' ? existingChannel.config.botId : ''),
+      secret:
+        channel.secret ??
+        (typeof existingChannel.config.secret === 'string' ? existingChannel.config.secret : '')
+    }
   }
 
   return {
@@ -708,7 +733,7 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
           prompt: 'Review recent work logs and recent conversations. Follow up only if needed.'
         })
         .catch((error) => {
-          console.error('[ClawsRoute] Failed to create default heartbeat:', error)
+          logger.error('[ClawsRoute] Failed to create default heartbeat:', error)
         })
     }
 

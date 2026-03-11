@@ -18,6 +18,7 @@ import {
 } from '../../../components/ui/dialog'
 import { Input } from '../../../components/ui/input'
 import { useTranslation } from '../../../i18n/use-app-translation'
+import { channelStatusLabel, channelTypeLabel } from '../../claws/claw-labels'
 import type {
   ClawsResponse,
   ConfiguredClawChannelRecord,
@@ -31,7 +32,7 @@ import {
   updateClawChannel
 } from '../../claws/claws-query'
 
-type ChannelType = 'lark' | 'telegram' | 'whatsapp'
+type ChannelType = 'lark' | 'telegram' | 'whatsapp' | 'wecom'
 type ChannelFormMode = 'create' | 'edit'
 
 type ChannelFormState = {
@@ -40,6 +41,8 @@ type ChannelFormState = {
   appId: string
   appSecret: string
   botToken: string
+  botId: string
+  secret: string
 }
 
 function emptyResponse(): ClawsResponse {
@@ -55,18 +58,30 @@ function emptyFormState(): ChannelFormState {
     name: '',
     appId: '',
     appSecret: '',
-    botToken: ''
+    botToken: '',
+    botId: '',
+    secret: ''
   }
 }
 
 function toEditFormState(channel: ConfiguredClawChannelRecord): ChannelFormState {
+  const type =
+    channel.type === 'telegram'
+      ? 'telegram'
+      : channel.type === 'whatsapp'
+        ? 'whatsapp'
+        : channel.type === 'wecom'
+          ? 'wecom'
+          : 'lark'
+
   return {
-    type:
-      channel.type === 'telegram' ? 'telegram' : channel.type === 'whatsapp' ? 'whatsapp' : 'lark',
+    type,
     name: channel.name,
     appId: '',
     appSecret: '',
-    botToken: ''
+    botToken: '',
+    botId: '',
+    secret: ''
   }
 }
 
@@ -83,6 +98,15 @@ function buildCreateInput(formState: ChannelFormState): CreateClawChannelInput {
     return {
       type: 'whatsapp',
       name: formState.name.trim()
+    }
+  }
+
+  if (formState.type === 'wecom') {
+    return {
+      type: 'wecom',
+      name: formState.name.trim(),
+      botId: formState.botId.trim(),
+      secret: formState.secret.trim()
     }
   }
 
@@ -107,6 +131,15 @@ function buildUpdateInput(formState: ChannelFormState): UpdateClawChannelInput {
     return {
       type: 'whatsapp',
       name: formState.name.trim()
+    }
+  }
+
+  if (formState.type === 'wecom') {
+    return {
+      type: 'wecom',
+      name: formState.name.trim(),
+      ...(formState.botId.trim().length > 0 ? { botId: formState.botId.trim() } : {}),
+      ...(formState.secret.trim().length > 0 ? { secret: formState.secret.trim() } : {})
     }
   }
 
@@ -190,6 +223,12 @@ export function ChannelsSettingsPage(): React.JSX.Element {
           setFormError(t('claws.channelSelector.errors.telegramCredentialsRequired'))
           return
         }
+      } else if (
+        formState.type === 'wecom' &&
+        (formState.botId.trim().length === 0 || formState.secret.trim().length === 0)
+      ) {
+        setFormError(t('claws.channelSelector.errors.wecomCredentialsRequired'))
+        return
       } else if (
         formState.type === 'lark' &&
         (formState.appId.trim().length === 0 || formState.appSecret.trim().length === 0)
@@ -298,7 +337,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                 <CardHeader>
                   <CardTitle className="text-base">{channel.name}</CardTitle>
                   <CardDescription>
-                    {channel.type} · {channel.status}
+                    {channelTypeLabel(channel.type, t)} · {channelStatusLabel(channel.status, t)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -408,13 +447,16 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                     type: event.target.value as ChannelType,
                     appId: '',
                     appSecret: '',
-                    botToken: ''
+                    botToken: '',
+                    botId: '',
+                    secret: ''
                   }))
                 }
               >
                 <option value="lark">{t('claws.dialog.channelTypes.lark')}</option>
                 <option value="telegram">{t('claws.dialog.channelTypes.telegram')}</option>
                 <option value="whatsapp">{t('claws.dialog.channelTypes.whatsapp')}</option>
+                <option value="wecom">{t('claws.dialog.channelTypes.wecom')}</option>
               </select>
             </div>
 
@@ -482,6 +524,73 @@ export function ChannelsSettingsPage(): React.JSX.Element {
               <p className="text-sm text-muted-foreground">
                 {t('claws.channelSelector.create.whatsappHint')}
               </p>
+            ) : formState.type === 'wecom' ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <label
+                    htmlFor={
+                      formMode === 'create'
+                        ? 'settings-channel-create-app-id'
+                        : 'settings-channel-form-app-id'
+                    }
+                    className="text-sm font-medium"
+                  >
+                    {t('claws.dialog.fields.botId')}
+                  </label>
+                  <Input
+                    id={
+                      formMode === 'create'
+                        ? 'settings-channel-create-app-id'
+                        : 'settings-channel-form-app-id'
+                    }
+                    placeholder={
+                      formMode === 'edit'
+                        ? t('claws.channelSelector.edit.appIdPlaceholder')
+                        : undefined
+                    }
+                    value={formState.botId}
+                    onChange={(event) =>
+                      setFormState((currentState) => ({
+                        ...currentState,
+                        botId: event.target.value
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <label
+                    htmlFor={
+                      formMode === 'create'
+                        ? 'settings-channel-create-app-secret'
+                        : 'settings-channel-form-app-secret'
+                    }
+                    className="text-sm font-medium"
+                  >
+                    {t('claws.dialog.fields.secret')}
+                  </label>
+                  <Input
+                    id={
+                      formMode === 'create'
+                        ? 'settings-channel-create-app-secret'
+                        : 'settings-channel-form-app-secret'
+                    }
+                    type="password"
+                    placeholder={
+                      formMode === 'edit'
+                        ? t('claws.channelSelector.edit.appSecretPlaceholder')
+                        : undefined
+                    }
+                    value={formState.secret}
+                    onChange={(event) =>
+                      setFormState((currentState) => ({
+                        ...currentState,
+                        secret: event.target.value
+                      }))
+                    }
+                  />
+                </div>
+              </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-2">

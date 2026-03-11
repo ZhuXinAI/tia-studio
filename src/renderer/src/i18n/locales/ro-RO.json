@@ -469,6 +469,8 @@
         "channelType": "Tip canal",
         "channelName": "Nume canal",
         "botToken": "Token bot",
+        "botId": "Bot ID",
+        "secret": "Secret",
         "larkChannelName": "Nume canal Lark",
         "appId": "ID aplicație",
         "appSecret": "Secret aplicație"
@@ -480,10 +482,24 @@
       "selectProvider": "Selectează furnizor",
       "selectChannel": "Selectează canal",
       "enableAfterSaving": "Activează acest Claw după salvare",
+      "defaultAssistantName": "Primul meu asistent",
+      "stepper": {
+        "steps": {
+          "provider": "Furnizor",
+          "channel": "Canal",
+          "details": "Nume și spațiu de lucru"
+        },
+        "actions": {
+          "back": "Înapoi",
+          "next": "Următorul"
+        },
+        "detailsDescription": "Alege numele asistentului și, opțional, un dosar pentru spațiul de lucru."
+      },
       "channelTypes": {
         "lark": "Lark",
         "telegram": "Telegram",
-        "whatsapp": "WhatsApp"
+        "whatsapp": "WhatsApp",
+        "wecom": "Wecom"
       },
       "channelActions": {
         "keep": "Păstrează canalul curent",
@@ -552,6 +568,7 @@
         "nameRequired": "Channel name is required",
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
+        "wecomCredentialsRequired": "Bot ID and secret are required for Wecom channels",
         "createFailed": "Failed to create channel",
         "updateFailed": "Nu s-a putut actualiza canalul",
         "deleteFailed": "Failed to delete channel"

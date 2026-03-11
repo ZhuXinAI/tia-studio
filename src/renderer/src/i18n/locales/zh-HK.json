@@ -392,7 +392,7 @@
     },
     "channels": {
       "title": "頻道",
-      "description": "在同一處管理已設定的 Telegram 與 Lark 頻道。",
+      "description": "在同一處管理已設定的 WhatsApp、Telegram、Lark 與企業微信頻道。",
       "configuredTitle": "已設定頻道",
       "configuredDescription": "編輯現有頻道憑證、查看綁定關係，或移除未使用的頻道。",
       "loading": "正在載入頻道...",
@@ -406,11 +406,11 @@
   "claws": {
     "eyebrow": "Claws",
     "title": "Claws",
-    "description": "將助手連接到外部 Lark 頻道，無需翻查原始設定。",
+    "description": "將助手連接到外部 WhatsApp、Telegram、Lark 或企業微信頻道，無需翻查原始設定。",
     "newButton": "新增 Claw",
     "telegram": {
-      "description": "將助手連接到外部 Telegram 或 Lark 頻道，無需翻查原始設定。",
-      "emptyDescription": "從一個助手、一個供應商和一個 Telegram 或 Lark 頻道開始，是最快的接入方式。",
+      "description": "將助手連接到外部 WhatsApp、Telegram、Lark 或企業微信頻道，無需翻查原始設定。",
+      "emptyDescription": "從一個助手、一個供應商和一個 WhatsApp、Telegram、Lark 或企業微信頻道開始，是最快的接入方式。",
       "pairingSummary": "已配對 {{pairedCount}} 個 · 待處理 {{pendingCount}} 個",
       "managePairingsButton": "管理配對",
       "defaultClawName": "Telegram Claw"
@@ -427,7 +427,7 @@
     },
     "empty": {
       "title": "設定你的第一個 Claw",
-      "description": "從一個助手、一個供應商和一個 Lark 頻道開始，是最快的上手方式。",
+      "description": "從一個助手、一個供應商和一個 WhatsApp、Telegram、Lark 或企業微信頻道開始，是最快的上手方式。",
       "note": "助手身分、心跳以及後續 cron 仍由助手本身管理。",
       "createButton": "建立第一個 Claw"
     },
@@ -457,8 +457,8 @@
       "createTitle": "建立 Claw",
       "saveButton": "儲存 Claw",
       "createButton": "建立 Claw",
-      "description": "透過一個輕量流程把助手連接到 Lark 頻道。",
-      "telegramDescription": "透過一個輕量流程把助手連接到 Telegram 或 Lark 頻道。",
+      "description": "透過一個輕量流程把助手連接到 Lark 或企業微信頻道。",
+      "telegramDescription": "透過一個輕量流程把助手連接到 WhatsApp、Telegram、Lark 或企業微信頻道。",
       "fields": {
         "assistantName": "助手名稱",
         "provider": "供應商",
@@ -469,6 +469,8 @@
         "channelType": "頻道類型",
         "channelName": "頻道名稱",
         "botToken": "機器人令牌",
+        "botId": "機器人 ID",
+        "secret": "Secret",
         "larkChannelName": "Lark 頻道名稱",
         "appId": "應用程式 ID",
         "appSecret": "應用程式密鑰"
@@ -480,10 +482,24 @@
       "selectProvider": "選擇供應商",
       "selectChannel": "選擇頻道",
       "enableAfterSaving": "儲存後啟用此 Claw",
+      "defaultAssistantName": "我的第一個助手",
+      "stepper": {
+        "steps": {
+          "provider": "供應商",
+          "channel": "頻道",
+          "details": "名稱和工作區"
+        },
+        "actions": {
+          "back": "返回",
+          "next": "下一步"
+        },
+        "detailsDescription": "設定助手名稱，並可選擇一個工作區資料夾。"
+      },
       "channelTypes": {
         "lark": "Lark",
         "telegram": "Telegram",
-        "whatsapp": "WhatsApp"
+        "whatsapp": "WhatsApp",
+        "wecom": "企業微信"
       },
       "channelActions": {
         "keep": "保留目前頻道",
@@ -526,7 +542,7 @@
       "selectedBadge": "已選取",
       "create": {
         "title": "新增頻道",
-        "description": "建立新的 WhatsApp、Telegram 或 Lark 頻道設定。",
+        "description": "建立新的 WhatsApp、Telegram、Lark 或企業微信頻道設定。",
         "whatsappHint": "不需要權杖。儲存後，開啟「管理配對」來掃描 WhatsApp QR 碼。",
         "save": "新增頻道",
         "fields": {
@@ -552,6 +568,7 @@
         "nameRequired": "頻道名稱為必填",
         "larkCredentialsRequired": "Lark 頻道需要應用程式 ID 與應用程式密鑰",
         "telegramCredentialsRequired": "Telegram 頻道需要 Bot 令牌",
+        "wecomCredentialsRequired": "企業微信頻道需要機器人 ID 與 Secret",
         "createFailed": "建立頻道失敗",
         "updateFailed": "更新頻道失敗",
         "deleteFailed": "刪除頻道失敗"

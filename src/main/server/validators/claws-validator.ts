@@ -34,6 +34,14 @@ const createWhatsAppChannelSchema = z.object({
   name: z.string().min(1)
 })
 
+const createWeComChannelSchema = z.object({
+  mode: z.literal('create'),
+  type: z.literal('wecom'),
+  name: z.string().min(1),
+  botId: z.string().min(1),
+  secret: z.string().min(1)
+})
+
 const attachExistingChannelSchema = z.object({
   mode: z.literal('attach'),
   channelId: z.string().min(1)
@@ -65,10 +73,18 @@ export const createConfiguredWhatsAppChannelSchema = z.object({
   name: z.string().min(1)
 })
 
+export const createConfiguredWeComChannelSchema = z.object({
+  type: z.literal('wecom'),
+  name: z.string().min(1),
+  botId: z.string().min(1),
+  secret: z.string().min(1)
+})
+
 export const createConfiguredChannelSchema = z.union([
   createConfiguredLarkChannelSchema,
   createConfiguredTelegramChannelSchema,
-  createConfiguredWhatsAppChannelSchema
+  createConfiguredWhatsAppChannelSchema,
+  createConfiguredWeComChannelSchema
 ])
 
 export const updateConfiguredLarkChannelSchema = z.object({
@@ -89,10 +105,18 @@ export const updateConfiguredWhatsAppChannelSchema = z.object({
   name: z.string().min(1)
 })
 
+export const updateConfiguredWeComChannelSchema = z.object({
+  type: z.literal('wecom'),
+  name: z.string().min(1),
+  botId: z.string().min(1).optional(),
+  secret: z.string().min(1).optional()
+})
+
 export const updateConfiguredChannelSchema = z.union([
   updateConfiguredLarkChannelSchema,
   updateConfiguredTelegramChannelSchema,
-  updateConfiguredWhatsAppChannelSchema
+  updateConfiguredWhatsAppChannelSchema,
+  updateConfiguredWeComChannelSchema
 ])
 
 export const createClawSchema = z.object({
@@ -102,6 +126,7 @@ export const createClawSchema = z.object({
       createLarkChannelSchema,
       createTelegramChannelSchema,
       createWhatsAppChannelSchema,
+      createWeComChannelSchema,
       attachExistingChannelSchema
     ])
     .optional()
@@ -114,6 +139,7 @@ export const updateClawSchema = z.object({
       createLarkChannelSchema,
       createTelegramChannelSchema,
       createWhatsAppChannelSchema,
+      createWeComChannelSchema,
       attachExistingChannelSchema,
       detachChannelSchema,
       keepChannelSchema

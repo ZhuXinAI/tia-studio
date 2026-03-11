@@ -3,6 +3,7 @@ import { message } from 'telegraf/filters'
 import type { ChannelPairingsRepository } from '../persistence/repos/channel-pairings-repo'
 import { AbstractChannel } from './abstract-channel'
 import type { ChannelMessage } from './types'
+import { logger } from '../utils/logger'
 
 const PENDING_PAIRING_LIMIT = 3
 const PAIRING_TTL_MS = 60 * 60 * 1000
@@ -210,7 +211,7 @@ export class TelegramChannel extends AbstractChannel {
 
     if (pairing?.status === 'approved') {
       void this.emitApprovedMessage(message, content).catch((error) => {
-        console.error(`[TelegramChannel] Failed to process inbound message ${message.id}:`, error)
+        logger.error(`[TelegramChannel] Failed to process inbound message ${message.id}:`, error)
       })
       return
     }

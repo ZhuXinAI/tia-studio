@@ -45,6 +45,7 @@ import { createWorkLogTools } from './tools/work-log-tools'
 import { createMemorySessionTools } from './tools/memory-session-tools'
 import { AttachmentUploader } from './processors/attachment-uploader'
 import { HEARTBEAT_RUN_CONTEXT_KEY } from './tool-context'
+import { logger } from '../utils/logger'
 
 type StreamChatParams = {
   assistantId: string
@@ -236,10 +237,10 @@ export class AssistantRuntimeService implements AssistantRuntime {
   }
 
   async runCronJob(params: RunCronJobParams): Promise<CronJobRunResult> {
-    console.log(
+    logger.debug(
       `[AssistantRuntime] Running cron job for assistant "${params.assistantId}" with prompt: "${params.prompt}"`
     )
-    console.log('[AssistantRuntime] Cron job params:', {
+    logger.debug('[AssistantRuntime] Cron job params:', {
       assistantId: params.assistantId,
       threadId: params.threadId,
       prompt: params.prompt,
@@ -254,13 +255,13 @@ export class AssistantRuntimeService implements AssistantRuntime {
       threadId: params.threadId
     })
 
-    console.log(`[AssistantRuntime] Cron job thread ID: ${params.threadId}`)
+    logger.debug(`[AssistantRuntime] Cron job thread ID: ${params.threadId}`)
 
     // Use channel context from params if provided
     const hasChannelTarget = Boolean(params.channelId && params.remoteChatId)
 
     if (hasChannelTarget) {
-      console.log(
+      logger.debug(
         `[AssistantRuntime] Cron job has channel target: channelId=${params.channelId}, remoteChatId=${params.remoteChatId}`
       )
     }
@@ -270,7 +271,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       cronToolsEnabled: false // Disable cron tools during cron execution to prevent recursion
     })
 
-    console.log(
+    logger.debug(
       `[AssistantRuntime] Agent registered, starting chat stream (model: ${provider.selectedModel}, channel: ${hasChannelTarget ? 'yes' : 'no'})`
     )
 
@@ -283,7 +284,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
         remoteChatId: params.remoteChatId,
         userId: thread.resourceId
       }
-      console.log('[AssistantRuntime] Setting channel context:', channelContext)
+      logger.debug('[AssistantRuntime] Setting channel context:', channelContext)
       requestContext.set('channelContext', channelContext)
     }
 
@@ -293,14 +294,14 @@ export class AssistantRuntimeService implements AssistantRuntime {
       prompt: params.prompt
     })
 
-    console.log('[AssistantRuntime] Cron job messages being sent to agent:')
-    console.log('[AssistantRuntime] Number of messages:', messages.length)
+    logger.debug('[AssistantRuntime] Cron job messages being sent to agent:')
+    logger.debug('[AssistantRuntime] Number of messages:', messages.length)
     messages.forEach((msg, idx) => {
-      console.log(`  Message ${idx + 1} [${msg.role}]:`)
-      console.log('    content:', msg.content)
-      console.log('    parts:', JSON.stringify(msg.parts, null, 2))
+      logger.debug(`  Message ${idx + 1} [${msg.role}]:`)
+      logger.debug('    content:', msg.content)
+      logger.debug('    parts:', JSON.stringify(msg.parts, null, 2))
     })
-    console.log('[AssistantRuntime] Original prompt:', params.prompt)
+    logger.debug('[AssistantRuntime] Original prompt:', params.prompt)
 
     const stream = await handleChatStream({
       mastra: this.options.mastra,
@@ -317,9 +318,9 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
     const outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>)
 
-    console.log('[AssistantRuntime] Cron job stream completed')
-    console.log('[AssistantRuntime] Collected output text length:', outputText.length)
-    console.log('[AssistantRuntime] Output text preview:', outputText.substring(0, 200))
+    logger.debug('[AssistantRuntime] Cron job stream completed')
+    logger.debug('[AssistantRuntime] Collected output text length:', outputText.length)
+    logger.debug('[AssistantRuntime] Output text preview:', outputText.substring(0, 200))
 
     // Fallback: If cron job has channel context but agent didn't send anything via tools,
     // send the collected output as a fallback message
@@ -329,12 +330,12 @@ export class AssistantRuntimeService implements AssistantRuntime {
       params.remoteChatId &&
       outputText.trim().length > 0
     ) {
-      console.log(`[AssistantRuntime] Cron job completed with ${outputText.length} chars output`)
+      logger.debug(`[AssistantRuntime] Cron job completed with ${outputText.length} chars output`)
       // Note: If agent used channel tools, messages were already sent during execution
       // This fallback ensures something is sent if agent didn't use tools
     }
 
-    console.log(`[AssistantRuntime] Cron job completed`)
+    logger.debug(`[AssistantRuntime] Cron job completed`)
     // Notify UI that thread has new messages
     this.options.threadMessageEventsStore?.appendMessagesUpdated({
       assistantId: params.assistantId,
@@ -408,7 +409,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
     prompt: string
     systemContext?: string | null
   }): ReturnType<typeof toAISdkV5Messages> {
-    console.log('[buildScheduledRunMessages] Input:', {
+    logger.debug('[buildScheduledRunMessages] Input:', {
       kind: input.kind,
       prompt: input.prompt,
       promptLength: input.prompt?.length
@@ -442,7 +443,7 @@ TASK TO EXECUTE NOW:
 ${input.prompt}`
 
       userMessage = cronInstructions
-      console.log('[buildScheduledRunMessages] Prepended cron instructions to user message')
+      logger.debug('[buildScheduledRunMessages] Prepended cron instructions to user message')
     }
 
     if (input.systemContext) {
@@ -451,7 +452,7 @@ ${input.prompt}`
     }
 
     // Add the user message with instructions prepended
-    console.log('[buildScheduledRunMessages] Adding user message, length:', userMessage.length)
+    logger.debug('[buildScheduledRunMessages] Adding user message, length:', userMessage.length)
     messages.push({
       id: `${input.kind}:${input.threadId}:${randomUUID()}`,
       role: 'user',
@@ -464,9 +465,9 @@ ${input.prompt}`
       ]
     })
 
-    console.log('[buildScheduledRunMessages] Messages before transformation:', messages.length)
+    logger.debug('[buildScheduledRunMessages] Messages before transformation:', messages.length)
     const transformed = toAISdkV5Messages(messages)
-    console.log('[buildScheduledRunMessages] Messages after transformation:', transformed.length)
+    logger.debug('[buildScheduledRunMessages] Messages after transformation:', transformed.length)
 
     return transformed
   }
@@ -896,7 +897,7 @@ ${input.prompt}`
         })
       : {}
 
-    console.log('[AssistantRuntime] Agent tools registered:', {
+    logger.debug('[AssistantRuntime] Agent tools registered:', {
       hasCronTools: Object.keys(cronTools).length > 0,
       hasChannelTools: Object.keys(channelTools).length > 0,
       channelToolNames: Object.keys(channelTools),

@@ -4,6 +4,7 @@ import { z } from 'zod'
 import type { AssistantRuntime } from '../../mastra/assistant-runtime'
 import { isChatRouteError } from '../chat/chat-errors'
 import { ResumableChatStreams } from '../chat/resumable-chat-streams'
+import { logger } from '../../utils/logger'
 
 const chatRequestSchema = z.object({
   id: z.string().min(1).optional(),
@@ -133,7 +134,7 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
 
     const parsed = chatRequestSchema.safeParse(body)
     if (!parsed.success) {
-      console.log(parsed.error.issues)
+      logger.warn('Chat request validation failed:', parsed.error.issues)
       return context.json(
         { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' },
         400

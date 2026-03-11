@@ -2,12 +2,14 @@ import { randomUUID } from 'node:crypto'
 import type { AppChannel } from '../persistence/repos/channels-repo'
 import { ChannelEventBus } from './channel-event-bus'
 import { LarkChannel } from './lark-channel'
+import { WeComChannel } from './wecom-channel'
 import type {
   ChannelAdapter,
   ChannelAdapterFactoryRegistry,
   ChannelMessageSendRequestedEvent,
   ChannelType
 } from './types'
+import { logger } from '../utils/logger'
 
 const DEFAULT_CHANNEL_START_TIMEOUT_MS = 8000
 
@@ -141,6 +143,14 @@ export class ChannelService {
       })
     }
 
+    if (channel.type === 'wecom') {
+      return new WeComChannel({
+        id: channel.id,
+        botId: this.getRequiredConfigString(channel, 'botId'),
+        secret: this.getRequiredConfigString(channel, 'secret')
+      })
+    }
+
     return null
   }
 
@@ -169,7 +179,7 @@ export class ChannelService {
     try {
       await this.options.channelsRepo.setLastError(channelId, message)
     } catch (error) {
-      console.error(`Failed to update channel health for ${channelId}:`, error)
+      logger.error(`Failed to update channel health for ${channelId}:`, error)
     }
   }
 

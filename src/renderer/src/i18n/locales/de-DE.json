@@ -469,6 +469,8 @@
         "channelType": "Kanaltyp",
         "channelName": "Kanalname",
         "botToken": "Bot-Token",
+        "botId": "Bot ID",
+        "secret": "Secret",
         "larkChannelName": "Lark-Kanalname",
         "appId": "App-ID",
         "appSecret": "App-Secret"
@@ -480,10 +482,24 @@
       "selectProvider": "Provider auswählen",
       "selectChannel": "Kanal auswählen",
       "enableAfterSaving": "Diesen Claw nach dem Speichern aktivieren",
+      "defaultAssistantName": "Mein erster Assistent",
+      "stepper": {
+        "steps": {
+          "provider": "Anbieter",
+          "channel": "Kanal",
+          "details": "Name & Arbeitsbereich"
+        },
+        "actions": {
+          "back": "Zurück",
+          "next": "Weiter"
+        },
+        "detailsDescription": "Lege den Assistentennamen fest und wähle optional einen Arbeitsbereichsordner."
+      },
       "channelTypes": {
         "lark": "Lark",
         "telegram": "Telegram",
-        "whatsapp": "WhatsApp"
+        "whatsapp": "WhatsApp",
+        "wecom": "Wecom"
       },
       "channelActions": {
         "keep": "Aktuellen Kanal behalten",
@@ -552,6 +568,7 @@
         "nameRequired": "Kanalname ist erforderlich",
         "larkCredentialsRequired": "App-ID und App-Secret sind für Lark-Kanäle erforderlich",
         "telegramCredentialsRequired": "Bot-Token ist für Telegram-Kanäle erforderlich",
+        "wecomCredentialsRequired": "Bot ID and secret are required for Wecom channels",
         "createFailed": "Kanal konnte nicht erstellt werden",
         "updateFailed": "Kanal konnte nicht aktualisiert werden",
         "deleteFailed": "Kanal konnte nicht gelöscht werden"

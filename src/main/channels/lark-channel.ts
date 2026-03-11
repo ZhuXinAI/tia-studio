@@ -1,6 +1,7 @@
 import * as Lark from '@larksuiteoapi/node-sdk'
 import { AbstractChannel } from './abstract-channel'
 import type { ChannelMessage } from './types'
+import { logger } from '../utils/logger'
 
 type LarkLoggerLevel = {
   fatal: unknown
@@ -143,7 +144,7 @@ export class LarkChannel extends AbstractChannel {
         }
 
         void this.emitMessage(message).catch((error) => {
-          console.error(`[LarkChannel] Failed to process inbound message ${message.id}:`, error)
+          logger.error(`[LarkChannel] Failed to process inbound message ${message.id}:`, error)
         })
       }
     })

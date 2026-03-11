@@ -36,6 +36,8 @@ type ClawProviderSelectorDialogProps = {
   providers: ProviderRecord[]
   isMutating: boolean
   errorMessage: string | null
+  layout?: 'dialog' | 'inline'
+  onInlineFlowChange?: (isActive: boolean) => void
   onClose: () => void
   onApply: (providerId: string) => void
   onCreateProvider: (input: SaveProviderInput) => Promise<ProviderRecord> | ProviderRecord
@@ -179,12 +181,15 @@ export function ClawProviderSelectorDialog({
   providers,
   isMutating,
   errorMessage,
+  layout = 'dialog',
+  onInlineFlowChange,
   onClose,
   onApply,
   onCreateProvider,
   onUpdateProvider
 }: ClawProviderSelectorDialogProps): React.JSX.Element {
   const { t } = useTranslation()
+  const isInline = layout === 'inline'
   const [localProviders, setLocalProviders] = useState(providers)
   const [localSelectedProviderId, setLocalSelectedProviderId] = useState(selectedProviderId)
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false)
@@ -224,6 +229,14 @@ export function ClawProviderSelectorDialog({
     setLocalSelectedProviderId(selectedProviderId)
   }, [isOpen, selectedProviderId])
 
+  useEffect(() => {
+    if (!isInline) {
+      return
+    }
+
+    onInlineFlowChange?.(isFormDialogOpen || isTemplateDialogOpen)
+  }, [isFormDialogOpen, isInline, isTemplateDialogOpen, onInlineFlowChange])
+
   const selectedProvider = useMemo(
     () => localProviders.find((provider) => provider.id === localSelectedProviderId) ?? null,
     [localProviders, localSelectedProviderId]
@@ -233,6 +246,14 @@ export function ClawProviderSelectorDialog({
     setFormMode('create')
     setFormState(emptyFormState())
     setFormError(null)
+  }
+
+  function updateSelectedProvider(providerId: string): void {
+    setLocalSelectedProviderId(providerId)
+
+    if (isInline) {
+      onApply(providerId)
+    }
   }
 
   function openTemplateDialog(): void {
@@ -301,14 +322,14 @@ export function ClawProviderSelectorDialog({
       if (formMode === 'create' || formMode === 'template') {
         const createdProvider = await onCreateProvider(buildCreateInput(formState))
         setLocalProviders((currentProviders) => [...currentProviders, createdProvider])
-        setLocalSelectedProviderId(createdProvider.id)
+        updateSelectedProvider(createdProvider.id)
       } else if (selectedProvider) {
         const updatedProvider = await onUpdateProvider(
           selectedProvider.id,
           buildUpdateInput(formState)
         )
         replaceLocalProvider(updatedProvider)
-        setLocalSelectedProviderId(updatedProvider.id)
+        updateSelectedProvider(updatedProvider.id)
       }
 
       setIsFormDialogOpen(false)
@@ -347,6 +368,438 @@ export function ClawProviderSelectorDialog({
       : 'claw-provider-form-provider-models'
   const saveButtonId =
     formMode === 'create' ? 'claw-provider-create-save' : 'claw-provider-form-save'
+  const formTitle =
+    formMode === 'template'
+      ? t('claws.providerSelector.template.title')
+      : formMode === 'create'
+        ? t('claws.providerSelector.create.title')
+        : t('claws.providerSelector.edit.title')
+  const formDescription =
+    formMode === 'template'
+      ? t('claws.providerSelector.template.description')
+      : formMode === 'create'
+        ? t('claws.providerSelector.create.description')
+        : t('claws.providerSelector.edit.description')
+  const selectorBody = (
+    <div className="space-y-3">
+      {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
+
+      {configuredProviders.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t('claws.providerSelector.empty')}</p>
+      ) : (
+        <div className="space-y-2">
+          {configuredProviders.map((provider) => {
+            const selected = provider.id === localSelectedProviderId
+            const avatarPath = getProviderAvatarPath(provider.icon)
+            const initials = getProviderInitials(provider.name)
+
+            return (
+              <button
+                key={provider.id}
+                type="button"
+                data-provider-id={provider.id}
+                data-selected={selected ? 'true' : 'false'}
+                disabled={isBusy}
+                className={cn(
+                  'w-full rounded-lg border px-4 py-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+                  selected
+                    ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
+                    : 'border-border hover:border-primary/40 hover:bg-muted/50'
+                )}
+                onClick={() => updateSelectedProvider(provider.id)}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <Avatar className="size-10">
+                      {avatarPath ? <AvatarImage src={avatarPath} alt={provider.name} /> : null}
+                      <AvatarFallback>{initials}</AvatarFallback>
+                    </Avatar>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{provider.name}</p>
+                        {selected ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                            <CheckCircle2 className="size-3" />
+                            {t('claws.providerSelector.selectedBadge')}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {providerTypeLabel(provider.type, t)} · {provider.selectedModel}
+                      </p>
+                    </div>
+                  </div>
+                  <span
+                    className={cn(
+                      'text-xs',
+                      provider.enabled ? 'text-green-600' : 'text-muted-foreground'
+                    )}
+                  >
+                    {provider.enabled
+                      ? t('claws.providerSelector.enabled')
+                      : t('claws.providerSelector.disabled')}
+                  </span>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <Button
+          id="claw-provider-selector-add-template"
+          type="button"
+          variant="outline"
+          disabled={isBusy}
+          onClick={openTemplateDialog}
+        >
+          {t('claws.providerSelector.actions.addFromTemplate')}
+        </Button>
+        <Button
+          id="claw-provider-selector-add-custom"
+          type="button"
+          variant="outline"
+          disabled={isBusy}
+          onClick={openCreateDialog}
+        >
+          {t('claws.providerSelector.actions.addCustom')}
+        </Button>
+        <Button
+          id="claw-provider-selector-edit"
+          type="button"
+          variant="outline"
+          disabled={selectedProvider === null || isBusy}
+          onClick={openEditDialog}
+        >
+          <Pencil className="size-4" />
+          {t('claws.providerSelector.actions.edit')}
+        </Button>
+        <Button
+          id="claw-provider-selector-clear"
+          type="button"
+          variant="outline"
+          disabled={localSelectedProviderId.length === 0 || isBusy}
+          onClick={() => updateSelectedProvider('')}
+        >
+          {t('claws.providerSelector.actions.clear')}
+        </Button>
+      </div>
+    </div>
+  )
+  const selectorFooter = isInline ? null : (
+    <DialogFooter>
+      <Button type="button" variant="outline" onClick={onClose}>
+        {t('claws.providerSelector.actions.cancel')}
+      </Button>
+      <Button
+        id="claw-provider-selector-apply"
+        type="button"
+        disabled={isBusy}
+        onClick={() => {
+          onApply(localSelectedProviderId)
+          onClose()
+        }}
+      >
+        {t('claws.providerSelector.actions.apply')}
+      </Button>
+    </DialogFooter>
+  )
+  const formBody = (
+    <div className="space-y-3">
+      {formError ? (
+        <p
+          id={formMode === 'create' ? 'claw-provider-create-error' : 'claw-provider-form-error'}
+          className="text-sm text-destructive"
+        >
+          {formError}
+        </p>
+      ) : null}
+
+      {formMode === 'template' && formState.officialSite ? (
+        <div className="rounded-lg border bg-muted/50 p-3">
+          <p className="text-sm">
+            {t('claws.providerSelector.template.getApiKeyPrompt')}{' '}
+            <a
+              href={formState.officialSite}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline hover:no-underline"
+            >
+              {formState.officialSite}
+            </a>
+          </p>
+        </div>
+      ) : null}
+
+      <div className="grid gap-2">
+        <label htmlFor={providerNameInputId} className="text-sm font-medium">
+          {t('settings.providers.form.providerName')}
+        </label>
+        <Input
+          id={providerNameInputId}
+          value={formState.name}
+          onChange={(event) =>
+            setFormState((currentState) => ({
+              ...currentState,
+              name: event.target.value
+            }))
+          }
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <label htmlFor={providerTypeInputId} className="text-sm font-medium">
+          {t('settings.providers.form.type')}
+        </label>
+        <select
+          id={providerTypeInputId}
+          className="border-input bg-background rounded-md border px-3 py-2 text-sm disabled:opacity-100"
+          value={formState.type}
+          disabled={formMode === 'edit' || formMode === 'template'}
+          onChange={(event) =>
+            setFormState((currentState) => ({
+              ...currentState,
+              type: event.target.value as ProviderType
+            }))
+          }
+        >
+          {providerTypes.map((providerType) => (
+            <option key={providerType} value={providerType}>
+              {providerTypeLabel(providerType, t)}
+            </option>
+          ))}
+        </select>
+        {formMode === 'create' ? (
+          <p className="text-xs text-muted-foreground">
+            {getProviderTypeDescription(formState.type, t)}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="grid gap-2">
+        <label htmlFor={apiKeyInputId} className="text-sm font-medium">
+          {t('settings.providers.form.apiKey')}
+        </label>
+        <Input
+          id={apiKeyInputId}
+          type="password"
+          placeholder={
+            formMode === 'edit' ? t('claws.providerSelector.edit.apiKeyPlaceholder') : 'sk-...'
+          }
+          value={formState.apiKey}
+          onChange={(event) =>
+            setFormState((currentState) => ({
+              ...currentState,
+              apiKey: event.target.value
+            }))
+          }
+        />
+        {formMode === 'template' ? (
+          <p className="text-xs text-muted-foreground">
+            {t('claws.providerSelector.template.apiKeyHint')}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="grid gap-2">
+        <label htmlFor={apiHostInputId} className="text-sm font-medium">
+          {t('settings.providers.form.apiHost')}
+        </label>
+        <Input
+          id={apiHostInputId}
+          placeholder="https://api.openai.com/v1"
+          value={formState.apiHost}
+          onChange={(event) =>
+            setFormState((currentState) => ({
+              ...currentState,
+              apiHost: event.target.value
+            }))
+          }
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <label htmlFor={selectedModelInputId} className="text-sm font-medium">
+          {t('settings.providers.form.selectedModel')}
+        </label>
+        <Input
+          id={selectedModelInputId}
+          placeholder="gpt-4o"
+          value={formState.selectedModel}
+          onChange={(event) =>
+            setFormState((currentState) => ({
+              ...currentState,
+              selectedModel: event.target.value
+            }))
+          }
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <label htmlFor={providerModelsInputId} className="text-sm font-medium">
+          {t('settings.providers.form.providerModels')}
+        </label>
+        <Textarea
+          id={providerModelsInputId}
+          placeholder={t('settings.providers.form.providerModelsDescription')}
+          value={formState.providerModelsText}
+          onChange={(event) =>
+            setFormState((currentState) => ({
+              ...currentState,
+              providerModelsText: event.target.value
+            }))
+          }
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <label htmlFor="claw-provider-supports-vision" className="text-sm font-medium">
+          {t('settings.providers.form.supportsVision')}
+        </label>
+        <Switch
+          id="claw-provider-supports-vision"
+          checked={formState.supportsVision}
+          onCheckedChange={(checked) =>
+            setFormState((currentState) => ({
+              ...currentState,
+              supportsVision: checked
+            }))
+          }
+        />
+      </div>
+
+      {formMode === 'edit' ? (
+        <p className="text-xs text-muted-foreground">
+          {t('claws.providerSelector.edit.apiKeyOptional')}
+        </p>
+      ) : null}
+    </div>
+  )
+  const formFooter = (
+    <DialogFooter>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          setIsFormDialogOpen(false)
+          resetForm()
+        }}
+      >
+        {t('claws.providerSelector.actions.cancel')}
+      </Button>
+      <Button
+        id={saveButtonId}
+        type="button"
+        disabled={isBusy}
+        onClick={() => void handleSubmitForm()}
+      >
+        {formMode === 'template'
+          ? t('claws.providerSelector.template.save')
+          : formMode === 'create'
+            ? t('claws.providerSelector.create.save')
+            : t('claws.providerSelector.edit.save')}
+      </Button>
+    </DialogFooter>
+  )
+  const templateBody = (
+    <div className="space-y-3">
+      {builtInProviders.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {t('claws.providerSelector.templates.empty')}
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {builtInProviders.map((provider) => {
+            const avatarPath = getProviderAvatarPath(provider.icon)
+            const initials = getProviderInitials(provider.name)
+
+            return (
+              <button
+                key={provider.id}
+                type="button"
+                className="rounded-lg border border-border p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted/50"
+                onClick={() => selectTemplate(provider)}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="size-10">
+                      {avatarPath ? <AvatarImage src={avatarPath} alt={provider.name} /> : null}
+                      <AvatarFallback>{initials}</AvatarFallback>
+                    </Avatar>
+                    <p className="font-medium">{provider.name}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {providerTypeLabel(provider.type, t)} · {provider.selectedModel}
+                  </p>
+                  {provider.officialSite ? (
+                    <a
+                      href={provider.officialSite}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      {provider.officialSite}
+                    </a>
+                  ) : null}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+  const templateFooter = (
+    <DialogFooter>
+      <Button type="button" variant="outline" onClick={() => setIsTemplateDialogOpen(false)}>
+        {t('claws.providerSelector.actions.cancel')}
+      </Button>
+    </DialogFooter>
+  )
+
+  if (isInline) {
+    if (isFormDialogOpen) {
+      return (
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <h3 className="text-base font-semibold">{formTitle}</h3>
+            <p className="text-sm text-muted-foreground">{formDescription}</p>
+          </div>
+          {formBody}
+          {formFooter}
+        </div>
+      )
+    }
+
+    if (isTemplateDialogOpen) {
+      return (
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <h3 className="text-base font-semibold">
+              {t('claws.providerSelector.templates.title')}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {t('claws.providerSelector.templates.description')}
+            </p>
+          </div>
+          {templateBody}
+          {templateFooter}
+        </div>
+      )
+    }
+
+    return (
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <h3 className="text-base font-semibold">{t('claws.providerSelector.title')}</h3>
+          <p className="text-sm text-muted-foreground">{t('claws.providerSelector.description')}</p>
+        </div>
+        {selectorBody}
+      </div>
+    )
+  }
 
   return (
     <>
@@ -357,130 +810,8 @@ export function ClawProviderSelectorDialog({
             <DialogDescription>{t('claws.providerSelector.description')}</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3">
-            {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-
-            {configuredProviders.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t('claws.providerSelector.empty')}</p>
-            ) : (
-              <div className="space-y-2">
-                {configuredProviders.map((provider) => {
-                  const selected = provider.id === localSelectedProviderId
-                  const avatarPath = getProviderAvatarPath(provider.icon)
-                  const initials = getProviderInitials(provider.name)
-
-                  return (
-                    <button
-                      key={provider.id}
-                      type="button"
-                      data-provider-id={provider.id}
-                      data-selected={selected ? 'true' : 'false'}
-                      disabled={isBusy}
-                      className={cn(
-                        'w-full rounded-lg border px-4 py-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60',
-                        selected
-                          ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
-                          : 'border-border hover:border-primary/40 hover:bg-muted/50'
-                      )}
-                      onClick={() => setLocalSelectedProviderId(provider.id)}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3">
-                          <Avatar className="size-10">
-                            {avatarPath ? (
-                              <AvatarImage src={avatarPath} alt={provider.name} />
-                            ) : null}
-                            <AvatarFallback>{initials}</AvatarFallback>
-                          </Avatar>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">{provider.name}</p>
-                              {selected ? (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                                  <CheckCircle2 className="size-3" />
-                                  {t('claws.providerSelector.selectedBadge')}
-                                </span>
-                              ) : null}
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {providerTypeLabel(provider.type, t)} · {provider.selectedModel}
-                            </p>
-                          </div>
-                        </div>
-                        <span
-                          className={cn(
-                            'text-xs',
-                            provider.enabled ? 'text-green-600' : 'text-muted-foreground'
-                          )}
-                        >
-                          {provider.enabled
-                            ? t('claws.providerSelector.enabled')
-                            : t('claws.providerSelector.disabled')}
-                        </span>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-2">
-              <Button
-                id="claw-provider-selector-add-template"
-                type="button"
-                variant="outline"
-                disabled={isBusy}
-                onClick={openTemplateDialog}
-              >
-                {t('claws.providerSelector.actions.addFromTemplate')}
-              </Button>
-              <Button
-                id="claw-provider-selector-add-custom"
-                type="button"
-                variant="outline"
-                disabled={isBusy}
-                onClick={openCreateDialog}
-              >
-                {t('claws.providerSelector.actions.addCustom')}
-              </Button>
-              <Button
-                id="claw-provider-selector-edit"
-                type="button"
-                variant="outline"
-                disabled={selectedProvider === null || isBusy}
-                onClick={openEditDialog}
-              >
-                <Pencil className="size-4" />
-                {t('claws.providerSelector.actions.edit')}
-              </Button>
-              <Button
-                id="claw-provider-selector-clear"
-                type="button"
-                variant="outline"
-                disabled={localSelectedProviderId.length === 0 || isBusy}
-                onClick={() => setLocalSelectedProviderId('')}
-              >
-                {t('claws.providerSelector.actions.clear')}
-              </Button>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              {t('claws.providerSelector.actions.cancel')}
-            </Button>
-            <Button
-              id="claw-provider-selector-apply"
-              type="button"
-              disabled={isBusy}
-              onClick={() => {
-                onApply(localSelectedProviderId)
-                onClose()
-              }}
-            >
-              {t('claws.providerSelector.actions.apply')}
-            </Button>
-          </DialogFooter>
+          {selectorBody}
+          {selectorFooter}
         </DialogContent>
       </Dialog>
 
@@ -495,220 +826,12 @@ export function ClawProviderSelectorDialog({
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {formMode === 'template'
-                ? t('claws.providerSelector.template.title')
-                : formMode === 'create'
-                  ? t('claws.providerSelector.create.title')
-                  : t('claws.providerSelector.edit.title')}
-            </DialogTitle>
-            <DialogDescription>
-              {formMode === 'template'
-                ? t('claws.providerSelector.template.description')
-                : formMode === 'create'
-                  ? t('claws.providerSelector.create.description')
-                  : t('claws.providerSelector.edit.description')}
-            </DialogDescription>
+            <DialogTitle>{formTitle}</DialogTitle>
+            <DialogDescription>{formDescription}</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3">
-            {formError ? (
-              <p
-                id={
-                  formMode === 'create' ? 'claw-provider-create-error' : 'claw-provider-form-error'
-                }
-                className="text-sm text-destructive"
-              >
-                {formError}
-              </p>
-            ) : null}
-
-            {formMode === 'template' && formState.officialSite ? (
-              <div className="rounded-lg border bg-muted/50 p-3">
-                <p className="text-sm">
-                  {t('claws.providerSelector.template.getApiKeyPrompt')}{' '}
-                  <a
-                    href={formState.officialSite}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline hover:no-underline"
-                  >
-                    {formState.officialSite}
-                  </a>
-                </p>
-              </div>
-            ) : null}
-
-            <div className="grid gap-2">
-              <label htmlFor={providerNameInputId} className="text-sm font-medium">
-                {t('settings.providers.form.providerName')}
-              </label>
-              <Input
-                id={providerNameInputId}
-                value={formState.name}
-                onChange={(event) =>
-                  setFormState((currentState) => ({
-                    ...currentState,
-                    name: event.target.value
-                  }))
-                }
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <label htmlFor={providerTypeInputId} className="text-sm font-medium">
-                {t('settings.providers.form.type')}
-              </label>
-              <select
-                id={providerTypeInputId}
-                className="border-input bg-background rounded-md border px-3 py-2 text-sm disabled:opacity-100"
-                value={formState.type}
-                disabled={formMode === 'edit' || formMode === 'template'}
-                onChange={(event) =>
-                  setFormState((currentState) => ({
-                    ...currentState,
-                    type: event.target.value as ProviderType
-                  }))
-                }
-              >
-                {providerTypes.map((providerType) => (
-                  <option key={providerType} value={providerType}>
-                    {providerTypeLabel(providerType, t)}
-                  </option>
-                ))}
-              </select>
-              {formMode === 'create' ? (
-                <p className="text-xs text-muted-foreground">
-                  {getProviderTypeDescription(formState.type, t)}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="grid gap-2">
-              <label htmlFor={apiKeyInputId} className="text-sm font-medium">
-                {t('settings.providers.form.apiKey')}
-              </label>
-              <Input
-                id={apiKeyInputId}
-                type="password"
-                placeholder={
-                  formMode === 'edit'
-                    ? t('claws.providerSelector.edit.apiKeyPlaceholder')
-                    : 'sk-...'
-                }
-                value={formState.apiKey}
-                onChange={(event) =>
-                  setFormState((currentState) => ({
-                    ...currentState,
-                    apiKey: event.target.value
-                  }))
-                }
-              />
-              {formMode === 'template' ? (
-                <p className="text-xs text-muted-foreground">
-                  {t('claws.providerSelector.template.apiKeyHint')}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="grid gap-2">
-              <label htmlFor={apiHostInputId} className="text-sm font-medium">
-                {t('settings.providers.form.apiHost')}
-              </label>
-              <Input
-                id={apiHostInputId}
-                placeholder="https://api.openai.com/v1"
-                value={formState.apiHost}
-                onChange={(event) =>
-                  setFormState((currentState) => ({
-                    ...currentState,
-                    apiHost: event.target.value
-                  }))
-                }
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <label htmlFor={selectedModelInputId} className="text-sm font-medium">
-                {t('settings.providers.form.selectedModel')}
-              </label>
-              <Input
-                id={selectedModelInputId}
-                placeholder="gpt-4o"
-                value={formState.selectedModel}
-                onChange={(event) =>
-                  setFormState((currentState) => ({
-                    ...currentState,
-                    selectedModel: event.target.value
-                  }))
-                }
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <label htmlFor={providerModelsInputId} className="text-sm font-medium">
-                {t('settings.providers.form.providerModels')}
-              </label>
-              <Textarea
-                id={providerModelsInputId}
-                placeholder={t('settings.providers.form.providerModelsDescription')}
-                value={formState.providerModelsText}
-                onChange={(event) =>
-                  setFormState((currentState) => ({
-                    ...currentState,
-                    providerModelsText: event.target.value
-                  }))
-                }
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <label htmlFor="claw-provider-supports-vision" className="text-sm font-medium">
-                {t('settings.providers.form.supportsVision')}
-              </label>
-              <Switch
-                id="claw-provider-supports-vision"
-                checked={formState.supportsVision}
-                onCheckedChange={(checked) =>
-                  setFormState((currentState) => ({
-                    ...currentState,
-                    supportsVision: checked
-                  }))
-                }
-              />
-            </div>
-
-            {formMode === 'edit' ? (
-              <p className="text-xs text-muted-foreground">
-                {t('claws.providerSelector.edit.apiKeyOptional')}
-              </p>
-            ) : null}
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setIsFormDialogOpen(false)
-                resetForm()
-              }}
-            >
-              {t('claws.providerSelector.actions.cancel')}
-            </Button>
-            <Button
-              id={saveButtonId}
-              type="button"
-              disabled={isBusy}
-              onClick={() => void handleSubmitForm()}
-            >
-              {formMode === 'template'
-                ? t('claws.providerSelector.template.save')
-                : formMode === 'create'
-                  ? t('claws.providerSelector.create.save')
-                  : t('claws.providerSelector.edit.save')}
-            </Button>
-          </DialogFooter>
+          {formBody}
+          {formFooter}
         </DialogContent>
       </Dialog>
 
@@ -726,61 +849,8 @@ export function ClawProviderSelectorDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3">
-            {builtInProviders.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {t('claws.providerSelector.templates.empty')}
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {builtInProviders.map((provider) => {
-                  const avatarPath = getProviderAvatarPath(provider.icon)
-                  const initials = getProviderInitials(provider.name)
-
-                  return (
-                    <button
-                      key={provider.id}
-                      type="button"
-                      className="rounded-lg border border-border p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted/50"
-                      onClick={() => selectTemplate(provider)}
-                    >
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="size-10">
-                            {avatarPath ? (
-                              <AvatarImage src={avatarPath} alt={provider.name} />
-                            ) : null}
-                            <AvatarFallback>{initials}</AvatarFallback>
-                          </Avatar>
-                          <p className="font-medium">{provider.name}</p>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {providerTypeLabel(provider.type, t)} · {provider.selectedModel}
-                        </p>
-                        {provider.officialSite ? (
-                          <a
-                            href={provider.officialSite}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {provider.officialSite}
-                          </a>
-                        ) : null}
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsTemplateDialogOpen(false)}>
-              {t('claws.providerSelector.actions.cancel')}
-            </Button>
-          </DialogFooter>
+          {templateBody}
+          {templateFooter}
         </DialogContent>
       </Dialog>
     </>

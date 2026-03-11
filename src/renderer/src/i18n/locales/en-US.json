@@ -392,7 +392,7 @@
     },
     "channels": {
       "title": "Channels",
-      "description": "Manage configured WhatsApp, Telegram, and Lark channels in one place.",
+      "description": "Manage configured WhatsApp, Telegram, Lark, and Wecom channels in one place.",
       "configuredTitle": "Configured Channels",
       "configuredDescription": "Edit existing channel credentials, review bindings, or remove unused channels.",
       "loading": "Loading channels...",
@@ -406,11 +406,11 @@
   "claws": {
     "eyebrow": "Claws",
     "title": "Claws",
-    "description": "Connect assistants to external WhatsApp, Telegram, or Lark channels without digging through raw settings.",
+    "description": "Connect assistants to external WhatsApp, Telegram, Lark, or Wecom channels without digging through raw settings.",
     "newButton": "New Claw",
     "telegram": {
-      "description": "Connect assistants to external WhatsApp, Telegram, or Lark channels without digging through raw settings.",
-      "emptyDescription": "Start with one assistant, one provider, and one WhatsApp, Telegram, or Lark channel for the quickest onboarding path.",
+      "description": "Connect assistants to external WhatsApp, Telegram, Lark, or Wecom channels without digging through raw settings.",
+      "emptyDescription": "Start with one assistant, one provider, and one WhatsApp, Telegram, Lark, or Wecom channel for the quickest onboarding path.",
       "pairingSummary": "{{pairedCount}} paired · {{pendingCount}} pending",
       "managePairingsButton": "Manage Pairings",
       "defaultClawName": "Messaging claw"
@@ -427,7 +427,7 @@
     },
     "empty": {
       "title": "Set up your first claw",
-      "description": "Start with one assistant, one provider, and one WhatsApp, Telegram, or Lark channel for the quickest onboarding path.",
+      "description": "Start with one assistant, one provider, and one WhatsApp, Telegram, Lark, or Wecom channel for the quickest onboarding path.",
       "note": "Assistant identity, heartbeat, and future cron stay assistant-owned.",
       "createButton": "Create Your First Claw"
     },
@@ -457,8 +457,8 @@
       "createTitle": "Create Claw",
       "saveButton": "Save Claw",
       "createButton": "Create Claw",
-      "description": "Connect an assistant to a Lark channel from one lightweight setup flow.",
-      "telegramDescription": "Connect an assistant to a WhatsApp, Telegram, or Lark channel from one lightweight setup flow.",
+      "description": "Connect an assistant to a Lark or Wecom channel from one lightweight setup flow.",
+      "telegramDescription": "Connect an assistant to a WhatsApp, Telegram, Lark, or Wecom channel from one lightweight setup flow.",
       "fields": {
         "assistantName": "Assistant Name",
         "provider": "Provider",
@@ -469,6 +469,8 @@
         "channelType": "Channel Type",
         "channelName": "Channel Name",
         "botToken": "Bot Token",
+        "botId": "Bot ID",
+        "secret": "Secret",
         "larkChannelName": "Lark Channel Name",
         "appId": "App ID",
         "appSecret": "App Secret"
@@ -480,10 +482,24 @@
       "selectProvider": "Select a provider",
       "selectChannel": "Select a channel",
       "enableAfterSaving": "Enable this claw after saving",
+      "defaultAssistantName": "My First Assistant",
+      "stepper": {
+        "steps": {
+          "provider": "Provider",
+          "channel": "Channel",
+          "details": "Name & Workspace"
+        },
+        "actions": {
+          "back": "Back",
+          "next": "Next"
+        },
+        "detailsDescription": "Choose the assistant name and optionally pick a workspace folder."
+      },
       "channelTypes": {
         "lark": "Lark",
         "telegram": "Telegram",
-        "whatsapp": "WhatsApp"
+        "whatsapp": "WhatsApp",
+        "wecom": "Wecom"
       },
       "channelActions": {
         "keep": "Keep current channel",
@@ -526,7 +542,7 @@
       "selectedBadge": "Selected",
       "create": {
         "title": "Add Channel",
-        "description": "Create a new WhatsApp, Telegram, or Lark channel configuration.",
+        "description": "Create a new WhatsApp, Telegram, Lark, or Wecom channel configuration.",
         "whatsappHint": "No token is required. After saving, open Manage Pairings to scan the WhatsApp QR code.",
         "save": "Add Channel",
         "fields": {
@@ -552,6 +568,7 @@
         "nameRequired": "Channel name is required",
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
+        "wecomCredentialsRequired": "Bot ID and secret are required for Wecom channels",
         "createFailed": "Failed to create channel",
         "updateFailed": "Failed to update channel",
         "deleteFailed": "Failed to delete channel"

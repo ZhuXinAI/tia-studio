@@ -3,6 +3,7 @@ import path from 'node:path'
 import { app } from 'electron'
 import type { Processor, ProcessInputArgs, ProcessInputResult } from '@mastra/core/processors'
 import type { MastraDBMessage } from '@mastra/core/memory'
+import { logger } from '../../utils/logger'
 
 export class AttachmentUploader implements Processor {
   readonly id = 'attachment-uploader'
@@ -24,7 +25,7 @@ export class AttachmentUploader implements Processor {
     try {
       await fs.mkdir(this.attachmentsDir, { recursive: true })
     } catch (error) {
-      console.error('Failed to create attachments directory:', error)
+      logger.error('Failed to create attachments directory:', error)
     }
   }
 
@@ -66,7 +67,7 @@ export class AttachmentUploader implements Processor {
       // Return file:// URL
       return `file://${filePath}`
     } catch (error) {
-      console.error('Failed to upload attachment:', error)
+      logger.error('Failed to upload attachment:', error)
       // Return original data URI if upload fails
       return dataUri
     }

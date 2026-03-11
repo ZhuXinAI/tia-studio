@@ -220,6 +220,38 @@ describe('claws route', () => {
     })
   })
 
+  it('creates a claw with a new inline wecom channel', async () => {
+    const response = await app.request('http://localhost/v1/claws', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assistant: {
+          name: 'Wecom Assistant',
+          providerId,
+          enabled: true
+        },
+        channel: {
+          mode: 'create',
+          type: 'wecom',
+          name: 'Wecom Bot',
+          botId: 'bot-123',
+          secret: 'secret-123'
+        }
+      })
+    })
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({
+      name: 'Wecom Assistant',
+      channel: {
+        type: 'wecom',
+        name: 'Wecom Bot',
+        pairedCount: 0,
+        pendingPairingCount: 0
+      }
+    })
+  })
+
   it('creates an unbound configured channel', async () => {
     const response = await app.request('http://localhost/v1/claws/channels', {
       method: 'POST',
@@ -259,6 +291,29 @@ describe('claws route', () => {
     await expect(response.json()).resolves.toMatchObject({
       type: 'whatsapp',
       name: 'Configured WhatsApp',
+      assistantId: null,
+      assistantName: null,
+      status: 'disconnected',
+      errorMessage: null
+    })
+  })
+
+  it('creates an unbound configured wecom channel', async () => {
+    const response = await app.request('http://localhost/v1/claws/channels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'wecom',
+        name: 'Configured Wecom',
+        botId: 'bot-123',
+        secret: 'secret-123'
+      })
+    })
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({
+      type: 'wecom',
+      name: 'Configured Wecom',
       assistantId: null,
       assistantName: null,
       status: 'disconnected',
@@ -309,6 +364,49 @@ describe('claws route', () => {
     })
     expect(channelReloadMock).not.toHaveBeenCalled()
     expect(cronReloadMock).not.toHaveBeenCalled()
+  })
+
+  it('updates an existing configured wecom channel', async () => {
+    const channel = await channelsRepo.create({
+      type: 'wecom',
+      name: 'Configured Wecom',
+      assistantId: null,
+      enabled: true,
+      config: {
+        botId: 'bot-original',
+        secret: 'secret-original'
+      }
+    })
+
+    const response = await app.request(`http://localhost/v1/claws/channels/${channel.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'wecom',
+        name: 'Updated Wecom',
+        botId: 'bot-updated',
+        secret: 'secret-updated'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      id: channel.id,
+      type: 'wecom',
+      name: 'Updated Wecom',
+      assistantId: null,
+      assistantName: null,
+      status: 'disconnected',
+      errorMessage: null
+    })
+    await expect(channelsRepo.getById(channel.id)).resolves.toMatchObject({
+      id: channel.id,
+      name: 'Updated Wecom',
+      config: {
+        botId: 'bot-updated',
+        secret: 'secret-updated'
+      }
+    })
   })
 
   it('reloads services when updating a configured channel attached to a claw', async () => {

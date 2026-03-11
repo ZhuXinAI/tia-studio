@@ -224,6 +224,71 @@ describe('channels settings page', () => {
     expect(container.textContent).toContain('Ops WhatsApp')
   })
 
+  it('creates a configured wecom channel with bot credentials', async () => {
+    vi.mocked(createClawChannel).mockResolvedValueOnce(
+      buildChannel({
+        id: 'channel-wecom',
+        type: 'wecom',
+        name: 'Ops Wecom'
+      })
+    )
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ChannelsSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const addButton = container.querySelector(
+      'button[id="settings-channels-add"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const typeSelect = document.body.querySelector(
+      'select[id="settings-channel-create-type"]'
+    ) as HTMLSelectElement
+    const nameInput = document.body.querySelector(
+      'input[id="settings-channel-create-name"]'
+    ) as HTMLInputElement
+    const botIdInput = document.body.querySelector(
+      'input[id="settings-channel-create-app-id"]'
+    ) as HTMLInputElement
+    const secretInput = document.body.querySelector(
+      'input[id="settings-channel-create-app-secret"]'
+    ) as HTMLInputElement
+    const saveButton = document.body.querySelector(
+      'button[id="settings-channel-create-save"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      setElementValue(typeSelect, 'wecom')
+      setElementValue(nameInput, 'Ops Wecom')
+      setElementValue(botIdInput, 'bot-123')
+      setElementValue(secretInput, 'secret-123')
+    })
+
+    await act(async () => {
+      saveButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(createClawChannel).toHaveBeenCalledWith({
+      type: 'wecom',
+      name: 'Ops Wecom',
+      botId: 'bot-123',
+      secret: 'secret-123'
+    })
+    expect(container.textContent).toContain('Ops Wecom')
+    expect(container.textContent).toContain('Wecom')
+  })
+
   it('edits and removes an unbound configured channel', async () => {
     await act(async () => {
       root.render(

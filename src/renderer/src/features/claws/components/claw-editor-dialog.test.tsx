@@ -37,28 +37,6 @@ async function clickElement(element: Element | null | undefined): Promise<void> 
   })
 }
 
-async function selectProvider(providerId: string): Promise<void> {
-  const openSelectorButton = document.body.querySelector(
-    'button[id="claw-select-provider-button"]'
-  ) as HTMLButtonElement | null
-
-  await clickElement(openSelectorButton)
-  await flushAsyncWork()
-
-  const providerButton = document.body.querySelector(
-    `button[data-provider-id="${providerId}"]`
-  ) as HTMLButtonElement | null
-  const applyButton = document.body.querySelector(
-    'button[id="claw-provider-selector-apply"]'
-  ) as HTMLButtonElement | null
-
-  await clickElement(providerButton)
-  await flushAsyncWork()
-
-  await clickElement(applyButton)
-  await flushAsyncWork()
-}
-
 const provider = {
   id: 'provider-1',
   name: 'OpenAI',
@@ -97,7 +75,99 @@ describe('ClawEditorDialog', () => {
     vi.clearAllMocks()
   })
 
-  it('submits a new claw without a selected channel as assistant-only and disabled', async () => {
+  it('guides create flow through the stepper and submits the selected provider and channel', async () => {
+    const onSubmit = vi.fn(async () => undefined)
+
+    await act(async () => {
+      root.render(
+        <ClawEditorDialog
+          isOpen
+          claw={null}
+          providers={[provider]}
+          configuredChannels={[
+            {
+              id: 'channel-free',
+              type: 'telegram',
+              name: 'Free Telegram',
+              assistantId: null,
+              assistantName: null,
+              status: 'disconnected',
+              errorMessage: null,
+              pairedCount: 0,
+              pendingPairingCount: 0
+            }
+          ]}
+          isSubmitting={false}
+          onClose={() => undefined}
+          onSubmit={onSubmit}
+          onCreateChannel={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onUpdateChannel={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onDeleteChannel={vi.fn(async () => undefined)}
+          onCreateProvider={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onUpdateProvider={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+        />
+      )
+    })
+    await flushAsyncWork()
+
+    expect(document.body.textContent).toContain('Provider')
+    const providerButton = document.body.querySelector(
+      'button[data-provider-id="provider-1"]'
+    ) as HTMLButtonElement
+    const nextButton = document.body.querySelector(
+      'button[id="claw-create-next"]'
+    ) as HTMLButtonElement
+
+    await clickElement(providerButton)
+    await flushAsyncWork()
+
+    await clickElement(nextButton)
+    await flushAsyncWork()
+
+    const channelButton = document.body.querySelector(
+      'button[data-channel-id="channel-free"]'
+    ) as HTMLButtonElement
+
+    await clickElement(channelButton)
+    await flushAsyncWork()
+
+    await clickElement(document.body.querySelector('button[id="claw-create-next"]'))
+    await flushAsyncWork()
+
+    const nameInput = document.body.querySelector('input[id="claw-name"]') as HTMLInputElement
+    expect(nameInput.value).toBe('My First Assistant')
+    expect(document.activeElement).toBe(nameInput)
+
+    await act(async () => {
+      setElementValue(nameInput, 'Ops Assistant')
+    })
+    await flushAsyncWork()
+
+    await clickElement(document.body.querySelector('button[id="claw-create-submit"]'))
+    await flushAsyncWork()
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      assistant: {
+        name: 'Ops Assistant',
+        providerId: 'provider-1',
+        enabled: true
+      },
+      channel: {
+        mode: 'attach',
+        channelId: 'channel-free'
+      }
+    })
+  })
+
+  it('lets create flow skip channel selection and saves the claw disabled', async () => {
     const onSubmit = vi.fn(async () => undefined)
 
     await act(async () => {
@@ -128,23 +198,22 @@ describe('ClawEditorDialog', () => {
     })
     await flushAsyncWork()
 
-    const body = document.body
-    const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-    const saveButton = Array.from(body.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Create Claw')
-    )
+    await clickElement(document.body.querySelector('button[data-provider-id="provider-1"]'))
+    await flushAsyncWork()
+    await clickElement(document.body.querySelector('button[id="claw-create-next"]'))
+    await flushAsyncWork()
+    await clickElement(document.body.querySelector('button[id="claw-create-next"]'))
+    await flushAsyncWork()
 
+    const nameInput = document.body.querySelector('input[id="claw-name"]') as HTMLInputElement
     await act(async () => {
       setElementValue(nameInput, 'Ops Assistant')
     })
     await flushAsyncWork()
 
-    await selectProvider('provider-1')
-
-    await clickElement(saveButton)
+    await clickElement(document.body.querySelector('button[id="claw-create-submit"]'))
     await flushAsyncWork()
 
-    expect(body.querySelector('select[id="claw-channel-action"]')).toBeNull()
     expect(onSubmit).toHaveBeenCalledWith({
       assistant: {
         name: 'Ops Assistant',
@@ -211,39 +280,17 @@ describe('ClawEditorDialog', () => {
     })
     await flushAsyncWork()
 
-    const openSelectorButton = document.body.querySelector(
-      'button[id="claw-select-channel-button"]'
-    ) as HTMLButtonElement
-
-    await act(async () => {
-      openSelectorButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(document.body.querySelector('button[id="claw-select-channel-button"]'))
     await flushAsyncWork()
-
-    const clearButton = document.body.querySelector(
-      'button[id="claw-channel-selector-clear"]'
-    ) as HTMLButtonElement
-    const applyButton = document.body.querySelector(
-      'button[id="claw-channel-selector-apply"]'
-    ) as HTMLButtonElement
-
-    await act(async () => {
-      clearButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(document.body.querySelector('button[id="claw-channel-selector-clear"]'))
     await flushAsyncWork()
-
-    await act(async () => {
-      applyButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(document.body.querySelector('button[id="claw-channel-selector-apply"]'))
     await flushAsyncWork()
-
-    const saveButton = Array.from(document.body.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Save Claw')
+    await clickElement(
+      Array.from(document.body.querySelectorAll('button')).find((button) =>
+        button.textContent?.includes('Save Claw')
+      )
     )
-
-    await act(async () => {
-      saveButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
     await flushAsyncWork()
 
     expect(onSubmit).toHaveBeenCalledWith({
@@ -258,7 +305,7 @@ describe('ClawEditorDialog', () => {
     })
   })
 
-  it('submits attach when the selected channel changes', async () => {
+  it('submits attach when the selected channel changes for an existing claw', async () => {
     const onSubmit = vi.fn(async () => undefined)
 
     await act(async () => {
@@ -326,39 +373,17 @@ describe('ClawEditorDialog', () => {
     })
     await flushAsyncWork()
 
-    const openSelectorButton = document.body.querySelector(
-      'button[id="claw-select-channel-button"]'
-    ) as HTMLButtonElement
-
-    await act(async () => {
-      openSelectorButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(document.body.querySelector('button[id="claw-select-channel-button"]'))
     await flushAsyncWork()
-
-    const freeChannelButton = document.body.querySelector(
-      'button[data-channel-id="channel-free"]'
-    ) as HTMLButtonElement
-    const applyButton = document.body.querySelector(
-      'button[id="claw-channel-selector-apply"]'
-    ) as HTMLButtonElement
-
-    await act(async () => {
-      freeChannelButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(document.body.querySelector('button[data-channel-id="channel-free"]'))
     await flushAsyncWork()
-
-    await act(async () => {
-      applyButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
+    await clickElement(document.body.querySelector('button[id="claw-channel-selector-apply"]'))
     await flushAsyncWork()
-
-    const saveButton = Array.from(document.body.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Save Claw')
+    await clickElement(
+      Array.from(document.body.querySelectorAll('button')).find((button) =>
+        button.textContent?.includes('Save Claw')
+      )
     )
-
-    await act(async () => {
-      saveButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
     await flushAsyncWork()
 
     expect(onSubmit).toHaveBeenCalledWith({
