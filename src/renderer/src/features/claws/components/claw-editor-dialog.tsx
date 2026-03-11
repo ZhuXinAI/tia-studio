@@ -668,8 +668,7 @@ function EditClawDialog({
 
 export function ClawEditorDialog(props: ClawEditorDialogProps): React.JSX.Element {
   if (!props.claw) {
-    const { claw: _claw, ...createProps } = props
-    return <CreateClawDialog {...createProps} />
+    return <CreateClawDialog {...props} />
   }
 
   return <EditClawDialog {...props} claw={props.claw} />
