@@ -132,7 +132,6 @@ async function drainStreamWithToolUpdates(
   const reader = stream.getReader()
   let assistantText = ''
   let streamError: string | null = null
-  const seenToolCallIds = new Set<string>()
   const toolNamesByCallId = new Map<string, string>()
 
   try {
@@ -147,38 +146,12 @@ async function drainStreamWithToolUpdates(
       } else if (value.type === 'error') {
         streamError = value.errorText
       } else if (value.type === 'tool-input-available' && onToolUpdate) {
-        // Track tool name by call ID for later use
         toolNamesByCallId.set(value.toolCallId, value.toolName)
-
-        // Format and send tool call updates to channel
-        if (!seenToolCallIds.has(value.toolCallId)) {
-          seenToolCallIds.add(value.toolCallId)
-          const toolMessage = formatToolCallUpdate(value.toolName)
-          if (toolMessage) {
-            await onToolUpdate(toolMessage)
-          }
-        }
       } else if (value.type === 'tool-output-available' && onToolUpdate) {
-        // Get tool name from tracked call IDs
         const toolName = toolNamesByCallId.get(value.toolCallId)
         if (toolName) {
           const toolMessage = formatToolResultUpdate({
-            toolName,
-            result: value.output,
-            error: undefined
-          })
-          if (toolMessage) {
-            await onToolUpdate(toolMessage)
-          }
-        }
-      } else if (value.type === 'tool-output-error' && onToolUpdate) {
-        // Get tool name from tracked call IDs
-        const toolName = toolNamesByCallId.get(value.toolCallId)
-        if (toolName) {
-          const toolMessage = formatToolResultUpdate({
-            toolName,
-            result: undefined,
-            error: value.errorText
+            toolName
           })
           if (toolMessage) {
             await onToolUpdate(toolMessage)
@@ -197,58 +170,13 @@ async function drainStreamWithToolUpdates(
   return assistantText
 }
 
-function formatToolCallUpdate(toolName: string): string | null {
-  // Map common tool names to user-friendly messages
-  const toolDescriptions: Record<string, string> = {
-    browserSearch: '🔍 Searching the web...',
-    readSoulMemory: '📖 Reading memory...',
-    writeSoulMemory: '💾 Saving to memory...',
-    readWorkLog: '📋 Checking work log...',
-    writeWorkLog: '✍️ Updating work log...',
-    createCronJob: '⏰ Setting up reminder...',
-    listCronJobs: '📅 Checking scheduled tasks...',
-    removeCronJob: '🗑️ Removing reminder...',
-    sendMessageToChannel: '📤 Sending message...',
-    sendImage: '🖼️ Sending image...',
-    sendFile: '📎 Sending file...',
-    getRecentConversations: '💬 Reviewing recent conversations...',
-    saveMemorySession: '💾 Saving session memory...',
-    getMemorySession: '📖 Loading session memory...'
-  }
-
-  if (toolName in toolDescriptions) {
-    return toolDescriptions[toolName]
-  }
-
-  // Handle MCP tools (usually prefixed with server name)
-  if (toolName.includes('_') || toolName.includes('-')) {
-    const parts = toolName.split(/[_-]/)
-    const humanReadable = parts
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ')
-    return `🔧 ${humanReadable}...`
-  }
-
-  // Generic fallback
-  return `⚙️ Using ${toolName}...`
-}
-
-function formatToolResultUpdate(toolResult: {
-  toolName: string
-  result?: unknown
-  error?: unknown
-}): string | null {
-  // Only show results for specific tools that benefit from user feedback
+function formatToolResultUpdate(toolResult: { toolName: string }): string | null {
   const toolResultMessages: Record<string, string> = {
     browserSearch: '✅ Search completed',
     createCronJob: '✅ Reminder set',
     removeCronJob: '✅ Reminder removed',
     writeSoulMemory: '✅ Memory saved',
     writeWorkLog: '✅ Work log updated'
-  }
-
-  if (toolResult.error) {
-    return `❌ Tool failed: ${String(toolResult.error)}`
   }
 
   return toolResultMessages[toolResult.toolName] ?? null
@@ -493,9 +421,8 @@ export class ChannelMessageRouter {
         abortSignal: activeRun.abortController.signal
       })
 
-      // Drain stream with tool update callbacks to send tool status to channel
+      // Drain stream and only publish user-facing tool completion updates
       const assistantReplyText = await drainStreamWithToolUpdates(stream, async (toolMessage) => {
-        // Send tool update messages to channel (e.g., "🔍 Searching the web...")
         await this.publishReply(item.event, toolMessage)
       })
 
@@ -627,9 +554,7 @@ export class ChannelMessageRouter {
         (await this.options.interruptionDecider?.(input)) ?? decideInterruptionHeuristically(input)
       )
     } catch (error) {
-      logger.error(
-        `[ChannelMessageRouter] interruptionDecider failed: ${toErrorLogMessage(error)}`
-      )
+      logger.error(`[ChannelMessageRouter] interruptionDecider failed: ${toErrorLogMessage(error)}`)
       return decideInterruptionHeuristically(input)
     }
   }

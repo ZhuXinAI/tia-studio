@@ -16,6 +16,7 @@ import type { TeamWorkspacesRepository } from '../persistence/repos/team-workspa
 import { ChatRouteError } from '../server/chat/chat-errors'
 import { TeamRunStatusStore } from '../server/chat/team-run-status-store'
 import { resolveModel } from './model-resolver'
+import { createContainedLocalFilesystemInstructions } from './workspace-filesystem-instructions'
 
 type StreamTeamChatParams = {
   threadId: string
@@ -397,7 +398,10 @@ export class TeamRuntimeService implements TeamRuntime {
   ): Promise<Workspace> {
     const rootPath = path.resolve(workspaceRootPath)
     const skillsPaths = this.resolveSkillsPaths(rootPath, skillsConfig)
-    const filesystem = new LocalFilesystem({ basePath: rootPath })
+    const filesystem = new LocalFilesystem({
+      basePath: rootPath,
+      instructions: createContainedLocalFilesystemInstructions(rootPath)
+    })
     const sandbox = new LocalSandbox({
       workingDirectory: rootPath
     })

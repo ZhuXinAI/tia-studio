@@ -174,6 +174,7 @@ export function assistantWorkspaceContextInputProcessor(
       const contextPrompt = [
         'Assistant workspace context is loaded from the configured assistant workspace.',
         'Treat these files as durable operating context unless the user overrides them.',
+        'When using workspace file tools, files at the workspace root should be addressed as "IDENTITY.md" or "/IDENTITY.md", not "/<workspace-name>/IDENTITY.md".',
         '',
         ...sections.flatMap((section) => [`## ${section.fileName}`, section.content, ''])
       ]

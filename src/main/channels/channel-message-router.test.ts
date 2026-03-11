@@ -474,6 +474,110 @@ describe('ChannelMessageRouter', () => {
       })
     ])
   })
+
+  it('does not publish tool-start or tool-error updates to the channel', async () => {
+    const publishedEvents: unknown[] = []
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
+      createStream([
+        { type: 'start' } as UIMessageChunk,
+        {
+          type: 'tool-input-available',
+          toolCallId: 'tool-call-1',
+          toolName: 'mastra_workspace_read_file'
+        } as UIMessageChunk,
+        {
+          type: 'tool-output-error',
+          toolCallId: 'tool-call-1',
+          errorText: 'File not found'
+        } as UIMessageChunk,
+        { type: 'text-start', id: 'text-1' } as UIMessageChunk,
+        { type: 'text-delta', id: 'text-1', delta: 'Hello from assistant' } as UIMessageChunk,
+        { type: 'text-end', id: 'text-1' } as UIMessageChunk,
+        { type: 'finish' } as UIMessageChunk
+      ])
+    )
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat)
+    })
+
+    eventBus.subscribe('channel.message.send-requested', (event) => {
+      publishedEvents.push(event)
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-tool-noise',
+      channelId,
+      channelType: 'lark',
+      message: {
+        id: 'msg-tool-noise',
+        remoteChatId: 'oc_123',
+        senderId: 'ou_user',
+        content: 'hello',
+        timestamp: new Date('2026-03-08T00:00:00.000Z')
+      }
+    })
+
+    expect(publishedEvents).toEqual([])
+  })
+
+  it('still publishes user-facing tool completion updates to the channel', async () => {
+    const publishedEvents: unknown[] = []
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
+      createStream([
+        { type: 'start' } as UIMessageChunk,
+        {
+          type: 'tool-input-available',
+          toolCallId: 'tool-call-1',
+          toolName: 'writeSoulMemory'
+        } as UIMessageChunk,
+        {
+          type: 'tool-output-available',
+          toolCallId: 'tool-call-1',
+          output: { ok: true }
+        } as UIMessageChunk,
+        { type: 'text-start', id: 'text-1' } as UIMessageChunk,
+        { type: 'text-delta', id: 'text-1', delta: 'All set.' } as UIMessageChunk,
+        { type: 'text-end', id: 'text-1' } as UIMessageChunk,
+        { type: 'finish' } as UIMessageChunk
+      ])
+    )
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat)
+    })
+
+    eventBus.subscribe('channel.message.send-requested', (event) => {
+      publishedEvents.push(event)
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-tool-success',
+      channelId,
+      channelType: 'lark',
+      message: {
+        id: 'msg-tool-success',
+        remoteChatId: 'oc_123',
+        senderId: 'ou_user',
+        content: 'hello',
+        timestamp: new Date('2026-03-08T00:00:00.000Z')
+      }
+    })
+
+    expect(publishedEvents).toEqual([
+      expect.objectContaining({
+        channelId,
+        remoteChatId: 'oc_123',
+        content: '✅ Memory saved'
+      })
+    ])
+  })
   it('publishes a thread message updated event after processing inbound channel messages', async () => {
     const appendMessagesUpdated = vi.fn()
     const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>

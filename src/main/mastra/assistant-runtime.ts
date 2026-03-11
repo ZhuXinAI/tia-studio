@@ -34,17 +34,18 @@ import type { WebSearchSettingsRepository } from '../persistence/repos/web-searc
 import { ChatRouteError } from '../server/chat/chat-errors'
 import { ensureAssistantWorkspaceFiles } from './assistant-workspace'
 import { resolveModel } from './model-resolver'
+import { AttachmentUploader } from './processors/attachment-uploader'
 import { createBrowserSearchTool } from './tools/browser-search-tool'
 import { createChannelTools } from './tools/channel-tools'
 import { createCronTools } from './tools/cron-tools'
+import { createMemorySessionTools } from './tools/memory-session-tools'
 import {
   assistantWorkspaceContextInputProcessor,
   createSoulMemoryTools
 } from './tools/soul-memory-tools'
 import { createWorkLogTools } from './tools/work-log-tools'
-import { createMemorySessionTools } from './tools/memory-session-tools'
-import { AttachmentUploader } from './processors/attachment-uploader'
 import { HEARTBEAT_RUN_CONTEXT_KEY } from './tool-context'
+import { createContainedLocalFilesystemInstructions } from './workspace-filesystem-instructions'
 import { logger } from '../utils/logger'
 
 type StreamChatParams = {
@@ -110,10 +111,12 @@ This is your first conversation! Let's set up your identity and personality.
    - IDENTITY.md - Where you'll save your name, personality, and avatar
    - SOUL.md - Your core values and how you should behave
    - MEMORY.md - Long-term facts and preferences you should remember
+   - These files live directly at the workspace root
 
 4. **After gathering their input**, use your tools to:
    - Update IDENTITY.md with your name, personality, and purpose
    - Update SOUL.md with your behavioral guidelines based on their preferences
+   - Use workspace-root paths like \`IDENTITY.md\` or \`/IDENTITY.md\`, not \`/<workspace-name>/IDENTITY.md\`
    - Confirm the changes and let them know you're ready to help
 
 Keep it conversational and friendly. This is about co-creating your identity together!
@@ -1056,7 +1059,10 @@ ${input.prompt}`
     await ensureAssistantWorkspaceFiles(rootPath)
 
     const skillsPaths = this.resolveSkillsPaths(rootPath, skillsConfig)
-    const filesystem = new LocalFilesystem({ basePath: rootPath })
+    const filesystem = new LocalFilesystem({
+      basePath: rootPath,
+      instructions: createContainedLocalFilesystemInstructions(rootPath)
+    })
     const sandbox = new LocalSandbox({
       workingDirectory: rootPath
     })

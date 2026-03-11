@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Activity, Clock, CheckCircle2, XCircle, Settings } from 'lucide-react'
 import {
   Dialog,
@@ -63,7 +63,7 @@ export function ClawHeartbeatMonitorDialog({
   const [editIntervalMinutes, setEditIntervalMinutes] = useState(60)
   const [editPrompt, setEditPrompt] = useState('')
 
-  async function loadData(): Promise<void> {
+  const loadData = useCallback(async (): Promise<void> => {
     if (!assistantId) {
       return
     }
@@ -80,7 +80,6 @@ export function ClawHeartbeatMonitorDialog({
       setHeartbeat(heartbeatData)
       setRuns(runsData.runs)
 
-      // Initialize edit form with current values
       if (heartbeatData) {
         setEditEnabled(heartbeatData.enabled)
         setEditIntervalMinutes(heartbeatData.intervalMinutes)
@@ -91,7 +90,7 @@ export function ClawHeartbeatMonitorDialog({
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [assistantId])
 
   async function handleSave(): Promise<void> {
     if (!assistantId) {

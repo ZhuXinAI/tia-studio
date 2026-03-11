@@ -136,6 +136,9 @@ describe('soul memory tools', () => {
     const output = result as { systemMessages: Array<{ content: unknown }> }
     const systemContent = output.systemMessages.map((message) => String(message.content)).join('\n')
 
+    expect(systemContent).toContain(
+      'When using workspace file tools, files at the workspace root should be addressed as "IDENTITY.md" or "/IDENTITY.md"'
+    )
     expect(systemContent).toContain('## IDENTITY.md')
     expect(systemContent).toContain('Identity')
     expect(systemContent).toContain('## SOUL.md')

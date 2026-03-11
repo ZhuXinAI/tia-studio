@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Clock, CheckCircle2, XCircle, Timer } from 'lucide-react'
 import {
   Dialog,
@@ -46,7 +46,7 @@ export function ClawCronMonitorDialog({
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  async function loadData(): Promise<void> {
+  const loadData = useCallback(async (): Promise<void> => {
     if (!assistantId) {
       return
     }
@@ -62,7 +62,7 @@ export function ClawCronMonitorDialog({
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [assistantId])
 
   useEffect(() => {
     if (isOpen && assistantId) {

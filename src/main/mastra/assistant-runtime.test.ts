@@ -309,6 +309,48 @@ describe('AssistantRuntimeService', () => {
     }
   })
 
+  it('adds workspace-root path guidance during first-conversation onboarding', async () => {
+    const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-assistant-runtime-'))
+
+    try {
+      const assistant = buildAssistant({
+        workspaceConfig: {
+          rootPath: workspaceRoot
+        }
+      })
+      const mastra = await createMastraInstance(':memory:')
+      const runtime = new AssistantRuntimeService({
+        mastra,
+        assistantsRepo: {} as AssistantsRepository,
+        providersRepo: {} as ProvidersRepository,
+        threadsRepo: {
+          hasAnyThreads: vi.fn(async () => false)
+        } as unknown as ThreadsRepository,
+        webSearchSettingsRepo: {
+          getDefaultEngine: vi.fn(async () => 'bing')
+        } as unknown as WebSearchSettingsRepository,
+        mcpServersRepo: {
+          getSettings: vi.fn(async () => ({ mcpServers: {} }))
+        } as never,
+        channelEventBus: new ChannelEventBus()
+      })
+
+      await (
+        runtime as unknown as {
+          ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+        }
+      ).ensureAgentRegistered(assistant, buildProvider())
+
+      const instructions = await getAgentInstructions(mastra.getAgentById(assistant.id))
+      expect(instructions).toContain('These files live directly at the workspace root')
+      expect(instructions).toContain(
+        'Use workspace-root paths like `IDENTITY.md` or `/IDENTITY.md`'
+      )
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true })
+    }
+  })
+
   it('registers soul and channel tools for assistants with workspaces', async () => {
     const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-assistant-runtime-'))
 
