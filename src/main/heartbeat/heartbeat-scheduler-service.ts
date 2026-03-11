@@ -82,7 +82,11 @@ export class HeartbeatSchedulerService {
     const heartbeats = await this.options.heartbeatsRepo.list()
     for (const heartbeat of heartbeats) {
       const assistantState = await this.getAssistantState(heartbeat.assistantId)
-      if (heartbeat.enabled && assistantState.enabled) {
+      if (
+        heartbeat.enabled &&
+        assistantState.enabled &&
+        (!this.options.assistantsRepo || assistantState.workspaceRootPath)
+      ) {
         logger.info('[HeartbeatScheduler] Triggering initial heartbeat on startup', {
           heartbeatId: heartbeat.id,
           assistantId: heartbeat.assistantId
@@ -186,6 +190,12 @@ export class HeartbeatSchedulerService {
   }
 
   private async syncHeartbeat(heartbeat: AppAssistantHeartbeat): Promise<void> {
+    const existingTimer = this.timers.get(heartbeat.id)
+    if (existingTimer) {
+      clearTimeout(existingTimer)
+      this.timers.delete(heartbeat.id)
+    }
+
     const assistantState = await this.getAssistantState(heartbeat.assistantId)
 
     if (!heartbeat.enabled || !assistantState.enabled) {

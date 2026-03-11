@@ -25,11 +25,11 @@ function renderRouter(initialEntries: string[]): string {
 }
 
 describe('app router', () => {
-  it('redirects root route to /chat', async () => {
+  it('redirects root route to /claws', async () => {
     const router = createAppMemoryRouter(['/'])
 
     await router.navigate('/')
-    expect(router.state.location.pathname).toBe('/chat')
+    expect(router.state.location.pathname).toBe('/claws')
   })
 
   it('redirects settings index route to /settings/general', async () => {

@@ -48,15 +48,17 @@ function setElementValue(
   element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
   value: string
 ): void {
-  const prototype =
-    element instanceof HTMLSelectElement
-      ? HTMLSelectElement.prototype
-      : element instanceof HTMLTextAreaElement
-        ? HTMLTextAreaElement.prototype
-        : HTMLInputElement.prototype
+  const prototype = Object.getPrototypeOf(element) as
+    | HTMLInputElement
+    | HTMLSelectElement
+    | HTMLTextAreaElement
   const setter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set
 
-  setter?.call(element, value)
+  if (setter) {
+    setter.call(element, value)
+  } else {
+    element.value = value
+  }
   element.dispatchEvent(
     new Event(element instanceof HTMLSelectElement ? 'change' : 'input', { bubbles: true })
   )
@@ -104,6 +106,16 @@ function findMenuItemByText(text: string): HTMLElement | undefined {
 }
 
 async function selectProvider(providerId: string): Promise<void> {
+  const inlineProviderButton = document.body.querySelector(
+    `button[data-provider-id="${providerId}"]`
+  ) as HTMLButtonElement | null
+
+  if (inlineProviderButton) {
+    await clickElement(inlineProviderButton)
+    await flushAsyncWork()
+    return
+  }
+
   const openSelectorButton = document.body.querySelector(
     'button[id="claw-select-provider-button"]'
   ) as HTMLButtonElement | null
@@ -125,11 +137,21 @@ async function selectProvider(providerId: string): Promise<void> {
   await flushAsyncWork()
 }
 
+async function advanceCreateStep(): Promise<void> {
+  const nextButton = document.body.querySelector(
+    'button[id="claw-create-next"]'
+  ) as HTMLButtonElement | null
+
+  await clickElement(nextButton)
+  await flushAsyncWork()
+}
+
 describe('ClawsPage', () => {
   let container: HTMLDivElement
   let root: Root
 
   beforeEach(() => {
+    vi.resetAllMocks()
     ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     container = document.createElement('div')
     document.body.appendChild(container)
@@ -429,21 +451,8 @@ describe('ClawsPage', () => {
     await flushAsyncWork()
 
     const body = document.body
-    const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-    const openSelectorButton = body.querySelector(
-      'button[id="claw-select-channel-button"]'
-    ) as HTMLButtonElement
-    const saveButton = findButtonByText(body, 'Create Claw')
-
-    await act(async () => {
-      setElementValue(nameInput, 'Ops Assistant')
-    })
-    await flushAsyncWork()
-
     await selectProvider('provider-1')
-
-    await clickElement(openSelectorButton)
-    await flushAsyncWork()
+    await advanceCreateStep()
 
     const addChannelButton = body.querySelector(
       'button[id="claw-channel-selector-add"]'
@@ -485,12 +494,15 @@ describe('ClawsPage', () => {
 
     await clickElement(createChannelButton)
     await flushAsyncWork()
+    await advanceCreateStep()
 
-    const applyChannelButton = body.querySelector(
-      'button[id="claw-channel-selector-apply"]'
-    ) as HTMLButtonElement
+    const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
+    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
 
-    await clickElement(applyChannelButton)
+    await act(async () => {
+      setElementValue(nameInput, 'Ops Assistant')
+    })
+    await flushAsyncWork()
 
     await clickElement(saveButton)
     await flushAsyncWork()
@@ -499,7 +511,8 @@ describe('ClawsPage', () => {
       type: 'lark',
       name: 'Ops Lark',
       appId: 'cli_ops',
-      appSecret: 'secret-ops'
+      appSecret: 'secret-ops',
+      groupRequireMention: true
     })
     expect(createClaw).toHaveBeenCalledWith({
       assistant: {
@@ -535,21 +548,8 @@ describe('ClawsPage', () => {
     await flushAsyncWork()
 
     const body = document.body
-    const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-    const openSelectorButton = body.querySelector(
-      'button[id="claw-select-channel-button"]'
-    ) as HTMLButtonElement
-    const saveButton = findButtonByText(body, 'Create Claw')
-
-    await act(async () => {
-      setElementValue(nameInput, 'Telegram Assistant')
-    })
-    await flushAsyncWork()
-
     await selectProvider('provider-1')
-
-    await clickElement(openSelectorButton)
-    await flushAsyncWork()
+    await advanceCreateStep()
 
     const addChannelButton = body.querySelector(
       'button[id="claw-channel-selector-add"]'
@@ -597,12 +597,15 @@ describe('ClawsPage', () => {
 
     await clickElement(createChannelButton)
     await flushAsyncWork()
+    await advanceCreateStep()
 
-    const applyChannelButton = body.querySelector(
-      'button[id="claw-channel-selector-apply"]'
-    ) as HTMLButtonElement
+    const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
+    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
 
-    await clickElement(applyChannelButton)
+    await act(async () => {
+      setElementValue(nameInput, 'Telegram Assistant')
+    })
+    await flushAsyncWork()
 
     await clickElement(saveButton)
     await flushAsyncWork()
@@ -667,21 +670,8 @@ describe('ClawsPage', () => {
     await flushAsyncWork()
 
     const body = document.body
-    const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-    const openSelectorButton = body.querySelector(
-      'button[id="claw-select-channel-button"]'
-    ) as HTMLButtonElement
-    const saveButton = findButtonByText(body, 'Create Claw')
-
-    await act(async () => {
-      setElementValue(nameInput, 'Telegram Assistant')
-    })
-    await flushAsyncWork()
-
     await selectProvider('provider-1')
-
-    await clickElement(openSelectorButton)
-    await flushAsyncWork()
+    await advanceCreateStep()
 
     const addChannelButton = body.querySelector(
       'button[id="claw-channel-selector-add"]'
@@ -729,12 +719,15 @@ describe('ClawsPage', () => {
 
     await clickElement(createChannelButton)
     await flushAsyncWork()
+    await advanceCreateStep()
 
-    const applyChannelButton = body.querySelector(
-      'button[id="claw-channel-selector-apply"]'
-    ) as HTMLButtonElement
+    const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
+    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
 
-    await clickElement(applyChannelButton)
+    await act(async () => {
+      setElementValue(nameInput, 'Telegram Assistant')
+    })
+    await flushAsyncWork()
 
     await clickElement(saveButton)
     await flushAsyncWork()
@@ -786,21 +779,8 @@ describe('ClawsPage', () => {
     await flushAsyncWork()
 
     const body = document.body
-    const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-
-    await act(async () => {
-      setElementValue(nameInput, 'WhatsApp Assistant')
-    })
-    await flushAsyncWork()
-
     await selectProvider('provider-1')
-
-    const selectChannelButton = body.querySelector(
-      'button[id="claw-select-channel-button"]'
-    ) as HTMLButtonElement
-
-    await clickElement(selectChannelButton)
-    await flushAsyncWork()
+    await advanceCreateStep()
 
     const addChannelButton = body.querySelector(
       'button[id="claw-channel-selector-add"]'
@@ -844,14 +824,15 @@ describe('ClawsPage', () => {
 
     await clickElement(createChannelButton)
     await flushAsyncWork()
+    await advanceCreateStep()
 
-    const applyChannelButton = body.querySelector(
-      'button[id="claw-channel-selector-apply"]'
-    ) as HTMLButtonElement
+    const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
+    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
 
-    await clickElement(applyChannelButton)
-
-    const saveButton = findButtonByText(body, 'Create Claw')
+    await act(async () => {
+      setElementValue(nameInput, 'WhatsApp Assistant')
+    })
+    await flushAsyncWork()
 
     await clickElement(saveButton)
     await flushAsyncWork()

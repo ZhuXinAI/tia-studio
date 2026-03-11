@@ -288,9 +288,16 @@ describe('HeartbeatSchedulerService', () => {
         scheduledFor: '2026-03-10T00:01:00.000Z',
         outputText: 'Checked recent work.',
         workLogPath: '/tmp/workspace-a/.tia/work-logs/2026-03-10.md'
+      }),
+      expect.objectContaining({
+        status: 'success',
+        scheduledFor: '2026-03-10T00:00:00.000Z',
+        outputText: 'Checked recent work.',
+        workLogPath: '/tmp/workspace-a/.tia/work-logs/2026-03-10.md'
       })
     ])
-    expect(writeWorkLog).toHaveBeenCalledWith({
+    expect(writeWorkLog).toHaveBeenCalledTimes(2)
+    expect(writeWorkLog).toHaveBeenLastCalledWith({
       workspaceRootPath: '/tmp/workspace-a',
       assistantName: 'TIA',
       outputText: 'Checked recent work.',
@@ -333,6 +340,15 @@ describe('HeartbeatSchedulerService', () => {
       expect.objectContaining({
         status: 'failed',
         scheduledFor: '2026-03-10T00:01:00.000Z',
+        error: {
+          message: 'Provider timed out',
+          name: 'Error'
+        },
+        workLogPath: null
+      }),
+      expect.objectContaining({
+        status: 'failed',
+        scheduledFor: '2026-03-10T00:00:00.000Z',
         error: {
           message: 'Provider timed out',
           name: 'Error'
