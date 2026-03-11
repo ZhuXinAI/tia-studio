@@ -417,6 +417,7 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
+    expect(container.textContent).not.toContain('Set up your first claw')
     expect(container.textContent).toContain('Configure a channel first')
 
     await openClawActions('Ops Assistant')

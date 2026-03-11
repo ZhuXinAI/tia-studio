@@ -105,8 +105,8 @@ export function ClawsPage(): React.JSX.Element {
     })
   }, [t])
 
-  const hasConnectedClaw = useMemo(() => {
-    return data.claws.some((claw) => claw.channel !== null)
+  const hasAnyClaw = useMemo(() => {
+    return data.claws.length > 0
   }, [data.claws])
 
   function providerLabel(providerId: string | null): string {
@@ -421,7 +421,7 @@ export function ClawsPage(): React.JSX.Element {
           </Button>
         </div>
 
-        {!hasConnectedClaw ? (
+        {!hasAnyClaw ? (
           <Card>
             <CardHeader>
               <CardTitle>{t('claws.empty.title')}</CardTitle>
