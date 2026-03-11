@@ -54,6 +54,16 @@ git push origin main
 git push origin v0.1.0
 ```
 
+### Release Notes
+
+If you want the GitHub release page to show a human-written description, add a file at:
+
+```bash
+releases/v0.1.0.md
+```
+
+When the release workflow runs for tag `v0.1.0`, it will apply that file as the release body automatically.
+
 ## First Release
 
 To create your first release (v0.1.0):

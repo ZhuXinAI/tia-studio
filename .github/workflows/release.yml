@@ -81,3 +81,30 @@ jobs:
         if: matrix.os == 'macos-latest' && always()
         run: |
           security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
+
+  release_notes:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      startsWith(github.event.workflow_run.head_branch || '', 'v')
+    needs: release
+    runs-on: ubuntu-latest
+
+    env:
+      RELEASE_TAG: ${{ github.event.workflow_run.head_branch }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 0
+
+      - name: Apply release notes if provided
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NOTES_FILE="releases/${RELEASE_TAG}.md"
+          if [ -f "$NOTES_FILE" ]; then
+            gh release edit "$RELEASE_TAG" --title "${RELEASE_TAG#v}" --notes-file "$NOTES_FILE"
+          fi
