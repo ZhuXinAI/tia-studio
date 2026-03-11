@@ -37,6 +37,12 @@ async function clickElement(element: Element | null | undefined): Promise<void> 
   })
 }
 
+async function flushTimerWork(): Promise<void> {
+  await act(async () => {
+    await new Promise((resolve) => window.setTimeout(resolve, 0))
+  })
+}
+
 const provider = {
   id: 'provider-1',
   name: 'OpenAI',
@@ -141,6 +147,7 @@ describe('ClawEditorDialog', () => {
 
     await clickElement(document.body.querySelector('button[id="claw-create-next"]'))
     await flushAsyncWork()
+    await flushTimerWork()
 
     const nameInput = document.body.querySelector('input[id="claw-name"]') as HTMLInputElement
     expect(nameInput.value).toBe('My First Assistant')
@@ -165,6 +172,75 @@ describe('ClawEditorDialog', () => {
         channelId: 'channel-free'
       }
     })
+  })
+
+  it('does not allow submitting before the details step', async () => {
+    const onSubmit = vi.fn(async () => undefined)
+
+    await act(async () => {
+      root.render(
+        <ClawEditorDialog
+          isOpen
+          claw={null}
+          providers={[provider]}
+          configuredChannels={[
+            {
+              id: 'channel-free',
+              type: 'telegram',
+              name: 'Free Telegram',
+              assistantId: null,
+              assistantName: null,
+              status: 'disconnected',
+              errorMessage: null,
+              pairedCount: 0,
+              pendingPairingCount: 0
+            }
+          ]}
+          isSubmitting={false}
+          onClose={() => undefined}
+          onSubmit={onSubmit}
+          onCreateChannel={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onUpdateChannel={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onDeleteChannel={vi.fn(async () => undefined)}
+          onCreateProvider={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onUpdateProvider={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+        />
+      )
+    })
+    await flushAsyncWork()
+
+    await clickElement(document.body.querySelector('button[data-provider-id="provider-1"]'))
+    await flushAsyncWork()
+    await clickElement(document.body.querySelector('button[id="claw-create-next"]'))
+    await flushAsyncWork()
+
+    await clickElement(document.body.querySelector('button[data-channel-id="channel-free"]'))
+    await flushAsyncWork()
+    await clickElement(document.body.querySelector('button[id="claw-create-next"]'))
+    await flushAsyncWork()
+
+    const submitButton = document.body.querySelector(
+      'button[id="claw-create-submit"]'
+    ) as HTMLButtonElement | null
+
+    expect(submitButton).not.toBeNull()
+    expect(submitButton?.disabled).toBe(true)
+    expect(document.body.querySelector('form')).toBeNull()
+
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(document.body.querySelector('input[id="claw-name"]')).not.toBeNull()
+    expect(document.body.querySelector('button[id="claw-create-next"]')).toBeNull()
+
+    await flushTimerWork()
+    expect(submitButton?.disabled).toBe(false)
   })
 
   it('lets create flow skip channel selection and saves the claw disabled', async () => {
@@ -204,6 +280,7 @@ describe('ClawEditorDialog', () => {
     await flushAsyncWork()
     await clickElement(document.body.querySelector('button[id="claw-create-next"]'))
     await flushAsyncWork()
+    await flushTimerWork()
 
     const nameInput = document.body.querySelector('input[id="claw-name"]') as HTMLInputElement
     await act(async () => {

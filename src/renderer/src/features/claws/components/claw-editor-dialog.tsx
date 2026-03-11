@@ -89,6 +89,7 @@ function CreateClawDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isProviderInlineFlowOpen, setIsProviderInlineFlowOpen] = useState(false)
   const [isChannelInlineFlowOpen, setIsChannelInlineFlowOpen] = useState(false)
+  const [isSubmitArmed, setIsSubmitArmed] = useState(false)
   const nameInputRef = useRef<HTMLInputElement | null>(null)
   const hasFocusedNameStepRef = useRef(false)
 
@@ -107,11 +108,13 @@ function CreateClawDialog({
     setErrorMessage(null)
     setIsProviderInlineFlowOpen(false)
     setIsChannelInlineFlowOpen(false)
+    setIsSubmitArmed(false)
     hasFocusedNameStepRef.current = false
   }, [isOpen, t])
 
   useEffect(() => {
     if (!isOpen || currentStep !== 2) {
+      setIsSubmitArmed(false)
       return
     }
 
@@ -119,6 +122,14 @@ function CreateClawDialog({
     if (!hasFocusedNameStepRef.current) {
       nameInputRef.current?.select()
       hasFocusedNameStepRef.current = true
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsSubmitArmed(true)
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
     }
   }, [currentStep, isOpen])
 
@@ -179,8 +190,10 @@ function CreateClawDialog({
     setCurrentStep((step) => Math.min(step + 1, steps.length - 1))
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault()
+  async function handleSubmit(): Promise<void> {
+    if (currentStep < steps.length - 1 || !isSubmitArmed) {
+      return
+    }
 
     if (name.trim().length === 0) {
       setErrorMessage(t('claws.dialog.errors.assistantNameRequired'))
@@ -216,6 +229,184 @@ function CreateClawDialog({
       : currentStep === 1
         ? isChannelInlineFlowOpen
         : false)
+  const createFlowBody = (
+    <>
+      <ClawDialogStepper steps={steps} currentStep={currentStep} />
+
+      {currentStep === 0 ? (
+        <ClawProviderSelectorDialog
+          isOpen={isOpen}
+          selectedProviderId={providerId}
+          providers={providers}
+          isMutating={isSubmitting}
+          errorMessage={null}
+          layout="inline"
+          onInlineFlowChange={setIsProviderInlineFlowOpen}
+          onClose={() => undefined}
+          onApply={(nextProviderId) => {
+            setProviderId(nextProviderId)
+            setErrorMessage(null)
+          }}
+          onCreateProvider={onCreateProvider}
+          onUpdateProvider={onUpdateProvider}
+        />
+      ) : null}
+
+      {currentStep === 1 ? (
+        <ClawChannelSelectorDialog
+          isOpen={isOpen}
+          currentAssistantId={null}
+          selectedChannelId={selectedChannelId}
+          channels={configuredChannels}
+          isMutating={isSubmitting}
+          errorMessage={null}
+          layout="inline"
+          onInlineFlowChange={setIsChannelInlineFlowOpen}
+          onClose={() => undefined}
+          onApply={(channelId) => {
+            setSelectedChannelId(channelId)
+            setErrorMessage(null)
+          }}
+          onCreateChannel={onCreateChannel}
+          onUpdateChannel={onUpdateChannel}
+          onDeleteChannel={onDeleteChannel}
+        />
+      ) : null}
+
+      {currentStep === 2 ? (
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <h3 className="text-base font-semibold">{t('claws.dialog.stepper.steps.details')}</h3>
+            <p className="text-sm text-muted-foreground">
+              {t('claws.dialog.stepper.detailsDescription')}
+            </p>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-lg border border-border p-4">
+              <p className="text-sm font-medium">{t('claws.dialog.fields.provider')}</p>
+              {selectedProvider ? (
+                <div className="mt-2 space-y-1">
+                  <p className="font-medium">{selectedProvider.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedProvider.type} · {selectedProvider.selectedModel}
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {t('claws.providerSelector.noProviderSelected')}
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-border p-4">
+              <p className="text-sm font-medium">{t('claws.dialog.fields.channelName')}</p>
+              {selectedChannel ? (
+                <div className="mt-2 space-y-1">
+                  <p className="font-medium">{selectedChannel.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {channelTypeLabel(selectedChannel.type, t)} ·{' '}
+                    {channelStatusLabel(selectedChannel.status, t)}
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {t('claws.card.noChannelConnected')}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <label htmlFor="claw-name" className="text-sm font-medium">
+              {t('claws.dialog.fields.assistantName')}
+            </label>
+            <Input
+              id="claw-name"
+              ref={nameInputRef}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <label htmlFor="claw-workspace-path" className="text-sm font-medium">
+              {t('claws.dialog.fields.workspacePath')}
+            </label>
+            <div className="flex gap-2">
+              <Input
+                id="claw-workspace-path"
+                value={workspacePath}
+                onChange={(event) => setWorkspacePath(event.target.value)}
+                placeholder={t('claws.dialog.workspacePathPlaceholder')}
+                disabled={isSubmitting}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSubmitting}
+                onClick={() => void handlePickWorkspaceFolder()}
+              >
+                {t('claws.dialog.pickFolder')}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">{t('claws.dialog.workspacePathHint')}</p>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={enabled && selectedChannelId.length > 0}
+              disabled={!selectedChannelId || isSubmitting}
+              onChange={(event) => setEnabled(event.target.checked)}
+            />
+            <span>{t('claws.dialog.enableAfterSaving')}</span>
+          </label>
+
+          {!selectedChannelId ? (
+            <p className="text-xs text-muted-foreground">
+              {t('claws.channelSelector.description')}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
+
+      <DialogFooter>
+        <Button
+          id="claw-create-back"
+          type="button"
+          variant="outline"
+          onClick={handleBack}
+          disabled={footerDisabled}
+        >
+          {t('claws.dialog.stepper.actions.back')}
+        </Button>
+        {currentStep < steps.length - 1 ? (
+          <Button
+            key="claw-create-next"
+            id="claw-create-next"
+            type="button"
+            onClick={handleNext}
+            disabled={footerDisabled || (currentStep === 0 && providerId.trim().length === 0)}
+          >
+            {t('claws.dialog.stepper.actions.next')}
+          </Button>
+        ) : (
+          <Button
+            key="claw-create-submit"
+            id="claw-create-submit"
+            type="button"
+            disabled={isSubmitting || !isSubmitArmed}
+            onClick={() => void handleSubmit()}
+          >
+            {t('claws.dialog.createButton')}
+          </Button>
+        )}
+      </DialogFooter>
+    </>
+  )
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -224,180 +415,7 @@ function CreateClawDialog({
           <DialogTitle>{t('claws.dialog.createTitle')}</DialogTitle>
           <DialogDescription>{t('claws.dialog.telegramDescription')}</DialogDescription>
         </DialogHeader>
-
-        <form className="space-y-6" onSubmit={(event) => void handleSubmit(event)}>
-          <ClawDialogStepper steps={steps} currentStep={currentStep} />
-
-          {currentStep === 0 ? (
-            <ClawProviderSelectorDialog
-              isOpen={isOpen}
-              selectedProviderId={providerId}
-              providers={providers}
-              isMutating={isSubmitting}
-              errorMessage={null}
-              layout="inline"
-              onInlineFlowChange={setIsProviderInlineFlowOpen}
-              onClose={() => undefined}
-              onApply={(nextProviderId) => {
-                setProviderId(nextProviderId)
-                setErrorMessage(null)
-              }}
-              onCreateProvider={onCreateProvider}
-              onUpdateProvider={onUpdateProvider}
-            />
-          ) : null}
-
-          {currentStep === 1 ? (
-            <ClawChannelSelectorDialog
-              isOpen={isOpen}
-              currentAssistantId={null}
-              selectedChannelId={selectedChannelId}
-              channels={configuredChannels}
-              isMutating={isSubmitting}
-              errorMessage={null}
-              layout="inline"
-              onInlineFlowChange={setIsChannelInlineFlowOpen}
-              onClose={() => undefined}
-              onApply={(channelId) => {
-                setSelectedChannelId(channelId)
-                setErrorMessage(null)
-              }}
-              onCreateChannel={onCreateChannel}
-              onUpdateChannel={onUpdateChannel}
-              onDeleteChannel={onDeleteChannel}
-            />
-          ) : null}
-
-          {currentStep === 2 ? (
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <h3 className="text-base font-semibold">
-                  {t('claws.dialog.stepper.steps.details')}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {t('claws.dialog.stepper.detailsDescription')}
-                </p>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-lg border border-border p-4">
-                  <p className="text-sm font-medium">{t('claws.dialog.fields.provider')}</p>
-                  {selectedProvider ? (
-                    <div className="mt-2 space-y-1">
-                      <p className="font-medium">{selectedProvider.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedProvider.type} · {selectedProvider.selectedModel}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {t('claws.providerSelector.noProviderSelected')}
-                    </p>
-                  )}
-                </div>
-
-                <div className="rounded-lg border border-border p-4">
-                  <p className="text-sm font-medium">{t('claws.dialog.fields.channelName')}</p>
-                  {selectedChannel ? (
-                    <div className="mt-2 space-y-1">
-                      <p className="font-medium">{selectedChannel.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {channelTypeLabel(selectedChannel.type, t)} ·{' '}
-                        {channelStatusLabel(selectedChannel.status, t)}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {t('claws.card.noChannelConnected')}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <label htmlFor="claw-name" className="text-sm font-medium">
-                  {t('claws.dialog.fields.assistantName')}
-                </label>
-                <Input
-                  id="claw-name"
-                  ref={nameInputRef}
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <label htmlFor="claw-workspace-path" className="text-sm font-medium">
-                  {t('claws.dialog.fields.workspacePath')}
-                </label>
-                <div className="flex gap-2">
-                  <Input
-                    id="claw-workspace-path"
-                    value={workspacePath}
-                    onChange={(event) => setWorkspacePath(event.target.value)}
-                    placeholder={t('claws.dialog.workspacePathPlaceholder')}
-                    disabled={isSubmitting}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isSubmitting}
-                    onClick={() => void handlePickWorkspaceFolder()}
-                  >
-                    {t('claws.dialog.pickFolder')}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('claws.dialog.workspacePathHint')}
-                </p>
-              </div>
-
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={enabled && selectedChannelId.length > 0}
-                  disabled={!selectedChannelId || isSubmitting}
-                  onChange={(event) => setEnabled(event.target.checked)}
-                />
-                <span>{t('claws.dialog.enableAfterSaving')}</span>
-              </label>
-
-              {!selectedChannelId ? (
-                <p className="text-xs text-muted-foreground">
-                  {t('claws.channelSelector.description')}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-
-          {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-
-          <DialogFooter>
-            <Button
-              id="claw-create-back"
-              type="button"
-              variant="outline"
-              onClick={handleBack}
-              disabled={footerDisabled}
-            >
-              {t('claws.dialog.stepper.actions.back')}
-            </Button>
-            {currentStep < steps.length - 1 ? (
-              <Button
-                id="claw-create-next"
-                type="button"
-                onClick={handleNext}
-                disabled={footerDisabled || (currentStep === 0 && providerId.trim().length === 0)}
-              >
-                {t('claws.dialog.stepper.actions.next')}
-              </Button>
-            ) : (
-              <Button id="claw-create-submit" type="submit" disabled={isSubmitting}>
-                {t('claws.dialog.createButton')}
-              </Button>
-            )}
-          </DialogFooter>
-        </form>
+        <div className="space-y-6">{createFlowBody}</div>
       </DialogContent>
     </Dialog>
   )
