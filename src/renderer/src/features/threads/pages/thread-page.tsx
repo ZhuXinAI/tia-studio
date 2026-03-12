@@ -22,6 +22,7 @@ export function ThreadPage(): React.JSX.Element {
           canCreateThread={Boolean(controller.selectedAssistant)}
           onCreateThread={controller.onCreateThread}
           onCreateAssistant={controller.onCreateAssistant}
+          onBrowseAssistants={controller.onBrowseAssistants}
           onSelectAssistant={controller.onSelectAssistant}
           onSelectThread={controller.onSelectThread}
           onEditAssistant={controller.onEditAssistant}

@@ -317,7 +317,9 @@ export function formatChannelToolInputUpdate(
       title: chunk.title
     })
   })
-  return header;
+  const detail = serializeToolDetail(chunk.input)
+
+  return detail ? `${header}\n${messages.inputLabel}:\n${detail}` : header
 }
 
 export function formatChannelToolOutputUpdate(

@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   release:
+    name: Release (${{ matrix.name }})
     if: >
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
@@ -20,7 +21,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        include:
+          # Publish a single macOS universal artifact so auto-update metadata
+          # stays in sync instead of racing across separate arm64/x64 jobs.
+          - name: macOS Universal
+            os: macos-latest
+            is_macos: true
+            release_command: pnpm exec electron-builder --mac --universal --publish always
+          - name: Windows
+            os: windows-latest
+            is_macos: false
+            release_command: pnpm exec electron-builder --publish always
 
     env:
       RELEASE_TAG: ${{ github.event.workflow_run.head_branch }}
@@ -47,7 +58,7 @@ jobs:
         run: pnpm install
 
       - name: Import Code Signing Certificate (macOS)
-        if: matrix.os == 'macos-latest'
+        if: matrix.is_macos
         env:
           CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
           CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
@@ -75,10 +86,10 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           pnpm run build
-          pnpm exec electron-builder --publish always
+          ${{ matrix.release_command }}
 
       - name: Cleanup Keychain (macOS)
-        if: matrix.os == 'macos-latest' && always()
+        if: matrix.is_macos && always()
         run: |
           security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
 

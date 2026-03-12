@@ -44,6 +44,12 @@ async function flushAsyncWork(): Promise<void> {
   })
 }
 
+async function flushTimerWork(): Promise<void> {
+  await act(async () => {
+    await new Promise((resolve) => window.setTimeout(resolve, 0))
+  })
+}
+
 function setElementValue(
   element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
   value: string
@@ -498,12 +504,15 @@ describe('ClawsPage', () => {
     await advanceCreateStep()
 
     const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
 
     await act(async () => {
       setElementValue(nameInput, 'Ops Assistant')
     })
     await flushAsyncWork()
+    await advanceCreateStep()
+    await flushTimerWork()
+
+    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
 
     await clickElement(saveButton)
     await flushAsyncWork()
@@ -601,12 +610,15 @@ describe('ClawsPage', () => {
     await advanceCreateStep()
 
     const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
 
     await act(async () => {
       setElementValue(nameInput, 'Telegram Assistant')
     })
     await flushAsyncWork()
+    await advanceCreateStep()
+    await flushTimerWork()
+
+    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
 
     await clickElement(saveButton)
     await flushAsyncWork()
@@ -723,12 +735,15 @@ describe('ClawsPage', () => {
     await advanceCreateStep()
 
     const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
 
     await act(async () => {
       setElementValue(nameInput, 'Telegram Assistant')
     })
     await flushAsyncWork()
+    await advanceCreateStep()
+    await flushTimerWork()
+
+    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
 
     await clickElement(saveButton)
     await flushAsyncWork()
@@ -828,12 +843,15 @@ describe('ClawsPage', () => {
     await advanceCreateStep()
 
     const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
 
     await act(async () => {
       setElementValue(nameInput, 'WhatsApp Assistant')
     })
     await flushAsyncWork()
+    await advanceCreateStep()
+    await flushTimerWork()
+
+    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
 
     await clickElement(saveButton)
     await flushAsyncWork()

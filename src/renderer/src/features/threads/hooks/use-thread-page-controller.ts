@@ -301,10 +301,11 @@ export function useThreadPageController() {
     }
 
     const selectedAssistantId = params.assistantId ?? null
-    if (
-      selectedAssistantId &&
-      assistants.some((assistant) => assistant.id === selectedAssistantId)
-    ) {
+    if (!selectedAssistantId) {
+      return
+    }
+
+    if (assistants.some((assistant) => assistant.id === selectedAssistantId)) {
       return
     }
 
@@ -844,6 +845,9 @@ export function useThreadPageController() {
       void createNewThread()
     },
     onCreateAssistant: openCreateAssistantDialog,
+    onBrowseAssistants: () => {
+      navigate('/chat')
+    },
     onSelectAssistant: handleSelectAssistant,
     onSelectThread: handleSelectThread,
     onEditAssistant: openEditAssistantDialog,

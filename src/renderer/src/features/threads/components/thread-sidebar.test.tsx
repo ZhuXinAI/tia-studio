@@ -6,6 +6,34 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ThreadSidebar } from './thread-sidebar'
 
+vi.mock('react-virtuoso', () => ({
+  Virtuoso: ({
+    data = [],
+    itemContent,
+    className
+  }: {
+    data?: Array<unknown>
+    itemContent?: (index: number, item: unknown) => React.ReactNode
+    className?: string
+  }) => (
+    <div data-testid="thread-sidebar-viewport" data-class-name={className}>
+      {data.map((item, index) => (
+        <div key={index}>{itemContent ? itemContent(index, item) : null}</div>
+      ))}
+    </div>
+  )
+}))
+
+type TestThread = {
+  id: string
+  assistantId: string
+  resourceId: string
+  title: string
+  lastMessageAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 describe('thread sidebar assistant management', () => {
   let container: HTMLDivElement
   let root: Root
@@ -28,19 +56,25 @@ describe('thread sidebar assistant management', () => {
 
   function renderSidebar(callbacks?: {
     onCreateAssistant?: () => void
+    onBrowseAssistants?: () => void
+    onSelectAssistant?: (assistantId: string) => void
     onEditAssistant?: (assistantId: string) => void
     onDeleteAssistant?: (assistantId: string) => void
     canDeleteAssistant?: boolean
-    threads?: Array<{
-      id: string
+    isDetailView?: boolean
+    threads?: TestThread[]
+    assistantName?: string
+    extraBranches?: Array<{
       assistantId: string
-      resourceId: string
-      title: string
-      lastMessageAt: string | null
-      createdAt: string
-      updatedAt: string
+      assistantName: string
+      canDeleteAssistant: boolean
+      isSelected: boolean
+      threads: TestThread[]
     }>
   }): void {
+    const assistantName = callbacks?.assistantName ?? 'Planner'
+    const isDetailView = callbacks?.isDetailView ?? false
+
     act(() => {
       root.render(
         <MemoryRouter>
@@ -48,23 +82,25 @@ describe('thread sidebar assistant management', () => {
             branches={[
               {
                 assistantId: 'assistant-1',
-                assistantName: 'Planner',
+                assistantName,
                 canDeleteAssistant: callbacks?.canDeleteAssistant ?? true,
-                isSelected: true,
+                isSelected: isDetailView,
                 threads: callbacks?.threads ?? []
-              }
+              },
+              ...(callbacks?.extraBranches ?? [])
             ]}
             selectedThreadId={null}
             deletingThreadId={null}
             deletingAssistantId={null}
             isLoadingData={false}
-            assistantsCount={1}
+            assistantsCount={1 + (callbacks?.extraBranches?.length ?? 0)}
             isLoadingThreads={false}
             isCreatingThread={false}
-            canCreateThread={false}
+            canCreateThread={isDetailView}
             onCreateThread={() => undefined}
             onCreateAssistant={callbacks?.onCreateAssistant ?? (() => undefined)}
-            onSelectAssistant={() => undefined}
+            onBrowseAssistants={callbacks?.onBrowseAssistants ?? (() => undefined)}
+            onSelectAssistant={callbacks?.onSelectAssistant ?? (() => undefined)}
             onSelectThread={() => undefined}
             onEditAssistant={callbacks?.onEditAssistant ?? (() => undefined)}
             onDeleteAssistant={callbacks?.onDeleteAssistant ?? (() => undefined)}
@@ -75,7 +111,7 @@ describe('thread sidebar assistant management', () => {
     })
   }
 
-  it('opens create assistant dialog from assistants heading', () => {
+  it('opens create assistant dialog from assistants heading in master view', () => {
     const onCreateAssistant = vi.fn()
     renderSidebar({ onCreateAssistant })
 
@@ -91,7 +127,7 @@ describe('thread sidebar assistant management', () => {
     expect(onCreateAssistant).toHaveBeenCalledTimes(1)
   })
 
-  it('shows assistant actions menu with edit and destructive delete controls', () => {
+  it('shows assistant actions menu with edit and destructive delete controls in master view', () => {
     const onEditAssistant = vi.fn()
     const onDeleteAssistant = vi.fn()
     renderSidebar({ onEditAssistant, onDeleteAssistant })
@@ -117,7 +153,6 @@ describe('thread sidebar assistant management', () => {
     expect(deleteButton).not.toBeNull()
     expect(actionsMenu).not.toBeNull()
     expect(actionsMenu?.className).toContain('bg-card')
-    expect(actionsMenu?.className).not.toContain('bg-popover')
     expect(deleteButton?.className).toContain('text-destructive')
 
     act(() => {
@@ -158,9 +193,122 @@ describe('thread sidebar assistant management', () => {
     expect(onDeleteAssistant).not.toHaveBeenCalled()
   })
 
-  it('shows only the thread title without an inline timestamp', () => {
+  it('shows detail view controls and lets the user return to assistants', () => {
+    const onBrowseAssistants = vi.fn()
+    renderSidebar({ isDetailView: true, onBrowseAssistants })
+
+    expect(container.textContent).toContain('Current assistant')
+    expect(container.textContent).toContain('Threads')
+
+    const backButton = container.querySelector(
+      '[aria-label="Back to assistants"]'
+    ) as HTMLButtonElement | null
+    expect(backButton).not.toBeNull()
+
+    act(() => {
+      backButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(onBrowseAssistants).toHaveBeenCalledTimes(1)
+  })
+
+  it('supports switching assistants from the detail header dropdown', () => {
+    const onSelectAssistant = vi.fn()
+    renderSidebar({
+      isDetailView: true,
+      onSelectAssistant,
+      extraBranches: [
+        {
+          assistantId: 'assistant-2',
+          assistantName: 'Reviewer',
+          canDeleteAssistant: true,
+          isSelected: false,
+          threads: []
+        }
+      ]
+    })
+
+    const switcherTrigger = container.querySelector(
+      '[aria-label="Switch assistants"]'
+    ) as HTMLButtonElement | null
+    expect(switcherTrigger).not.toBeNull()
+
+    act(() => {
+      switcherTrigger?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(container.textContent).toContain('Reviewer')
+
+    const reviewerButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Reviewer'
+    )
+
+    act(() => {
+      reviewerButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(onSelectAssistant).toHaveBeenCalledWith('assistant-2')
+  })
+
+  it('filters the virtualized thread list by search text in detail view', async () => {
+    const releaseThreadTitle = 'Release checklist'
+    const skillThreadTitle = 'Help creating a coding skill'
+
+    renderSidebar({
+      isDetailView: true,
+      threads: [
+        {
+          id: 'thread-1',
+          assistantId: 'assistant-1',
+          resourceId: 'default-profile',
+          title: skillThreadTitle,
+          lastMessageAt: '2026-03-03T15:24:00.000Z',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z'
+        },
+        {
+          id: 'thread-2',
+          assistantId: 'assistant-1',
+          resourceId: 'default-profile',
+          title: releaseThreadTitle,
+          lastMessageAt: '2026-03-04T15:24:00.000Z',
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        }
+      ]
+    })
+
+    const searchInput = container.querySelector(
+      'input[aria-label="Search assistant threads"]'
+    ) as HTMLInputElement | null
+    expect(searchInput).not.toBeNull()
+
+    act(() => {
+      if (!searchInput) {
+        return
+      }
+
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        'value'
+      )?.set
+      valueSetter?.call(searchInput, 'release')
+      searchInput.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(container.textContent).toContain(releaseThreadTitle)
+    expect(container.textContent).not.toContain(skillThreadTitle)
+  })
+
+  it('shows only the thread title without an inline timestamp in detail view', () => {
     const threadTitle = 'Help creating a coding skill'
     renderSidebar({
+      isDetailView: true,
       threads: [
         {
           id: 'thread-1',

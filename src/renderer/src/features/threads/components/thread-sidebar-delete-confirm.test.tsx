@@ -6,6 +6,22 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ThreadSidebar } from './thread-sidebar'
 
+vi.mock('react-virtuoso', () => ({
+  Virtuoso: ({
+    data = [],
+    itemContent
+  }: {
+    data?: Array<unknown>
+    itemContent?: (index: number, item: unknown) => React.ReactNode
+  }) => (
+    <div>
+      {data.map((item, index) => (
+        <div key={index}>{itemContent ? itemContent(index, item) : null}</div>
+      ))}
+    </div>
+  )
+}))
+
 describe('ThreadSidebar delete confirmation', () => {
   let container: HTMLDivElement
   let root: Root
@@ -62,6 +78,7 @@ describe('ThreadSidebar delete confirmation', () => {
             canCreateThread
             onCreateThread={() => undefined}
             onCreateAssistant={() => undefined}
+            onBrowseAssistants={() => undefined}
             onSelectAssistant={() => undefined}
             onSelectThread={() => undefined}
             onEditAssistant={() => undefined}

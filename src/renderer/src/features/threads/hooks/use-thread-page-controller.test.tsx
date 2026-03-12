@@ -401,6 +401,29 @@ describe('useThreadPageController', () => {
     expect(mockState.sendMessageMock).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps the chat root route in assistant directory mode', async () => {
+    delete mockState.routeParams.assistantId
+    delete mockState.routeParams.threadId
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+          onForceRerenderReady={(value) => {
+            forceRerender = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(() => controller !== null, 'controller to mount')
+
+    expect(controller?.selectedAssistant).toBeNull()
+    expect(mockState.navigateMock).not.toHaveBeenCalled()
+  })
+
   it('asks for confirmation before deleting an assistant', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
 
