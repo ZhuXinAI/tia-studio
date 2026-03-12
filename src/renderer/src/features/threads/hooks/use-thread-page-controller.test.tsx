@@ -476,4 +476,54 @@ describe('useThreadPageController', () => {
       'useChat resume mode'
     )
   })
+
+  it('clears stale messages before loading selected thread history', async () => {
+    mockState.routeParams.threadId = 'thread-1'
+    mockState.threadsData = [
+      {
+        id: 'thread-1',
+        assistantId: 'assistant-1',
+        resourceId: 'default-profile',
+        title: 'Recovered thread',
+        lastMessageAt: null,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z'
+      }
+    ]
+
+    let resolveHistory: ((messages: unknown[]) => void) | null = null
+    mockState.listThreadChatMessagesMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveHistory = resolve
+        })
+    )
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+          onForceRerenderReady={(value) => {
+            forceRerender = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(
+      () => mockState.listThreadChatMessagesMock.mock.calls.length === 1,
+      'thread history request'
+    )
+
+    expect(mockState.setMessagesMock).toHaveBeenCalledWith([])
+
+    await act(async () => {
+      resolveHistory?.([])
+      await Promise.resolve()
+    })
+
+    expect(mockState.setMessagesMock).toHaveBeenLastCalledWith([])
+  })
 })

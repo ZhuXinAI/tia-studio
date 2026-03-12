@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createApiClient } from '../../../lib/api-client'
 
-export type ProviderType = 'openai' | 'openai-response' | 'gemini' | 'anthropic' | 'ollama'
+export type ProviderType =
+  | 'openai'
+  | 'openai-response'
+  | 'openrouter'
+  | 'gemini'
+  | 'anthropic'
+  | 'ollama'
 
 export type ProviderRecord = {
   id: string

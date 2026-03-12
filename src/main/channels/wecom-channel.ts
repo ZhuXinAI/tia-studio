@@ -163,7 +163,11 @@ export class WeComChannel extends AbstractChannel {
       return null
     }
 
-    if (body.chattype === 'group' && this.groupRequireMention && !isBotMentioned(content, this.options.botId)) {
+    if (
+      body.chattype === 'group' &&
+      this.groupRequireMention &&
+      !isBotMentioned(content, this.options.botId)
+    ) {
       return null
     }
 

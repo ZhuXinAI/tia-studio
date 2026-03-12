@@ -128,7 +128,8 @@
         "disabledDescription": "バックグラウンドダウンロードを無効にし、手動で確認します。",
         "loadError": "自動更新の状態を読み込めませんでした。",
         "saveError": "自動更新設定の保存に失敗しました。",
-        "checkError": "更新の確認に失敗しました。"
+        "checkError": "更新の確認に失敗しました。",
+        "restartError": "Failed to restart and install the downloaded update."
       },
       "links": {
         "docs": {
@@ -154,7 +155,9 @@
       },
       "buttons": {
         "checkUpdate": "更新を確認",
-        "checking": "確認中..."
+        "checking": "確認中...",
+        "restartToUpdate": "Restart to update",
+        "restarting": "Restarting..."
       }
     },
     "runtime": {
@@ -305,6 +308,7 @@
       "typeLabels": {
         "openai": "OpenAI Compatible",
         "openai-response": "OpenAI Responses",
+        "openrouter": "OpenRouter",
         "gemini": "Gemini",
         "anthropic": "Anthropic",
         "ollama": "Ollama"
@@ -312,6 +316,7 @@
       "typeDescriptions": {
         "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
         "openai-response": "For services using OpenAI response format. Use this for third-party APIs that return OpenAI-compatible responses.",
+        "openrouter": "For OpenRouter's native AI SDK provider integration. This type is intended for built-in OpenRouter templates.",
         "gemini": "For Google Gemini models. Requires Google AI API key from ai.google.dev.",
         "anthropic": "For Claude models from Anthropic. Requires Anthropic API key from console.anthropic.com.",
         "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint."
@@ -778,6 +783,8 @@
       "tokenInput": "{{value}} 入力",
       "tokenOutput": "{{value}} 出力",
       "modeLabel": "{{name}} のアシスタントチャット",
+      "remoteBadge": "Remote channel",
+      "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "新しいスレッド",
       "setupIncomplete": "アシスタントの設定が不完全です。メッセージを送る前に「設定」を開いてプロバイダーとモデルを設定してください。",
       "composer": {
@@ -839,7 +846,8 @@
       "tabs": {
         "essential": "基本設定",
         "tools": "ツール",
-        "skills": "Skills"
+        "skills": "Skills",
+        "coding": "Coding"
       },
       "fields": {
         "name": "名前",
@@ -909,6 +917,45 @@
         "removingButton": "Removing...",
         "removeButton": "Remove",
         "readOnly": "Read-only"
+      },
+      "coding": {
+        "enableLabel": "Enable coding agent",
+        "description": "Add a Codex-powered subagent for code changes, debugging, and test runs.",
+        "toggleAriaLabel": "Enable coding agent",
+        "fields": {
+          "cwd": "Working directory (cwd)",
+          "addDirs": "Additional directories (addDirs)",
+          "skipGitRepoCheck": "Skip git repo check",
+          "fullAuto": "Full auto mode",
+          "approvalMode": "Approval mode",
+          "sandboxMode": "Sandbox mode"
+        },
+        "cwdHelp": "Defaults to the workspace path. Use an absolute path or a path relative to the workspace.",
+        "addDirsHelp": "One path per line. These map to repeated --add-dir entries.",
+        "skipGitRepoCheckHelp": "Skip Git repository validation for this coding session.",
+        "fullAutoHelp": "Runs with --full-auto and bypasses approval/sandbox prompts.",
+        "approvalModeHelp": "Controls when Codex requests approval for commands.",
+        "sandboxModeHelp": "Controls the filesystem sandbox mode for Codex.",
+        "skipGitRepoCheckAriaLabel": "Toggle skip git repo check",
+        "fullAutoAriaLabel": "Toggle full auto mode",
+        "placeholders": {
+          "cwd": "/Users/name/repo",
+          "addDirs": "../shared\n/opt/tools"
+        },
+        "approvalModes": {
+          "untrusted": "Untrusted",
+          "on-failure": "On failure",
+          "on-request": "On request",
+          "never": "Never"
+        },
+        "sandboxModes": {
+          "read-only": "Read-only",
+          "workspace-write": "Workspace write",
+          "danger-full-access": "Danger full access"
+        },
+        "errors": {
+          "cwdRequired": "Set a workspace path or coding working directory to enable coding."
+        }
       }
     }
   },

@@ -6,18 +6,26 @@ import type { ChannelThreadBindingsRepository } from '../persistence/repos/chann
 import type { ChannelsRepository } from '../persistence/repos/channels-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import { ChannelEventBus } from './channel-event-bus'
+import {
+  formatChannelInterruptionReply,
+  formatChannelToolErrorUpdate,
+  formatChannelToolInputUpdate,
+  formatChannelToolOutputUpdate
+} from './channel-progress-messages'
 import type { ChannelMessageReceivedEvent } from './types'
 import { logger } from '../utils/logger'
 
-type InterruptionDecision = {
+export type InterruptionDecision = {
   decision: 'interrupt' | 'queue'
   reason: string
 }
 
-type InterruptionDecisionInput = {
+export type InterruptionDecisionInput = {
+  assistantId: string
   activeTaskSummary: string
   incomingMessage: string
   queuedMessageCount: number
+  replyLocaleHint?: string | null
 }
 
 type WorkItemCompletion = {
@@ -53,6 +61,7 @@ type ChannelMessageRouterOptions = {
   bindingsRepo: ChannelThreadBindingsRepository
   threadsRepo: ThreadsRepository
   assistantRuntime: AssistantRuntime
+  resolveToolProgressLocale?: (() => string | null | undefined) | undefined
   threadMessageEventsStore?: {
     appendMessagesUpdated(input: {
       assistantId: string
@@ -69,10 +78,6 @@ type ChannelMessageRouterOptions = {
 const DEFAULT_PROFILE_ID = 'default-profile'
 const DEFAULT_THREAD_TITLE = 'New Thread'
 const EMPTY_ASSISTANT_REPLY_MESSAGE = '[Error] Failed to generate a response. Please try again.'
-const INTERRUPTION_REPLY_MESSAGES = {
-  interrupt: 'Understood — pausing the current reply and switching now.',
-  queue: 'Got it — I’ll handle this right after the current reply.'
-} as const
 const RESUME_RECOGNIZED_REPLY = 'Resuming the paused request now.'
 const RESUME_NOT_AVAILABLE_REPLY = 'There is no paused request to resume right now.'
 const RESUME_COMMANDS = new Set(['continue', 'resume', 'go on', 'carry on', '继续', '接着'])
@@ -127,12 +132,13 @@ function toFriendlyErrorMessage(raw: string): string {
 
 async function drainStreamWithToolUpdates(
   stream: ReadableStream<UIMessageChunk>,
-  onToolUpdate?: (message: string) => Promise<void>
+  onToolUpdate?: (message: string) => Promise<void>,
+  locale?: string | null
 ): Promise<string> {
   const reader = stream.getReader()
   let assistantText = ''
   let streamError: string | null = null
-  const toolNamesByCallId = new Map<string, string>()
+  const toolsByCallId = new Map<string, { toolName: string; title?: string }>()
 
   try {
     while (true) {
@@ -146,17 +152,21 @@ async function drainStreamWithToolUpdates(
       } else if (value.type === 'error') {
         streamError = value.errorText
       } else if (value.type === 'tool-input-available' && onToolUpdate) {
-        toolNamesByCallId.set(value.toolCallId, value.toolName)
+        toolsByCallId.set(value.toolCallId, {
+          toolName: value.toolName,
+          ...(value.title ? { title: value.title } : {})
+        })
+        await onToolUpdate(formatChannelToolInputUpdate(value, locale))
       } else if (value.type === 'tool-output-available' && onToolUpdate) {
-        const toolName = toolNamesByCallId.get(value.toolCallId)
-        if (toolName) {
-          const toolMessage = formatToolResultUpdate({
-            toolName
-          })
-          if (toolMessage) {
-            await onToolUpdate(toolMessage)
-          }
+        const tool = toolsByCallId.get(value.toolCallId) ?? {
+          toolName: value.toolCallId
         }
+        await onToolUpdate(formatChannelToolOutputUpdate(value, tool, locale))
+      } else if (value.type === 'tool-output-error' && onToolUpdate) {
+        const tool = toolsByCallId.get(value.toolCallId) ?? {
+          toolName: value.toolCallId
+        }
+        await onToolUpdate(formatChannelToolErrorUpdate(value, tool, locale))
       }
     }
   } finally {
@@ -168,18 +178,6 @@ async function drainStreamWithToolUpdates(
   }
 
   return assistantText
-}
-
-function formatToolResultUpdate(toolResult: { toolName: string }): string | null {
-  const toolResultMessages: Record<string, string> = {
-    browserSearch: '✅ Search completed',
-    createCronJob: '✅ Reminder set',
-    removeCronJob: '✅ Reminder removed',
-    writeSoulMemory: '✅ Memory saved',
-    writeWorkLog: '✅ Work log updated'
-  }
-
-  return toolResultMessages[toolResult.toolName] ?? null
 }
 
 function toErrorLogMessage(error: unknown): string {
@@ -205,27 +203,27 @@ function decideInterruptionHeuristically(input: InterruptionDecisionInput): Inte
   if (message.length === 0) {
     return {
       decision: 'queue',
-      reason: INTERRUPTION_REPLY_MESSAGES.queue
+      reason: formatChannelInterruptionReply('queue', input.replyLocaleHint)
     }
   }
 
   if (HARD_INTERRUPT_PATTERNS.some((pattern) => pattern.test(message))) {
     return {
       decision: 'interrupt',
-      reason: INTERRUPTION_REPLY_MESSAGES.interrupt
+      reason: formatChannelInterruptionReply('interrupt', input.replyLocaleHint)
     }
   }
 
   if (SOFT_QUEUE_PATTERNS.some((pattern) => pattern.test(message))) {
     return {
       decision: 'queue',
-      reason: INTERRUPTION_REPLY_MESSAGES.queue
+      reason: formatChannelInterruptionReply('queue', input.replyLocaleHint)
     }
   }
 
   return {
     decision: 'queue',
-    reason: INTERRUPTION_REPLY_MESSAGES.queue
+    reason: formatChannelInterruptionReply('queue', input.replyLocaleHint)
   }
 }
 
@@ -341,9 +339,11 @@ export class ChannelMessageRouter {
     }
 
     const decision = await this.decideInterruption({
+      assistantId: workItem.assistantId,
       activeTaskSummary: describeWorkItem(activeRun.item),
       incomingMessage: workItem.userMessage.content,
-      queuedMessageCount: state.queue.length
+      queuedMessageCount: state.queue.length,
+      replyLocaleHint: this.options.resolveToolProgressLocale?.()
     })
 
     if (decision.decision === 'interrupt') {
@@ -421,10 +421,14 @@ export class ChannelMessageRouter {
         abortSignal: activeRun.abortController.signal
       })
 
-      // Drain stream and only publish user-facing tool completion updates
-      const assistantReplyText = await drainStreamWithToolUpdates(stream, async (toolMessage) => {
-        await this.publishReply(item.event, toolMessage)
-      })
+      const toolProgressLocale = this.options.resolveToolProgressLocale?.()
+      const assistantReplyText = await drainStreamWithToolUpdates(
+        stream,
+        async (toolMessage) => {
+          await this.publishReply(item.event, toolMessage)
+        },
+        toolProgressLocale
+      )
 
       if (activeRun.abortController.signal.aborted) {
         return

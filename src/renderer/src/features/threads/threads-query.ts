@@ -7,6 +7,11 @@ export type ThreadRecord = {
   resourceId: string
   title: string
   metadata?: Record<string, unknown>
+  channelBinding?: {
+    channelId: string
+    remoteChatId: string
+    createdAt: string
+  } | null
   lastMessageAt: string | null
   createdAt: string
   updatedAt: string

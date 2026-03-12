@@ -104,6 +104,71 @@ describe('assistants route', () => {
     expect(patched.enabled).toBe(true)
   })
 
+  it('updates assistant name when object config fields are present', async () => {
+    const provider = await providersRepo.create({
+      name: 'OpenAI',
+      type: 'openai',
+      apiKey: 'test-key',
+      selectedModel: 'gpt-5'
+    })
+    const assistant = await assistantsRepo.create({
+      name: 'Trip Planner',
+      providerId: provider.id,
+      workspaceConfig: {
+        rootPath: '/tmp/workspace'
+      },
+      codingConfig: {
+        enabled: true,
+        cwd: '.',
+        addDirs: ['src'],
+        approvalMode: 'on-failure',
+        sandboxMode: 'workspace-write'
+      },
+      mcpConfig: {
+        filesystem: true
+      }
+    })
+
+    const patchResponse = await app.request(`http://localhost/v1/assistants/${assistant.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Trip Planner Pro',
+        workspaceConfig: {
+          rootPath: '/tmp/workspace'
+        },
+        codingConfig: {
+          enabled: true,
+          cwd: '.',
+          addDirs: ['src'],
+          approvalMode: 'on-failure',
+          sandboxMode: 'workspace-write'
+        },
+        mcpConfig: {
+          filesystem: true
+        }
+      })
+    })
+
+    expect(patchResponse.status).toBe(200)
+    await expect(patchResponse.json()).resolves.toMatchObject({
+      name: 'Trip Planner Pro',
+      workspaceConfig: {
+        rootPath: '/tmp/workspace'
+      },
+      codingConfig: {
+        enabled: true,
+        cwd: '.',
+        addDirs: ['src'],
+        approvalMode: 'on-failure',
+        sandboxMode: 'workspace-write'
+      },
+      mcpConfig: {
+        filesystem: true
+      }
+    })
+  })
+
   it('updates assistant max steps', async () => {
     const provider = await providersRepo.create({
       name: 'OpenAI',

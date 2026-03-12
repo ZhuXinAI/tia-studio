@@ -24,6 +24,11 @@ type ManagedRuntimeRecord = {
   errorMessage: string | null
 }
 type ManagedRuntimesState = Record<ManagedRuntimeKind, ManagedRuntimeRecord>
+type CodexCliStatus = {
+  available: boolean
+  version: string | null
+  errorMessage: string | null
+}
 type UiConfig = {
   transparent?: boolean
   language?: string | null
@@ -57,25 +62,64 @@ interface TiaDesktopAPI {
   getSystemLocale?: () => Promise<string>
   getAutoUpdateState?: () => Promise<{
     enabled: boolean
-    status: 'idle' | 'checking' | 'update-available' | 'up-to-date' | 'unsupported' | 'error'
+    status:
+      | 'idle'
+      | 'checking'
+      | 'update-available'
+      | 'update-downloaded'
+      | 'up-to-date'
+      | 'unsupported'
+      | 'error'
     availableVersion: string | null
     lastCheckedAt: string | null
     message: string | null
   }>
   setAutoUpdateEnabled?: (enabled: boolean) => Promise<{
     enabled: boolean
-    status: 'idle' | 'checking' | 'update-available' | 'up-to-date' | 'unsupported' | 'error'
+    status:
+      | 'idle'
+      | 'checking'
+      | 'update-available'
+      | 'update-downloaded'
+      | 'up-to-date'
+      | 'unsupported'
+      | 'error'
     availableVersion: string | null
     lastCheckedAt: string | null
     message: string | null
   }>
   checkForUpdates?: () => Promise<{
     enabled: boolean
-    status: 'idle' | 'checking' | 'update-available' | 'up-to-date' | 'unsupported' | 'error'
+    status:
+      | 'idle'
+      | 'checking'
+      | 'update-available'
+      | 'update-downloaded'
+      | 'up-to-date'
+      | 'unsupported'
+      | 'error'
     availableVersion: string | null
     lastCheckedAt: string | null
     message: string | null
   }>
+  getCodexCliStatus?: () => Promise<CodexCliStatus>
+  restartToUpdate?: () => Promise<void>
+  onAutoUpdateStateChanged?: (
+    listener: (state: {
+      enabled: boolean
+      status:
+        | 'idle'
+        | 'checking'
+        | 'update-available'
+        | 'update-downloaded'
+        | 'up-to-date'
+        | 'unsupported'
+        | 'error'
+      availableVersion: string | null
+      lastCheckedAt: string | null
+      message: string | null
+    }) => void
+  ) => () => void
   getManagedRuntimeStatus?: () => Promise<ManagedRuntimesState>
   checkManagedRuntimeLatest?: (kind: ManagedRuntimeKind) => Promise<ManagedRuntimesState>
   installManagedRuntime?: (kind: ManagedRuntimeKind) => Promise<ManagedRuntimesState>

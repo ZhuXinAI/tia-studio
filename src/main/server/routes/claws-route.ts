@@ -435,7 +435,9 @@ function mergeChannelConfig(
     return {
       botToken:
         channel.botToken ??
-        (typeof existingChannel.config.botToken === 'string' ? existingChannel.config.botToken : ''),
+        (typeof existingChannel.config.botToken === 'string'
+          ? existingChannel.config.botToken
+          : ''),
       groupRequireMention
     }
   }
@@ -465,7 +467,9 @@ function mergeChannelConfig(
       (typeof existingChannel.config.appId === 'string' ? existingChannel.config.appId : ''),
     appSecret:
       channel.appSecret ??
-      (typeof existingChannel.config.appSecret === 'string' ? existingChannel.config.appSecret : ''),
+      (typeof existingChannel.config.appSecret === 'string'
+        ? existingChannel.config.appSecret
+        : ''),
     groupRequireMention
   }
 }

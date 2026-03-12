@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const providerTypeSchema = z.enum([
   'openai',
   'openai-response',
+  'openrouter',
   'gemini',
   'anthropic',
   'ollama'

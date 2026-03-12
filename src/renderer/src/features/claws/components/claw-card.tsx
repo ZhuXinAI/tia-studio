@@ -54,13 +54,13 @@ export function ClawCard({
   return (
     <Card className="gap-3">
       <CardHeader className="pb-0">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-4 overflow-hidden">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <CardTitle className="truncate">{claw.name}</CardTitle>
+            <div className="flex min-w-0 items-center gap-2">
+              <CardTitle className="min-w-0 flex-1 truncate">{claw.name}</CardTitle>
               {claw.channel && (
                 <span
-                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
                     claw.enabled
                       ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                       : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
@@ -70,9 +70,11 @@ export function ClawCard({
                 </span>
               )}
             </div>
-            <CardDescription className="truncate">{claw.description || '\u00A0'}</CardDescription>
+            <CardDescription className="min-w-0 truncate">
+              {claw.description || '\u00A0'}
+            </CardDescription>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             <TooltipProvider>
               {onViewHeartbeat ? (
                 <Tooltip>
@@ -95,7 +97,12 @@ export function ClawCard({
               {onViewCron ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" disabled={isSubmitting} onClick={onViewCron}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={isSubmitting}
+                      onClick={onViewCron}
+                    >
                       <Clock className="size-4" />
                       <span className="sr-only">View Cron</span>
                     </Button>

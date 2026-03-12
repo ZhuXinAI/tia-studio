@@ -22,6 +22,7 @@ import type {
   ProviderType,
   SaveProviderInput
 } from '../../settings/providers/providers-query'
+import { getVisibleProviderTypeOptions } from '../../settings/providers/provider-type-options'
 import minimaxLogo from '../../../assets/providers/minimax.png'
 import glmLogo from '../../../assets/providers/glm.png'
 import ollamaLogo from '../../../assets/providers/ollama.png'
@@ -61,8 +62,6 @@ type ProviderFormState = {
   icon: string | null
   officialSite: string | null
 }
-
-const providerTypes: ProviderType[] = ['openai', 'openai-response', 'gemini', 'anthropic', 'ollama']
 
 function getProviderAvatarPath(icon: string | null): string | null {
   if (!icon) {
@@ -380,6 +379,10 @@ export function ClawProviderSelectorDialog({
       : formMode === 'create'
         ? t('claws.providerSelector.create.description')
         : t('claws.providerSelector.edit.description')
+  const providerTypeOptions = useMemo(
+    () => getVisibleProviderTypeOptions(formState.type),
+    [formState.type]
+  )
   const selectorBody = (
     <div className="space-y-3">
       {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
@@ -564,7 +567,7 @@ export function ClawProviderSelectorDialog({
             }))
           }
         >
-          {providerTypes.map((providerType) => (
+          {providerTypeOptions.map((providerType) => (
             <option key={providerType} value={providerType}>
               {providerTypeLabel(providerType, t)}
             </option>

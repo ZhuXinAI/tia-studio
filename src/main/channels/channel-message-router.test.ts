@@ -475,7 +475,7 @@ describe('ChannelMessageRouter', () => {
     ])
   })
 
-  it('does not publish tool-start or tool-error updates to the channel', async () => {
+  it('publishes localized tool input and tool error updates to the channel', async () => {
     const publishedEvents: unknown[] = []
     const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
       createStream([
@@ -483,7 +483,10 @@ describe('ChannelMessageRouter', () => {
         {
           type: 'tool-input-available',
           toolCallId: 'tool-call-1',
-          toolName: 'mastra_workspace_read_file'
+          toolName: 'mastra_workspace_read_file',
+          input: {
+            path: 'README.md'
+          }
         } as UIMessageChunk,
         {
           type: 'tool-output-error',
@@ -501,7 +504,8 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
-      assistantRuntime: createAssistantRuntimeStub(streamChat)
+      assistantRuntime: createAssistantRuntimeStub(streamChat),
+      resolveToolProgressLocale: () => 'zh-CN'
     })
 
     eventBus.subscribe('channel.message.send-requested', (event) => {
@@ -521,10 +525,21 @@ describe('ChannelMessageRouter', () => {
       }
     })
 
-    expect(publishedEvents).toEqual([])
+    expect(publishedEvents).toEqual([
+      expect.objectContaining({
+        channelId,
+        remoteChatId: 'oc_123',
+        content: '正在使用工具：Workspace Read File\n输入:\n{\n  "path": "README.md"\n}'
+      }),
+      expect.objectContaining({
+        channelId,
+        remoteChatId: 'oc_123',
+        content: '工具失败：Workspace Read File\n错误:\nFile not found'
+      })
+    ])
   })
 
-  it('still publishes user-facing tool completion updates to the channel', async () => {
+  it('publishes tool input and output updates to the channel', async () => {
     const publishedEvents: unknown[] = []
     const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
       createStream([
@@ -532,7 +547,10 @@ describe('ChannelMessageRouter', () => {
         {
           type: 'tool-input-available',
           toolCallId: 'tool-call-1',
-          toolName: 'writeSoulMemory'
+          toolName: 'updateSoulMemory',
+          input: {
+            content: 'Remember this note.'
+          }
         } as UIMessageChunk,
         {
           type: 'tool-output-available',
@@ -574,7 +592,12 @@ describe('ChannelMessageRouter', () => {
       expect.objectContaining({
         channelId,
         remoteChatId: 'oc_123',
-        content: '✅ Memory saved'
+        content: 'Using tool: Update Soul Memory\nInput:\n{\n  "content": "Remember this note."\n}'
+      }),
+      expect.objectContaining({
+        channelId,
+        remoteChatId: 'oc_123',
+        content: 'Tool output: Update Soul Memory\nOutput:\n{\n  "ok": true\n}'
       })
     ])
   })

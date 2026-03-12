@@ -1,4 +1,4 @@
-import { Bot, MessageSquarePlus, MoreHorizontal, Plus, Trash2 } from 'lucide-react'
+import { Bot, Link2, MessageSquarePlus, MoreHorizontal, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../../components/ui/button'
 import {
@@ -310,6 +310,7 @@ export function ThreadSidebar({
                       const isDeleting = deletingThreadId === thread.id
                       const isConfirmingDelete = confirmDeleteThreadId === thread.id
                       const displayTitle = getThreadDisplayTitle(thread.title)
+                      const hasRemoteBinding = Boolean(thread.channelBinding?.remoteChatId)
                       return (
                         <SidebarMenuSubItem key={thread.id}>
                           <div className="flex items-center gap-1">
@@ -321,7 +322,19 @@ export function ThreadSidebar({
                                 onSelectThread(branch.assistantId, thread.id)
                               }}
                             >
-                              <span className="truncate">{displayTitle}</span>
+                              <span className="flex min-w-0 items-center gap-1">
+                                <span className="truncate">{displayTitle}</span>
+                                {hasRemoteBinding ? (
+                                  <span
+                                    className="shrink-0 text-blue-500/70"
+                                    title={t('threads.chat.remoteBadgeTitle')}
+                                    aria-label={t('threads.chat.remoteBadgeTitle')}
+                                    role="img"
+                                  >
+                                    <Link2 className="size-3" aria-hidden="true" />
+                                  </span>
+                                ) : null}
+                              </span>
                             </SidebarMenuSubButton>
                             <div
                               className="relative"

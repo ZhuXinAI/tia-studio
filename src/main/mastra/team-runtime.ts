@@ -15,6 +15,7 @@ import type { TeamThreadsRepository } from '../persistence/repos/team-threads-re
 import type { TeamWorkspacesRepository } from '../persistence/repos/team-workspaces-repo'
 import { ChatRouteError } from '../server/chat/chat-errors'
 import { TeamRunStatusStore } from '../server/chat/team-run-status-store'
+import { createCodingSubagent } from './coding-agent'
 import { resolveModel } from './model-resolver'
 import { createContainedLocalFilesystemInstructions } from './workspace-filesystem-instructions'
 
@@ -248,6 +249,12 @@ export class TeamRuntimeService implements TeamRuntime {
           input.teamWorkspaceRootPath,
           assistant.skillsConfig ?? {}
         )
+        const codingAgent = createCodingSubagent({
+          assistantId: assistant.id,
+          assistantName: assistant.name,
+          workspaceRootPath: input.teamWorkspaceRootPath,
+          codingConfig: assistant.codingConfig
+        })
 
         const agent = new Agent({
           id: assistant.id,
@@ -260,6 +267,7 @@ export class TeamRuntimeService implements TeamRuntime {
             apiHost: provider.apiHost,
             selectedModel: provider.selectedModel
           }) as never,
+          ...(codingAgent ? { agents: { codingAgent } } : {}),
           workspace
         })
 

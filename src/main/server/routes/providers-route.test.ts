@@ -104,6 +104,44 @@ describe('providers route', () => {
     await expect(response.json()).resolves.toEqual({ ok: true })
   })
 
+  it('checks openrouter providers against the OpenRouter models endpoint', async () => {
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: [{ id: 'openai/gpt-4o' }]
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
+    )
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const response = await app.request('http://localhost/v1/providers/test-connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'openrouter',
+        apiKey: 'test-key',
+        selectedModel: 'openai/gpt-4o'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ ok: true })
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'https://openrouter.ai/api/v1/models',
+      expect.objectContaining({
+        method: 'GET',
+        headers: {
+          Authorization: 'Bearer test-key'
+        }
+      })
+    )
+  })
+
   it('returns failed provider connection check with message', async () => {
     const fetchSpy = vi.fn(
       async () =>

@@ -31,6 +31,25 @@ function canDeleteAssistant(assistant: AssistantRecord): boolean {
   return assistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] !== true
 }
 
+function areChannelBindingsEquivalent(
+  left?: ThreadRecord['channelBinding'],
+  right?: ThreadRecord['channelBinding']
+): boolean {
+  if (!left && !right) {
+    return true
+  }
+
+  if (!left || !right) {
+    return false
+  }
+
+  return (
+    left.channelId === right.channelId &&
+    left.remoteChatId === right.remoteChatId &&
+    left.createdAt === right.createdAt
+  )
+}
+
 export function evaluateAssistantReadiness(input: {
   assistant: AssistantRecord | null
   providers: ProviderRecord[]
@@ -75,6 +94,7 @@ function areThreadsEquivalent(left: ThreadRecord[], right: ThreadRecord[]): bool
       thread.assistantId === candidate.assistantId &&
       thread.resourceId === candidate.resourceId &&
       thread.title === candidate.title &&
+      areChannelBindingsEquivalent(thread.channelBinding, candidate.channelBinding) &&
       thread.lastMessageAt === candidate.lastMessageAt &&
       thread.createdAt === candidate.createdAt &&
       thread.updatedAt === candidate.updatedAt

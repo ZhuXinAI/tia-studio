@@ -1,6 +1,6 @@
 const defaultTimeoutMs = 8000
 
-type ProviderType = 'openai' | 'openai-response' | 'gemini' | 'anthropic' | 'ollama'
+type ProviderType = 'openai' | 'openai-response' | 'openrouter' | 'gemini' | 'anthropic' | 'ollama'
 
 type ProviderConnectionInput = {
   type: ProviderType
@@ -115,9 +115,15 @@ function extractErrorMessage(payload: unknown): string | null {
 }
 
 function buildConnectionRequest(input: ProviderConnectionInput): ConnectionRequest {
-  if (input.type === 'openai' || input.type === 'openai-response') {
+  if (input.type === 'openai' || input.type === 'openai-response' || input.type === 'openrouter') {
     return {
-      url: joinUrl(input.apiHost ?? 'https://api.openai.com/v1', '/models'),
+      url: joinUrl(
+        input.apiHost ??
+          (input.type === 'openrouter'
+            ? 'https://openrouter.ai/api/v1'
+            : 'https://api.openai.com/v1'),
+        '/models'
+      ),
       headers: {
         Authorization: `Bearer ${input.apiKey}`
       }

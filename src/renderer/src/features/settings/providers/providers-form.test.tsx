@@ -4,6 +4,7 @@ import {
   shouldShowProviderModelsField,
   validateProviderForm
 } from './providers-form'
+import { getVisibleProviderTypeOptions } from './provider-type-options'
 
 describe('providers form helpers', () => {
   it('requires selected model before submit', () => {
@@ -34,5 +35,10 @@ describe('providers form helpers', () => {
 
   it('hides providerModels field for non-prebuilt providers', () => {
     expect(shouldShowProviderModelsField(false)).toBe(false)
+  })
+
+  it('keeps openrouter out of manual provider options unless already selected', () => {
+    expect(getVisibleProviderTypeOptions()).not.toContain('openrouter')
+    expect(getVisibleProviderTypeOptions('openrouter')).toContain('openrouter')
   })
 })

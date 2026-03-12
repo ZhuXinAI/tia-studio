@@ -14,7 +14,14 @@ async function flushAsyncWork(): Promise<void> {
 
 type AutoUpdateState = {
   enabled: boolean
-  status: 'idle' | 'checking' | 'update-available' | 'up-to-date' | 'unsupported' | 'error'
+  status:
+    | 'idle'
+    | 'checking'
+    | 'update-available'
+    | 'update-downloaded'
+    | 'up-to-date'
+    | 'unsupported'
+    | 'error'
   availableVersion: string | null
   lastCheckedAt: string | null
   message: string | null
@@ -23,6 +30,8 @@ type AutoUpdateState = {
 type GetAutoUpdateStateFn = () => Promise<AutoUpdateState>
 type SetAutoUpdateEnabledFn = (enabled: boolean) => Promise<AutoUpdateState>
 type CheckForUpdatesFn = () => Promise<AutoUpdateState>
+type RestartToUpdateFn = () => Promise<void>
+type OnAutoUpdateStateChangedFn = (listener: (state: AutoUpdateState) => void) => () => void
 
 describe('about settings page', () => {
   let container: HTMLDivElement
@@ -30,6 +39,9 @@ describe('about settings page', () => {
   let getAutoUpdateState: ReturnType<typeof vi.fn<GetAutoUpdateStateFn>>
   let setAutoUpdateEnabled: ReturnType<typeof vi.fn<SetAutoUpdateEnabledFn>>
   let checkForUpdates: ReturnType<typeof vi.fn<CheckForUpdatesFn>>
+  let restartToUpdate: ReturnType<typeof vi.fn<RestartToUpdateFn>>
+  let onAutoUpdateStateChanged: ReturnType<typeof vi.fn<OnAutoUpdateStateChangedFn>>
+  let autoUpdateStateListener: ((state: AutoUpdateState) => void) | null
 
   beforeEach(() => {
     ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -57,6 +69,17 @@ describe('about settings page', () => {
       lastCheckedAt: '2026-03-03T00:00:00.000Z',
       message: 'You are up to date.'
     }))
+    restartToUpdate = vi.fn<RestartToUpdateFn>(async () => undefined)
+    autoUpdateStateListener = null
+    onAutoUpdateStateChanged = vi.fn<OnAutoUpdateStateChangedFn>((listener) => {
+      autoUpdateStateListener = listener
+
+      return () => {
+        if (autoUpdateStateListener === listener) {
+          autoUpdateStateListener = null
+        }
+      }
+    })
 
     window.tiaDesktop = {
       getConfig: vi.fn(async () => ({
@@ -70,7 +93,9 @@ describe('about settings page', () => {
       pickDirectory: vi.fn(async () => null),
       getAutoUpdateState,
       setAutoUpdateEnabled,
-      checkForUpdates
+      checkForUpdates,
+      restartToUpdate,
+      onAutoUpdateStateChanged
     }
   })
 
@@ -145,5 +170,38 @@ describe('about settings page', () => {
 
     expect(checkForUpdates).toHaveBeenCalledTimes(1)
     expect(container.textContent).toContain('You are up to date.')
+  })
+
+  it('switches to a restart button when the updater reports a downloaded update', async () => {
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <AboutSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+    expect(onAutoUpdateStateChanged).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      autoUpdateStateListener?.({
+        enabled: true,
+        status: 'update-downloaded',
+        availableVersion: '1.8.0',
+        lastCheckedAt: '2026-03-03T00:00:00.000Z',
+        message: 'Update 1.8.0 is ready to install. Restart TIA Studio to finish updating.'
+      })
+    })
+
+    const restartButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Restart to update')
+    )
+    expect(restartButton).toBeDefined()
+
+    await act(async () => {
+      restartButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(restartToUpdate).toHaveBeenCalledTimes(1)
   })
 })

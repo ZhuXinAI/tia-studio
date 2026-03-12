@@ -16,11 +16,13 @@ import { autoUpdater } from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
 import { AutoUpdateService } from './auto-updater'
 import { resolveServerConfig } from './config/server-config'
+import { getCodexCliStatus } from './codex/codex-cli'
 import { ensureBuiltInDefaultAgent } from './default-agent/default-agent-bootstrap'
 import { ensureBuiltInProviders } from './default-agent/built-in-providers-bootstrap'
 import { logger } from './utils/logger'
 import { ChannelEventBus } from './channels/channel-event-bus'
 import { resolveGroupRequireMention } from './channels/channel-config'
+import { createLlmInterruptionDecider } from './channels/llm-interruption-decider'
 import { ChannelMessageRouter } from './channels/channel-message-router'
 import { ChannelService } from './channels/channel-service'
 import { TelegramChannel } from './channels/telegram-channel'
@@ -65,7 +67,14 @@ import { UiConfigStore } from './ui-config'
 const serverConfig = resolveServerConfig({})
 const autoUpdateService = new AutoUpdateService({
   app,
-  updater: autoUpdater
+  updater: autoUpdater,
+  onStateChange: (state) => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) {
+        window.webContents.send('tia:auto-update-state-changed', state)
+      }
+    }
+  }
 })
 let localApiServer: ServerType | null = null
 let persistenceDatabasePath: string | null = null
@@ -299,6 +308,11 @@ async function startLocalApiServer(): Promise<void> {
     bindingsRepo: channelThreadBindingsRepo,
     threadsRepo,
     assistantRuntime,
+    interruptionDecider: createLlmInterruptionDecider({
+      assistantsRepo,
+      providersRepo
+    }),
+    resolveToolProgressLocale: () => resolveUiConfigStore().getConfig().language ?? app.getLocale(),
     threadMessageEventsStore
   })
   cronSchedulerService = new NodeCronSchedulerService({
@@ -365,6 +379,7 @@ async function startLocalApiServer(): Promise<void> {
       threads: threadsRepo,
       channels: channelsRepo,
       pairings: channelPairingsRepo,
+      channelThreadBindings: channelThreadBindingsRepo,
       cronJobs: cronJobsRepo,
       cronJobRuns: cronJobRunsRepo,
       heartbeats: heartbeatsRepo,
@@ -597,6 +612,12 @@ app.whenReady().then(async () => {
   })
   ipcMain.handle('tia:check-for-updates', () => {
     return autoUpdateService.checkForUpdates()
+  })
+  ipcMain.handle('tia:get-codex-cli-status', () => {
+    return getCodexCliStatus()
+  })
+  ipcMain.handle('tia:restart-to-update', () => {
+    autoUpdateService.restartToUpdate()
   })
   ipcMain.handle('tia:get-managed-runtime-status', () => {
     return resolveManagedRuntimeService().getStatus()

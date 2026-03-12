@@ -1,10 +1,12 @@
 import { join } from 'path'
 import { readFile as readFileFromFs, writeFile as writeFileFromFs } from 'node:fs/promises'
+import type { AppUpdater } from 'electron-updater'
 
 export type AutoUpdateStatus =
   | 'idle'
   | 'checking'
   | 'update-available'
+  | 'update-downloaded'
   | 'up-to-date'
   | 'unsupported'
   | 'error'
@@ -27,6 +29,10 @@ type AppLike = {
   getVersion: () => string
 }
 
+type UpdateDownloadedEventLike = {
+  version?: string
+}
+
 type UpdaterLike = {
   autoDownload: boolean
   checkForUpdates: () => Promise<{
@@ -34,11 +40,14 @@ type UpdaterLike = {
       version?: string
     }
   } | null>
+  quitAndInstall: () => void
+  on: AppUpdater['on']
 }
 
 type AutoUpdateServiceOptions = {
   app: AppLike
   updater: UpdaterLike
+  onStateChange?: (state: AutoUpdateState) => void
   settingsFilePath?: string
   readFile?: (path: string, encoding: 'utf8') => Promise<string>
   writeFile?: (path: string, data: string, encoding: 'utf8') => Promise<void>
@@ -74,6 +83,7 @@ function toErrorMessage(error: unknown): string {
 export class AutoUpdateService {
   private readonly app: AppLike
   private readonly updater: UpdaterLike
+  private readonly onStateChange?: (state: AutoUpdateState) => void
   private readonly readFile: (path: string, encoding: 'utf8') => Promise<string>
   private readonly writeFile: (path: string, data: string, encoding: 'utf8') => Promise<void>
   private readonly settingsFilePath: string
@@ -82,18 +92,20 @@ export class AutoUpdateService {
   constructor(options: AutoUpdateServiceOptions) {
     this.app = options.app
     this.updater = options.updater
+    this.onStateChange = options.onStateChange
     this.readFile = options.readFile ?? readFileFromFs
     this.writeFile = options.writeFile ?? writeFileFromFs
     this.settingsFilePath =
       options.settingsFilePath ?? join(this.app.getPath('userData'), 'auto-update.json')
     this.state = { ...defaultState }
+    this.registerUpdaterListeners()
   }
 
   async init(): Promise<AutoUpdateState> {
     const enabled = await this.loadEnabled()
     this.state.enabled = enabled
     this.updater.autoDownload = enabled
-    return this.getState()
+    return this.emitStateChanged()
   }
 
   getState(): AutoUpdateState {
@@ -104,7 +116,7 @@ export class AutoUpdateService {
     this.state.enabled = enabled
     this.updater.autoDownload = enabled
     await this.persistEnabled(enabled)
-    return this.getState()
+    return this.emitStateChanged()
   }
 
   async checkForUpdates(): Promise<AutoUpdateState> {
@@ -115,7 +127,7 @@ export class AutoUpdateService {
       this.state.status = 'unsupported'
       this.state.availableVersion = null
       this.state.message = 'Auto updates are available in packaged builds only.'
-      return this.getState()
+      return this.emitStateChanged()
     }
 
     this.state.status = 'checking'
@@ -130,20 +142,55 @@ export class AutoUpdateService {
       if (hasUpdate) {
         this.state.status = 'update-available'
         this.state.availableVersion = latestVersion
-        this.state.message = `Update ${latestVersion} is available.`
+        this.state.message = this.state.enabled
+          ? `Update ${latestVersion} is available and is downloading in the background.`
+          : `Update ${latestVersion} is available.`
       } else {
         this.state.status = 'up-to-date'
         this.state.availableVersion = null
         this.state.message = 'You are up to date.'
       }
 
-      return this.getState()
+      return this.emitStateChanged()
     } catch (error) {
       this.state.status = 'error'
       this.state.availableVersion = null
       this.state.message = toErrorMessage(error)
-      return this.getState()
+      return this.emitStateChanged()
     }
+  }
+
+  restartToUpdate(): void {
+    if (this.state.status !== 'update-downloaded') {
+      throw new Error('No downloaded update is ready to install.')
+    }
+
+    this.updater.quitAndInstall()
+  }
+
+  private registerUpdaterListeners(): void {
+    this.updater.on('update-downloaded', (event: UpdateDownloadedEventLike) => {
+      const downloadedVersion = event.version?.trim() ?? this.state.availableVersion
+      this.state.status = 'update-downloaded'
+      this.state.availableVersion = downloadedVersion
+      this.state.message = downloadedVersion
+        ? `Update ${downloadedVersion} is ready to install. Restart TIA Studio to finish updating.`
+        : 'An update is ready to install. Restart TIA Studio to finish updating.'
+      this.emitStateChanged()
+    })
+
+    this.updater.on('error', (error: Error) => {
+      this.state.status = 'error'
+      this.state.availableVersion = null
+      this.state.message = toErrorMessage(error)
+      this.emitStateChanged()
+    })
+  }
+
+  private emitStateChanged(): AutoUpdateState {
+    const nextState = this.getState()
+    this.onStateChange?.(nextState)
+    return nextState
   }
 
   private async loadEnabled(): Promise<boolean> {

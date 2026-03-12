@@ -440,6 +440,7 @@ export function useThreadPageController() {
     let active = true
     setIsLoadingChatHistory(true)
     hasLoadedInitialMessagesRef.current = false
+    setMessagesRef.current([])
 
     void listThreadChatMessages({
       assistantId,

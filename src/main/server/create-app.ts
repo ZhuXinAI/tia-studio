@@ -5,6 +5,7 @@ import type { AssistantHeartbeatRunsRepository } from '../persistence/repos/assi
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { ChannelsRepository } from '../persistence/repos/channels-repo'
 import type { ChannelPairingsRepository } from '../persistence/repos/channel-pairings-repo'
+import type { ChannelThreadBindingsRepository } from '../persistence/repos/channel-thread-bindings-repo'
 import type { CronJobsRepository } from '../persistence/repos/cron-jobs-repo'
 import type { CronJobRunsRepository } from '../persistence/repos/cron-job-runs-repo'
 import type { McpServersRepository } from '../persistence/repos/mcp-servers-repo'
@@ -48,6 +49,7 @@ type CreateAppOptions = {
     mcpServers: McpServersRepository
     channels: ChannelsRepository
     pairings: ChannelPairingsRepository
+    channelThreadBindings: ChannelThreadBindingsRepository
     cronJobs: CronJobsRepository
     cronJobRuns: CronJobRunsRepository
     heartbeats: AssistantHeartbeatsRepository
@@ -135,7 +137,8 @@ export function createApp(options: CreateAppOptions): Hono {
     })
     registerThreadsRoute(app, {
       threadsRepo: options.repositories.threads,
-      assistantsRepo: options.repositories.assistants
+      assistantsRepo: options.repositories.assistants,
+      channelThreadBindingsRepo: options.repositories.channelThreadBindings
     })
     registerTeamWorkspacesRoute(app, {
       teamWorkspacesRepo: options.repositories.teamWorkspaces

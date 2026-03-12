@@ -73,6 +73,16 @@ export const BUILT_IN_PROVIDERS: BuiltInProviderConfig[] = [
     supportsVision: true
   },
   {
+    id: 'built-in-openrouter',
+    name: 'OpenRouter',
+    type: 'openrouter',
+    icon: 'openrouter',
+    officialSite: 'https://openrouter.ai',
+    apiHost: 'https://openrouter.ai/api/v1',
+    defaultModel: 'openai/gpt-4o',
+    supportsVision: true
+  },
+  {
     id: 'built-in-anthropic',
     name: 'Anthropic',
     type: 'openai-response',

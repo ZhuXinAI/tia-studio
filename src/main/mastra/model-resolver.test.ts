@@ -16,6 +16,7 @@ describe('resolveModel', () => {
     )
     const factories = {
       openaiFactory: vi.fn(() => openaiProvider),
+      openrouterFactory: vi.fn(),
       anthropicFactory: vi.fn(),
       googleFactory: vi.fn(),
       ollamaFactory: vi.fn()
@@ -49,6 +50,7 @@ describe('resolveModel', () => {
     )
     const factories = {
       openaiFactory: vi.fn(() => openaiProvider),
+      openrouterFactory: vi.fn(),
       anthropicFactory: vi.fn(),
       googleFactory: vi.fn(),
       ollamaFactory: vi.fn()
@@ -68,12 +70,50 @@ describe('resolveModel', () => {
     expect(openaiProvider.responses).toHaveBeenCalledWith('gpt-5')
   })
 
+  it('resolves openrouter chat models in strict mode', () => {
+    const chatModel = { id: 'openrouter-chat-model' }
+    const openrouterProvider = Object.assign(
+      vi.fn(() => chatModel),
+      {
+        languageModel: vi.fn(() => chatModel),
+        chat: vi.fn(() => chatModel),
+        completion: vi.fn(() => ({ id: 'openrouter-completion-model' }))
+      }
+    )
+    const factories = {
+      openaiFactory: vi.fn(),
+      openrouterFactory: vi.fn(() => openrouterProvider),
+      anthropicFactory: vi.fn(),
+      googleFactory: vi.fn(),
+      ollamaFactory: vi.fn()
+    }
+
+    const result = resolveModel(
+      {
+        type: 'openrouter',
+        apiKey: 'test-openrouter-key',
+        apiHost: 'https://openrouter.ai/api/v1',
+        selectedModel: 'openai/gpt-4o'
+      },
+      factories
+    )
+
+    expect(result).toBe(chatModel)
+    expect(factories.openrouterFactory).toHaveBeenCalledWith({
+      apiKey: 'test-openrouter-key',
+      baseURL: 'https://openrouter.ai/api/v1',
+      compatibility: 'strict'
+    })
+    expect(openrouterProvider.chat).toHaveBeenCalledWith('openai/gpt-4o')
+  })
+
   it('resolves gemini, anthropic and ollama models', () => {
     const googleProvider = vi.fn(() => ({ id: 'gemini-model' }))
     const anthropicProvider = vi.fn(() => ({ id: 'anthropic-model' }))
     const ollamaProvider = vi.fn(() => ({ id: 'ollama-model' }))
     const factories = {
       openaiFactory: vi.fn(),
+      openrouterFactory: vi.fn(),
       anthropicFactory: vi.fn(() => anthropicProvider),
       googleFactory: vi.fn(() => googleProvider),
       ollamaFactory: vi.fn(() => ollamaProvider)

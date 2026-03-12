@@ -44,6 +44,8 @@ function toProviderTypeLabel(type: ProviderRecord['type'], t: (key: string) => s
       return t('settings.providers.typeLabels.openai')
     case 'openai-response':
       return t('settings.providers.typeLabels.openai-response')
+    case 'openrouter':
+      return t('settings.providers.typeLabels.openrouter')
     case 'gemini':
       return t('settings.providers.typeLabels.gemini')
     case 'anthropic':

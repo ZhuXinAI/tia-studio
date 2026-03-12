@@ -256,7 +256,8 @@ async function createWhatsAppClient(authDirectoryPath: string): Promise<WhatsApp
             await handleConnectionUpdate({
               status: 'connected',
               phoneNumber: resolvePhoneNumber(socket?.user?.id),
-              botJid: typeof socket?.user?.id === 'string' ? jidNormalizedUser(socket.user.id) : null
+              botJid:
+                typeof socket?.user?.id === 'string' ? jidNormalizedUser(socket.user.id) : null
             })
             return
           }
@@ -420,7 +421,10 @@ export class WhatsAppChannel extends AbstractChannel {
 
     if (update.status === 'connected') {
       this.botMentionJids.clear()
-      for (const jid of [update.botJid, update.phoneNumber ? `${update.phoneNumber}@s.whatsapp.net` : null]) {
+      for (const jid of [
+        update.botJid,
+        update.phoneNumber ? `${update.phoneNumber}@s.whatsapp.net` : null
+      ]) {
         if (typeof jid === 'string' && jid.length > 0) {
           this.botMentionJids.add(jidNormalizedUser(jid))
         }

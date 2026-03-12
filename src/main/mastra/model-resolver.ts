@@ -1,6 +1,7 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
+import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import type { MastraLanguageModel, MastraLegacyLanguageModel } from '@mastra/core/agent'
 import { createOllama } from 'ollama-ai-provider'
 
@@ -18,6 +19,16 @@ export type ModelResolverFactories = {
     chat: (modelId: string) => unknown
     completion: (modelId: string) => unknown
   }
+  openrouterFactory: (options?: {
+    apiKey?: string
+    baseURL?: string
+    compatibility?: 'strict' | 'compatible'
+  }) => {
+    (modelId: string): unknown
+    languageModel: (modelId: string) => unknown
+    chat: (modelId: string) => unknown
+    completion: (modelId: string) => unknown
+  }
   anthropicFactory: (options?: {
     apiKey?: string
     baseURL?: string
@@ -30,6 +41,7 @@ export type ResolvedModel = MastraLanguageModel | MastraLegacyLanguageModel
 
 const defaultFactories: ModelResolverFactories = {
   openaiFactory: createOpenAI,
+  openrouterFactory: createOpenRouter,
   anthropicFactory: createAnthropic,
   googleFactory: createGoogleGenerativeAI,
   ollamaFactory: createOllama
@@ -60,6 +72,16 @@ export function resolveModel(
     })
 
     return openaiProvider.responses(provider.selectedModel) as ResolvedModel
+  }
+
+  if (provider.type === 'openrouter') {
+    const openrouterProvider = mergedFactories.openrouterFactory({
+      apiKey: provider.apiKey,
+      baseURL: provider.apiHost ?? undefined,
+      compatibility: 'strict'
+    })
+
+    return openrouterProvider.chat(provider.selectedModel) as ResolvedModel
   }
 
   if (provider.type === 'gemini') {

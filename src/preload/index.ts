@@ -3,9 +3,17 @@ import { electronAPI } from '@electron-toolkit/preload'
 
 // Custom APIs for renderer
 const api = {}
+const autoUpdateStateChangedChannel = 'tia:auto-update-state-changed'
 type AutoUpdateState = {
   enabled: boolean
-  status: 'idle' | 'checking' | 'update-available' | 'up-to-date' | 'unsupported' | 'error'
+  status:
+    | 'idle'
+    | 'checking'
+    | 'update-available'
+    | 'update-downloaded'
+    | 'up-to-date'
+    | 'unsupported'
+    | 'error'
   availableVersion: string | null
   lastCheckedAt: string | null
   message: string | null
@@ -34,6 +42,11 @@ type ManagedRuntimeRecord = {
   errorMessage: string | null
 }
 type ManagedRuntimesState = Record<ManagedRuntimeKind, ManagedRuntimeRecord>
+type CodexCliStatus = {
+  available: boolean
+  version: string | null
+  errorMessage: string | null
+}
 type UiConfig = {
   transparent?: boolean
   language?: string | null
@@ -59,6 +72,19 @@ const tiaDesktop = {
   setAutoUpdateEnabled: (enabled: boolean) =>
     ipcRenderer.invoke('tia:set-auto-update-enabled', enabled) as Promise<AutoUpdateState>,
   checkForUpdates: () => ipcRenderer.invoke('tia:check-for-updates') as Promise<AutoUpdateState>,
+  getCodexCliStatus: () =>
+    ipcRenderer.invoke('tia:get-codex-cli-status') as Promise<CodexCliStatus>,
+  restartToUpdate: () => ipcRenderer.invoke('tia:restart-to-update') as Promise<void>,
+  onAutoUpdateStateChanged: (listener: (state: AutoUpdateState) => void) => {
+    const handleStateChange = (_event: Electron.IpcRendererEvent, nextState: AutoUpdateState) => {
+      listener(nextState)
+    }
+    ipcRenderer.on(autoUpdateStateChangedChannel, handleStateChange)
+
+    return () => {
+      ipcRenderer.removeListener(autoUpdateStateChangedChannel, handleStateChange)
+    }
+  },
   getManagedRuntimeStatus: () =>
     ipcRenderer.invoke('tia:get-managed-runtime-status') as Promise<ManagedRuntimesState>,
   checkManagedRuntimeLatest: (kind: ManagedRuntimeKind) =>

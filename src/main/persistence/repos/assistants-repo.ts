@@ -1,4 +1,8 @@
 import { randomUUID } from 'node:crypto'
+import {
+  normalizeAssistantCodingConfig,
+  type AssistantCodingConfig
+} from '../../assistants/coding-config'
 import type { AppDatabase } from '../client'
 
 const DEFAULT_ASSISTANT_MAX_STEPS = 100
@@ -12,6 +16,7 @@ export type AppAssistant = {
   providerId: string | null
   workspaceConfig: Record<string, unknown>
   skillsConfig: Record<string, unknown>
+  codingConfig?: AssistantCodingConfig
   mcpConfig: Record<string, boolean>
   maxSteps: number
   memoryConfig: Record<string, unknown> | null
@@ -27,6 +32,7 @@ export type CreateAssistantInput = {
   providerId: string | null
   workspaceConfig?: Record<string, unknown>
   skillsConfig?: Record<string, unknown>
+  codingConfig?: AssistantCodingConfig
   mcpConfig?: Record<string, boolean>
   maxSteps?: number
   memoryConfig?: Record<string, unknown> | null
@@ -120,6 +126,7 @@ function parseAssistantRow(row: Record<string, unknown>): AppAssistant {
     providerId: String(row.provider_id),
     workspaceConfig: normalizeWorkspaceConfig(parseJsonObject(row.workspace_config)),
     skillsConfig: parseJsonObject(row.skills_config),
+    codingConfig: normalizeAssistantCodingConfig(parseJsonObject(row.coding_config)),
     mcpConfig: parseJsonBooleanMap(row.mcp_config),
     maxSteps,
     memoryConfig: row.memory_config ? parseJsonObject(row.memory_config) : null,
@@ -133,7 +140,7 @@ export class AssistantsRepository {
 
   async list(): Promise<AppAssistant[]> {
     const result = await this.db.execute(
-      'SELECT id, name, description, instructions, enabled, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config, created_at, updated_at FROM app_assistants ORDER BY created_at DESC'
+      'SELECT id, name, description, instructions, enabled, provider_id, workspace_config, skills_config, coding_config, mcp_config, max_steps, memory_config, created_at, updated_at FROM app_assistants ORDER BY created_at DESC'
     )
 
     return result.rows.map((row) => parseAssistantRow(row as Record<string, unknown>))
@@ -141,7 +148,7 @@ export class AssistantsRepository {
 
   async getById(id: string): Promise<AppAssistant | null> {
     const result = await this.db.execute(
-      'SELECT id, name, description, instructions, enabled, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config, created_at, updated_at FROM app_assistants WHERE id = ? LIMIT 1',
+      'SELECT id, name, description, instructions, enabled, provider_id, workspace_config, skills_config, coding_config, mcp_config, max_steps, memory_config, created_at, updated_at FROM app_assistants WHERE id = ? LIMIT 1',
       [id]
     )
     const row = result.rows.at(0)
@@ -169,8 +176,9 @@ export class AssistantsRepository {
   async create(input: CreateAssistantInput): Promise<AppAssistant> {
     const id = randomUUID()
     const workspaceConfig = normalizeWorkspaceConfig(input.workspaceConfig)
+    const codingConfig = normalizeAssistantCodingConfig(input.codingConfig)
     await this.db.execute(
-      'INSERT INTO app_assistants (id, name, description, instructions, enabled, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO app_assistants (id, name, description, instructions, enabled, provider_id, workspace_config, skills_config, coding_config, mcp_config, max_steps, memory_config) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
         input.name,
@@ -180,6 +188,7 @@ export class AssistantsRepository {
         input.providerId,
         JSON.stringify(workspaceConfig),
         JSON.stringify(input.skillsConfig ?? {}),
+        JSON.stringify(codingConfig),
         JSON.stringify(input.mcpConfig ?? {}),
         input.maxSteps ?? DEFAULT_ASSISTANT_MAX_STEPS,
         input.memoryConfig ? JSON.stringify(input.memoryConfig) : null
@@ -203,9 +212,10 @@ export class AssistantsRepository {
     const workspaceConfig = normalizeWorkspaceConfig(
       input.workspaceConfig ?? existing.workspaceConfig
     )
+    const codingConfig = normalizeAssistantCodingConfig(input.codingConfig ?? existing.codingConfig)
 
     await this.db.execute(
-      'UPDATE app_assistants SET name = ?, description = ?, instructions = ?, enabled = ?, provider_id = ?, workspace_config = ?, skills_config = ?, mcp_config = ?, max_steps = ?, memory_config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE app_assistants SET name = ?, description = ?, instructions = ?, enabled = ?, provider_id = ?, workspace_config = ?, skills_config = ?, coding_config = ?, mcp_config = ?, max_steps = ?, memory_config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [
         input.name ?? existing.name,
         input.description ?? existing.description,
@@ -214,6 +224,7 @@ export class AssistantsRepository {
         input.providerId ?? existing.providerId,
         JSON.stringify(workspaceConfig),
         JSON.stringify(input.skillsConfig ?? existing.skillsConfig),
+        JSON.stringify(codingConfig),
         JSON.stringify(input.mcpConfig ?? existing.mcpConfig),
         input.maxSteps ?? existing.maxSteps,
         input.memoryConfig

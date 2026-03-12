@@ -1,4 +1,4 @@
-import { Plus, Sparkles, Settings2 } from 'lucide-react'
+import { Link2, Plus, Sparkles, Settings2 } from 'lucide-react'
 import type { UIMessage } from 'ai'
 import type { UseChatHelpers } from '@ai-sdk/react'
 import {
@@ -178,6 +178,7 @@ export function ThreadChatCard({
   const canCompose =
     Boolean(selectedAssistant && readiness.canChat) && !isChatStreaming && !isLoadingChatHistory
   const assistantName = selectedAssistant?.name ?? t('threads.chat.defaultAssistantName')
+  const hasRemoteBinding = Boolean(selectedThread?.channelBinding?.remoteChatId)
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
@@ -188,9 +189,23 @@ export function ThreadChatCard({
       <Card className="flex min-h-0 flex-1 flex-col gap-0 border-border/80 bg-card/78 py-0 rounded-none border-t-0">
         <CardHeader className="border-b border-border/70 py-2">
           <div className="flex h-full flex-nowrap items-center justify-between gap-3 overflow-hidden">
-            <CardTitle className="min-w-0 flex-1 truncate text-base">
-              {selectedThread?.title ??
-                t('threads.chat.titleWithAssistant', { name: assistantName })}
+            <CardTitle className="min-w-0 flex-1 text-base">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate">
+                  {selectedThread?.title ??
+                    t('threads.chat.titleWithAssistant', { name: assistantName })}
+                </span>
+                {hasRemoteBinding ? (
+                  <span
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:text-blue-200"
+                    title={t('threads.chat.remoteBadgeTitle')}
+                    aria-label={t('threads.chat.remoteBadgeTitle')}
+                  >
+                    <Link2 className="size-3" />
+                    {t('threads.chat.remoteBadge')}
+                  </span>
+                ) : null}
+              </div>
             </CardTitle>
             <div className="flex shrink-0 items-center gap-2">
               {tokenUsage && (
@@ -250,6 +265,8 @@ export function ThreadChatCard({
             ) : null}
 
             <ThreadChatMessageList
+              key={selectedThread?.id ?? `assistant:${selectedAssistant?.id ?? 'none'}`}
+              threadId={selectedThread?.id ?? null}
               assistantName={assistantName}
               isLoadingChatHistory={isLoadingChatHistory}
               isChatStreaming={isChatStreaming}

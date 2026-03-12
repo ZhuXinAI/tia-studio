@@ -9,7 +9,7 @@ const mcpServerSchema = z
     type: nonEmptyString,
     command: nonEmptyString.optional(),
     args: z.array(nonEmptyString).default([]),
-    env: z.record(z.string()).default({}),
+    env: z.record(z.string(), z.string()).default({}),
     installSource: nonEmptyString.default('unknown'),
     url: z.string().url().optional()
   })
@@ -32,5 +32,5 @@ const mcpServerSchema = z
   })
 
 export const updateMcpServersSettingsSchema = z.object({
-  mcpServers: z.record(mcpServerSchema)
+  mcpServers: z.record(z.string(), mcpServerSchema)
 })

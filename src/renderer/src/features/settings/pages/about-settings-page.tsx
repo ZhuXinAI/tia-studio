@@ -19,6 +19,7 @@ type AutoUpdateStatus =
   | 'idle'
   | 'checking'
   | 'update-available'
+  | 'update-downloaded'
   | 'up-to-date'
   | 'unsupported'
   | 'error'
@@ -132,6 +133,7 @@ export function AboutSettingsPage(): React.JSX.Element {
   const [autoUpdateState, setAutoUpdateState] = useState<AutoUpdateState>(fallbackAutoUpdateState)
   const [isSavingAutoUpdate, setIsSavingAutoUpdate] = useState(false)
   const [isCheckingForUpdates, setIsCheckingForUpdates] = useState(false)
+  const [isRestartingToUpdate, setIsRestartingToUpdate] = useState(false)
   const aboutLinks: AboutLinkItem[] = [
     {
       title: t('settings.about.links.docs.title'),
@@ -206,15 +208,31 @@ export function AboutSettingsPage(): React.JSX.Element {
     }
   }, [t])
 
+  useEffect(() => {
+    const unsubscribe = window.tiaDesktop?.onAutoUpdateStateChanged?.((nextState) => {
+      setAutoUpdateState(nextState)
+    })
+
+    return () => {
+      unsubscribe?.()
+    }
+  }, [])
+
   const versionLabel = useMemo(() => {
     return appInfo.version.startsWith('v') ? appInfo.version : `v${appInfo.version}`
   }, [appInfo.version])
 
   const statusRole = autoUpdateState.status === 'error' ? 'alert' : 'status'
+  const hasDownloadedUpdate = autoUpdateState.status === 'update-downloaded'
 
   const toggleAutoUpdate = async (): Promise<void> => {
     const setAutoUpdateEnabled = window.tiaDesktop?.setAutoUpdateEnabled
-    if (!setAutoUpdateEnabled || isSavingAutoUpdate || isCheckingForUpdates) {
+    if (
+      !setAutoUpdateEnabled ||
+      isSavingAutoUpdate ||
+      isCheckingForUpdates ||
+      isRestartingToUpdate
+    ) {
       return
     }
 
@@ -235,7 +253,12 @@ export function AboutSettingsPage(): React.JSX.Element {
 
   const checkForUpdates = async (): Promise<void> => {
     const checkForUpdatesInDesktop = window.tiaDesktop?.checkForUpdates
-    if (!checkForUpdatesInDesktop || isSavingAutoUpdate || isCheckingForUpdates) {
+    if (
+      !checkForUpdatesInDesktop ||
+      isSavingAutoUpdate ||
+      isCheckingForUpdates ||
+      isRestartingToUpdate
+    ) {
       return
     }
 
@@ -251,6 +274,31 @@ export function AboutSettingsPage(): React.JSX.Element {
       }))
     } finally {
       setIsCheckingForUpdates(false)
+    }
+  }
+
+  const restartToUpdate = async (): Promise<void> => {
+    const restartToUpdateInDesktop = window.tiaDesktop?.restartToUpdate
+    if (
+      !restartToUpdateInDesktop ||
+      !hasDownloadedUpdate ||
+      isSavingAutoUpdate ||
+      isCheckingForUpdates ||
+      isRestartingToUpdate
+    ) {
+      return
+    }
+
+    setIsRestartingToUpdate(true)
+    try {
+      await restartToUpdateInDesktop()
+    } catch {
+      setAutoUpdateState((current) => ({
+        ...current,
+        status: 'error',
+        message: t('settings.about.autoUpdate.restartError')
+      }))
+      setIsRestartingToUpdate(false)
     }
   }
 
@@ -311,21 +359,37 @@ export function AboutSettingsPage(): React.JSX.Element {
               </div>
             </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="shrink-0"
-              disabled={isSavingAutoUpdate || isCheckingForUpdates}
-              onClick={() => {
-                void checkForUpdates()
-              }}
-            >
-              {isCheckingForUpdates
-                ? t('settings.about.buttons.checking')
-                : t('settings.about.buttons.checkUpdate')}
-              <ExternalLink className="size-3.5" />
-            </Button>
+            {hasDownloadedUpdate ? (
+              <Button
+                type="button"
+                size="sm"
+                className="shrink-0"
+                disabled={isSavingAutoUpdate || isCheckingForUpdates || isRestartingToUpdate}
+                onClick={() => {
+                  void restartToUpdate()
+                }}
+              >
+                {isRestartingToUpdate
+                  ? t('settings.about.buttons.restarting')
+                  : t('settings.about.buttons.restartToUpdate')}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                disabled={isSavingAutoUpdate || isCheckingForUpdates || isRestartingToUpdate}
+                onClick={() => {
+                  void checkForUpdates()
+                }}
+              >
+                {isCheckingForUpdates
+                  ? t('settings.about.buttons.checking')
+                  : t('settings.about.buttons.checkUpdate')}
+                <ExternalLink className="size-3.5" />
+              </Button>
+            )}
           </div>
 
           <AboutToggleRow
@@ -339,7 +403,7 @@ export function AboutSettingsPage(): React.JSX.Element {
             onToggle={() => {
               void toggleAutoUpdate()
             }}
-            disabled={isSavingAutoUpdate || isCheckingForUpdates}
+            disabled={isSavingAutoUpdate || isCheckingForUpdates || isRestartingToUpdate}
           />
         </CardContent>
       </Card>

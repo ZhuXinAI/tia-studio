@@ -35,6 +35,7 @@ import { ChatRouteError } from '../server/chat/chat-errors'
 import { ensureAssistantWorkspaceFiles } from './assistant-workspace'
 import { resolveModel } from './model-resolver'
 import { AttachmentUploader } from './processors/attachment-uploader'
+import { createCodingSubagent } from './coding-agent'
 import { createBrowserSearchTool } from './tools/browser-search-tool'
 import { createChannelTools } from './tools/channel-tools'
 import { createCronTools } from './tools/cron-tools'
@@ -820,6 +821,7 @@ ${input.prompt}`
       provider.apiHost ?? '',
       JSON.stringify(assistant.workspaceConfig ?? {}),
       JSON.stringify(assistant.skillsConfig ?? {}),
+      JSON.stringify(assistant.codingConfig ?? {}),
       JSON.stringify(assistant.mcpConfig ?? {}),
       assistant.maxSteps,
       JSON.stringify(assistant.memoryConfig ?? {}),
@@ -945,6 +947,12 @@ ${input.prompt}`
       assistant.workspaceConfig ?? {},
       assistant.skillsConfig ?? {}
     )
+    const codingAgent = createCodingSubagent({
+      assistantId: assistant.id,
+      assistantName: assistant.name,
+      workspaceRootPath,
+      codingConfig: assistant.codingConfig
+    })
     const inputProcessors = [
       ...(workspaceRootPath
         ? [assistantWorkspaceContextInputProcessor({ workspaceRootPath })]
@@ -991,6 +999,7 @@ ${input.prompt}`
       model: model as never,
       memory: memory as never,
       ...(workspace ? { workspace } : {}),
+      ...(codingAgent ? { agents: { codingAgent } } : {}),
       tools,
       inputProcessors,
       ...(outputProcessors.length > 0 ? { outputProcessors } : {})

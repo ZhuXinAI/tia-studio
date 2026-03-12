@@ -110,6 +110,57 @@ describe('ThreadChatCard', () => {
     expect(html).not.toContain('Using Planner.')
   })
 
+  it('shows a remote channel badge when the thread is bound to a channel chat', () => {
+    const html = renderToString(
+      <ThreadChatCard
+        selectedAssistant={{
+          id: 'assistant-1',
+          name: 'Planner',
+          description: '',
+          instructions: 'Keep plans concise.',
+          enabled: true,
+          providerId: 'provider-1',
+          workspaceConfig: { rootPath: '/tmp/workspace' },
+          skillsConfig: {},
+          mcpConfig: {},
+          maxSteps: 100,
+          memoryConfig: null,
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z'
+        }}
+        selectedThread={{
+          id: 'thread-1',
+          assistantId: 'assistant-1',
+          resourceId: 'default-profile',
+          title: 'Channel thread',
+          lastMessageAt: '2026-03-01T00:00:00.000Z',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+          channelBinding: {
+            channelId: 'channel-1',
+            remoteChatId: 'chat-123',
+            createdAt: '2026-03-01T00:00:00.000Z'
+          }
+        }}
+        chat={{} as UseChatHelpers<UIMessage>}
+        readiness={{ canChat: true, checks: [] }}
+        isLoadingChatHistory={false}
+        isChatStreaming={false}
+        chatError={null}
+        loadError={null}
+        canAbortGeneration={false}
+        supportsVision
+        tokenUsage={null}
+        onSubmitMessage={async () => undefined}
+        onAbortGeneration={() => undefined}
+        onOpenAssistantConfig={() => undefined}
+        onCreateThread={() => undefined}
+      />
+    )
+
+    expect(html).toContain('Remote channel')
+  })
+
   it('shows stop action while streaming a response', () => {
     useAISDKRuntimeMock.mockClear()
 

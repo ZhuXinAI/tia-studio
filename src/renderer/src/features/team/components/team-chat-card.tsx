@@ -215,6 +215,8 @@ export function TeamChatCard({
               </div>
             ) : (
               <ThreadChatMessageList
+                key={selectedThread.id}
+                threadId={selectedThread.id}
                 assistantName={t('team.chat.supervisorName')}
                 isLoadingChatHistory={isLoadingChatHistory}
                 isChatStreaming={isChatStreaming}

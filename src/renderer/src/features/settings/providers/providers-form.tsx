@@ -5,6 +5,7 @@ import { Input } from '../../../components/ui/input'
 import { Textarea } from '../../../components/ui/textarea'
 import { Field, FieldLabel, FieldDescription, FieldError } from '../../../components/ui/field'
 import { Switch } from '../../../components/ui/switch'
+import { getVisibleProviderTypeOptions } from './provider-type-options'
 import type { ProviderType, SaveProviderInput } from './providers-query'
 
 export type ProviderFormValues = {
@@ -102,6 +103,10 @@ export function ProvidersForm({
   const showProviderModels = useMemo(() => {
     return shouldShowProviderModelsField(hasProviderModels)
   }, [hasProviderModels])
+  const providerTypeOptions = useMemo(
+    () => getVisibleProviderTypeOptions(values.type),
+    [values.type]
+  )
 
   const updateValue = (key: keyof ProviderFormValues, value: string) => {
     setValues((prev) => ({
@@ -189,11 +194,11 @@ export function ProvidersForm({
           onChange={(event) => updateValue('type', event.target.value as ProviderType)}
           disabled={isBuiltIn}
         >
-          <option value="openai">OpenAI</option>
-          <option value="openai-response">OpenAI-Response</option>
-          <option value="gemini">Gemini</option>
-          <option value="anthropic">Anthropic</option>
-          <option value="ollama">Ollama</option>
+          {providerTypeOptions.map((providerType) => (
+            <option key={providerType} value={providerType}>
+              {t(`settings.providers.typeLabels.${providerType}`)}
+            </option>
+          ))}
         </select>
       </Field>
 

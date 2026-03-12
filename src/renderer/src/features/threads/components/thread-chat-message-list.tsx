@@ -7,8 +7,9 @@ import {
   useAuiState,
   useMessagePartFile
 } from '@assistant-ui/react'
+import { Virtuoso, type IndexLocationWithAlign } from 'react-virtuoso'
 import { Copy, File, MoreHorizontal, RotateCw } from 'lucide-react'
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useMemo } from 'react'
 import { toErrorMessage } from '../thread-page-routing'
 import { Reasoning, ReasoningGroup } from '../../../components/assistant-ui/reasoning'
 import { MarkdownText } from '../../../components/assistant-ui/markdown-text'
@@ -20,6 +21,7 @@ import { UserMessageAttachments } from '@renderer/components/assistant-ui/attach
 import { useTranslation } from '../../../i18n/use-app-translation'
 
 type ThreadChatMessageListProps = {
+  threadId: string | null
   assistantName: string
   isLoadingChatHistory: boolean
   isChatStreaming: boolean
@@ -28,6 +30,7 @@ type ThreadChatMessageListProps = {
 }
 
 const AssistantNameContext = createContext('Assistant')
+const ESTIMATED_MESSAGE_HEIGHT = 160
 
 function formatMessageTimestamp(
   value: Date | string | null | undefined,
@@ -187,7 +190,51 @@ function AssistantMessageBubble(): React.JSX.Element {
   )
 }
 
+function ThreadChatStatus({
+  isLoadingChatHistory,
+  isChatStreaming,
+  loadError,
+  chatError
+}: Pick<
+  ThreadChatMessageListProps,
+  'isLoadingChatHistory' | 'isChatStreaming' | 'loadError' | 'chatError'
+>): React.JSX.Element {
+  const { t } = useTranslation()
+
+  return (
+    <>
+      {isLoadingChatHistory ? (
+        <p role="status" className="text-muted-foreground text-xs">
+          {t('threads.messageList.loadingHistory')}
+        </p>
+      ) : null}
+
+      {isChatStreaming ? (
+        <p role="status" className="text-muted-foreground text-xs">
+          {t('threads.messageList.responding')}
+        </p>
+      ) : null}
+
+      {chatError ? (
+        <p role="alert" className="text-destructive text-sm">
+          {toErrorMessage(chatError)}
+        </p>
+      ) : null}
+
+      {loadError ? (
+        <p
+          role="alert"
+          className="text-destructive rounded-md border border-destructive/60 px-3 py-2 text-sm"
+        >
+          {loadError}
+        </p>
+      ) : null}
+    </>
+  )
+}
+
 export function ThreadChatMessageList({
+  threadId,
   assistantName,
   isLoadingChatHistory,
   isChatStreaming,
@@ -195,47 +242,86 @@ export function ThreadChatMessageList({
   chatError
 }: ThreadChatMessageListProps): React.JSX.Element {
   const { t } = useTranslation()
+  const messages = useAuiState((state) => state.thread.messages)
+  const messageCount = messages.length
+  const hasMessages = messageCount > 0
+  const shouldRenderVirtualList = hasMessages || !isLoadingChatHistory
+  const renderState = hasMessages ? 'data' : 'empty'
+  const initialTopMostItemIndex = useMemo<IndexLocationWithAlign | undefined>(() => {
+    if (!hasMessages) {
+      return undefined
+    }
+
+    return {
+      index: 'LAST',
+      align: 'end'
+    }
+  }, [hasMessages])
+  const messageComponents = useMemo(
+    () => ({
+      UserMessage: UserMessageBubble,
+      AssistantMessage: AssistantMessageBubble
+    }),
+    []
+  )
+
+  if (!shouldRenderVirtualList) {
+    return (
+      <AssistantNameContext.Provider value={assistantName}>
+        <div className="chat-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
+          <ThreadChatStatus
+            isLoadingChatHistory={isLoadingChatHistory}
+            isChatStreaming={isChatStreaming}
+            loadError={loadError}
+            chatError={chatError}
+          />
+        </div>
+      </AssistantNameContext.Provider>
+    )
+  }
+
+  function EmptyPlaceholder(): React.JSX.Element {
+    return <p className="text-muted-foreground text-sm">{t('threads.messageList.empty')}</p>
+  }
+
+  function Footer(): React.JSX.Element {
+    return (
+      <div className="space-y-3 pt-3">
+        <ThreadChatStatus
+          isLoadingChatHistory={isLoadingChatHistory}
+          isChatStreaming={isChatStreaming}
+          loadError={loadError}
+          chatError={chatError}
+        />
+      </div>
+    )
+  }
+
   return (
     <AssistantNameContext.Provider value={assistantName}>
-      <ThreadPrimitive.Viewport className="chat-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
-        <ThreadPrimitive.Empty>
-          <p className="text-muted-foreground text-sm">{t('threads.messageList.empty')}</p>
-        </ThreadPrimitive.Empty>
-
-        <ThreadPrimitive.Messages
-          components={{
-            UserMessage: UserMessageBubble,
-            AssistantMessage: AssistantMessageBubble
-          }}
-        />
-
-        {isLoadingChatHistory ? (
-          <p role="status" className="text-muted-foreground text-xs">
-            {t('threads.messageList.loadingHistory')}
-          </p>
-        ) : null}
-
-        {isChatStreaming ? (
-          <p role="status" className="text-muted-foreground text-xs">
-            {t('threads.messageList.responding')}
-          </p>
-        ) : null}
-
-        {chatError ? (
-          <p role="alert" className="text-destructive text-sm">
-            {toErrorMessage(chatError)}
-          </p>
-        ) : null}
-
-        {loadError ? (
-          <p
-            role="alert"
-            className="text-destructive rounded-md border border-destructive/60 px-3 py-2 text-sm"
-          >
-            {loadError}
-          </p>
-        ) : null}
-      </ThreadPrimitive.Viewport>
+      <Virtuoso
+        key={`${threadId ?? 'thread'}:${renderState}`}
+        className="chat-scrollbar min-h-0 flex-1 pr-1"
+        style={{ height: '100%', overflowAnchor: 'none' }}
+        data={messages}
+        defaultItemHeight={ESTIMATED_MESSAGE_HEIGHT}
+        alignToBottom
+        atBottomThreshold={24}
+        followOutput={(isAtBottom) => (isAtBottom ? 'auto' : false)}
+        increaseViewportBy={{ top: 0, bottom: 240 }}
+        minOverscanItemCount={{ top: 4, bottom: 8 }}
+        initialTopMostItemIndex={initialTopMostItemIndex}
+        computeItemKey={(index, message) => message.id ?? `${threadId ?? 'thread'}:${index}`}
+        components={{
+          EmptyPlaceholder,
+          Footer
+        }}
+        itemContent={(index) => (
+          <div className="flex pb-3">
+            <ThreadPrimitive.MessageByIndex index={index} components={messageComponents} />
+          </div>
+        )}
+      />
     </AssistantNameContext.Provider>
   )
 }

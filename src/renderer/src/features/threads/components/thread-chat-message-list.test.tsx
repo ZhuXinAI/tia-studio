@@ -8,6 +8,9 @@ import { ThreadChatMessageList } from './thread-chat-message-list'
 const threadMessagesComponentsMock = vi.fn((components: unknown) => {
   void components
 })
+const virtuosoPropsMock = vi.fn((props: unknown) => {
+  void props
+})
 const actionBarRootPropsMock = vi.fn((props: unknown) => {
   void props
 })
@@ -18,6 +21,9 @@ const messageState = {
   message: {
     createdAt: new Date('2026-03-01T12:34:00.000Z'),
     isHovering: true
+  },
+  thread: {
+    messages: [{}, {}]
   }
 }
 
@@ -25,25 +31,55 @@ vi.mock('@renderer/components/assistant-ui/attachment', () => ({
   UserMessageAttachments: () => <div data-testid="user-message-attachments" />
 }))
 
-vi.mock('@assistant-ui/react', () => {
-  const Root = ({ children }: { children?: React.ReactNode }): React.JSX.Element => (
-    <div>{children}</div>
-  )
-  const Viewport = ({
-    children,
-    className
+vi.mock('react-virtuoso', () => ({
+  Virtuoso: ({
+    className,
+    data = [],
+    itemContent,
+    components,
+    initialTopMostItemIndex,
+    alignToBottom,
+    followOutput
   }: {
-    children?: React.ReactNode
     className?: string
-  }): React.JSX.Element => (
-    <div data-testid="thread-viewport" data-class-name={className}>
-      {children}
-    </div>
-  )
-  const Empty = ({ children }: { children?: React.ReactNode }): React.JSX.Element => (
-    <div>{children}</div>
-  )
+    data?: Array<unknown>
+    itemContent?: (index: number, item: unknown) => React.ReactNode
+    components?: {
+      EmptyPlaceholder?: React.ComponentType
+      Footer?: React.ComponentType
+    }
+    initialTopMostItemIndex?: unknown
+    alignToBottom?: boolean
+    followOutput?: unknown
+  }) => {
+    virtuosoPropsMock({
+      initialTopMostItemIndex,
+      alignToBottom,
+      followOutput,
+      className
+    })
 
+    const EmptyPlaceholder = components?.EmptyPlaceholder
+    const Footer = components?.Footer
+
+    return (
+      <div data-testid="thread-viewport" data-class-name={className}>
+        {data.length === 0 ? (
+          EmptyPlaceholder ? (
+            <EmptyPlaceholder />
+          ) : null
+        ) : (
+          data.map((item, index) => (
+            <div key={index}>{itemContent ? itemContent(index, item) : null}</div>
+          ))
+        )}
+        {Footer ? <Footer /> : null}
+      </div>
+    )
+  }
+}))
+
+vi.mock('@assistant-ui/react', () => {
   return {
     AuiIf: ({
       children,
@@ -84,23 +120,22 @@ vi.mock('@assistant-ui/react', () => {
       Parts: () => null
     },
     ThreadPrimitive: {
-      Root,
-      Viewport,
-      Empty,
-      Messages: ({
+      MessageByIndex: ({
+        index,
         components
       }: {
+        index: number
         components: { AssistantMessage?: React.FC; UserMessage?: React.FC }
       }) => {
-        threadMessagesComponentsMock(components)
+        if (index === 0) {
+          threadMessagesComponentsMock(components)
+        }
         const AssistantMessage = components.AssistantMessage
         const UserMessage = components.UserMessage
-        return (
-          <div>
-            {UserMessage ? <UserMessage /> : null}
-            {AssistantMessage ? <AssistantMessage /> : null}
-          </div>
-        )
+        if (index % 2 === 0) {
+          return UserMessage ? <UserMessage /> : null
+        }
+        return AssistantMessage ? <AssistantMessage /> : null
       }
     }
   }
@@ -116,10 +151,12 @@ describe('thread chat message list', () => {
     document.body.appendChild(container)
     root = createRoot(container)
     threadMessagesComponentsMock.mockClear()
+    virtuosoPropsMock.mockClear()
     actionBarRootPropsMock.mockClear()
     actionBarMoreRootPropsMock.mockClear()
     messageState.message.createdAt = new Date('2026-03-01T12:34:00.000Z')
     messageState.message.isHovering = true
+    messageState.thread.messages = [{}, {}]
   })
 
   afterEach(() => {
@@ -135,6 +172,7 @@ describe('thread chat message list', () => {
     await act(async () => {
       root.render(
         <ThreadChatMessageList
+          threadId="thread-1"
           assistantName="Planner"
           isLoadingChatHistory={false}
           isChatStreaming={false}
@@ -151,6 +189,7 @@ describe('thread chat message list', () => {
     await act(async () => {
       root.render(
         <ThreadChatMessageList
+          threadId="thread-1"
           assistantName="Planner"
           isLoadingChatHistory={false}
           isChatStreaming={false}
@@ -168,6 +207,7 @@ describe('thread chat message list', () => {
     await act(async () => {
       root.render(
         <ThreadChatMessageList
+          threadId="thread-1"
           assistantName="Planner"
           isLoadingChatHistory={false}
           isChatStreaming={true}
@@ -187,6 +227,7 @@ describe('thread chat message list', () => {
     await act(async () => {
       root.render(
         <ThreadChatMessageList
+          threadId="thread-1"
           assistantName="Planner"
           isLoadingChatHistory={false}
           isChatStreaming={false}
@@ -200,10 +241,172 @@ describe('thread chat message list', () => {
     expect(viewport?.getAttribute('data-class-name')).toContain('chat-scrollbar')
   })
 
+  it('configures virtuoso to start from the latest message and align short threads to bottom', async () => {
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    const virtuosoProps = virtuosoPropsMock.mock.lastCall?.[0] as
+      | {
+          initialTopMostItemIndex?: { index: 'LAST' | number; align: string }
+          alignToBottom?: boolean
+          followOutput?: (isAtBottom: boolean) => string | boolean
+        }
+      | undefined
+
+    expect(virtuosoProps?.initialTopMostItemIndex).toEqual({ index: 'LAST', align: 'end' })
+    expect(virtuosoProps?.alignToBottom).toBe(true)
+    expect(virtuosoProps?.followOutput?.(true)).toBe('auto')
+    expect(virtuosoProps?.followOutput?.(false)).toBe(false)
+  })
+
+  it('keeps the initial virtuoso location stable after message count changes', async () => {
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    messageState.thread.messages = [{}, {}, {}]
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={true}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    const virtuosoProps = virtuosoPropsMock.mock.lastCall?.[0] as
+      | {
+          initialTopMostItemIndex?: { index: 'LAST' | number; align: string }
+        }
+      | undefined
+
+    expect(virtuosoProps?.initialTopMostItemIndex).toEqual({ index: 'LAST', align: 'end' })
+  })
+
+  it('remounts virtuoso when the first messages arrive after an empty mount', async () => {
+    messageState.thread.messages = []
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    const firstCall = virtuosoPropsMock.mock.lastCall?.[0] as
+      | {
+          initialTopMostItemIndex?: { index: 'LAST' | number; align: string }
+        }
+      | undefined
+
+    expect(firstCall?.initialTopMostItemIndex).toBeUndefined()
+
+    messageState.thread.messages = [{}, {}]
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    const secondCall = virtuosoPropsMock.mock.lastCall?.[0] as
+      | {
+          initialTopMostItemIndex?: { index: 'LAST' | number; align: string }
+        }
+      | undefined
+
+    expect(secondCall?.initialTopMostItemIndex).toEqual({ index: 'LAST', align: 'end' })
+  })
+
+  it('remounts virtuoso without an initial index when history is cleared', async () => {
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    const firstCall = virtuosoPropsMock.mock.lastCall?.[0] as
+      | {
+          initialTopMostItemIndex?: { index: 'LAST' | number; align: string }
+        }
+      | undefined
+
+    expect(firstCall?.initialTopMostItemIndex).toEqual({ index: 'LAST', align: 'end' })
+
+    messageState.thread.messages = []
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    const secondCall = virtuosoPropsMock.mock.lastCall?.[0] as
+      | {
+          initialTopMostItemIndex?: { index: 'LAST' | number; align: string }
+        }
+      | undefined
+
+    expect(secondCall?.initialTopMostItemIndex).toBeUndefined()
+    expect(container.querySelector('[data-testid="thread-viewport"]')).not.toBeNull()
+  })
+
   it('pins message actions so they stay visible', async () => {
     await act(async () => {
       root.render(
         <ThreadChatMessageList
+          threadId="thread-1"
           assistantName="Planner"
           isLoadingChatHistory={false}
           isChatStreaming={false}
@@ -224,6 +427,7 @@ describe('thread chat message list', () => {
     await act(async () => {
       root.render(
         <ThreadChatMessageList
+          threadId="thread-1"
           assistantName="Planner"
           isLoadingChatHistory={false}
           isChatStreaming={false}
@@ -247,6 +451,7 @@ describe('thread chat message list', () => {
     await act(async () => {
       root.render(
         <ThreadChatMessageList
+          threadId="thread-1"
           assistantName="Planner"
           isLoadingChatHistory={false}
           isChatStreaming={false}

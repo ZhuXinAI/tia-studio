@@ -128,7 +128,8 @@
         "disabledDescription": "关闭后台下载，并手动检查更新。",
         "loadError": "加载自动更新状态失败。",
         "saveError": "保存自动更新设置失败。",
-        "checkError": "检查更新失败。"
+        "checkError": "检查更新失败。",
+        "restartError": "Failed to restart and install the downloaded update."
       },
       "links": {
         "docs": {
@@ -154,7 +155,9 @@
       },
       "buttons": {
         "checkUpdate": "检查更新",
-        "checking": "检查中..."
+        "checking": "检查中...",
+        "restartToUpdate": "Restart to update",
+        "restarting": "Restarting..."
       }
     },
     "runtime": {
@@ -305,6 +308,7 @@
       "typeLabels": {
         "openai": "OpenAI 兼容",
         "openai-response": "OpenAI Responses",
+        "openrouter": "OpenRouter",
         "gemini": "Gemini",
         "anthropic": "Anthropic",
         "ollama": "Ollama"
@@ -312,6 +316,7 @@
       "typeDescriptions": {
         "openai": "适用于 OpenAI API 及兼容服务（DeepSeek、Groq 等）。需要 API 密钥，支持自定义端点。",
         "openai-response": "适用于使用 OpenAI 响应格式的服务。用于返回 OpenAI 兼容响应的第三方 API。",
+        "openrouter": "适用于 OpenRouter 原生 AI SDK provider 集成。这个类型主要用于内置的 OpenRouter 模板。",
         "gemini": "适用于 Google Gemini 模型。需要从 ai.google.dev 获取 Google AI API 密钥。",
         "anthropic": "适用于 Anthropic 的 Claude 模型。需要从 console.anthropic.com 获取 Anthropic API 密钥。",
         "ollama": "适用于本地托管的 Ollama 模型。无需 API 密钥，只需指定本地 Ollama 端点。"
@@ -778,6 +783,8 @@
       "tokenInput": "{{value}} 输入",
       "tokenOutput": "{{value}} 输出",
       "modeLabel": "{{name}} 助手聊天",
+      "remoteBadge": "Remote channel",
+      "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "新建线程",
       "setupIncomplete": "助手设置未完成。请先打开“配置”设置提供商和模型，再发送消息。",
       "composer": {
@@ -839,7 +846,8 @@
       "tabs": {
         "essential": "基本设置",
         "tools": "工具",
-        "skills": "Skills"
+        "skills": "Skills",
+        "coding": "Coding"
       },
       "fields": {
         "name": "名称",
@@ -909,6 +917,45 @@
         "removingButton": "正在移除...",
         "removeButton": "移除",
         "readOnly": "只读"
+      },
+      "coding": {
+        "enableLabel": "Enable coding agent",
+        "description": "Add a Codex-powered subagent for code changes, debugging, and test runs.",
+        "toggleAriaLabel": "Enable coding agent",
+        "fields": {
+          "cwd": "Working directory (cwd)",
+          "addDirs": "Additional directories (addDirs)",
+          "skipGitRepoCheck": "Skip git repo check",
+          "fullAuto": "Full auto mode",
+          "approvalMode": "Approval mode",
+          "sandboxMode": "Sandbox mode"
+        },
+        "cwdHelp": "Defaults to the workspace path. Use an absolute path or a path relative to the workspace.",
+        "addDirsHelp": "One path per line. These map to repeated --add-dir entries.",
+        "skipGitRepoCheckHelp": "Skip Git repository validation for this coding session.",
+        "fullAutoHelp": "Runs with --full-auto and bypasses approval/sandbox prompts.",
+        "approvalModeHelp": "Controls when Codex requests approval for commands.",
+        "sandboxModeHelp": "Controls the filesystem sandbox mode for Codex.",
+        "skipGitRepoCheckAriaLabel": "Toggle skip git repo check",
+        "fullAutoAriaLabel": "Toggle full auto mode",
+        "placeholders": {
+          "cwd": "/Users/name/repo",
+          "addDirs": "../shared\n/opt/tools"
+        },
+        "approvalModes": {
+          "untrusted": "Untrusted",
+          "on-failure": "On failure",
+          "on-request": "On request",
+          "never": "Never"
+        },
+        "sandboxModes": {
+          "read-only": "Read-only",
+          "workspace-write": "Workspace write",
+          "danger-full-access": "Danger full access"
+        },
+        "errors": {
+          "cwdRequired": "Set a workspace path or coding working directory to enable coding."
+        }
       }
     }
   },

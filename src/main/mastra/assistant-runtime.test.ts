@@ -169,6 +169,40 @@ describe('AssistantRuntimeService', () => {
     expect(memory?.getMergedThreadConfig().generateTitle).toBe(true)
   })
 
+  it('registers a coding subagent when enabled', async () => {
+    const mastra = await createMastraInstance(':memory:')
+    const runtime = new AssistantRuntimeService({
+      mastra,
+      assistantsRepo: { getById: vi.fn() } as unknown as AssistantsRepository,
+      providersRepo: { getById: vi.fn() } as unknown as ProvidersRepository,
+      threadsRepo: { getById: vi.fn() } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing')
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    const assistant = buildAssistant({
+      codingConfig: {
+        enabled: true,
+        cwd: '/tmp'
+      }
+    })
+
+    await (
+      runtime as unknown as {
+        ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+      }
+    ).ensureAgentRegistered(assistant, buildProvider())
+
+    const agent = mastra.getAgentById('assistant-1')
+    const agents = await agent.listAgents()
+    expect(Object.keys(agents)).toContain('codingAgent')
+    expect(agents.codingAgent?.id).toBe('assistant-1:coding')
+  })
+
   it('adds channel splitter guidance only for channel-targeted runs', async () => {
     handleChatStreamMock.mockReset()
     handleChatStreamMock.mockResolvedValue(

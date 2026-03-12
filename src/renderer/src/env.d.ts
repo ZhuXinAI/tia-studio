@@ -30,25 +30,68 @@ declare global {
       }>
       getAutoUpdateState?: () => Promise<{
         enabled: boolean
-        status: 'idle' | 'checking' | 'update-available' | 'up-to-date' | 'unsupported' | 'error'
+        status:
+          | 'idle'
+          | 'checking'
+          | 'update-available'
+          | 'update-downloaded'
+          | 'up-to-date'
+          | 'unsupported'
+          | 'error'
         availableVersion: string | null
         lastCheckedAt: string | null
         message: string | null
       }>
       setAutoUpdateEnabled?: (enabled: boolean) => Promise<{
         enabled: boolean
-        status: 'idle' | 'checking' | 'update-available' | 'up-to-date' | 'unsupported' | 'error'
+        status:
+          | 'idle'
+          | 'checking'
+          | 'update-available'
+          | 'update-downloaded'
+          | 'up-to-date'
+          | 'unsupported'
+          | 'error'
         availableVersion: string | null
         lastCheckedAt: string | null
         message: string | null
       }>
       checkForUpdates?: () => Promise<{
         enabled: boolean
-        status: 'idle' | 'checking' | 'update-available' | 'up-to-date' | 'unsupported' | 'error'
+        status:
+          | 'idle'
+          | 'checking'
+          | 'update-available'
+          | 'update-downloaded'
+          | 'up-to-date'
+          | 'unsupported'
+          | 'error'
         availableVersion: string | null
         lastCheckedAt: string | null
         message: string | null
       }>
+      getCodexCliStatus?: () => Promise<{
+        available: boolean
+        version: string | null
+        errorMessage: string | null
+      }>
+      restartToUpdate?: () => Promise<void>
+      onAutoUpdateStateChanged?: (
+        listener: (state: {
+          enabled: boolean
+          status:
+            | 'idle'
+            | 'checking'
+            | 'update-available'
+            | 'update-downloaded'
+            | 'up-to-date'
+            | 'unsupported'
+            | 'error'
+          availableVersion: string | null
+          lastCheckedAt: string | null
+          message: string | null
+        }) => void
+      ) => () => void
       pickDirectory: () => Promise<string | null>
       openWebSearchSettings?: (url: string) => Promise<boolean>
     }
