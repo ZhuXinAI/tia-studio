@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createCodingSubagent, DEFAULT_ASSISTANT_CODING_MODEL } from './coding-agent'
 
@@ -35,6 +36,10 @@ describe('createCodingSubagent', () => {
   })
 
   it('includes the resolved coding workspace in the subagent description', () => {
+    const workspaceRootPath = path.resolve('/Users/demo/workspace')
+    const cwd = path.resolve(workspaceRootPath, 'app')
+    const sharedDir = path.resolve(cwd, '../shared')
+    const toolsDir = path.resolve('/opt/tools')
     const agent = createCodingSubagent({
       assistantId: 'assistant-1',
       assistantName: 'TIA',
@@ -51,18 +56,17 @@ describe('createCodingSubagent', () => {
       | undefined
 
     expect(agent).toBeDefined()
-    expect(agent?.description).toContain('Primary working directory: /Users/demo/workspace/app.')
-    expect(agent?.description).toContain('Assistant workspace root: /Users/demo/workspace.')
-    expect(agent?.description).toContain(
-      'Can also access: /Users/demo/workspace/shared, /opt/tools.'
-    )
+    expect(agent?.description).toContain(`Primary working directory: ${cwd}.`)
+    expect(agent?.description).toContain(`Assistant workspace root: ${workspaceRootPath}.`)
+    expect(agent?.description).toContain(`Can also access: ${sharedDir}, ${toolsDir}.`)
     expect(codexAppServerMock).toHaveBeenCalledWith(DEFAULT_ASSISTANT_CODING_MODEL, {
-      cwd: '/Users/demo/workspace/app',
-      addDirs: ['/Users/demo/workspace/shared', '/opt/tools']
+      cwd,
+      addDirs: [sharedDir, toolsDir]
     })
   })
 
   it('falls back to the assistant workspace root when no coding cwd is configured', () => {
+    const workspaceRootPath = path.resolve('/Users/demo/workspace')
     const agent = createCodingSubagent({
       assistantId: 'assistant-1',
       assistantName: 'TIA',
@@ -77,10 +81,10 @@ describe('createCodingSubagent', () => {
       | undefined
 
     expect(agent).toBeDefined()
-    expect(agent?.description).toContain('Primary working directory: /Users/demo/workspace.')
+    expect(agent?.description).toContain(`Primary working directory: ${workspaceRootPath}.`)
     expect(agent?.description).not.toContain('Assistant workspace root:')
     expect(codexAppServerMock).toHaveBeenCalledWith(DEFAULT_ASSISTANT_CODING_MODEL, {
-      cwd: '/Users/demo/workspace'
+      cwd: workspaceRootPath
     })
   })
 })
