@@ -47,6 +47,7 @@ type CodexCliStatus = {
   version: string | null
   errorMessage: string | null
 }
+type RecommendedSkillId = 'agent-browser' | 'find-skills'
 type UiConfig = {
   transparent?: boolean
   language?: string | null
@@ -95,6 +96,12 @@ const tiaDesktop = {
     ipcRenderer.invoke('tia:pick-custom-runtime', kind) as Promise<ManagedRuntimesState | null>,
   clearManagedRuntime: (kind: ManagedRuntimeKind) =>
     ipcRenderer.invoke('tia:clear-managed-runtime', kind) as Promise<ManagedRuntimesState>,
+  getRuntimeOnboardingSkillsStatus: () =>
+    ipcRenderer.invoke('tia:get-runtime-onboarding-skills-status') as Promise<RecommendedSkillId[]>,
+  installRuntimeOnboardingSkills: (skillIds: RecommendedSkillId[]) =>
+    ipcRenderer.invoke('tia:install-runtime-onboarding-skills', skillIds) as Promise<
+      RecommendedSkillId[]
+    >,
   pickDirectory: () => ipcRenderer.invoke('tia:pick-directory') as Promise<string | null>,
   listAssistantSkills: (workspaceRootPath: string) =>
     ipcRenderer.invoke('tia:list-assistant-skills', workspaceRootPath) as Promise<

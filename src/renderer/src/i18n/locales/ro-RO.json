@@ -163,6 +163,42 @@
     "runtime": {
       "title": "Runtime Setup",
       "description": "Install managed bun and uv runtimes for MCP servers and runtime-backed tools, or point TIA Studio at a binary you already downloaded.",
+      "onboarding": {
+        "title": "Recommended onboarding",
+        "description": "Set up bun first so later bunx and npx-backed tools work smoothly, then optionally install a couple of starter skills.",
+        "steps": {
+          "bun": {
+            "title": "Step 1 · Set up bun",
+            "description": "Bun is the recommended first install because TIA Studio uses it for bun, bunx, and npx-backed flows.",
+            "status": "Current bun status: {{status}}",
+            "installAction": "Install bun",
+            "pickAction": "Use downloaded bun"
+          },
+          "skills": {
+            "title": "Step 2 · Install recommended skills",
+            "description": "Use the managed bunx command to install a few helpful skills globally for TIA Studio assistants.",
+            "lockedDescription": "Finish the bun step first, then choose which starter skills to install.",
+            "bunRequired": "Recommended skill install stays locked until bun is ready.",
+            "installAction": "Install selected skills",
+            "installingAction": "Installing selected skills..."
+          }
+        },
+        "skills": {
+          "agentBrowser": {
+            "title": "agent-browser",
+            "description": "Browser automation for websites, screenshots, login flows, and interactive testing."
+          },
+          "findSkills": {
+            "title": "find-skills",
+            "description": "Helps discover installable skills when the assistant needs extra capabilities."
+          },
+          "status": {
+            "loading": "Checking install status...",
+            "installed": "Installed",
+            "notInstalled": "Not installed"
+          }
+        }
+      },
       "kindDescription": {
         "bun": "Used for bun, bunx, and npx-backed MCP server launches.",
         "uv": "Used for uv and uvx-backed MCP server launches."
@@ -191,6 +227,8 @@
         "pickSuccess": "Activated custom {{kind}} runtime.",
         "checkSuccess": "Checked {{kind}} runtime status.",
         "clearSuccess": "Cleared {{kind}} runtime selection.",
+        "skillsAlreadyInstalled": "Selected skills are already installed.",
+        "skillsInstallSuccess": "Installed the selected recommended skills.",
         "unexpectedError": "Unexpected managed runtime error"
       }
     },
@@ -492,13 +530,15 @@
         "steps": {
           "provider": "Furnizor",
           "channel": "Canal",
-          "details": "Nume și spațiu de lucru"
+          "details": "Nume și spațiu de lucru",
+          "setup": "Recommended Setup"
         },
         "actions": {
           "back": "Înapoi",
           "next": "Următorul"
         },
-        "detailsDescription": "Alege numele asistentului și, opțional, un dosar pentru spațiul de lucru."
+        "detailsDescription": "Alege numele asistentului și, opțional, un dosar pentru spațiul de lucru.",
+        "setupDescription": "Optionally install bun and a few recommended tools before creating this claw."
       },
       "channelTypes": {
         "lark": "Lark",
@@ -921,7 +961,10 @@
       "coding": {
         "enableLabel": "Enable coding agent",
         "description": "Add a Codex-powered subagent for code changes, debugging, and test runs.",
+        "statusChecking": "Checking Codex CLI availability...",
         "toggleAriaLabel": "Enable coding agent",
+        "unavailableTitle": "Codex CLI is unavailable on this system.",
+        "unavailableDescription": "Install `codex` and make sure it is available on PATH to enable the coding agent.",
         "fields": {
           "cwd": "Working directory (cwd)",
           "addDirs": "Additional directories (addDirs)",

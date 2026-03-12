@@ -3,6 +3,10 @@
 declare global {
   interface Window {
     tiaDesktop: {
+      getRuntimeOnboardingSkillsStatus?: () => Promise<Array<'agent-browser' | 'find-skills'>>
+      installRuntimeOnboardingSkills?: (
+        skillIds: Array<'agent-browser' | 'find-skills'>
+      ) => Promise<Array<'agent-browser' | 'find-skills'>>
       listAssistantSkills?: (workspaceRootPath: string) => Promise<
         Array<{
           id: string

@@ -163,6 +163,42 @@
     "runtime": {
       "title": "執行環境設定",
       "description": "為 MCP 伺服器和依賴執行環境的工具安裝受管理的 bun 與 uv，或指定你已下載的二進位檔。",
+      "onboarding": {
+        "title": "Recommended onboarding",
+        "description": "Set up bun first so later bunx and npx-backed tools work smoothly, then optionally install a couple of starter skills.",
+        "steps": {
+          "bun": {
+            "title": "Step 1 · Set up bun",
+            "description": "Bun is the recommended first install because TIA Studio uses it for bun, bunx, and npx-backed flows.",
+            "status": "Current bun status: {{status}}",
+            "installAction": "Install bun",
+            "pickAction": "Use downloaded bun"
+          },
+          "skills": {
+            "title": "Step 2 · Install recommended skills",
+            "description": "Use the managed bunx command to install a few helpful skills globally for TIA Studio assistants.",
+            "lockedDescription": "Finish the bun step first, then choose which starter skills to install.",
+            "bunRequired": "Recommended skill install stays locked until bun is ready.",
+            "installAction": "Install selected skills",
+            "installingAction": "Installing selected skills..."
+          }
+        },
+        "skills": {
+          "agentBrowser": {
+            "title": "agent-browser",
+            "description": "Browser automation for websites, screenshots, login flows, and interactive testing."
+          },
+          "findSkills": {
+            "title": "find-skills",
+            "description": "Helps discover installable skills when the assistant needs extra capabilities."
+          },
+          "status": {
+            "loading": "Checking install status...",
+            "installed": "Installed",
+            "notInstalled": "Not installed"
+          }
+        }
+      },
       "kindDescription": {
         "bun": "用於 bun、bunx 及基於 npx 的 MCP 伺服器啟動。",
         "uv": "用於 uv 及基於 uvx 的 MCP 伺服器啟動。"
@@ -191,6 +227,8 @@
         "pickSuccess": "已啟用自訂 {{kind}} 執行環境。",
         "checkSuccess": "已檢查 {{kind}} 執行環境狀態。",
         "clearSuccess": "已清除 {{kind}} 執行環境選擇。",
+        "skillsAlreadyInstalled": "Selected skills are already installed.",
+        "skillsInstallSuccess": "Installed the selected recommended skills.",
         "unexpectedError": "執行環境要求發生未預期錯誤"
       }
     },
@@ -492,13 +530,15 @@
         "steps": {
           "provider": "供應商",
           "channel": "頻道",
-          "details": "名稱和工作區"
+          "details": "名稱和工作區",
+          "setup": "Recommended Setup"
         },
         "actions": {
           "back": "返回",
           "next": "下一步"
         },
-        "detailsDescription": "設定助手名稱，並可選擇一個工作區資料夾。"
+        "detailsDescription": "設定助手名稱，並可選擇一個工作區資料夾。",
+        "setupDescription": "Optionally install bun and a few recommended tools before creating this claw."
       },
       "channelTypes": {
         "lark": "Lark",
@@ -921,7 +961,10 @@
       "coding": {
         "enableLabel": "Enable coding agent",
         "description": "Add a Codex-powered subagent for code changes, debugging, and test runs.",
+        "statusChecking": "Checking Codex CLI availability...",
         "toggleAriaLabel": "Enable coding agent",
+        "unavailableTitle": "Codex CLI is unavailable on this system.",
+        "unavailableDescription": "Install `codex` and make sure it is available on PATH to enable the coding agent.",
         "fields": {
           "cwd": "Working directory (cwd)",
           "addDirs": "Additional directories (addDirs)",

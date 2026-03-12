@@ -9,8 +9,7 @@ import { ChannelEventBus } from './channel-event-bus'
 import {
   formatChannelInterruptionReply,
   formatChannelToolErrorUpdate,
-  formatChannelToolInputUpdate,
-  formatChannelToolOutputUpdate
+  formatChannelToolInputUpdate
 } from './channel-progress-messages'
 import type { ChannelMessageReceivedEvent } from './types'
 import { logger } from '../utils/logger'

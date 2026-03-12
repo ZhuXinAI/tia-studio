@@ -57,7 +57,7 @@ export function ClawCard({
         <div className="flex items-start justify-between gap-4 overflow-hidden">
           <div className="flex-1 min-w-0">
             <div className="flex min-w-0 items-center gap-2">
-              <CardTitle className="min-w-0 flex-1 truncate">{claw.name}</CardTitle>
+              <CardTitle className="min-w-0 truncate">{claw.name}</CardTitle>
               {claw.channel && (
                 <span
                   className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${

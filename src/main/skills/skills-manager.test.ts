@@ -2,7 +2,12 @@ import os from 'node:os'
 import path from 'node:path'
 import { access, mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { listAssistantSkills, removeWorkspaceSkill } from './skills-manager'
+import {
+  getInstalledRecommendedSkills,
+  installRecommendedSkillsWithBunx,
+  listAssistantSkills,
+  removeWorkspaceSkill
+} from './skills-manager'
 
 async function createSkill(
   baseDirectory: string,
@@ -149,5 +154,81 @@ description: Keeps workspace linting rules.
     await expect(removeWorkspaceSkill(workspaceDirectory, '../outside')).rejects.toThrow(
       'Workspace skill path must stay inside workspace skills directory'
     )
+  })
+
+  it('installs recommended skills with managed bunx', async () => {
+    const runCommand = vi.fn(async () => undefined)
+
+    const installedSkillIds = await installRecommendedSkillsWithBunx({
+      bunxPath: '/managed/bun/bin/bunx',
+      skillIds: ['agent-browser', 'find-skills'],
+      env: { PATH: '/usr/bin' },
+      runCommand
+    })
+
+    expect(installedSkillIds).toEqual(['agent-browser', 'find-skills'])
+    expect(runCommand).toHaveBeenNthCalledWith(
+      1,
+      '/managed/bun/bin/bunx',
+      [
+        'skills',
+        'add',
+        'https://github.com/vercel-labs/agent-browser',
+        '--skill',
+        'agent-browser',
+        '--global',
+        '--agent',
+        'claude-code',
+        '--yes'
+      ],
+      {
+        cwd: homeDirectory,
+        env: { PATH: '/usr/bin' }
+      }
+    )
+    expect(runCommand).toHaveBeenNthCalledWith(
+      2,
+      '/managed/bun/bin/bunx',
+      [
+        'skills',
+        'add',
+        'https://github.com/vercel-labs/skills',
+        '--skill',
+        'find-skills',
+        '--global',
+        '--agent',
+        'claude-code',
+        '--yes'
+      ],
+      {
+        cwd: homeDirectory,
+        env: { PATH: '/usr/bin' }
+      }
+    )
+  })
+
+  it('detects installed recommended skills in global claude directory', async () => {
+    await createSkill(
+      path.join(homeDirectory, '.claude', 'skills'),
+      'agent-browser',
+      `---
+name: agent-browser
+description: Browser automation skill.
+---
+`
+    )
+    await createSkill(
+      path.join(homeDirectory, '.agent', 'skills'),
+      'find-skills',
+      `---
+name: find-skills
+description: Helper skill.
+---
+`
+    )
+
+    const installed = await getInstalledRecommendedSkills()
+
+    expect(installed).toEqual(['agent-browser'])
   })
 })

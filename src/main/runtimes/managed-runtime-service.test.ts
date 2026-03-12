@@ -27,6 +27,21 @@ describe('ManagedRuntimeService', () => {
     expect(asset?.browser_download_url).toBe('https://example.test/bun.zip')
   })
 
+  it('prefers installable bun archives over profile assets', () => {
+    const asset = ManagedRuntimeService.selectReleaseAsset('bun', 'darwin', 'arm64', [
+      {
+        name: 'bun-darwin-aarch64-profile.zip',
+        browser_download_url: 'https://example.test/bun-profile.zip'
+      },
+      {
+        name: 'bun-darwin-aarch64.zip',
+        browser_download_url: 'https://example.test/bun.zip'
+      }
+    ])
+
+    expect(asset?.browser_download_url).toBe('https://example.test/bun.zip')
+  })
+
   it('validates a custom runtime path by running --version', async () => {
     const repository = new ManagedRuntimesRepository(path.join(tempDir, 'managed-runtimes.json'))
     const runCommand = vi.fn(async () => ({

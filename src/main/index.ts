@@ -60,8 +60,14 @@ import { ManagedRuntimeService } from './runtimes/managed-runtime-service'
 import { TeamRunStatusStore } from './server/chat/team-run-status-store'
 import { ThreadMessageEventsStore } from './server/chat/thread-message-events-store'
 import { createApp } from './server/create-app'
-import { listAssistantSkills, removeWorkspaceSkill } from './skills/skills-manager'
 import { registerSingleInstanceApp } from './single-instance'
+import {
+  getInstalledRecommendedSkills,
+  installRecommendedSkillsWithBunx,
+  listAssistantSkills,
+  removeWorkspaceSkill,
+  type RecommendedSkillId
+} from './skills/skills-manager'
 import { bringWindowToFront, buildTrayMenuTemplate } from './tray'
 import { UiConfigStore } from './ui-config'
 
@@ -130,6 +136,20 @@ function assertManagedRuntimeKind(value: unknown): ManagedRuntimeKind {
   }
 
   throw new Error('Managed runtime kind must be "bun" or "uv"')
+}
+
+function assertRecommendedSkillIds(value: unknown): RecommendedSkillId[] {
+  if (!Array.isArray(value)) {
+    throw new Error('Recommended skill ids must be an array')
+  }
+
+  return value.map((entry) => {
+    if (entry === 'agent-browser' || entry === 'find-skills') {
+      return entry
+    }
+
+    throw new Error('Recommended skill id is invalid')
+  })
 }
 
 function resolveManagedRuntimeService(): ManagedRuntimeService {
@@ -659,6 +679,30 @@ if (hasSingleInstanceLock) {
     ipcMain.handle('tia:clear-managed-runtime', async (_event, rawKind) => {
       const kind = assertManagedRuntimeKind(rawKind)
       return resolveManagedRuntimeService().clearRuntime(kind)
+    })
+    ipcMain.handle('tia:get-runtime-onboarding-skills-status', async () => {
+      return getInstalledRecommendedSkills()
+    })
+    ipcMain.handle('tia:install-runtime-onboarding-skills', async (_event, rawSkillIds) => {
+      const skillIds = assertRecommendedSkillIds(rawSkillIds)
+      const managedRuntimeState = await resolveManagedRuntimeService().getStatus()
+      const bunRecord = managedRuntimeState.bun
+      const isBunReady =
+        typeof bunRecord.binaryPath === 'string' &&
+        (bunRecord.status === 'ready' ||
+          bunRecord.status === 'custom-ready' ||
+          bunRecord.status === 'update-available')
+
+      if (!isBunReady) {
+        throw new Error('Install bun in Runtime Setup before installing recommended skills')
+      }
+
+      const bunxCommand = await resolveManagedRuntimeService().resolveManagedCommand('bunx', [])
+      return installRecommendedSkillsWithBunx({
+        bunxPath: bunxCommand.command,
+        env: bunxCommand.env,
+        skillIds
+      })
     })
     ipcMain.handle('tia:pick-directory', async (event) => {
       const currentWindow = BrowserWindow.fromWebContents(event.sender)

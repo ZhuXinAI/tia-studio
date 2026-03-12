@@ -22,6 +22,7 @@ import { channelStatusLabel, channelTypeLabel } from '../claw-labels'
 import { ClawChannelSelectorDialog } from './claw-channel-selector-dialog'
 import { ClawDialogStepper } from './claw-dialog-stepper'
 import { ClawProviderSelectorDialog } from './claw-provider-selector-dialog'
+import { RuntimeOnboardingPanel } from '../../settings/runtimes/runtime-onboarding-panel'
 
 type ClawEditorDialogProps = {
   isOpen: boolean
@@ -114,7 +115,6 @@ function CreateClawDialog({
 
   useEffect(() => {
     if (!isOpen || currentStep !== 2) {
-      setIsSubmitArmed(false)
       return
     }
 
@@ -133,10 +133,26 @@ function CreateClawDialog({
     }
   }, [currentStep, isOpen])
 
+  useEffect(() => {
+    if (!isOpen || currentStep !== 3) {
+      setIsSubmitArmed(false)
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsSubmitArmed(true)
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [currentStep, isOpen])
+
   const steps = [
     t('claws.dialog.stepper.steps.provider'),
     t('claws.dialog.stepper.steps.channel'),
-    t('claws.dialog.stepper.steps.details')
+    t('claws.dialog.stepper.steps.details'),
+    t('claws.dialog.stepper.steps.setup')
   ]
 
   const selectedProvider = useMemo(() => {
@@ -183,6 +199,11 @@ function CreateClawDialog({
   function handleNext(): void {
     if (currentStep === 0 && providerId.trim().length === 0) {
       setErrorMessage(t('claws.dialog.errors.providerRequired'))
+      return
+    }
+
+    if (currentStep === 2 && name.trim().length === 0) {
+      setErrorMessage(t('claws.dialog.errors.assistantNameRequired'))
       return
     }
 
@@ -368,6 +389,19 @@ function CreateClawDialog({
               {t('claws.channelSelector.description')}
             </p>
           ) : null}
+        </div>
+      ) : null}
+
+      {currentStep === 3 ? (
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <h3 className="text-base font-semibold">{t('claws.dialog.stepper.steps.setup')}</h3>
+            <p className="text-sm text-muted-foreground">
+              {t('claws.dialog.stepper.setupDescription')}
+            </p>
+          </div>
+
+          <RuntimeOnboardingPanel showHeader={false} />
         </div>
       ) : null}
 

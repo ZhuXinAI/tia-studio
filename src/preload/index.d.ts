@@ -29,6 +29,7 @@ type CodexCliStatus = {
   version: string | null
   errorMessage: string | null
 }
+type RecommendedSkillId = 'agent-browser' | 'find-skills'
 type UiConfig = {
   transparent?: boolean
   language?: string | null
@@ -125,6 +126,8 @@ interface TiaDesktopAPI {
   installManagedRuntime?: (kind: ManagedRuntimeKind) => Promise<ManagedRuntimesState>
   pickCustomRuntime?: (kind: ManagedRuntimeKind) => Promise<ManagedRuntimesState | null>
   clearManagedRuntime?: (kind: ManagedRuntimeKind) => Promise<ManagedRuntimesState>
+  getRuntimeOnboardingSkillsStatus?: () => Promise<RecommendedSkillId[]>
+  installRuntimeOnboardingSkills?: (skillIds: RecommendedSkillId[]) => Promise<RecommendedSkillId[]>
   pickDirectory: () => Promise<string | null>
   openWebSearchSettings?: (url: string) => Promise<boolean>
 }

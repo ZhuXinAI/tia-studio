@@ -11,7 +11,7 @@ export function ClawDialogStepper({
   currentStep
 }: ClawDialogStepperProps): React.JSX.Element {
   return (
-    <ol className="grid gap-3 md:grid-cols-3">
+    <ol className="grid gap-3 md:grid-flow-col md:auto-cols-fr">
       {steps.map((step, index) => {
         const isComplete = index < currentStep
         const isCurrent = index === currentStep

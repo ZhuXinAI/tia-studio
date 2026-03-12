@@ -24,6 +24,7 @@ export type ManagedRuntimeRecord = {
 }
 
 export type ManagedRuntimesState = Record<ManagedRuntimeKind, ManagedRuntimeRecord>
+export type RuntimeOnboardingSkillId = 'agent-browser' | 'find-skills'
 
 export const managedRuntimeKinds: ManagedRuntimeKind[] = ['bun', 'uv']
 
@@ -83,6 +84,16 @@ export async function pickCustomRuntime(
 
 export async function clearManagedRuntime(kind: ManagedRuntimeKind): Promise<ManagedRuntimesState> {
   return requireDesktopMethod('clearManagedRuntime')(kind)
+}
+
+export async function getRuntimeOnboardingSkillsStatus(): Promise<RuntimeOnboardingSkillId[]> {
+  return requireDesktopMethod('getRuntimeOnboardingSkillsStatus')()
+}
+
+export async function installRuntimeOnboardingSkills(
+  skillIds: RuntimeOnboardingSkillId[]
+): Promise<RuntimeOnboardingSkillId[]> {
+  return requireDesktopMethod('installRuntimeOnboardingSkills')(skillIds)
 }
 
 export function getRequiredManagedRuntimeKind(

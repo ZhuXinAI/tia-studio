@@ -575,7 +575,24 @@ export class ManagedRuntimeService {
     }
 
     for (const pattern of patterns) {
-      const asset = assets.find((candidate) => candidate.name.includes(pattern))
+      for (const candidateName of ManagedRuntimeService.getPreferredAssetNames(pattern)) {
+        const asset = assets.find(
+          (candidate) =>
+            candidate.name === candidateName &&
+            !ManagedRuntimeService.shouldIgnoreAsset(kind, candidate)
+        )
+        if (asset) {
+          return asset
+        }
+      }
+    }
+
+    for (const pattern of patterns) {
+      const asset = assets.find(
+        (candidate) =>
+          candidate.name.includes(pattern) &&
+          !ManagedRuntimeService.shouldIgnoreAsset(kind, candidate)
+      )
       if (asset) {
         return asset
       }
@@ -631,6 +648,17 @@ export class ManagedRuntimeService {
     }
 
     return []
+  }
+
+  private static getPreferredAssetNames(pattern: string): string[] {
+    return [`${pattern}.zip`, `${pattern}.tar.gz`, `${pattern}.tgz`, pattern]
+  }
+
+  private static shouldIgnoreAsset(
+    kind: ManagedRuntimeKind,
+    candidate: GitHubReleaseAsset
+  ): boolean {
+    return kind === 'bun' && candidate.name.includes('-profile')
   }
 
   private async validateRuntimePath(binaryPath: string): Promise<string> {

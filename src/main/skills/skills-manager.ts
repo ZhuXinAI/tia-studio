@@ -1,9 +1,12 @@
+import { execFile } from 'node:child_process'
 import os from 'node:os'
 import path from 'node:path'
 import { readdir, readFile, realpath, rm, stat } from 'node:fs/promises'
 import type { Dirent } from 'node:fs'
+import { promisify } from 'node:util'
 
 type SkillSource = 'global-claude' | 'global-agent' | 'workspace'
+export type RecommendedSkillId = 'agent-browser' | 'find-skills'
 
 type SkillSourceDefinition = {
   source: SkillSource
@@ -33,6 +36,37 @@ export type AssistantSkillRecord = {
   skillFilePath: string
   canDelete: boolean
 }
+
+type RecommendedSkillDefinition = {
+  id: RecommendedSkillId
+  repositoryUrl: string
+  skillName: string
+}
+
+type RunInstallCommandOptions = {
+  cwd?: string
+  env?: NodeJS.ProcessEnv
+}
+
+type RunInstallCommand = (
+  command: string,
+  args: string[],
+  options: RunInstallCommandOptions
+) => Promise<void>
+
+const execFileAsync = promisify(execFile)
+const recommendedSkillDefinitions: RecommendedSkillDefinition[] = [
+  {
+    id: 'agent-browser',
+    repositoryUrl: 'https://github.com/vercel-labs/agent-browser',
+    skillName: 'agent-browser'
+  },
+  {
+    id: 'find-skills',
+    repositoryUrl: 'https://github.com/vercel-labs/skills',
+    skillName: 'find-skills'
+  }
+]
 
 const skillSourceOrder: Record<SkillSource, number> = {
   'global-claude': 0,
@@ -361,4 +395,87 @@ export async function removeWorkspaceSkill(
   }
 
   await rm(targetSkillPath, { recursive: true, force: false })
+}
+
+function resolveRecommendedSkillDefinition(
+  skillId: RecommendedSkillId
+): RecommendedSkillDefinition {
+  const definition = recommendedSkillDefinitions.find((candidate) => candidate.id === skillId)
+  if (!definition) {
+    throw new Error(`Unsupported recommended skill id: ${skillId}`)
+  }
+
+  return definition
+}
+
+export async function installRecommendedSkillsWithBunx(input: {
+  bunxPath: string
+  skillIds: RecommendedSkillId[]
+  cwd?: string
+  env?: NodeJS.ProcessEnv
+  runCommand?: RunInstallCommand
+}): Promise<RecommendedSkillId[]> {
+  const bunxPath = toNonEmptyString(input.bunxPath)
+  if (!bunxPath) {
+    throw new Error('bunx path is required')
+  }
+
+  const skillIds = Array.from(new Set(input.skillIds))
+  if (skillIds.length === 0) {
+    return []
+  }
+
+  const runCommand =
+    input.runCommand ??
+    (async (command, args, options) => {
+      await execFileAsync(command, args, {
+        cwd: options.cwd,
+        env: options.env,
+        encoding: 'utf8'
+      })
+    })
+  const cwd = input.cwd ?? os.homedir()
+
+  for (const skillId of skillIds) {
+    const definition = resolveRecommendedSkillDefinition(skillId)
+    await runCommand(
+      bunxPath,
+      [
+        'skills',
+        'add',
+        definition.repositoryUrl,
+        '--skill',
+        definition.skillName,
+        '--global',
+        '--agent',
+        'claude-code',
+        '--yes'
+      ],
+      {
+        cwd,
+        env: input.env
+      }
+    )
+  }
+
+  return skillIds
+}
+
+function normalizeSkillKey(value: string): string {
+  return value.trim().toLowerCase()
+}
+
+export async function getInstalledRecommendedSkills(): Promise<RecommendedSkillId[]> {
+  const skills = await listAssistantSkills(os.homedir())
+  const globalClaudeSkills = skills.filter((skill) => skill.source === 'global-claude')
+  const normalizedNames = new Set(
+    globalClaudeSkills.flatMap((skill) => [
+      normalizeSkillKey(skill.name),
+      normalizeSkillKey(path.basename(skill.relativePath))
+    ])
+  )
+
+  return recommendedSkillDefinitions
+    .filter((definition) => normalizedNames.has(normalizeSkillKey(definition.skillName)))
+    .map((definition) => definition.id)
 }

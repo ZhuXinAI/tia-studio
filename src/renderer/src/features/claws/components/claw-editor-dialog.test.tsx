@@ -4,6 +4,25 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ClawEditorDialog } from './claw-editor-dialog'
+import {
+  getManagedRuntimeStatus,
+  getRuntimeOnboardingSkillsStatus,
+  installRuntimeOnboardingSkills
+} from '../../settings/runtimes/managed-runtimes-query'
+
+vi.mock('../../settings/runtimes/managed-runtimes-query', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../settings/runtimes/managed-runtimes-query')>()
+
+  return {
+    ...actual,
+    getManagedRuntimeStatus: vi.fn(),
+    getRuntimeOnboardingSkillsStatus: vi.fn(),
+    installManagedRuntime: vi.fn(),
+    installRuntimeOnboardingSkills: vi.fn(),
+    pickCustomRuntime: vi.fn()
+  }
+})
 
 async function flushAsyncWork(): Promise<void> {
   await act(async () => {
@@ -69,6 +88,32 @@ describe('ClawEditorDialog', () => {
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
+    vi.mocked(getManagedRuntimeStatus).mockResolvedValue({
+      bun: {
+        source: 'managed',
+        binaryPath: '/managed/bun/bin/bun',
+        version: 'bun 1.2.0',
+        installedAt: '2026-03-08T00:00:00.000Z',
+        lastCheckedAt: '2026-03-08T01:00:00.000Z',
+        releaseUrl: 'https://example.test/bun',
+        checksum: null,
+        status: 'ready',
+        errorMessage: null
+      },
+      uv: {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
+      }
+    })
+    vi.mocked(getRuntimeOnboardingSkillsStatus).mockResolvedValue([])
+    vi.mocked(installRuntimeOnboardingSkills).mockResolvedValue(['agent-browser', 'find-skills'])
   })
 
   afterEach(() => {
@@ -159,6 +204,12 @@ describe('ClawEditorDialog', () => {
     })
     await flushAsyncWork()
 
+    await clickElement(document.body.querySelector('button[id="claw-create-next"]'))
+    await flushAsyncWork()
+    await flushTimerWork()
+
+    expect(document.body.textContent).toContain('Recommended Setup')
+
     await clickElement(document.body.querySelector('button[id="claw-create-submit"]'))
     await flushAsyncWork()
 
@@ -229,6 +280,9 @@ describe('ClawEditorDialog', () => {
     await clickElement(document.body.querySelector('button[id="claw-create-next"]'))
     await flushAsyncWork()
 
+    await clickElement(document.body.querySelector('button[id="claw-create-next"]'))
+    await flushAsyncWork()
+
     const submitButton = document.body.querySelector(
       'button[id="claw-create-submit"]'
     ) as HTMLButtonElement | null
@@ -238,7 +292,7 @@ describe('ClawEditorDialog', () => {
     expect(document.body.querySelector('form')).toBeNull()
 
     expect(onSubmit).not.toHaveBeenCalled()
-    expect(document.body.querySelector('input[id="claw-name"]')).not.toBeNull()
+    expect(document.body.textContent).toContain('Recommended Setup')
     expect(document.body.querySelector('button[id="claw-create-next"]')).toBeNull()
 
     await act(async () => {
@@ -292,6 +346,10 @@ describe('ClawEditorDialog', () => {
     })
     await flushAsyncWork()
 
+    await clickElement(document.body.querySelector('button[id="claw-create-next"]'))
+    await flushAsyncWork()
+    await flushTimerWork()
+
     await clickElement(document.body.querySelector('button[id="claw-create-submit"]'))
     await flushAsyncWork()
 
@@ -302,6 +360,56 @@ describe('ClawEditorDialog', () => {
         enabled: false
       }
     })
+  })
+
+  it('installs only missing recommended skills in the setup step', async () => {
+    vi.mocked(getRuntimeOnboardingSkillsStatus).mockResolvedValueOnce(['agent-browser'])
+
+    await act(async () => {
+      root.render(
+        <ClawEditorDialog
+          isOpen
+          claw={null}
+          providers={[provider]}
+          configuredChannels={[]}
+          isSubmitting={false}
+          onClose={() => undefined}
+          onSubmit={vi.fn(async () => undefined)}
+          onCreateChannel={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onUpdateChannel={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onDeleteChannel={vi.fn(async () => undefined)}
+          onCreateProvider={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onUpdateProvider={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+        />
+      )
+    })
+    await flushAsyncWork()
+
+    await clickElement(document.body.querySelector('button[data-provider-id="provider-1"]'))
+    await flushAsyncWork()
+    await clickElement(document.body.querySelector('button[id="claw-create-next"]'))
+    await flushAsyncWork()
+    await clickElement(document.body.querySelector('button[id="claw-create-next"]'))
+    await flushAsyncWork()
+    await clickElement(document.body.querySelector('button[id="claw-create-next"]'))
+    await flushAsyncWork()
+
+    const installButton = Array.from(document.body.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Install selected skills')
+    ) as HTMLButtonElement | undefined
+
+    await clickElement(installButton)
+    await flushAsyncWork()
+
+    expect(installRuntimeOnboardingSkills).toHaveBeenCalledWith(['find-skills'])
   })
 
   it('submits detach when an existing claw clears its channel', async () => {
