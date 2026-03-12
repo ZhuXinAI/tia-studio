@@ -61,8 +61,16 @@ import { TeamRunStatusStore } from './server/chat/team-run-status-store'
 import { ThreadMessageEventsStore } from './server/chat/thread-message-events-store'
 import { createApp } from './server/create-app'
 import { listAssistantSkills, removeWorkspaceSkill } from './skills/skills-manager'
+import { registerSingleInstanceApp } from './single-instance'
 import { bringWindowToFront, buildTrayMenuTemplate } from './tray'
 import { UiConfigStore } from './ui-config'
+
+const hasSingleInstanceLock = registerSingleInstanceApp({
+  app,
+  onSecondInstance: () => {
+    openMainWindow()
+  }
+})
 
 const serverConfig = resolveServerConfig({})
 const autoUpdateService = new AutoUpdateService({
@@ -563,161 +571,163 @@ function createTray(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(async () => {
-  // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
-  await autoUpdateService.init()
+if (hasSingleInstanceLock) {
+  app.whenReady().then(async () => {
+    // Set app user model id for windows
+    electronApp.setAppUserModelId('com.electron')
+    await autoUpdateService.init()
 
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
-  })
+    // Default open or close DevTools by F12 in development
+    // and ignore CommandOrControl + R in production.
+    // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+    app.on('browser-window-created', (_, window) => {
+      optimizer.watchWindowShortcuts(window)
+    })
 
-  // IPC test
-  ipcMain.on('ping', () => logger.debug('pong'))
-  ipcMain.handle('tia:get-desktop-config', () => {
-    return {
-      baseUrl: `http://${serverConfig.host}:${serverConfig.port}`,
-      authToken: serverConfig.token
-    }
-  })
-  ipcMain.handle('tia:get-ui-config', () => {
-    return resolveUiConfigStore().getConfig()
-  })
-  ipcMain.handle('tia:set-ui-config', (_event, config) => {
-    const nextConfig = resolveUiConfigStore().updateConfig(config)
-    isTransparentWindow = Boolean(nextConfig.transparent)
-    return nextConfig
-  })
-  ipcMain.handle('tia:get-system-locale', () => {
-    return app.getLocale()
-  })
-  ipcMain.handle('tia:get-app-info', () => {
-    return {
-      name: app.getName(),
-      version: app.getVersion()
-    }
-  })
-  ipcMain.handle('tia:get-auto-update-state', () => {
-    return autoUpdateService.getState()
-  })
-  ipcMain.handle('tia:set-auto-update-enabled', async (_event, enabled) => {
-    if (typeof enabled !== 'boolean') {
-      throw new Error('Auto update flag must be a boolean')
-    }
+    // IPC test
+    ipcMain.on('ping', () => logger.debug('pong'))
+    ipcMain.handle('tia:get-desktop-config', () => {
+      return {
+        baseUrl: `http://${serverConfig.host}:${serverConfig.port}`,
+        authToken: serverConfig.token
+      }
+    })
+    ipcMain.handle('tia:get-ui-config', () => {
+      return resolveUiConfigStore().getConfig()
+    })
+    ipcMain.handle('tia:set-ui-config', (_event, config) => {
+      const nextConfig = resolveUiConfigStore().updateConfig(config)
+      isTransparentWindow = Boolean(nextConfig.transparent)
+      return nextConfig
+    })
+    ipcMain.handle('tia:get-system-locale', () => {
+      return app.getLocale()
+    })
+    ipcMain.handle('tia:get-app-info', () => {
+      return {
+        name: app.getName(),
+        version: app.getVersion()
+      }
+    })
+    ipcMain.handle('tia:get-auto-update-state', () => {
+      return autoUpdateService.getState()
+    })
+    ipcMain.handle('tia:set-auto-update-enabled', async (_event, enabled) => {
+      if (typeof enabled !== 'boolean') {
+        throw new Error('Auto update flag must be a boolean')
+      }
 
-    return autoUpdateService.setEnabled(enabled)
-  })
-  ipcMain.handle('tia:check-for-updates', () => {
-    return autoUpdateService.checkForUpdates()
-  })
-  ipcMain.handle('tia:get-codex-cli-status', () => {
-    return getCodexCliStatus()
-  })
-  ipcMain.handle('tia:restart-to-update', () => {
-    autoUpdateService.restartToUpdate()
-  })
-  ipcMain.handle('tia:get-managed-runtime-status', () => {
-    return resolveManagedRuntimeService().getStatus()
-  })
-  ipcMain.handle('tia:check-managed-runtime-latest', async (_event, rawKind) => {
-    const kind = assertManagedRuntimeKind(rawKind)
-    return resolveManagedRuntimeService().checkLatest(kind)
-  })
-  ipcMain.handle('tia:install-managed-runtime', async (_event, rawKind) => {
-    const kind = assertManagedRuntimeKind(rawKind)
-    return resolveManagedRuntimeService().installManagedRuntime(kind)
-  })
-  ipcMain.handle('tia:pick-custom-runtime', async (event, rawKind) => {
-    const kind = assertManagedRuntimeKind(rawKind)
-    const currentWindow = BrowserWindow.fromWebContents(event.sender)
-    const openDialogOptions: OpenDialogOptions = {
-      title: `Select ${kind === 'bun' ? 'Bun' : 'UV'} Binary`,
-      properties: ['openFile']
-    }
-    const result = currentWindow
-      ? await dialog.showOpenDialog(currentWindow, openDialogOptions)
-      : await dialog.showOpenDialog(openDialogOptions)
+      return autoUpdateService.setEnabled(enabled)
+    })
+    ipcMain.handle('tia:check-for-updates', () => {
+      return autoUpdateService.checkForUpdates()
+    })
+    ipcMain.handle('tia:get-codex-cli-status', () => {
+      return getCodexCliStatus()
+    })
+    ipcMain.handle('tia:restart-to-update', () => {
+      autoUpdateService.restartToUpdate()
+    })
+    ipcMain.handle('tia:get-managed-runtime-status', () => {
+      return resolveManagedRuntimeService().getStatus()
+    })
+    ipcMain.handle('tia:check-managed-runtime-latest', async (_event, rawKind) => {
+      const kind = assertManagedRuntimeKind(rawKind)
+      return resolveManagedRuntimeService().checkLatest(kind)
+    })
+    ipcMain.handle('tia:install-managed-runtime', async (_event, rawKind) => {
+      const kind = assertManagedRuntimeKind(rawKind)
+      return resolveManagedRuntimeService().installManagedRuntime(kind)
+    })
+    ipcMain.handle('tia:pick-custom-runtime', async (event, rawKind) => {
+      const kind = assertManagedRuntimeKind(rawKind)
+      const currentWindow = BrowserWindow.fromWebContents(event.sender)
+      const openDialogOptions: OpenDialogOptions = {
+        title: `Select ${kind === 'bun' ? 'Bun' : 'UV'} Binary`,
+        properties: ['openFile']
+      }
+      const result = currentWindow
+        ? await dialog.showOpenDialog(currentWindow, openDialogOptions)
+        : await dialog.showOpenDialog(openDialogOptions)
 
-    if (result.canceled || result.filePaths.length === 0) {
-      return null
-    }
+      if (result.canceled || result.filePaths.length === 0) {
+        return null
+      }
 
-    return resolveManagedRuntimeService().setCustomRuntime(kind, result.filePaths[0])
-  })
-  ipcMain.handle('tia:clear-managed-runtime', async (_event, rawKind) => {
-    const kind = assertManagedRuntimeKind(rawKind)
-    return resolveManagedRuntimeService().clearRuntime(kind)
-  })
-  ipcMain.handle('tia:pick-directory', async (event) => {
-    const currentWindow = BrowserWindow.fromWebContents(event.sender)
-    const openDialogOptions: OpenDialogOptions = {
-      title: 'Select Workspace Folder',
-      properties: ['openDirectory', 'createDirectory']
-    }
-    const result = currentWindow
-      ? await dialog.showOpenDialog(currentWindow, openDialogOptions)
-      : await dialog.showOpenDialog(openDialogOptions)
+      return resolveManagedRuntimeService().setCustomRuntime(kind, result.filePaths[0])
+    })
+    ipcMain.handle('tia:clear-managed-runtime', async (_event, rawKind) => {
+      const kind = assertManagedRuntimeKind(rawKind)
+      return resolveManagedRuntimeService().clearRuntime(kind)
+    })
+    ipcMain.handle('tia:pick-directory', async (event) => {
+      const currentWindow = BrowserWindow.fromWebContents(event.sender)
+      const openDialogOptions: OpenDialogOptions = {
+        title: 'Select Workspace Folder',
+        properties: ['openDirectory', 'createDirectory']
+      }
+      const result = currentWindow
+        ? await dialog.showOpenDialog(currentWindow, openDialogOptions)
+        : await dialog.showOpenDialog(openDialogOptions)
 
-    if (result.canceled || result.filePaths.length === 0) {
-      return null
-    }
+      if (result.canceled || result.filePaths.length === 0) {
+        return null
+      }
 
-    return result.filePaths[0]
-  })
-  ipcMain.handle('tia:list-assistant-skills', async (_event, workspaceRootPath) => {
-    if (typeof workspaceRootPath !== 'string') {
-      throw new Error('Workspace root path must be a string')
-    }
-
-    return listAssistantSkills(workspaceRootPath)
-  })
-  ipcMain.handle(
-    'tia:remove-assistant-workspace-skill',
-    async (_event, workspaceRootPath, relativePath) => {
+      return result.filePaths[0]
+    })
+    ipcMain.handle('tia:list-assistant-skills', async (_event, workspaceRootPath) => {
       if (typeof workspaceRootPath !== 'string') {
         throw new Error('Workspace root path must be a string')
       }
-      if (typeof relativePath !== 'string') {
-        throw new Error('Relative skill path must be a string')
+
+      return listAssistantSkills(workspaceRootPath)
+    })
+    ipcMain.handle(
+      'tia:remove-assistant-workspace-skill',
+      async (_event, workspaceRootPath, relativePath) => {
+        if (typeof workspaceRootPath !== 'string') {
+          throw new Error('Workspace root path must be a string')
+        }
+        if (typeof relativePath !== 'string') {
+          throw new Error('Relative skill path must be a string')
+        }
+
+        await removeWorkspaceSkill(workspaceRootPath, relativePath)
+      }
+    )
+    ipcMain.handle('tia:open-web-search-settings', async (event, rawUrl) => {
+      if (typeof rawUrl !== 'string') {
+        throw new Error('Web search settings URL must be a string')
       }
 
-      await removeWorkspaceSkill(workspaceRootPath, relativePath)
-    }
-  )
-  ipcMain.handle('tia:open-web-search-settings', async (event, rawUrl) => {
-    if (typeof rawUrl !== 'string') {
-      throw new Error('Web search settings URL must be a string')
-    }
+      const url = normalizeWebSearchSettingsUrl(rawUrl)
+      const parentWindow = BrowserWindow.fromWebContents(event.sender)
+      const browserWindow = resolveWebSearchSettingsWindow(parentWindow)
+      await browserWindow.loadURL(url)
 
-    const url = normalizeWebSearchSettingsUrl(rawUrl)
-    const parentWindow = BrowserWindow.fromWebContents(event.sender)
-    const browserWindow = resolveWebSearchSettingsWindow(parentWindow)
-    await browserWindow.loadURL(url)
+      if (!browserWindow.isVisible()) {
+        browserWindow.show()
+      }
+      browserWindow.focus()
 
-    if (!browserWindow.isVisible()) {
-      browserWindow.show()
-    }
-    browserWindow.focus()
-
-    return true
-  })
-
-  await startLocalApiServer()
-  openMainWindow()
-  createTray()
-  if (autoUpdateService.getState().enabled && app.isPackaged) {
-    void autoUpdateService.checkForUpdates().catch((error) => {
-      logger.error('Initial auto update check failed:', error)
+      return true
     })
-  }
 
-  app.on('activate', function () {
+    await startLocalApiServer()
     openMainWindow()
+    createTray()
+    if (autoUpdateService.getState().enabled && app.isPackaged) {
+      void autoUpdateService.checkForUpdates().catch((error) => {
+        logger.error('Initial auto update check failed:', error)
+      })
+    }
+
+    app.on('activate', function () {
+      openMainWindow()
+    })
   })
-})
+}
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits

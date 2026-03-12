@@ -3,6 +3,11 @@ import { useTranslation } from '../../i18n/use-app-translation'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { cn } from '../../lib/utils'
+import clsx from 'clsx'
+
+function isWindowsPlatform(): boolean {
+  return globalThis.window?.electron?.process.platform === 'win32'
+}
 
 export function AppShell(): React.JSX.Element {
   const { t } = useTranslation()
@@ -14,7 +19,9 @@ export function AppShell(): React.JSX.Element {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground transition-colors duration-200">
-      <header className="drag-region sticky top-0 z-20 border-b border-border/70 bg-background/20 pl-[80px] pr-3 py-1 backdrop-blur-sm">
+      <header className={clsx("drag-region sticky top-0 z-20 border-b border-border/70 bg-background/20 pr-3 py-1 backdrop-blur-sm", {
+        "pl-[80px]": !isWindowsPlatform()
+      })}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Button

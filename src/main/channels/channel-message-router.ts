@@ -158,10 +158,11 @@ async function drainStreamWithToolUpdates(
         })
         await onToolUpdate(formatChannelToolInputUpdate(value, locale))
       } else if (value.type === 'tool-output-available' && onToolUpdate) {
-        const tool = toolsByCallId.get(value.toolCallId) ?? {
-          toolName: value.toolCallId
-        }
-        await onToolUpdate(formatChannelToolOutputUpdate(value, tool, locale))
+        // Disable tool output for now
+        // const tool = toolsByCallId.get(value.toolCallId) ?? {
+        //   toolName: value.toolCallId
+        // }
+        // await onToolUpdate(formatChannelToolOutputUpdate(value, tool, locale))
       } else if (value.type === 'tool-output-error' && onToolUpdate) {
         const tool = toolsByCallId.get(value.toolCallId) ?? {
           toolName: value.toolCallId
