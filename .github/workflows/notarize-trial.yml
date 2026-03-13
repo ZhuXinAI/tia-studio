@@ -41,6 +41,9 @@ jobs:
           HAS_APPLE_ID: ${{ secrets.APPLE_ID != '' }}
           HAS_APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD != '' }}
           HAS_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID != '' }}
+          HAS_APPLE_API_KEY: ${{ secrets.APPLE_API_KEY != '' }}
+          HAS_APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID != '' }}
+          HAS_APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER != '' }}
         run: |
           echo "MACOS_CERTIFICATE=$HAS_MACOS_CERTIFICATE"
           echo "MACOS_CERTIFICATE_PASSWORD=$HAS_MACOS_CERTIFICATE_PASSWORD"
@@ -48,16 +51,59 @@ jobs:
           echo "APPLE_ID=$HAS_APPLE_ID"
           echo "APPLE_APP_SPECIFIC_PASSWORD=$HAS_APPLE_APP_SPECIFIC_PASSWORD"
           echo "APPLE_TEAM_ID=$HAS_APPLE_TEAM_ID"
+          echo "APPLE_API_KEY=$HAS_APPLE_API_KEY"
+          echo "APPLE_API_KEY_ID=$HAS_APPLE_API_KEY_ID"
+          echo "APPLE_API_ISSUER=$HAS_APPLE_API_ISSUER"
 
           if [ "$HAS_MACOS_CERTIFICATE" != "true" ] || [ "$HAS_MACOS_CERTIFICATE_PASSWORD" != "true" ] || [ "$HAS_KEYCHAIN_PASSWORD" != "true" ]; then
             echo "::error::The signing certificate secrets are incomplete."
             exit 1
           fi
 
-          if [ "$HAS_APPLE_ID" != "true" ] || [ "$HAS_APPLE_APP_SPECIFIC_PASSWORD" != "true" ] || [ "$HAS_APPLE_TEAM_ID" != "true" ]; then
-            echo "::error::The Apple notarization secrets are incomplete. Expected APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, and APPLE_TEAM_ID."
+          HAS_APPLE_ID_FLOW=false
+          if [ "$HAS_APPLE_ID" = "true" ] && [ "$HAS_APPLE_APP_SPECIFIC_PASSWORD" = "true" ] && [ "$HAS_APPLE_TEAM_ID" = "true" ]; then
+            HAS_APPLE_ID_FLOW=true
+          fi
+
+          HAS_APPLE_API_FLOW=false
+          if [ "$HAS_APPLE_API_KEY" = "true" ] && [ "$HAS_APPLE_API_KEY_ID" = "true" ] && [ "$HAS_APPLE_API_ISSUER" = "true" ]; then
+            HAS_APPLE_API_FLOW=true
+          fi
+
+          if [ "$HAS_APPLE_ID_FLOW" != "true" ] && [ "$HAS_APPLE_API_FLOW" != "true" ]; then
+            echo "::error::The Apple notarization secrets are incomplete. Expected either APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID, or APPLE_API_KEY + APPLE_API_KEY_ID + APPLE_API_ISSUER."
             exit 1
           fi
+
+      - name: Prepare notarization credentials
+        env:
+          APPLE_ID_SECRET: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD_SECRET: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID_SECRET: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY_SECRET: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID_SECRET: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_SECRET: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          if [ -n "$APPLE_API_KEY_SECRET" ] && [ -n "$APPLE_API_KEY_ID_SECRET" ] && [ -n "$APPLE_API_ISSUER_SECRET" ]; then
+            APPLE_API_KEY_PATH="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID_SECRET}.p8"
+
+            if printf '%s' "$APPLE_API_KEY_SECRET" | grep -q "BEGIN PRIVATE KEY"; then
+              printf '%s' "$APPLE_API_KEY_SECRET" > "$APPLE_API_KEY_PATH"
+            else
+              echo -n "$APPLE_API_KEY_SECRET" | base64 --decode -o "$APPLE_API_KEY_PATH"
+            fi
+
+            echo "APPLE_API_KEY=$APPLE_API_KEY_PATH" >> "$GITHUB_ENV"
+            echo "APPLE_API_KEY_ID=$APPLE_API_KEY_ID_SECRET" >> "$GITHUB_ENV"
+            echo "APPLE_API_ISSUER=$APPLE_API_ISSUER_SECRET" >> "$GITHUB_ENV"
+            echo "Using App Store Connect API key notarization."
+            exit 0
+          fi
+
+          echo "APPLE_ID=$APPLE_ID_SECRET" >> "$GITHUB_ENV"
+          echo "APPLE_APP_SPECIFIC_PASSWORD=$APPLE_APP_SPECIFIC_PASSWORD_SECRET" >> "$GITHUB_ENV"
+          echo "APPLE_TEAM_ID=$APPLE_TEAM_ID_SECRET" >> "$GITHUB_ENV"
+          echo "Using Apple ID notarization."
 
       - name: Import Code Signing Certificate
         env:
@@ -81,9 +127,6 @@ jobs:
 
       - name: Build macOS notarized artifacts
         env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           DEBUG: electron-notarize*
         run: |
           pnpm run build
