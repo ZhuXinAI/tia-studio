@@ -23,15 +23,18 @@ jobs:
       )
     runs-on: macos-15-intel
 
-    env:
-      RELEASE_TAG: ${{ github.event.workflow_run.head_branch }}
-      GITHUB_REF: refs/tags/${{ github.event.workflow_run.head_branch }}
-
     steps:
-      - name: Checkout code
+      - name: Checkout code (manual)
         uses: actions/checkout@v4
+        if: github.event_name == 'workflow_dispatch'
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || format('refs/tags/{0}', github.event.workflow_run.head_branch) }}
+          fetch-depth: 0
+
+      - name: Checkout code (tag)
+        uses: actions/checkout@v4
+        if: github.event_name == 'workflow_run'
+        with:
+          ref: refs/tags/${{ github.event.workflow_run.head_branch }}
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -51,12 +54,15 @@ jobs:
         run: pnpm run verify:libsql-bindings -- --x64
 
       - name: Import Code Signing Certificate
-        if: ${{ secrets.MACOS_CERTIFICATE != '' }}
         env:
           CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
           CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
+          if [ -z "$CERTIFICATE_BASE64" ]; then
+            exit 0
+          fi
+
           CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
@@ -87,6 +93,12 @@ jobs:
           if-no-files-found: error
 
       - name: Cleanup Keychain
-        if: always() && secrets.MACOS_CERTIFICATE != ''
+        if: always()
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
         run: |
+          if [ -z "$CERTIFICATE_BASE64" ]; then
+            exit 0
+          fi
+
           security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
