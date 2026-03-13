@@ -1,6 +1,9 @@
 name: Notarize Trial
 
 on:
+  push:
+    branches:
+      - codex/macos-notarize-trial
   workflow_dispatch:
 
 permissions:
