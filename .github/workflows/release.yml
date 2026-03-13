@@ -56,7 +56,7 @@ jobs:
 
       - name: Verify macOS libsql bindings
         if: matrix.is_macos
-        run: pnpm run verify:libsql-bindings -- --mac
+        run: pnpm run verify:libsql-bindings -- --arm64
 
       - name: Verify Windows libsql bindings
         if: ${{ !matrix.is_macos }}
@@ -92,8 +92,10 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           pnpm run build
+          npm_config_arch=x64 pnpm install --frozen-lockfile --force
           pnpm run verify:libsql-bindings -- --x64
           node ./scripts/run-electron-builder.mjs --mac --x64 --publish always
+          npm_config_arch=arm64 pnpm install --frozen-lockfile --force
           pnpm run verify:libsql-bindings -- --arm64
           node ./scripts/run-electron-builder.mjs --mac --arm64 --publish always
 

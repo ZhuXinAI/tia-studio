@@ -33,7 +33,7 @@ jobs:
 
       - name: Verify macOS libsql bindings
         if: runner.os == 'macOS'
-        run: pnpm run verify:libsql-bindings -- --mac
+        run: pnpm run verify:libsql-bindings -- --arm64
 
       - name: Verify Windows libsql bindings
         if: runner.os == 'Windows'
