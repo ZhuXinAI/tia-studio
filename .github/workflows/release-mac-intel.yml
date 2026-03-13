@@ -1,13 +1,21 @@
 name: Build Mac Intel
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag to build and upload Intel assets for
+        required: false
+        type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   mac_intel:
@@ -17,8 +25,15 @@ jobs:
     steps:
       - name: Checkout code (manual)
         uses: actions/checkout@v4
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag == ''
         with:
+          fetch-depth: 0
+
+      - name: Checkout code (manual tag)
+        uses: actions/checkout@v4
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != ''
+        with:
+          ref: refs/tags/${{ github.event.inputs.release_tag }}
           fetch-depth: 0
 
       - name: Checkout code (tag)
@@ -71,6 +86,24 @@ jobs:
         run: |
           pnpm run build
           node ./scripts/run-electron-builder.mjs --mac --x64 --publish never
+
+      - name: Upload Intel release assets
+        if: github.event_name == 'push' || github.event.inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_TAG="${GITHUB_REF_NAME}"
+          if [ -n "${{ github.event.inputs.release_tag }}" ]; then
+            RELEASE_TAG="${{ github.event.inputs.release_tag }}"
+          fi
+
+          RELEASE_VERSION="${RELEASE_TAG#v}"
+          VERSION="${RELEASE_VERSION#v}"
+          cp "dist/TIA Studio-${VERSION}-mac.zip" "dist/TIA-Studio-${VERSION}-x64-mac.zip"
+          gh release upload "$RELEASE_TAG" \
+            "dist/tia-studio-${VERSION}-x64.dmg" \
+            "dist/TIA-Studio-${VERSION}-x64-mac.zip" \
+            --clobber
 
       - name: Upload Intel artifacts
         uses: actions/upload-artifact@v4
