@@ -1,6 +1,6 @@
 {
   "name": "tia-studio",
-  "version": "0.1.26",
+  "version": "0.1.27",
   "description": "An Electron application with React and TypeScript",
   "main": "./out/main/index.js",
   "author": "example.com",
