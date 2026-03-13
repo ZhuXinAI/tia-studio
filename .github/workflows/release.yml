@@ -22,14 +22,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Publish both macOS architectures from one job so updater metadata
-          # stays in sync without shipping a larger universal app.
-          - name: macOS
+          # Publish a single macOS universal artifact so auto-update metadata
+          # stays in sync instead of racing across separate arm64/x64 jobs.
+          - name: macOS Universal
             os: macos-latest
             is_macos: true
+            release_command: pnpm exec electron-builder --mac --universal --publish always
           - name: Windows
             os: windows-latest
             is_macos: false
+            release_command: pnpm exec electron-builder --publish always
 
     env:
       RELEASE_TAG: ${{ github.event.workflow_run.head_branch }}
@@ -42,25 +44,18 @@ jobs:
           ref: refs/tags/${{ github.event.workflow_run.head_branch }}
           fetch-depth: 0
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'pnpm'
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Verify macOS libsql bindings
-        if: matrix.is_macos
-        run: pnpm run verify:libsql-bindings -- --arm64
-
-      - name: Verify Windows libsql bindings
-        if: ${{ !matrix.is_macos }}
-        run: pnpm run verify:libsql-bindings -- --win
+        run: pnpm install
 
       - name: Import Code Signing Certificate (macOS)
         if: matrix.is_macos
@@ -83,24 +78,7 @@ jobs:
 
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
-      - name: Build and release (macOS)
-        if: matrix.is_macos
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          pnpm run build
-          npm_config_arch=x64 pnpm install --frozen-lockfile --force
-          pnpm run verify:libsql-bindings -- --x64
-          node ./scripts/run-electron-builder.mjs --mac --x64 --publish always
-          npm_config_arch=arm64 pnpm install --frozen-lockfile --force
-          pnpm run verify:libsql-bindings -- --arm64
-          node ./scripts/run-electron-builder.mjs --mac --arm64 --publish always
-
       - name: Build and release
-        if: ${{ !matrix.is_macos }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -108,8 +86,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           pnpm run build
-          pnpm run verify:libsql-bindings -- --win
-          node ./scripts/run-electron-builder.mjs --publish always
+          ${{ matrix.release_command }}
 
       - name: Cleanup Keychain (macOS)
         if: matrix.is_macos && always()
