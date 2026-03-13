@@ -1,0 +1,123 @@
+name: Notarize Trial
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notarize_trial:
+    name: macOS Arm64 Notarization Trial
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Check secret availability
+        env:
+          HAS_MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE != '' }}
+          HAS_MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD != '' }}
+          HAS_KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD != '' }}
+          HAS_APPLE_ID: ${{ secrets.APPLE_ID != '' }}
+          HAS_APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD != '' }}
+          HAS_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID != '' }}
+        run: |
+          echo "MACOS_CERTIFICATE=$HAS_MACOS_CERTIFICATE"
+          echo "MACOS_CERTIFICATE_PASSWORD=$HAS_MACOS_CERTIFICATE_PASSWORD"
+          echo "KEYCHAIN_PASSWORD=$HAS_KEYCHAIN_PASSWORD"
+          echo "APPLE_ID=$HAS_APPLE_ID"
+          echo "APPLE_APP_SPECIFIC_PASSWORD=$HAS_APPLE_APP_SPECIFIC_PASSWORD"
+          echo "APPLE_TEAM_ID=$HAS_APPLE_TEAM_ID"
+
+          if [ "$HAS_MACOS_CERTIFICATE" != "true" ] || [ "$HAS_MACOS_CERTIFICATE_PASSWORD" != "true" ] || [ "$HAS_KEYCHAIN_PASSWORD" != "true" ]; then
+            echo "::error::The signing certificate secrets are incomplete."
+            exit 1
+          fi
+
+          if [ "$HAS_APPLE_ID" != "true" ] || [ "$HAS_APPLE_APP_SPECIFIC_PASSWORD" != "true" ] || [ "$HAS_APPLE_TEAM_ID" != "true" ]; then
+            echo "::error::The Apple notarization secrets are incomplete. Expected APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, and APPLE_TEAM_ID."
+            exit 1
+          fi
+
+      - name: Import Code Signing Certificate
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          echo -n "$CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          security import $CERTIFICATE_PATH -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security find-identity -v -p codesigning $KEYCHAIN_PATH
+
+      - name: Build macOS notarized artifacts
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          DEBUG: electron-notarize*
+        run: |
+          pnpm run build
+          node ./scripts/run-electron-builder.mjs --mac --arm64 --publish never
+
+      - name: Locate built app
+        id: locate_app
+        run: |
+          APP_PATH=$(find dist -maxdepth 3 -name "*.app" | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "::error::Could not find a built .app bundle in dist."
+            find dist -maxdepth 3 -print || true
+            exit 1
+          fi
+
+          echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
+          echo "Found app bundle at $APP_PATH"
+
+      - name: Verify codesign and Gatekeeper state
+        run: |
+          codesign --verify --deep --strict --verbose=2 "${{ steps.locate_app.outputs.app_path }}"
+          codesign --display --entitlements :- "${{ steps.locate_app.outputs.app_path }}" || true
+          spctl -a -vvv --type exec "${{ steps.locate_app.outputs.app_path }}"
+          xcrun stapler validate "${{ steps.locate_app.outputs.app_path }}"
+
+      - name: Upload macOS artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notarize-trial-artifacts
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/latest-mac.yml
+          if-no-files-found: warn
+
+      - name: Cleanup Keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
