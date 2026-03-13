@@ -22,12 +22,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Publish a single macOS universal artifact so auto-update metadata
-          # stays in sync instead of racing across separate arm64/x64 jobs.
-          - name: macOS Universal
+          - name: macOS Arm64
             os: macos-latest
             is_macos: true
-            release_command: pnpm exec electron-builder --mac --universal --publish always
+            release_command: node ./scripts/run-electron-builder.mjs --mac --arm64 --publish always
           - name: Windows
             os: windows-latest
             is_macos: false
