@@ -1,11 +1,14 @@
 import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { Arch } from 'builder-util'
+const unusedMacLibsqlBindingsByArch = {
+  arm64: '@libsql/darwin-x64',
+  x64: '@libsql/darwin-arm64'
+}
 
-const unusedMacLibsqlBindings = {
-  [Arch.arm64]: '@libsql/darwin-x64',
-  [Arch.x64]: '@libsql/darwin-arm64'
+const archNames = {
+  1: 'x64',
+  3: 'arm64'
 }
 
 export default async function afterPack(context) {
@@ -13,7 +16,13 @@ export default async function afterPack(context) {
     return
   }
 
-  const unusedBinding = unusedMacLibsqlBindings[context.arch]
+  const archName =
+    typeof context.arch === 'number'
+      ? archNames[context.arch]
+      : typeof context.arch === 'string'
+        ? context.arch
+        : undefined
+  const unusedBinding = archName ? unusedMacLibsqlBindingsByArch[archName] : undefined
   if (!unusedBinding) {
     return
   }

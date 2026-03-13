@@ -23,7 +23,8 @@ delete env.ELECTRON_MIRROR
 
 const child = spawn(electronBuilderBinary, process.argv.slice(2), {
   stdio: 'inherit',
-  env
+  env,
+  shell: process.platform === 'win32'
 })
 
 child.on('error', (error) => {
