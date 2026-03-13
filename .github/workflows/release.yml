@@ -45,7 +45,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+          cache: 'pnpm'
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -53,7 +54,15 @@ jobs:
           version: 9
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify macOS libsql bindings
+        if: matrix.is_macos
+        run: pnpm run verify:libsql-bindings -- --mac
+
+      - name: Verify Windows libsql bindings
+        if: ${{ !matrix.is_macos }}
+        run: pnpm run verify:libsql-bindings -- --win
 
       - name: Import Code Signing Certificate (macOS)
         if: matrix.is_macos
@@ -85,7 +94,9 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           pnpm run build
+          pnpm run verify:libsql-bindings -- --x64
           node ./scripts/run-electron-builder.mjs --mac --x64 --publish always
+          pnpm run verify:libsql-bindings -- --arm64
           node ./scripts/run-electron-builder.mjs --mac --arm64 --publish always
 
       - name: Build and release
@@ -97,6 +108,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           pnpm run build
+          pnpm run verify:libsql-bindings -- --win
           node ./scripts/run-electron-builder.mjs --publish always
 
       - name: Cleanup Keychain (macOS)

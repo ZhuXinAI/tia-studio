@@ -27,11 +27,13 @@
     "build:mac:arm64": "electron-vite build && node ./scripts/run-electron-builder.mjs --mac --arm64",
     "build:mac:all": "electron-vite build && node ./scripts/run-electron-builder.mjs --mac --x64 && node ./scripts/run-electron-builder.mjs --mac --arm64",
     "build:linux": "electron-vite build && node ./scripts/run-electron-builder.mjs --linux",
+    "verify:libsql-bindings": "node ./scripts/verify-libsql-bindings.mjs",
     "preversion": "npm run ci:release",
     "version:patch": "npm version patch && git push && git push --tags",
     "version:minor": "npm version minor && git push && git push --tags",
     "version:major": "npm version major && git push && git push --tags"
   },
+  "packageManager": "pnpm@9.15.9",
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.50",
     "@ai-sdk/google": "^3.0.34",
@@ -89,7 +91,8 @@
   },
   "optionalDependencies": {
     "@libsql/darwin-arm64": "0.5.22",
-    "@libsql/darwin-x64": "0.5.22"
+    "@libsql/darwin-x64": "0.5.22",
+    "@libsql/win32-x64-msvc": "0.5.22"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
