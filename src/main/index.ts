@@ -45,6 +45,8 @@ import { ChannelThreadBindingsRepository } from './persistence/repos/channel-thr
 import { ChannelsRepository } from './persistence/repos/channels-repo'
 import { CronJobRunsRepository } from './persistence/repos/cron-job-runs-repo'
 import { CronJobsRepository } from './persistence/repos/cron-jobs-repo'
+import { GroupThreadsRepository } from './persistence/repos/group-threads-repo'
+import { GroupWorkspacesRepository } from './persistence/repos/group-workspaces-repo'
 import {
   type ManagedRuntimeKind,
   ManagedRuntimesRepository
@@ -213,6 +215,8 @@ async function startLocalApiServer(): Promise<void> {
   const heartbeatsRepo = new AssistantHeartbeatsRepository(db)
   const heartbeatRunsRepo = new AssistantHeartbeatRunsRepository(db)
   const channelThreadBindingsRepo = new ChannelThreadBindingsRepository(db)
+  const groupWorkspacesRepo = new GroupWorkspacesRepository(db)
+  const groupThreadsRepo = new GroupThreadsRepository(db)
   const teamWorkspacesRepo = new TeamWorkspacesRepository(db)
   const teamThreadsRepo = new TeamThreadsRepository(db)
   const webSearchSettingsRepo = new WebSearchSettingsRepository(db)
@@ -412,6 +416,8 @@ async function startLocalApiServer(): Promise<void> {
       cronJobRuns: cronJobRunsRepo,
       heartbeats: heartbeatsRepo,
       heartbeatRuns: heartbeatRunsRepo,
+      groupWorkspaces: groupWorkspacesRepo,
+      groupThreads: groupThreadsRepo,
       teamWorkspaces: teamWorkspacesRepo,
       teamThreads: teamThreadsRepo,
       webSearchSettings: webSearchSettingsRepo,
