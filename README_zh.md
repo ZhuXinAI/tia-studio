@@ -143,8 +143,14 @@ pnpm run dev
 ### 构建
 
 ```bash
-# macOS
+# macOS（当前架构）
 pnpm run build:mac
+
+# macOS Intel
+pnpm run build:mac:x64
+
+# macOS Apple Silicon
+pnpm run build:mac:arm64
 
 # Windows
 pnpm run build:win
@@ -152,6 +158,8 @@ pnpm run build:win
 # Linux
 pnpm run build:linux
 ```
+
+如果你是在 Apple Silicon 机器上构建 Intel 版 macOS 安装包，请在 Rosetta 终端里执行 `pnpm run build:mac:x64`，这样原生模块会按 `x64` 安装。
 
 ## 项目结构
 

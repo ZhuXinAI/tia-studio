@@ -152,8 +152,14 @@ pnpm run dev
 ### Building
 
 ```bash
-# For macOS
+# For macOS (current architecture)
 pnpm run build:mac
+
+# For macOS Intel
+pnpm run build:mac:x64
+
+# For macOS Apple Silicon
+pnpm run build:mac:arm64
 
 # For Windows
 pnpm run build:win
@@ -161,6 +167,8 @@ pnpm run build:win
 # For Linux
 pnpm run build:linux
 ```
+
+For Intel macOS builds on Apple Silicon hardware, run `pnpm run build:mac:x64` from a Rosetta terminal so native modules install for `x64`.
 
 ## Project Structure
 

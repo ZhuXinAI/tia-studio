@@ -2,6 +2,7 @@ appId: com.electron.app
 productName: TIA Studio
 directories:
   buildResources: build
+afterPack: build/after-pack.mjs
 files:
   - '!**/.vscode/*'
   - '!src/*'
@@ -22,9 +23,6 @@ mac:
   entitlementsInherit: build/entitlements.mac.plist
   hardenedRuntime: true
   gatekeeperAssess: false
-  # Keep libsql's prebuilt per-arch native bindings intact when building the
-  # combined universal app. Both packages are bundled for runtime selection.
-  x64ArchFiles: Contents/Resources/app.asar.unpacked/node_modules/@libsql/darwin-*/index.node
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
@@ -32,7 +30,7 @@ mac:
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
 dmg:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${name}-${version}-${arch}.${ext}
 linux:
   target:
     - AppImage

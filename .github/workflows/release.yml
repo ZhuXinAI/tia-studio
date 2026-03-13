@@ -22,16 +22,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Publish a single macOS universal artifact so auto-update metadata
-          # stays in sync instead of racing across separate arm64/x64 jobs.
-          - name: macOS Universal
+          # Publish both macOS architectures from one job so updater metadata
+          # stays in sync without shipping a larger universal app.
+          - name: macOS
             os: macos-latest
             is_macos: true
-            release_command: pnpm exec electron-builder --mac --universal --publish always
           - name: Windows
             os: windows-latest
             is_macos: false
-            release_command: pnpm exec electron-builder --publish always
 
     env:
       RELEASE_TAG: ${{ github.event.workflow_run.head_branch }}
@@ -78,7 +76,8 @@ jobs:
 
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
-      - name: Build and release
+      - name: Build and release (macOS)
+        if: matrix.is_macos
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -86,7 +85,19 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           pnpm run build
-          ${{ matrix.release_command }}
+          node ./scripts/run-electron-builder.mjs --mac --x64 --publish always
+          node ./scripts/run-electron-builder.mjs --mac --arm64 --publish always
+
+      - name: Build and release
+        if: ${{ !matrix.is_macos }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          pnpm run build
+          node ./scripts/run-electron-builder.mjs --publish always
 
       - name: Cleanup Keychain (macOS)
         if: matrix.is_macos && always()
