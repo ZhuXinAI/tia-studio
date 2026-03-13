@@ -36,6 +36,29 @@ When a tag is pushed (e.g., `v0.1.0`), GitHub Actions will:
 3. Create a GitHub Release with all artifacts
 4. Upload the installers to the release
 
+### macOS Signing and Notarization
+
+macOS releases distributed outside the Mac App Store need both Developer ID signing and Apple notarization.
+
+Repository secrets required for the macOS workflows:
+
+```bash
+MACOS_CERTIFICATE
+MACOS_CERTIFICATE_PASSWORD
+KEYCHAIN_PASSWORD
+APPLE_ID
+APPLE_APP_SPECIFIC_PASSWORD
+APPLE_TEAM_ID
+```
+
+The notarized macOS build can be verified in CI with:
+
+```bash
+codesign --verify --deep --strict --verbose=2 "dist/mac-arm64/TIA Studio.app"
+spctl -a -vvv --type exec "dist/mac-arm64/TIA Studio.app"
+xcrun stapler validate "dist/mac-arm64/TIA Studio.app"
+```
+
 ### Manual Release
 
 If you prefer to create releases manually:
