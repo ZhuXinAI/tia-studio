@@ -33,7 +33,6 @@
     "version:minor": "npm version minor && git push && git push --tags",
     "version:major": "npm version major && git push && git push --tags"
   },
-  "packageManager": "pnpm@9.15.9",
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.50",
     "@ai-sdk/google": "^3.0.34",
