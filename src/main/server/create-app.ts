@@ -8,6 +8,8 @@ import type { ChannelPairingsRepository } from '../persistence/repos/channel-pai
 import type { ChannelThreadBindingsRepository } from '../persistence/repos/channel-thread-bindings-repo'
 import type { CronJobsRepository } from '../persistence/repos/cron-jobs-repo'
 import type { CronJobRunsRepository } from '../persistence/repos/cron-job-runs-repo'
+import type { GroupThreadsRepository } from '../persistence/repos/group-threads-repo'
+import type { GroupWorkspacesRepository } from '../persistence/repos/group-workspaces-repo'
 import type { McpServersRepository } from '../persistence/repos/mcp-servers-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { SecuritySettingsRepository } from '../persistence/repos/security-settings-repo'
@@ -26,6 +28,8 @@ import { registerAssistantsRoute } from './routes/assistants-route'
 import { registerChatRoute } from './routes/chat-route'
 import { registerClawsRoute } from './routes/claws-route'
 import { registerCronJobsRoute } from './routes/cron-jobs-route'
+import { registerGroupThreadsRoute } from './routes/group-threads-route'
+import { registerGroupWorkspacesRoute } from './routes/group-workspaces-route'
 import { registerHealthRoute } from './routes/health-route'
 import { registerMcpServersRoute } from './routes/mcp-servers-route'
 import { registerProvidersRoute } from './routes/providers-route'
@@ -42,6 +46,8 @@ type CreateAppOptions = {
     providers: ProvidersRepository
     assistants: AssistantsRepository
     threads: ThreadsRepository
+    groupWorkspaces: GroupWorkspacesRepository
+    groupThreads: GroupThreadsRepository
     teamWorkspaces: TeamWorkspacesRepository
     teamThreads: TeamThreadsRepository
     webSearchSettings: WebSearchSettingsRepository
@@ -139,6 +145,13 @@ export function createApp(options: CreateAppOptions): Hono {
       threadsRepo: options.repositories.threads,
       assistantsRepo: options.repositories.assistants,
       channelThreadBindingsRepo: options.repositories.channelThreadBindings
+    })
+    registerGroupWorkspacesRoute(app, {
+      groupWorkspacesRepo: options.repositories.groupWorkspaces
+    })
+    registerGroupThreadsRoute(app, {
+      groupThreadsRepo: options.repositories.groupThreads,
+      groupWorkspacesRepo: options.repositories.groupWorkspaces
     })
     registerTeamWorkspacesRoute(app, {
       teamWorkspacesRepo: options.repositories.teamWorkspaces
