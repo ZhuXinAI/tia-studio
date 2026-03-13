@@ -1,11 +1,9 @@
 name: Build Mac Intel
 
 on:
-  workflow_run:
-    workflows:
-      - CI
-    types:
-      - completed
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -14,13 +12,6 @@ permissions:
 jobs:
   mac_intel:
     name: macOS Intel
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push' &&
-        startsWith(github.event.workflow_run.head_branch || '', 'v')
-      )
     runs-on: macos-15-intel
 
     steps:
@@ -32,9 +23,8 @@ jobs:
 
       - name: Checkout code (tag)
         uses: actions/checkout@v4
-        if: github.event_name == 'workflow_run'
+        if: github.event_name == 'push'
         with:
-          ref: refs/tags/${{ github.event.workflow_run.head_branch }}
           fetch-depth: 0
 
       - name: Setup Node.js
