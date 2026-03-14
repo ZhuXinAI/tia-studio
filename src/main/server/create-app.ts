@@ -18,9 +18,12 @@ import type { TeamWorkspacesRepository } from '../persistence/repos/team-workspa
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import type { AssistantRuntime } from '../mastra/assistant-runtime'
+import type { GroupRuntime } from '../mastra/group-runtime'
 import type { TeamRuntime } from '../mastra/team-runtime'
 import type { WhatsAppAuthStateStore } from '../channels/whatsapp-auth-state-store'
 import { createBearerAuthMiddleware } from './auth-middleware'
+import type { GroupRunStatusStore } from './chat/group-run-status-store'
+import type { GroupThreadEventsStore } from './chat/group-thread-events-store'
 import type { ThreadMessageEventsStore } from './chat/thread-message-events-store'
 import type { TeamRunStatusStore } from './chat/team-run-status-store'
 import { registerAssistantHeartbeatRoute } from './routes/assistant-heartbeat-route'
@@ -28,8 +31,9 @@ import { registerAssistantsRoute } from './routes/assistants-route'
 import { registerChatRoute } from './routes/chat-route'
 import { registerClawsRoute } from './routes/claws-route'
 import { registerCronJobsRoute } from './routes/cron-jobs-route'
+import { registerGroupChatRoute } from './routes/group-chat-route'
+import { registerGroupGroupsRoute } from './routes/group-groups-route'
 import { registerGroupThreadsRoute } from './routes/group-threads-route'
-import { registerGroupWorkspacesRoute } from './routes/group-workspaces-route'
 import { registerHealthRoute } from './routes/health-route'
 import { registerMcpServersRoute } from './routes/mcp-servers-route'
 import { registerProvidersRoute } from './routes/providers-route'
@@ -46,7 +50,7 @@ type CreateAppOptions = {
     providers: ProvidersRepository
     assistants: AssistantsRepository
     threads: ThreadsRepository
-    groupWorkspaces: GroupWorkspacesRepository
+    groups: GroupWorkspacesRepository
     groupThreads: GroupThreadsRepository
     teamWorkspaces: TeamWorkspacesRepository
     teamThreads: TeamThreadsRepository
@@ -62,8 +66,11 @@ type CreateAppOptions = {
     heartbeatRuns: AssistantHeartbeatRunsRepository
   }
   assistantRuntime?: AssistantRuntime
+  groupRuntime?: GroupRuntime
   teamRuntime?: TeamRuntime
   teamRunStatusStore?: TeamRunStatusStore
+  groupRunStatusStore?: GroupRunStatusStore
+  groupThreadEventsStore?: GroupThreadEventsStore
   threadMessageEventsStore?: ThreadMessageEventsStore
   channelService?: {
     reload(): Promise<void>
@@ -107,6 +114,15 @@ export function createApp(options: CreateAppOptions): Hono {
     })
   )
   app.use('/team-chat/*', createBearerAuthMiddleware(options.token))
+  app.use(
+    '/group-chat/*',
+    cors({
+      origin: (origin) => origin ?? '*',
+      allowMethods: ['GET', 'POST', 'OPTIONS'],
+      allowHeaders: ['Authorization', 'Content-Type']
+    })
+  )
+  app.use('/group-chat/*', createBearerAuthMiddleware(options.token))
   registerHealthRoute(app)
 
   if (options.repositories) {
@@ -146,12 +162,12 @@ export function createApp(options: CreateAppOptions): Hono {
       assistantsRepo: options.repositories.assistants,
       channelThreadBindingsRepo: options.repositories.channelThreadBindings
     })
-    registerGroupWorkspacesRoute(app, {
-      groupWorkspacesRepo: options.repositories.groupWorkspaces
+    registerGroupGroupsRoute(app, {
+      groupsRepo: options.repositories.groups
     })
     registerGroupThreadsRoute(app, {
       groupThreadsRepo: options.repositories.groupThreads,
-      groupWorkspacesRepo: options.repositories.groupWorkspaces
+      groupsRepo: options.repositories.groups
     })
     registerTeamWorkspacesRoute(app, {
       teamWorkspacesRepo: options.repositories.teamWorkspaces
@@ -194,6 +210,14 @@ export function createApp(options: CreateAppOptions): Hono {
     registerTeamChatRoute(app, {
       teamRuntime: options.teamRuntime,
       teamRunStatusStore: options.teamRunStatusStore
+    })
+  }
+
+  if (options.groupRuntime && options.groupRunStatusStore && options.groupThreadEventsStore) {
+    registerGroupChatRoute(app, {
+      groupRuntime: options.groupRuntime,
+      groupRunStatusStore: options.groupRunStatusStore,
+      groupThreadEventsStore: options.groupThreadEventsStore
     })
   }
 

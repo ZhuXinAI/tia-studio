@@ -16,6 +16,7 @@ import { SettingsPageLayout } from '../features/settings/pages/settings-page-lay
 import { RouteError } from '../components/route-error'
 import { TeamPage } from '../features/team/pages/team-page'
 import { ChannelsSettingsPage } from '../features/settings/pages/channels-settings-page'
+import { GroupPage } from '../features/group/pages/group-page'
 
 export const appRoutes: RouteObject[] = [
   {
@@ -42,6 +43,10 @@ export const appRoutes: RouteObject[] = [
       {
         path: 'team/:workspaceId?/:threadId?',
         element: <TeamPage />
+      },
+      {
+        path: 'group/:groupId?/:threadId?',
+        element: <GroupPage />
       },
       {
         path: 'claws',

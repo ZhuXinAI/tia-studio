@@ -10,22 +10,22 @@ describe('group threads route', () => {
   let db: AppDatabase
   let app: Hono
   let groupThreadsRepo: GroupThreadsRepository
-  let groupWorkspacesRepo: GroupWorkspacesRepository
-  let workspaceId: string
+  let groupsRepo: GroupWorkspacesRepository
+  let groupId: string
 
   beforeEach(async () => {
     db = await migrateAppSchema(':memory:')
     groupThreadsRepo = new GroupThreadsRepository(db)
-    groupWorkspacesRepo = new GroupWorkspacesRepository(db)
-    const workspace = await groupWorkspacesRepo.create({
+    groupsRepo = new GroupWorkspacesRepository(db)
+    const group = await groupsRepo.create({
       name: 'Launch Group',
       rootPath: '/Users/demo/project'
     })
-    workspaceId = workspace.id
+    groupId = group.id
     app = new Hono()
     registerGroupThreadsRoute(app, {
       groupThreadsRepo,
-      groupWorkspacesRepo
+      groupsRepo
     })
   })
 
@@ -38,7 +38,7 @@ describe('group threads route', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        workspaceId,
+        groupId,
         resourceId: 'default-profile'
       })
     })
@@ -46,14 +46,13 @@ describe('group threads route', () => {
     expect(createResponse.status).toBe(201)
     const created = await createResponse.json()
 
-    const listResponse = await app.request(
-      `http://localhost/v1/group/threads?workspaceId=${workspaceId}`
-    )
+    const listResponse = await app.request(`http://localhost/v1/group/threads?groupId=${groupId}`)
 
     expect(listResponse.status).toBe(200)
     await expect(listResponse.json()).resolves.toEqual([
       expect.objectContaining({
         id: created.id,
+        groupId,
         title: ''
       })
     ])
@@ -69,6 +68,7 @@ describe('group threads route', () => {
     expect(patchResponse.status).toBe(200)
     await expect(patchResponse.json()).resolves.toMatchObject({
       id: created.id,
+      groupId,
       title: 'Launch room'
     })
 
@@ -77,7 +77,7 @@ describe('group threads route', () => {
     })
 
     expect(deleteResponse.status).toBe(204)
-    await expect(groupThreadsRepo.listByWorkspace(workspaceId)).resolves.toEqual([])
+    await expect(groupThreadsRepo.listByWorkspace(groupId)).resolves.toEqual([])
   })
 
   it('rejects invalid thread payloads', async () => {
@@ -85,7 +85,7 @@ describe('group threads route', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        workspaceId: '',
+        groupId: '',
         resourceId: ''
       })
     })
@@ -101,12 +101,12 @@ describe('group threads route', () => {
     expect(updateResponse.status).toBe(400)
   })
 
-  it('rejects missing workspaces', async () => {
+  it('rejects missing groups', async () => {
     const response = await app.request('http://localhost/v1/group/threads', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        workspaceId: 'missing-workspace',
+        groupId: 'missing-group',
         resourceId: 'default-profile'
       })
     })
@@ -114,7 +114,7 @@ describe('group threads route', () => {
     expect(response.status).toBe(400)
     await expect(response.json()).resolves.toEqual({
       ok: false,
-      error: 'Group workspace not found'
+      error: 'Group not found'
     })
   })
 })

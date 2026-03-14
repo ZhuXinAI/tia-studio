@@ -1,4 +1,4 @@
-import { Bot, Home, Settings, Users } from 'lucide-react'
+import { Bot, Home, MessageSquare, Settings, Users } from 'lucide-react'
 import { useTranslation } from '../../i18n/use-app-translation'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
@@ -14,6 +14,7 @@ export function AppShell(): React.JSX.Element {
   const location = useLocation()
   const isChatRoute = location.pathname.startsWith('/chat')
   const isClawsRoute = location.pathname.startsWith('/claws')
+  const isGroupRoute = location.pathname.startsWith('/group')
   const isTeamRoute = location.pathname.startsWith('/team')
   const isSettingsRoute = location.pathname.startsWith('/settings')
 
@@ -45,6 +46,18 @@ export function AppShell(): React.JSX.Element {
               <NavLink to="/chat" className="no-drag inline-flex items-center gap-2">
                 <Home className="size-4" />
                 <span className="text-sm font-medium">{t('appShell.nav.chats')}</span>
+              </NavLink>
+            </Button>
+
+            <Button
+              asChild
+              variant={isGroupRoute ? 'secondary' : 'ghost'}
+              size="sm"
+              className="no-drag"
+            >
+              <NavLink to="/group" className="no-drag inline-flex items-center gap-2">
+                <MessageSquare className="size-4" />
+                <span className="text-sm font-medium">{t('appShell.nav.group')}</span>
               </NavLink>
             </Button>
 

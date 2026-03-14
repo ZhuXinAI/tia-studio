@@ -3,31 +3,31 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { AppDatabase } from '../../persistence/client'
 import { migrateAppSchema } from '../../persistence/migrate'
 import { GroupWorkspacesRepository } from '../../persistence/repos/group-workspaces-repo'
-import { registerGroupWorkspacesRoute } from './group-workspaces-route'
+import { registerGroupGroupsRoute } from './group-groups-route'
 
-describe('group workspaces route', () => {
+describe('group groups route', () => {
   let db: AppDatabase
   let app: Hono
-  let groupWorkspacesRepo: GroupWorkspacesRepository
+  let groupsRepo: GroupWorkspacesRepository
 
   beforeEach(async () => {
     db = await migrateAppSchema(':memory:')
-    groupWorkspacesRepo = new GroupWorkspacesRepository(db)
+    groupsRepo = new GroupWorkspacesRepository(db)
     app = new Hono()
-    registerGroupWorkspacesRoute(app, { groupWorkspacesRepo })
+    registerGroupGroupsRoute(app, { groupsRepo })
   })
 
   afterEach(() => {
     db.close()
   })
 
-  it('creates, lists, updates, and deletes a group workspace', async () => {
-    const createResponse = await app.request('http://localhost/v1/group/workspaces', {
+  it('creates, lists, updates, and deletes a group', async () => {
+    const createResponse = await app.request('http://localhost/v1/group/groups', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: 'Launch Group',
-        rootPath: '/Users/demo/project'
+        assistantIds: ['assistant-1', 'assistant-2']
       })
     })
 
@@ -35,10 +35,23 @@ describe('group workspaces route', () => {
     const created = await createResponse.json()
     expect(created).toMatchObject({
       name: 'Launch Group',
-      rootPath: '/Users/demo/project'
+      rootPath: ''
     })
 
-    const listResponse = await app.request('http://localhost/v1/group/workspaces')
+    await expect(groupsRepo.listMembers(created.id)).resolves.toEqual([
+      expect.objectContaining({
+        workspaceId: created.id,
+        assistantId: 'assistant-1',
+        sortOrder: 0
+      }),
+      expect.objectContaining({
+        workspaceId: created.id,
+        assistantId: 'assistant-2',
+        sortOrder: 1
+      })
+    ])
+
+    const listResponse = await app.request('http://localhost/v1/group/groups')
     expect(listResponse.status).toBe(200)
     await expect(listResponse.json()).resolves.toEqual([
       expect.objectContaining({
@@ -47,12 +60,11 @@ describe('group workspaces route', () => {
       })
     ])
 
-    const patchResponse = await app.request(`http://localhost/v1/group/workspaces/${created.id}`, {
+    const patchResponse = await app.request(`http://localhost/v1/group/groups/${created.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: 'Research Group',
-        rootPath: '/Users/demo/research',
         groupDescription: 'Brainstorm a launch plan',
         maxAutoTurns: 8
       })
@@ -62,27 +74,27 @@ describe('group workspaces route', () => {
     await expect(patchResponse.json()).resolves.toMatchObject({
       id: created.id,
       name: 'Research Group',
-      rootPath: '/Users/demo/research',
+      rootPath: '',
       groupDescription: 'Brainstorm a launch plan',
       maxAutoTurns: 8
     })
 
-    const deleteResponse = await app.request(`http://localhost/v1/group/workspaces/${created.id}`, {
+    const deleteResponse = await app.request(`http://localhost/v1/group/groups/${created.id}`, {
       method: 'DELETE'
     })
 
     expect(deleteResponse.status).toBe(204)
-    await expect(groupWorkspacesRepo.list()).resolves.toEqual([])
+    await expect(groupsRepo.list()).resolves.toEqual([])
   })
 
-  it('lists and replaces group workspace members', async () => {
-    const workspace = await groupWorkspacesRepo.create({
+  it('lists and replaces group members', async () => {
+    const group = await groupsRepo.create({
       name: 'Launch Group',
       rootPath: '/Users/demo/project'
     })
 
     const updateResponse = await app.request(
-      `http://localhost/v1/group/workspaces/${workspace.id}/members`,
+      `http://localhost/v1/group/groups/${group.id}/members`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -95,43 +107,41 @@ describe('group workspaces route', () => {
     expect(updateResponse.status).toBe(200)
     await expect(updateResponse.json()).resolves.toEqual([
       expect.objectContaining({
-        workspaceId: workspace.id,
+        groupId: group.id,
         assistantId: 'assistant-2',
         sortOrder: 0
       }),
       expect.objectContaining({
-        workspaceId: workspace.id,
+        groupId: group.id,
         assistantId: 'assistant-1',
         sortOrder: 1
       })
     ])
 
-    const listResponse = await app.request(
-      `http://localhost/v1/group/workspaces/${workspace.id}/members`
-    )
+    const listResponse = await app.request(`http://localhost/v1/group/groups/${group.id}/members`)
 
     expect(listResponse.status).toBe(200)
     await expect(listResponse.json()).resolves.toEqual([
       expect.objectContaining({
-        workspaceId: workspace.id,
+        groupId: group.id,
         assistantId: 'assistant-2',
         sortOrder: 0
       }),
       expect.objectContaining({
-        workspaceId: workspace.id,
+        groupId: group.id,
         assistantId: 'assistant-1',
         sortOrder: 1
       })
     ])
   })
 
-  it('rejects invalid workspace payloads', async () => {
-    const response = await app.request('http://localhost/v1/group/workspaces', {
+  it('rejects invalid group payloads', async () => {
+    const response = await app.request('http://localhost/v1/group/groups', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: '',
-        rootPath: ''
+        assistantIds: []
       })
     })
 
@@ -141,7 +151,7 @@ describe('group workspaces route', () => {
       error: expect.any(String)
     })
 
-    const updateResponse = await app.request('http://localhost/v1/group/workspaces/workspace-1', {
+    const updateResponse = await app.request('http://localhost/v1/group/groups/group-1', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
