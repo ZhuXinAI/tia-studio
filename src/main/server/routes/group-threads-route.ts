@@ -1,15 +1,27 @@
 import type { Hono } from 'hono'
-import type { GroupThreadsRepository } from '../../persistence/repos/group-threads-repo'
+import type { AppGroupThread, GroupThreadsRepository } from '../../persistence/repos/group-threads-repo'
 import type { GroupWorkspacesRepository } from '../../persistence/repos/group-workspaces-repo'
 import { createGroupThreadSchema, updateGroupThreadSchema } from '../validators/group-validator'
 
 type RegisterGroupThreadsRouteOptions = {
   groupThreadsRepo: GroupThreadsRepository
-  groupWorkspacesRepo?: GroupWorkspacesRepository
+  groupsRepo?: GroupWorkspacesRepository
 }
 
 function invalidBodyResponse(): { ok: false; error: string } {
   return { ok: false as const, error: 'Invalid JSON body' }
+}
+
+function toGroupThreadRecord(thread: AppGroupThread) {
+  return {
+    id: thread.id,
+    groupId: thread.workspaceId,
+    resourceId: thread.resourceId,
+    title: thread.title,
+    lastMessageAt: thread.lastMessageAt,
+    createdAt: thread.createdAt,
+    updatedAt: thread.updatedAt
+  }
 }
 
 export function registerGroupThreadsRoute(
@@ -17,13 +29,13 @@ export function registerGroupThreadsRoute(
   options: RegisterGroupThreadsRouteOptions
 ): void {
   app.get('/v1/group/threads', async (context) => {
-    const workspaceId = context.req.query('workspaceId')
-    if (!workspaceId) {
-      return context.json({ ok: false, error: 'workspaceId query is required' }, 400)
+    const groupId = context.req.query('groupId')
+    if (!groupId) {
+      return context.json({ ok: false, error: 'groupId query is required' }, 400)
     }
 
-    const threads = await options.groupThreadsRepo.listByWorkspace(workspaceId)
-    return context.json(threads)
+    const threads = await options.groupThreadsRepo.listByWorkspace(groupId)
+    return context.json(threads.map((thread) => toGroupThreadRecord(thread)))
   })
 
   app.post('/v1/group/threads', async (context) => {
@@ -42,18 +54,19 @@ export function registerGroupThreadsRoute(
       )
     }
 
-    if (options.groupWorkspacesRepo) {
-      const workspace = await options.groupWorkspacesRepo.getById(parsed.data.workspaceId)
-      if (!workspace) {
-        return context.json({ ok: false, error: 'Group workspace not found' }, 400)
+    if (options.groupsRepo) {
+      const group = await options.groupsRepo.getById(parsed.data.groupId)
+      if (!group) {
+        return context.json({ ok: false, error: 'Group not found' }, 400)
       }
     }
 
     const thread = await options.groupThreadsRepo.create({
-      ...parsed.data,
+      workspaceId: parsed.data.groupId,
+      resourceId: parsed.data.resourceId,
       title: parsed.data.title ?? ''
     })
-    return context.json(thread, 201)
+    return context.json(toGroupThreadRecord(thread), 201)
   })
 
   app.patch('/v1/group/threads/:threadId', async (context) => {
@@ -77,7 +90,7 @@ export function registerGroupThreadsRoute(
       return context.json({ ok: false, error: 'Group thread not found' }, 404)
     }
 
-    return context.json(thread)
+    return context.json(toGroupThreadRecord(thread))
   })
 
   app.delete('/v1/group/threads/:threadId', async (context) => {

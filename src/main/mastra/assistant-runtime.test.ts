@@ -12,6 +12,7 @@ import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import { ChannelEventBus } from '../channels/channel-event-bus'
+import { GroupEventBus } from '../groups/group-event-bus'
 import { appendWorkLogEntry } from '../cron/work-log-writer'
 import type { AssistantCronJobsService } from '../cron/assistant-cron-jobs-service'
 import { AssistantRuntimeService } from './assistant-runtime'
@@ -454,6 +455,48 @@ describe('AssistantRuntimeService', () => {
     } finally {
       await rm(workspaceRoot, { recursive: true, force: true })
     }
+  })
+
+  it('registers group room tools when group turns are enabled', async () => {
+    const assistant = buildAssistant()
+    const mastra = await createMastraInstance(':memory:')
+    const runtime = new AssistantRuntimeService({
+      mastra,
+      assistantsRepo: {} as AssistantsRepository,
+      providersRepo: {} as ProvidersRepository,
+      threadsRepo: {} as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing')
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never,
+      groupEventBus: new GroupEventBus()
+    })
+
+    await (
+      runtime as unknown as {
+        ensureAgentRegistered: (
+          assistant: AppAssistant,
+          provider: AppProvider,
+          options?: {
+            channelDeliveryEnabled: boolean
+            cronToolsEnabled?: boolean
+            groupToolsEnabled?: boolean
+          }
+        ) => Promise<void>
+      }
+    ).ensureAgentRegistered(assistant, buildProvider(), {
+      channelDeliveryEnabled: false,
+      groupToolsEnabled: true
+    })
+
+    const agent = mastra.getAgentById(assistant.id)
+    const tools = await agent.listTools()
+
+    expect(Object.keys(tools)).toEqual(
+      expect.arrayContaining(['postToGroup', 'passGroupTurn'])
+    )
   })
 
   it('does not register work-log tools for assistants without workspaces', async () => {
@@ -1146,6 +1189,91 @@ describe('AssistantRuntimeService', () => {
     }
   })
 
+  it('runs a group turn and publishes a fallback room message when no group tool is called', async () => {
+    handleChatStreamMock.mockReset()
+    toAISdkV5MessagesMock.mockReset()
+    toAISdkV5MessagesMock.mockImplementation((messages) => messages)
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.enqueue({ type: 'text-delta', delta: 'Ask Researcher to verify the numbers.' } as UIMessageChunk)
+          controller.enqueue({ type: 'finish' } as UIMessageChunk)
+          controller.close()
+        }
+      })
+    )
+
+    const bus = new GroupEventBus()
+    const publishedMessages: string[] = []
+    bus.subscribe('group.message.requested', (event) => {
+      publishedMessages.push(event.content)
+    })
+
+    const assistant = buildAssistant()
+    const touchLastMessageAt = vi.fn(async () => undefined)
+    const runtime = new AssistantRuntimeService({
+      mastra: await createMastraInstance(':memory:'),
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'assistant-thread-1',
+          assistantId: assistant.id,
+          resourceId: 'default-profile',
+          title: 'Group thread',
+          metadata: {},
+          lastMessageAt: null,
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        })),
+        touchLastMessageAt
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never,
+      groupEventBus: bus
+    })
+
+    const result = await runtime.runGroupTurn({
+      assistantId: assistant.id,
+      threadId: 'assistant-thread-1',
+      profileId: 'default-profile',
+      messages: [
+        {
+          id: 'msg-1',
+          role: 'user',
+          content: 'You are in a room. Ask @Researcher to verify the numbers.',
+          parts: [
+            {
+              type: 'text',
+              text: 'You are in a room. Ask @Researcher to verify the numbers.'
+            }
+          ]
+        }
+      ],
+      groupContext: {
+        runId: 'run-1',
+        groupThreadId: 'group-thread-1',
+        allowedMentions: [{ assistantId: 'assistant-2', name: 'Researcher' }]
+      }
+    })
+
+    expect(result.outputText).toBe('Ask Researcher to verify the numbers.')
+    expect(publishedMessages).toEqual(['Ask Researcher to verify the numbers.'])
+    expect(touchLastMessageAt).toHaveBeenCalledWith(
+      'assistant-thread-1',
+      expect.any(String)
+    )
+  })
+
   it('collects final assistant output text for cron runs', async () => {
     handleChatStreamMock.mockReset()
     toAISdkV5MessagesMock.mockReset()
@@ -1425,6 +1553,105 @@ describe('AssistantRuntimeService', () => {
         payload: {
           type: 'text',
           text: 'Second chunk'
+        }
+      }
+    ])
+  })
+
+  it('buffers wechat-kf replies into one outbound message and strips [[BR]] markers', async () => {
+    handleChatStreamMock.mockReset()
+
+    let streamController!: ReadableStreamDefaultController<UIMessageChunk>
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          streamController = controller
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const bus = new ChannelEventBus()
+    const publishedEvents: unknown[] = []
+    bus.subscribe('channel.message.send-requested', (event) => {
+      publishedEvents.push(event)
+    })
+
+    const runtime = new AssistantRuntimeService({
+      mastra: await createMastraInstance(':memory:'),
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          title: 'New Thread',
+          lastMessageAt: null,
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        })),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never,
+      channelEventBus: bus
+    })
+
+    const stream = await runtime.streamChat({
+      assistantId: assistant.id,
+      threadId: 'thread-1',
+      profileId: 'profile-1',
+      messages: [],
+      channelTarget: {
+        channelId: 'channel-1',
+        channelType: 'wechat-kf',
+        remoteChatId: 'chat-1'
+      }
+    })
+
+    const drainPromise = drainStream(stream)
+
+    streamController.enqueue({
+      type: 'text-delta',
+      id: 'message-1',
+      delta: 'First[[BR]]'
+    } as UIMessageChunk)
+    streamController.enqueue({ type: 'start-step' } as UIMessageChunk)
+
+    await Promise.resolve()
+
+    expect(publishedEvents).toEqual([])
+
+    streamController.enqueue({
+      type: 'text-delta',
+      id: 'message-1',
+      delta: 'Second'
+    } as UIMessageChunk)
+    streamController.enqueue({ type: 'finish' } as UIMessageChunk)
+    streamController.close()
+
+    await drainPromise
+
+    expect(publishedEvents).toEqual([
+      {
+        eventId: expect.any(String),
+        channelId: 'channel-1',
+        channelType: 'wechat-kf',
+        remoteChatId: 'chat-1',
+        content: 'First\nSecond',
+        payload: {
+          type: 'text',
+          text: 'First\nSecond'
         }
       }
     ])

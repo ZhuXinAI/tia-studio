@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { Bot, Settings2 } from 'lucide-react'
+import { Bot, MessageSquare, Settings2, Users } from 'lucide-react'
 import { useTranslation } from '../../i18n/use-app-translation'
 import { NavLink } from 'react-router-dom'
 import { Button, buttonVariants } from '../../components/ui/button'
@@ -17,6 +17,16 @@ const workspaceItems: SidebarItem[] = [
     titleKey: 'appShell.legacySidebar.chat',
     to: '/chat',
     icon: Bot
+  },
+  {
+    titleKey: 'appShell.legacySidebar.group',
+    to: '/group',
+    icon: MessageSquare
+  },
+  {
+    titleKey: 'appShell.legacySidebar.team',
+    to: '/team',
+    icon: Users
   }
 ]
 
