@@ -12,6 +12,7 @@ function createAssistantRuntimeStub(overrides: Partial<AssistantRuntime>): Assis
     listThreadMessages: vi.fn(async () => []),
     runCronJob: vi.fn(async () => ({ outputText: '' })),
     runHeartbeat: vi.fn(async () => ({ outputText: '' })),
+    runGroupTurn: vi.fn(async () => ({ outputText: '' })),
     ...overrides
   }
 }

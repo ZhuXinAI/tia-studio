@@ -17,6 +17,7 @@ import type { UIMessage, UIMessageChunk } from 'ai'
 import { ChannelEventBus } from '../channels/channel-event-bus'
 import type { ChannelTarget } from '../channels/types'
 import type { AssistantCronJobsService } from '../cron/assistant-cron-jobs-service'
+import { GroupEventBus } from '../groups/group-event-bus'
 import { buildHeartbeatWorklogContext } from '../heartbeat/heartbeat-context'
 import { listRecentConversations } from '../heartbeat/recent-conversations'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
@@ -39,13 +40,18 @@ import { createCodingSubagent } from './coding-agent'
 import { createBrowserSearchTool } from './tools/browser-search-tool'
 import { createChannelTools } from './tools/channel-tools'
 import { createCronTools } from './tools/cron-tools'
+import { createGroupTools } from './tools/group-tools'
 import { createMemorySessionTools } from './tools/memory-session-tools'
 import {
   assistantWorkspaceContextInputProcessor,
   createSoulMemoryTools
 } from './tools/soul-memory-tools'
 import { createWorkLogTools } from './tools/work-log-tools'
-import { HEARTBEAT_RUN_CONTEXT_KEY } from './tool-context'
+import {
+  GROUP_CONTEXT_KEY,
+  HEARTBEAT_RUN_CONTEXT_KEY,
+  getGroupExecutionContext
+} from './tool-context'
 import { createContainedLocalFilesystemInstructions } from './workspace-filesystem-instructions'
 import { logger } from '../utils/logger'
 
@@ -80,7 +86,24 @@ type RunHeartbeatParams = {
   intervalMinutes: number
 }
 
+type RunGroupTurnParams = {
+  assistantId: string
+  threadId: string
+  profileId: string
+  messages: MessageListInput
+  groupContext: {
+    runId: string
+    groupThreadId: string
+    allowedMentions: Array<{ assistantId: string; name: string }>
+    replyToMessageId?: string
+  }
+}
+
 type CronJobRunResult = {
+  outputText: string
+}
+
+type GroupTurnResult = {
   outputText: string
 }
 
@@ -92,6 +115,7 @@ type AssistantContext = {
 const CHANNEL_BREAK_TAG = '[[BR]]'
 const CHANNEL_SPLITTER_INSTRUCTION =
   'When you want to split a reply into multiple channel messages, insert [[BR]] between chunks.'
+const WECHAT_KF_CHANNEL_TYPE = 'wechat-kf'
 const PROMPT_INJECTION_THRESHOLD = 0.8
 const PII_THRESHOLD = 0.6
 
@@ -123,11 +147,39 @@ This is your first conversation! Let's set up your identity and personality.
 Keep it conversational and friendly. This is about co-creating your identity together!
 `.trim()
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function resolveInlineGroupMentions(
+  content: string,
+  allowedMentions: Array<{ assistantId: string; name: string }>
+): string[] {
+  const resolvedMentions: string[] = []
+
+  for (const allowedMention of allowedMentions) {
+    const mentionPatterns = [allowedMention.name, allowedMention.assistantId]
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0)
+      .map((value) => new RegExp(`(^|\\s)@${escapeRegExp(value)}(?=\\s|$|[.,!?])`, 'i'))
+
+    if (
+      mentionPatterns.some((pattern) => pattern.test(content)) &&
+      !resolvedMentions.includes(allowedMention.assistantId)
+    ) {
+      resolvedMentions.push(allowedMention.assistantId)
+    }
+  }
+
+  return resolvedMentions
+}
+
 export type AssistantRuntime = {
   streamChat: (params: StreamChatParams) => Promise<ReadableStream<UIMessageChunk>>
   listThreadMessages: (params: ListThreadMessagesParams) => Promise<UIMessage[]>
   runCronJob: (params: RunCronJobParams) => Promise<CronJobRunResult>
   runHeartbeat: (params: RunHeartbeatParams) => Promise<CronJobRunResult>
+  runGroupTurn: (params: RunGroupTurnParams) => Promise<GroupTurnResult>
 }
 
 type AssistantRuntimeServiceOptions = {
@@ -143,6 +195,7 @@ type AssistantRuntimeServiceOptions = {
     getByAssistantId(assistantId: string): Promise<{ id: string; type: string } | null>
   }
   channelEventBus?: ChannelEventBus
+  groupEventBus?: GroupEventBus
   threadMessageEventsStore?: {
     appendMessagesUpdated(input: {
       assistantId: string
@@ -183,9 +236,11 @@ export class AssistantRuntimeService implements AssistantRuntime {
   private readonly registeredAgentSignatures = new Map<string, string>()
   private readonly assistantMcpClients = new Map<string, MCPClient>()
   private readonly channelEventBus: ChannelEventBus
+  private readonly groupEventBus: GroupEventBus
 
   constructor(private readonly options: AssistantRuntimeServiceOptions) {
     this.channelEventBus = options.channelEventBus ?? new ChannelEventBus()
+    this.groupEventBus = options.groupEventBus ?? new GroupEventBus()
   }
 
   async streamChat(params: StreamChatParams): Promise<ReadableStream<UIMessageChunk>> {
@@ -198,7 +253,8 @@ export class AssistantRuntimeService implements AssistantRuntime {
       throw new ChatRouteError(404, 'thread_not_found', 'Thread not found')
     }
     await this.ensureAgentRegistered(assistant, provider, {
-      channelDeliveryEnabled: Boolean(params.channelTarget)
+      channelDeliveryEnabled: Boolean(params.channelTarget),
+      channelType: params.channelTarget?.channelType
     })
 
     // Create request context with channel context if available
@@ -407,6 +463,136 @@ export class AssistantRuntimeService implements AssistantRuntime {
     }
   }
 
+  async runGroupTurn(params: RunGroupTurnParams): Promise<GroupTurnResult> {
+    const { assistant, provider } = await this.getAssistantContext(params.assistantId)
+    const thread = await this.getThreadForAssistant({
+      assistantId: params.assistantId,
+      threadId: params.threadId
+    })
+    if (thread.resourceId !== params.profileId) {
+      throw new ChatRouteError(404, 'thread_not_found', 'Thread not found')
+    }
+
+    await this.ensureAgentRegistered(assistant, provider, {
+      channelDeliveryEnabled: false,
+      cronToolsEnabled: false,
+      groupToolsEnabled: true
+    })
+
+    const requestContext = new RequestContext()
+    requestContext.set(GROUP_CONTEXT_KEY, {
+      runId: params.groupContext.runId,
+      groupThreadId: params.groupContext.groupThreadId,
+      assistantId: params.assistantId,
+      allowedMentions: params.groupContext.allowedMentions,
+      replyToMessageId: params.groupContext.replyToMessageId ?? null,
+      publishedMessagesCount: 0,
+      passedTurn: false
+    })
+
+    logger.info('[GroupFlow] Invoking assistant runtime for group turn', {
+      runId: params.groupContext.runId,
+      groupThreadId: params.groupContext.groupThreadId,
+      assistantId: params.assistantId,
+      assistantThreadId: params.threadId,
+      profileId: params.profileId,
+      allowedMentionIds: params.groupContext.allowedMentions.map((entry) => entry.assistantId)
+    })
+
+    try {
+      const stream = await handleChatStream({
+        mastra: this.options.mastra,
+        agentId: assistant.id,
+        params: {
+          messages: toAISdkV5Messages(params.messages),
+          maxSteps: assistant.maxSteps,
+          providerOptions: this.buildProviderOptions(provider.type),
+          requestContext,
+          memory: {
+            thread: params.threadId,
+            resource: params.profileId,
+            options: {
+              generateTitle: true
+            }
+          }
+        },
+        sendReasoning: true
+      })
+
+      logger.info('[GroupFlow] Assistant stream opened for group turn', {
+        runId: params.groupContext.runId,
+        groupThreadId: params.groupContext.groupThreadId,
+        assistantId: params.assistantId
+      })
+
+      const outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>)
+      const groupContext = getGroupExecutionContext(requestContext)
+
+      logger.info('[GroupFlow] Assistant stream completed for group turn', {
+        runId: params.groupContext.runId,
+        groupThreadId: params.groupContext.groupThreadId,
+        assistantId: params.assistantId,
+        outputTextLength: outputText.length
+      })
+
+      if (
+        groupContext &&
+        !groupContext.passedTurn &&
+        groupContext.publishedMessagesCount === 0 &&
+        outputText.trim().length > 0
+      ) {
+        const resolvedMentions = resolveInlineGroupMentions(outputText, groupContext.allowedMentions)
+        logger.info('[GroupFlow] Publishing fallback group message from assistant output', {
+          runId: groupContext.runId,
+          groupThreadId: groupContext.groupThreadId,
+          assistantId: params.assistantId,
+          mentionIds: resolvedMentions,
+          replyToMessageId: groupContext.replyToMessageId ?? null,
+          contentLength: outputText.trim().length
+        })
+
+        await this.groupEventBus.publish('group.message.requested', {
+          eventId: randomUUID(),
+          runId: groupContext.runId,
+          groupThreadId: groupContext.groupThreadId,
+          assistantId: params.assistantId,
+          content: outputText.trim(),
+          mentions: resolvedMentions,
+          ...(groupContext.replyToMessageId
+            ? { replyToMessageId: groupContext.replyToMessageId }
+            : {})
+        })
+        groupContext.publishedMessagesCount += 1
+      }
+
+      await this.syncThreadAfterStreaming({
+        threadId: params.threadId,
+        profileId: params.profileId
+      }).catch(() => undefined)
+
+      logger.info('[GroupFlow] Assistant group turn completed', {
+        runId: params.groupContext.runId,
+        groupThreadId: params.groupContext.groupThreadId,
+        assistantId: params.assistantId,
+        publishedMessagesCount: groupContext?.publishedMessagesCount ?? 0,
+        passedTurn: groupContext?.passedTurn ?? false
+      })
+
+      return {
+        outputText
+      }
+    } catch (error) {
+      logger.error('[GroupFlow] Assistant group turn failed', {
+        runId: params.groupContext.runId,
+        groupThreadId: params.groupContext.groupThreadId,
+        assistantId: params.assistantId,
+        assistantThreadId: params.threadId,
+        error
+      })
+      throw error
+    }
+  }
+
   private buildScheduledRunMessages(input: {
     kind: 'cron' | 'heartbeat'
     threadId: string
@@ -487,9 +673,14 @@ ${input.prompt}`
     const reader = stream.getReader()
     let isSynced = false
     let channelTextBuffer = ''
+    const bufferSingleChannelReply = params.channelTarget?.channelType === WECHAT_KF_CHANNEL_TYPE
 
     const publishCompletedChannelChunks = async (): Promise<void> => {
-      if (!params.channelTarget || !channelTextBuffer.includes(CHANNEL_BREAK_TAG)) {
+      if (
+        !params.channelTarget ||
+        bufferSingleChannelReply ||
+        !channelTextBuffer.includes(CHANNEL_BREAK_TAG)
+      ) {
         return
       }
 
@@ -516,7 +707,7 @@ ${input.prompt}`
     }
 
     const flushChannelTextBeforeStep = async (): Promise<void> => {
-      if (!params.channelTarget || !channelTextBuffer.trim()) {
+      if (!params.channelTarget || bufferSingleChannelReply || !channelTextBuffer.trim()) {
         return
       }
 
@@ -638,7 +829,11 @@ ${input.prompt}`
     }
 
     const normalizedText = input.text.trim()
-    if (normalizedText.length === 0) {
+    const finalText =
+      input.channelTarget.channelType === WECHAT_KF_CHANNEL_TYPE
+        ? normalizedText.replaceAll(CHANNEL_BREAK_TAG, '\n').trim()
+        : normalizedText
+    if (finalText.length === 0) {
       return
     }
 
@@ -647,10 +842,10 @@ ${input.prompt}`
       channelId: input.channelTarget.channelId,
       channelType: input.channelTarget.channelType,
       remoteChatId: input.channelTarget.remoteChatId,
-      content: normalizedText,
+      content: finalText,
       payload: {
         type: 'text',
-        text: normalizedText
+        text: finalText
       }
     })
   }
@@ -801,10 +996,13 @@ ${input.prompt}`
     provider: AssistantContext['provider'],
     options: {
       channelDeliveryEnabled: boolean
+      channelType?: string
       cronToolsEnabled?: boolean
+      groupToolsEnabled?: boolean
     } = {
       channelDeliveryEnabled: false,
-      cronToolsEnabled: true
+      cronToolsEnabled: true,
+      groupToolsEnabled: false
     }
   ): Promise<void> {
     const enabledMcpServers = await this.resolveEnabledMcpServers(assistant.mcpConfig ?? {})
@@ -836,7 +1034,9 @@ ${input.prompt}`
       guardrailConfig.provider.selectedModel,
       guardrailConfig.provider.apiHost ?? '',
       options.channelDeliveryEnabled ? 'channel-delivery:on' : 'channel-delivery:off',
-      options.cronToolsEnabled !== false ? 'cron-tools:on' : 'cron-tools:off'
+      options.channelType ?? '',
+      options.cronToolsEnabled !== false ? 'cron-tools:on' : 'cron-tools:off',
+      options.groupToolsEnabled ? 'group-tools:on' : 'group-tools:off'
     ].join('|')
 
     if (this.registeredAgentSignatures.get(assistant.id) === nextSignature) {
@@ -901,13 +1101,22 @@ ${input.prompt}`
             : undefined
         })
       : {}
+    const groupTools = options.groupToolsEnabled
+      ? createGroupTools({
+          bus: this.groupEventBus
+        })
+      : {}
 
     logger.debug('[AssistantRuntime] Agent tools registered:', {
       hasCronTools: Object.keys(cronTools).length > 0,
       hasChannelTools: Object.keys(channelTools).length > 0,
+      hasGroupTools: Object.keys(groupTools).length > 0,
       channelToolNames: Object.keys(channelTools),
+      groupToolNames: Object.keys(groupTools),
       cronToolsEnabled: options.cronToolsEnabled,
-      channelDeliveryEnabled: options.channelDeliveryEnabled
+      channelDeliveryEnabled: options.channelDeliveryEnabled,
+      channelType: options.channelType ?? null,
+      groupToolsEnabled: options.groupToolsEnabled
     })
 
     const memorySessionTools = createMemorySessionTools(memory)
@@ -917,6 +1126,7 @@ ${input.prompt}`
       ...workLogTools,
       ...cronTools,
       ...channelTools,
+      ...groupTools,
       ...memorySessionTools,
       ...mcpTools
     }
@@ -940,9 +1150,14 @@ ${input.prompt}`
     const baseInstructions = assistant.instructions || 'You are a helpful assistant.'
     const onboardingInstructions = isFirstConversation ? `\n\n${ONBOARDING_INSTRUCTIONS}\n` : ''
     const channelInstructions = options.channelDeliveryEnabled
-      ? `\nChannel delivery guidelines:\n- ${CHANNEL_SPLITTER_INSTRUCTION}\n- Keep channel replies short and natural.\n- Do not mention [[BR]] to the user.\n`
+      ? options.channelType === WECHAT_KF_CHANNEL_TYPE
+        ? '\nChannel delivery guidelines:\n- Reply in a single message.\n- Do not use [[BR]] in your reply.\n- Keep channel replies short and natural.\n'
+        : `\nChannel delivery guidelines:\n- ${CHANNEL_SPLITTER_INSTRUCTION}\n- Keep channel replies short and natural.\n- Do not mention [[BR]] to the user.\n`
       : ''
-    const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${channelInstructions}\n`
+    const groupInstructions = options.groupToolsEnabled
+      ? '\nGroup room guidelines:\n- Use the postToGroup tool to speak in the shared room.\n- Use the passGroupTurn tool if you have no useful next step.\n- Only mention assistants from the provided roster.\n'
+      : ''
+    const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${channelInstructions}${groupInstructions}\n`
     const workspace = await this.buildWorkspace(
       assistant.workspaceConfig ?? {},
       assistant.skillsConfig ?? {}

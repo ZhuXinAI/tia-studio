@@ -26,14 +26,18 @@ import { createLlmInterruptionDecider } from './channels/llm-interruption-decide
 import { ChannelMessageRouter } from './channels/channel-message-router'
 import { ChannelService } from './channels/channel-service'
 import { TelegramChannel } from './channels/telegram-channel'
+import { WechatKfChannel } from './channels/wechat-kf-channel'
 import { WeComChannel } from './channels/wecom-channel'
 import { WhatsAppAuthStateStore } from './channels/whatsapp-auth-state-store'
 import { WhatsAppChannel } from './channels/whatsapp-channel'
 import { AssistantCronJobsService } from './cron/assistant-cron-jobs-service'
 import { NodeCronSchedulerService } from './cron/node-cron-scheduler-service'
 import { AssistantHeartbeatsService } from './heartbeat/assistant-heartbeats-service'
+import { GroupEventBus } from './groups/group-event-bus'
+import { GroupRunRouter } from './groups/group-run-router'
 import { HeartbeatSchedulerService } from './heartbeat/heartbeat-scheduler-service'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
+import { GroupRuntimeService } from './mastra/group-runtime'
 import { createMastraInstance } from './mastra/store'
 import { TeamRuntimeService } from './mastra/team-runtime'
 import { migrateAppSchema } from './persistence/migrate'
@@ -45,6 +49,8 @@ import { ChannelThreadBindingsRepository } from './persistence/repos/channel-thr
 import { ChannelsRepository } from './persistence/repos/channels-repo'
 import { CronJobRunsRepository } from './persistence/repos/cron-job-runs-repo'
 import { CronJobsRepository } from './persistence/repos/cron-jobs-repo'
+import { GroupThreadsRepository } from './persistence/repos/group-threads-repo'
+import { GroupWorkspacesRepository } from './persistence/repos/group-workspaces-repo'
 import {
   type ManagedRuntimeKind,
   ManagedRuntimesRepository
@@ -57,6 +63,8 @@ import { TeamWorkspacesRepository } from './persistence/repos/team-workspaces-re
 import { ThreadsRepository } from './persistence/repos/threads-repo'
 import { WebSearchSettingsRepository } from './persistence/repos/web-search-settings-repo'
 import { ManagedRuntimeService } from './runtimes/managed-runtime-service'
+import { GroupRunStatusStore } from './server/chat/group-run-status-store'
+import { GroupThreadEventsStore } from './server/chat/group-thread-events-store'
 import { TeamRunStatusStore } from './server/chat/team-run-status-store'
 import { ThreadMessageEventsStore } from './server/chat/thread-message-events-store'
 import { createApp } from './server/create-app'
@@ -98,6 +106,7 @@ let webSearchSettingsWindow: BrowserWindow | null = null
 let managedRuntimeService: ManagedRuntimeService | null = null
 let channelService: ChannelService | null = null
 let channelMessageRouter: ChannelMessageRouter | null = null
+let groupRunRouter: GroupRunRouter | null = null
 let cronSchedulerService: NodeCronSchedulerService | null = null
 let heartbeatSchedulerService: HeartbeatSchedulerService | null = null
 const searchBrowserPartition = 'persist:tia-browser-search'
@@ -201,6 +210,7 @@ async function startLocalApiServer(): Promise<void> {
     return
   }
 
+  logger.setFileOutput(join(app.getPath('userData'), 'logs', 'tia-studio.log'))
   persistenceDatabasePath = join(app.getPath('userData'), 'tia-studio.db')
   const db = await migrateAppSchema(persistenceDatabasePath)
   const providersRepo = new ProvidersRepository(db)
@@ -213,6 +223,8 @@ async function startLocalApiServer(): Promise<void> {
   const heartbeatsRepo = new AssistantHeartbeatsRepository(db)
   const heartbeatRunsRepo = new AssistantHeartbeatRunsRepository(db)
   const channelThreadBindingsRepo = new ChannelThreadBindingsRepository(db)
+  const groupsRepo = new GroupWorkspacesRepository(db)
+  const groupThreadsRepo = new GroupThreadsRepository(db)
   const teamWorkspacesRepo = new TeamWorkspacesRepository(db)
   const teamThreadsRepo = new TeamThreadsRepository(db)
   const webSearchSettingsRepo = new WebSearchSettingsRepository(db)
@@ -232,6 +244,7 @@ async function startLocalApiServer(): Promise<void> {
     userDataPath: app.getPath('userData')
   })
   const channelEventBus = new ChannelEventBus()
+  const groupEventBus = new GroupEventBus()
   const whatsAppAuthStateStore = new WhatsAppAuthStateStore()
   const assistantCronJobsService = new AssistantCronJobsService({
     cronJobsRepo,
@@ -259,11 +272,30 @@ async function startLocalApiServer(): Promise<void> {
     mcpServersRepo,
     channelsRepo,
     channelEventBus,
+    groupEventBus,
     threadMessageEventsStore,
     cronJobService: assistantCronJobsService,
     managedRuntimeResolver: managedRuntimeService
   })
   const teamRunStatusStore = new TeamRunStatusStore()
+  const groupRunStatusStore = new GroupRunStatusStore()
+  const groupThreadEventsStore = new GroupThreadEventsStore()
+  const groupRuntime = new GroupRuntimeService({
+    groupThreadsRepo,
+    bus: groupEventBus,
+    statusStore: groupRunStatusStore,
+    threadEventsStore: groupThreadEventsStore
+  })
+  groupRunRouter = new GroupRunRouter({
+    bus: groupEventBus,
+    assistantsRepo,
+    groupThreadsRepo,
+    groupWorkspacesRepo: groupsRepo,
+    threadsRepo,
+    assistantRuntime,
+    statusStore: groupRunStatusStore,
+    threadEventsStore: groupThreadEventsStore
+  })
   const teamRuntime = new TeamRuntimeService({
     mastra,
     assistantsRepo,
@@ -309,6 +341,27 @@ async function startLocalApiServer(): Promise<void> {
           botId,
           secret,
           groupRequireMention: resolveGroupRequireMention(channel.config),
+          onFatalError: async (error) => {
+            const message = error instanceof Error ? error.message : 'Unknown error'
+            await channelsRepo.setLastError(channel.id, message)
+          }
+        })
+      },
+      'wechat-kf': async (channel) => {
+        const serverUrl = channel.config.serverUrl
+        if (typeof serverUrl !== 'string' || serverUrl.trim().length === 0) {
+          throw new Error(`Channel ${channel.id} is missing required config: serverUrl`)
+        }
+
+        const serverKey = channel.config.serverKey
+        if (typeof serverKey !== 'string' || serverKey.trim().length === 0) {
+          throw new Error(`Channel ${channel.id} is missing required config: serverKey`)
+        }
+
+        return new WechatKfChannel({
+          id: channel.id,
+          serverUrl,
+          serverKey,
           onFatalError: async (error) => {
             const message = error instanceof Error ? error.message : 'Unknown error'
             await channelsRepo.setLastError(channel.id, message)
@@ -412,6 +465,8 @@ async function startLocalApiServer(): Promise<void> {
       cronJobRuns: cronJobRunsRepo,
       heartbeats: heartbeatsRepo,
       heartbeatRuns: heartbeatRunsRepo,
+      groups: groupsRepo,
+      groupThreads: groupThreadsRepo,
       teamWorkspaces: teamWorkspacesRepo,
       teamThreads: teamThreadsRepo,
       webSearchSettings: webSearchSettingsRepo,
@@ -419,8 +474,11 @@ async function startLocalApiServer(): Promise<void> {
       mcpServers: mcpServersRepo
     },
     assistantRuntime,
+    groupRuntime,
     teamRuntime,
     teamRunStatusStore,
+    groupRunStatusStore,
+    groupThreadEventsStore,
     threadMessageEventsStore,
     channelService,
     cronSchedulerService,
@@ -444,6 +502,7 @@ async function startLocalApiServer(): Promise<void> {
     }
   )
 
+  await groupRunRouter.start()
   await channelMessageRouter.start()
   await channelService.start()
   await cronSchedulerService.start()
@@ -459,6 +518,11 @@ function stopLocalApiServer(): void {
   if (channelMessageRouter) {
     void channelMessageRouter.stop()
     channelMessageRouter = null
+  }
+
+  if (groupRunRouter) {
+    void groupRunRouter.stop()
+    groupRunRouter = null
   }
 
   if (cronSchedulerService) {
@@ -477,6 +541,7 @@ function stopLocalApiServer(): void {
 
   localApiServer.close()
   localApiServer = null
+  logger.close()
 }
 
 function createMainWindow(): BrowserWindow {

@@ -3,6 +3,7 @@ import type { AppChannel } from '../persistence/repos/channels-repo'
 import { ChannelEventBus } from './channel-event-bus'
 import { resolveGroupRequireMention } from './channel-config'
 import { LarkChannel } from './lark-channel'
+import { WechatKfChannel } from './wechat-kf-channel'
 import { WeComChannel } from './wecom-channel'
 import type {
   ChannelAdapter,
@@ -151,6 +152,14 @@ export class ChannelService {
         botId: this.getRequiredConfigString(channel, 'botId'),
         secret: this.getRequiredConfigString(channel, 'secret'),
         groupRequireMention: this.getConfigBoolean(channel, 'groupRequireMention')
+      })
+    }
+
+    if (channel.type === 'wechat-kf') {
+      return new WechatKfChannel({
+        id: channel.id,
+        serverUrl: this.getRequiredConfigString(channel, 'serverUrl'),
+        serverKey: this.getRequiredConfigString(channel, 'serverKey')
       })
     }
 

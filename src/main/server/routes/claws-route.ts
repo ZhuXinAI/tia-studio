@@ -141,6 +141,10 @@ function hasValidChannelConfig(
       channel.config.botId.trim().length > 0 &&
       typeof channel.config.secret === 'string' &&
       channel.config.secret.trim().length > 0) ||
+    (typeof channel.config.serverUrl === 'string' &&
+      channel.config.serverUrl.trim().length > 0 &&
+      typeof channel.config.serverKey === 'string' &&
+      channel.config.serverKey.trim().length > 0) ||
     (typeof channel.config.botToken === 'string' && channel.config.botToken.trim().length > 0) ||
     channelType === 'whatsapp'
   )
@@ -389,8 +393,12 @@ function buildChannelConfig(
     | { type: 'telegram'; botToken: string; groupRequireMention?: boolean }
     | { type: 'whatsapp'; groupRequireMention?: boolean }
     | { type: 'wecom'; botId: string; secret: string; groupRequireMention?: boolean }
+    | { type: 'wechat-kf'; serverUrl: string; serverKey: string }
 ): Record<string, unknown> {
-  const groupRequireMention = channel.groupRequireMention ?? true
+  const groupRequireMention =
+    'groupRequireMention' in channel && typeof channel.groupRequireMention === 'boolean'
+      ? channel.groupRequireMention
+      : true
 
   if (channel.type === 'telegram') {
     return {
@@ -413,6 +421,13 @@ function buildChannelConfig(
     }
   }
 
+  if (channel.type === 'wechat-kf') {
+    return {
+      serverUrl: channel.serverUrl,
+      serverKey: channel.serverKey
+    }
+  }
+
   return {
     appId: channel.appId,
     appSecret: channel.appSecret,
@@ -427,9 +442,12 @@ function mergeChannelConfig(
     | { type: 'telegram'; botToken?: string; groupRequireMention?: boolean }
     | { type: 'whatsapp'; groupRequireMention?: boolean }
     | { type: 'wecom'; botId?: string; secret?: string; groupRequireMention?: boolean }
+    | { type: 'wechat-kf'; serverUrl?: string; serverKey?: string }
 ): Record<string, unknown> {
   const groupRequireMention =
-    channel.groupRequireMention ?? resolveGroupRequireMention(existingChannel.config)
+    'groupRequireMention' in channel && typeof channel.groupRequireMention === 'boolean'
+      ? channel.groupRequireMention
+      : resolveGroupRequireMention(existingChannel.config)
 
   if (channel.type === 'telegram') {
     return {
@@ -458,6 +476,21 @@ function mergeChannelConfig(
         channel.secret ??
         (typeof existingChannel.config.secret === 'string' ? existingChannel.config.secret : ''),
       groupRequireMention
+    }
+  }
+
+  if (channel.type === 'wechat-kf') {
+    return {
+      serverUrl:
+        channel.serverUrl ??
+        (typeof existingChannel.config.serverUrl === 'string'
+          ? existingChannel.config.serverUrl
+          : ''),
+      serverKey:
+        channel.serverKey ??
+        (typeof existingChannel.config.serverKey === 'string'
+          ? existingChannel.config.serverKey
+          : '')
     }
   }
 

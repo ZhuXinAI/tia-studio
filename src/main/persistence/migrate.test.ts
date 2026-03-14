@@ -44,6 +44,10 @@ it('creates core app tables', async () => {
   const teamWorkspaceColumns = teamWorkspaceColumnsResult.rows.map((row) =>
     String((row as Record<string, unknown>).name)
   )
+  const groupWorkspaceColumnsResult = await db.execute("PRAGMA table_info('app_group_workspaces')")
+  const groupWorkspaceColumns = groupWorkspaceColumnsResult.rows.map((row) =>
+    String((row as Record<string, unknown>).name)
+  )
   const assistantHeartbeatColumnsResult = await db.execute(
     "PRAGMA table_info('app_assistant_heartbeats')"
   )
@@ -68,6 +72,11 @@ it('creates core app tables', async () => {
   expect(tableNames).toContain('app_assistant_heartbeat_runs')
   expect(tableNames).toContain('app_team_workspaces')
   expect(tableNames).toContain('app_team_workspace_members')
+  expect(tableNames).toContain('app_group_workspaces')
+  expect(tableNames).toContain('app_group_workspace_members')
+  expect(tableNames).toContain('app_group_threads')
+  expect(tableNames).toContain('app_group_thread_messages')
+  expect(tableNames).toContain('app_group_thread_assistant_threads')
   expect(tableNames).toContain('app_preferences')
   expect(assistantColumns).toContain('description')
   expect(assistantColumns).toContain('enabled')
@@ -102,6 +111,8 @@ it('creates core app tables', async () => {
   expect(teamWorkspaceColumns).toContain('team_description')
   expect(teamWorkspaceColumns).toContain('supervisor_provider_id')
   expect(teamWorkspaceColumns).toContain('supervisor_model')
+  expect(groupWorkspaceColumns).toContain('group_description')
+  expect(groupWorkspaceColumns).toContain('max_auto_turns')
 
   await db.close()
 })

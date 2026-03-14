@@ -147,18 +147,59 @@ describe('app router', () => {
     expect(html).toContain('aria-label="Open settings"')
     expect(html).toContain('Chats')
     expect(html).toContain('Claws')
+    expect(html).toContain('Group')
     expect(html).toContain('Team')
     expect(html).not.toContain('Control Center')
+  })
+
+  it('renders the group route from the top nav', () => {
+    const html = renderRouter(['/group'])
+
+    expect(html).toContain('Chats')
+    expect(html).toContain('Group')
+    expect(html).toContain('Groups')
+    expect(html).toContain('Group Chat')
   })
 
   it('renders the team route from the top nav', () => {
     const html = renderRouter(['/team'])
 
     expect(html).toContain('Chats')
+    expect(html).toContain('Group')
     expect(html).toContain('Team')
     expect(html).toContain('Team Workspaces')
     expect(html).toContain('Team Chat')
     expect(html).toContain('Team Status')
+  })
+
+  it('renders a direct group thread route without falling into the route error UI', async () => {
+    const router = createAppMemoryRouter(['/group/workspace-1/thread-1'])
+
+    await router.navigate('/group/workspace-1/thread-1')
+
+    const html = renderToString(
+      <QueryClientProvider
+        client={
+          new QueryClient({
+            defaultOptions: {
+              queries: {
+                retry: false
+              },
+              mutations: {
+                retry: false
+              }
+            }
+          })
+        }
+      >
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    )
+
+    expect(router.state.location.pathname).toBe('/group/workspace-1/thread-1')
+    expect(html).toContain('Groups')
+    expect(html).not.toContain('Something went wrong')
+    expect(html).not.toContain('Not Found')
   })
 
   it('renders a direct team thread route without falling into the route error UI', async () => {

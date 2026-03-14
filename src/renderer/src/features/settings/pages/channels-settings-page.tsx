@@ -33,7 +33,7 @@ import {
   updateClawChannel
 } from '../../claws/claws-query'
 
-type ChannelType = 'lark' | 'telegram' | 'whatsapp' | 'wecom'
+type ChannelType = 'lark' | 'telegram' | 'whatsapp' | 'wecom' | 'wechat-kf'
 type ChannelFormMode = 'create' | 'edit'
 
 type ChannelFormState = {
@@ -44,11 +44,13 @@ type ChannelFormState = {
   botToken: string
   botId: string
   secret: string
+  serverUrl: string
+  serverKey: string
   groupRequireMention: boolean
 }
 
 function supportsGroupMentionSetting(type: ChannelType): boolean {
-  return type !== 'telegram'
+  return type === 'lark' || type === 'whatsapp' || type === 'wecom'
 }
 
 function emptyResponse(): ClawsResponse {
@@ -67,6 +69,8 @@ function emptyFormState(): ChannelFormState {
     botToken: '',
     botId: '',
     secret: '',
+    serverUrl: '',
+    serverKey: '',
     groupRequireMention: true
   }
 }
@@ -79,7 +83,9 @@ function toEditFormState(channel: ConfiguredClawChannelRecord): ChannelFormState
         ? 'whatsapp'
         : channel.type === 'wecom'
           ? 'wecom'
-          : 'lark'
+          : channel.type === 'wechat-kf'
+            ? 'wechat-kf'
+            : 'lark'
 
   return {
     type,
@@ -89,6 +95,8 @@ function toEditFormState(channel: ConfiguredClawChannelRecord): ChannelFormState
     botToken: '',
     botId: '',
     secret: '',
+    serverUrl: '',
+    serverKey: '',
     groupRequireMention: channel.groupRequireMention !== false
   }
 }
@@ -117,6 +125,15 @@ function buildCreateInput(formState: ChannelFormState): CreateClawChannelInput {
       botId: formState.botId.trim(),
       secret: formState.secret.trim(),
       groupRequireMention: formState.groupRequireMention
+    }
+  }
+
+  if (formState.type === 'wechat-kf') {
+    return {
+      type: 'wechat-kf',
+      name: formState.name.trim(),
+      serverUrl: formState.serverUrl.trim(),
+      serverKey: formState.serverKey.trim()
     }
   }
 
@@ -153,6 +170,15 @@ function buildUpdateInput(formState: ChannelFormState): UpdateClawChannelInput {
       ...(formState.botId.trim().length > 0 ? { botId: formState.botId.trim() } : {}),
       ...(formState.secret.trim().length > 0 ? { secret: formState.secret.trim() } : {}),
       groupRequireMention: formState.groupRequireMention
+    }
+  }
+
+  if (formState.type === 'wechat-kf') {
+    return {
+      type: 'wechat-kf',
+      name: formState.name.trim(),
+      ...(formState.serverUrl.trim().length > 0 ? { serverUrl: formState.serverUrl.trim() } : {}),
+      ...(formState.serverKey.trim().length > 0 ? { serverKey: formState.serverKey.trim() } : {})
     }
   }
 
@@ -242,6 +268,12 @@ export function ChannelsSettingsPage(): React.JSX.Element {
         (formState.botId.trim().length === 0 || formState.secret.trim().length === 0)
       ) {
         setFormError(t('claws.channelSelector.errors.wecomCredentialsRequired'))
+        return
+      } else if (
+        formState.type === 'wechat-kf' &&
+        (formState.serverUrl.trim().length === 0 || formState.serverKey.trim().length === 0)
+      ) {
+        setFormError(t('claws.channelSelector.errors.wechatKfCredentialsRequired'))
         return
       } else if (
         formState.type === 'lark' &&
@@ -463,7 +495,9 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                     appSecret: '',
                     botToken: '',
                     botId: '',
-                    secret: ''
+                    secret: '',
+                    serverUrl: '',
+                    serverKey: ''
                   }))
                 }
               >
@@ -471,6 +505,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                 <option value="telegram">{t('claws.dialog.channelTypes.telegram')}</option>
                 <option value="whatsapp">{t('claws.dialog.channelTypes.whatsapp')}</option>
                 <option value="wecom">{t('claws.dialog.channelTypes.wecom')}</option>
+                <option value="wechat-kf">{t('claws.dialog.channelTypes.wechatKf')}</option>
               </select>
             </div>
 
@@ -538,6 +573,90 @@ export function ChannelsSettingsPage(): React.JSX.Element {
               <p className="text-sm text-muted-foreground">
                 {t('claws.channelSelector.create.whatsappHint')}
               </p>
+            ) : formState.type === 'wechat-kf' ? (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-border/70 bg-muted/30 p-3 text-sm text-muted-foreground">
+                  <p>
+                    {t('claws.channelSelector.create.wechatKfHintPrefix')}{' '}
+                    <a
+                      className="font-medium text-foreground underline underline-offset-2"
+                      href="https://github.com/windht/wechat-kf-relay"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      wechat-kf-relay
+                    </a>
+                    . {t('claws.channelSelector.create.wechatKfHintSuffix')}
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <label
+                      htmlFor={
+                        formMode === 'create'
+                          ? 'settings-channel-create-server-url'
+                          : 'settings-channel-form-server-url'
+                      }
+                      className="text-sm font-medium"
+                    >
+                      {t('claws.dialog.fields.serverUrl')}
+                    </label>
+                    <Input
+                      id={
+                        formMode === 'create'
+                          ? 'settings-channel-create-server-url'
+                          : 'settings-channel-form-server-url'
+                      }
+                      placeholder={
+                        formMode === 'edit'
+                          ? t('claws.channelSelector.edit.appIdPlaceholder')
+                          : undefined
+                      }
+                      value={formState.serverUrl}
+                      onChange={(event) =>
+                        setFormState((currentState) => ({
+                          ...currentState,
+                          serverUrl: event.target.value
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <label
+                      htmlFor={
+                        formMode === 'create'
+                          ? 'settings-channel-create-server-key'
+                          : 'settings-channel-form-server-key'
+                      }
+                      className="text-sm font-medium"
+                    >
+                      {t('claws.dialog.fields.serverKey')}
+                    </label>
+                    <Input
+                      id={
+                        formMode === 'create'
+                          ? 'settings-channel-create-server-key'
+                          : 'settings-channel-form-server-key'
+                      }
+                      type="password"
+                      placeholder={
+                        formMode === 'edit'
+                          ? t('claws.channelSelector.edit.appSecretPlaceholder')
+                          : undefined
+                      }
+                      value={formState.serverKey}
+                      onChange={(event) =>
+                        setFormState((currentState) => ({
+                          ...currentState,
+                          serverKey: event.target.value
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
             ) : formState.type === 'wecom' ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-2">

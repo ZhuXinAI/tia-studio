@@ -4,6 +4,7 @@
       "chats": "聊天",
       "home": "主页",
       "claws": "Claws",
+      "group": "群组",
       "team": "团队",
       "openSettings": "打开设置"
     },
@@ -13,6 +14,8 @@
       "workspace": "工作区",
       "settings": "设置",
       "chat": "聊天",
+      "group": "群组",
+      "team": "团队",
       "modelProviders": "模型提供商",
       "notes": "TIA Studio 说明"
     }
@@ -501,7 +504,7 @@
       "saveButton": "保存 Claw",
       "createButton": "创建 Claw",
       "description": "通过一个轻量流程把助手连接到 Lark 或企业微信频道。",
-      "telegramDescription": "通过一个轻量流程把助手连接到 WhatsApp、Telegram、Lark 或企业微信频道。",
+      "telegramDescription": "通过一个轻量流程把助手连接到 WhatsApp、Telegram、Lark、企业微信或微信客服频道。",
       "fields": {
         "assistantName": "助手名称",
         "provider": "提供商",
@@ -514,6 +517,8 @@
         "botToken": "机器人令牌",
         "botId": "机器人 ID",
         "secret": "Secret",
+        "serverUrl": "服务地址",
+        "serverKey": "服务密钥",
         "larkChannelName": "Lark 频道名称",
         "appId": "应用 ID",
         "appSecret": "应用密钥"
@@ -544,7 +549,8 @@
         "lark": "Lark",
         "telegram": "Telegram",
         "whatsapp": "WhatsApp",
-        "wecom": "企业微信"
+        "wecom": "企业微信",
+        "wechatKf": "微信客服"
       },
       "channelActions": {
         "keep": "保留当前频道",
@@ -587,8 +593,10 @@
       "selectedBadge": "已选择",
       "create": {
         "title": "添加频道",
-        "description": "创建新的 WhatsApp、Telegram、Lark 或企业微信频道配置。",
+        "description": "创建新的 WhatsApp、Telegram、Lark、企业微信或微信客服频道配置。",
         "whatsappHint": "无需令牌。保存后，打开“管理配对”扫描 WhatsApp 二维码。",
+        "wechatKfHintPrefix": "微信客服需要先使用",
+        "wechatKfHintSuffix": "完成 relay 服务部署，再填写服务地址和服务密钥。",
         "save": "添加频道",
         "fields": {
           "type": "频道类型"
@@ -618,6 +626,7 @@
         "larkCredentialsRequired": "Lark 频道必须填写 App ID 和应用密钥",
         "telegramCredentialsRequired": "Telegram 频道必须填写 Bot Token",
         "wecomCredentialsRequired": "企业微信频道必须填写机器人 ID 和 Secret",
+        "wechatKfCredentialsRequired": "微信客服频道必须填写服务地址和服务密钥",
         "createFailed": "创建频道失败",
         "updateFailed": "更新频道失败",
         "deleteFailed": "删除频道失败"
@@ -711,6 +720,83 @@
         "loadFailed": "加载配对失败",
         "updateFailed": "更新配对失败"
       }
+    }
+  },
+  "group": {
+    "sidebar": {
+      "eyebrow": "群组",
+      "title": "群组",
+      "defaultWorkspaceName": "群组",
+      "createWorkspaceAriaLabel": "创建群组",
+      "creatingWorkspace": "正在创建群组...",
+      "newWorkspace": "新建群组",
+      "workspaces": "群组",
+      "createThreadAriaLabel": "创建群组线程",
+      "newThread": "新建线程",
+      "loadingWorkspaces": "正在加载群组...",
+      "emptyWorkspaces": "还没有群组。创建一个后即可开始协作。",
+      "loadingThreads": "正在加载群组线程...",
+      "emptyThreads": "还没有群组线程。",
+      "untitledThread": "未命名群组线程",
+      "deleteThreadAriaLabel": "删除群组线程 {{title}}",
+      "deleteThreadPrompt": "删除线程？",
+      "confirmDeleteThreadAriaLabel": "确认删除群组线程 {{title}}",
+      "deletingThread": "删除中..."
+    },
+    "chat": {
+      "defaultTitle": "群组聊天",
+      "noWorkspaceSelected": "未选择群组",
+      "membersLabel_one": "{{count}} 位成员",
+      "membersLabel_other": "{{count}} 位成员",
+      "maxTurnsLabel_one": "{{count}} 轮自动轮次",
+      "maxTurnsLabel_other": "{{count}} 轮自动轮次",
+      "newThread": "新建群组线程",
+      "configureGroup": "编辑群组",
+      "setupIncompleteTitle": "群组配置尚未完成。",
+      "setupIncompleteDescription": "发送前请至少选择一位成员。",
+      "emptyTitle": "未选择群组线程",
+      "emptyDescription": "选择现有线程或创建新的群组线程以开始协作。",
+      "thinking": "{{name}} 正在思考...",
+      "submitting": "发送中...",
+      "composer": {
+        "placeholderSelected": "向群组描述一个需要共同完成的任务...",
+        "placeholderEmpty": "创建或选择一个群组线程后开始聊天。",
+        "ariaLabel": "群组消息输入框",
+        "helperSelected": "消息会被添加到共享房间记录中，供当前成员协作处理。",
+        "helperEmpty": "先选择群组并创建一个群组线程。"
+      }
+    },
+    "messageList": {
+      "you": "你",
+      "orchestrator": "协调器",
+      "system": "系统",
+      "loadingHistory": "正在加载群组房间历史...",
+      "emptyTitle": "还没有房间消息",
+      "emptyDescription": "开始对话后，共享记录会显示在这里。"
+    },
+    "configDialog": {
+      "closeAriaLabel": "关闭群组配置对话框",
+      "title": "编辑群组",
+      "createTitle": "创建群组",
+      "description": "更新群组信息，并选择加入该群组的助手。",
+      "createDescription": "为群组命名，并选择要加入的助手。",
+      "fields": {
+        "name": "群组名称",
+        "groupDescription": "群组描述",
+        "maxAutoTurns": "最大自动轮次",
+        "members": "群组成员"
+      },
+      "validation": {
+        "name": "请输入群组名称。",
+        "maxAutoTurns": "请输入 1 到 12 之间的最大自动轮次。",
+        "members": "请至少选择一位群组成员。"
+      },
+      "saveButton": "保存群组",
+      "createButton": "创建群组"
+    },
+    "readiness": {
+      "threadSelected": "已选择群组线程",
+      "membersSelected": "已至少选择一位群组成员"
     }
   },
   "team": {

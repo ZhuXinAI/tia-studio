@@ -4,6 +4,7 @@
       "chats": "聊天",
       "home": "主頁",
       "claws": "Claws",
+      "group": "群組",
       "team": "團隊",
       "openSettings": "開啟設定"
     },
@@ -13,6 +14,8 @@
       "workspace": "工作區",
       "settings": "設定",
       "chat": "聊天",
+      "group": "群組",
+      "team": "團隊",
       "modelProviders": "模型供應商",
       "notes": "TIA Studio 備註"
     }
@@ -514,6 +517,8 @@
         "botToken": "機器人令牌",
         "botId": "機器人 ID",
         "secret": "Secret",
+        "serverUrl": "Server URL",
+        "serverKey": "Server Key",
         "larkChannelName": "Lark 頻道名稱",
         "appId": "應用程式 ID",
         "appSecret": "應用程式密鑰"
@@ -544,7 +549,8 @@
         "lark": "Lark",
         "telegram": "Telegram",
         "whatsapp": "WhatsApp",
-        "wecom": "企業微信"
+        "wecom": "企業微信",
+        "wechatKf": "Wechat-KF"
       },
       "channelActions": {
         "keep": "保留目前頻道",
@@ -589,6 +595,8 @@
         "title": "新增頻道",
         "description": "建立新的 WhatsApp、Telegram、Lark 或企業微信頻道設定。",
         "whatsappHint": "不需要權杖。儲存後，開啟「管理配對」來掃描 WhatsApp QR 碼。",
+        "wechatKfHintPrefix": "Wechat-KF requires a relay server set up with",
+        "wechatKfHintSuffix": "Follow the README there before entering the server URL and server key.",
         "save": "新增頻道",
         "fields": {
           "type": "頻道類型"
@@ -618,6 +626,7 @@
         "larkCredentialsRequired": "Lark 頻道需要應用程式 ID 與應用程式密鑰",
         "telegramCredentialsRequired": "Telegram 頻道需要 Bot 令牌",
         "wecomCredentialsRequired": "企業微信頻道需要機器人 ID 與 Secret",
+        "wechatKfCredentialsRequired": "Server URL and server key are required for Wechat-KF channels",
         "createFailed": "建立頻道失敗",
         "updateFailed": "更新頻道失敗",
         "deleteFailed": "刪除頻道失敗"
@@ -711,6 +720,83 @@
         "loadFailed": "載入配對失敗",
         "updateFailed": "更新配對失敗"
       }
+    }
+  },
+  "group": {
+    "sidebar": {
+      "eyebrow": "群組",
+      "title": "群組",
+      "defaultWorkspaceName": "群組",
+      "createWorkspaceAriaLabel": "建立群組",
+      "creatingWorkspace": "正在建立群組...",
+      "newWorkspace": "新增群組",
+      "workspaces": "群組",
+      "createThreadAriaLabel": "建立群組執行緒",
+      "newThread": "新增執行緒",
+      "loadingWorkspaces": "正在載入群組...",
+      "emptyWorkspaces": "還沒有群組。建立一個後即可開始協作。",
+      "loadingThreads": "正在載入群組執行緒...",
+      "emptyThreads": "還沒有群組執行緒。",
+      "untitledThread": "未命名群組執行緒",
+      "deleteThreadAriaLabel": "刪除群組執行緒 {{title}}",
+      "deleteThreadPrompt": "刪除執行緒？",
+      "confirmDeleteThreadAriaLabel": "確認刪除群組執行緒 {{title}}",
+      "deletingThread": "刪除中..."
+    },
+    "chat": {
+      "defaultTitle": "群組聊天",
+      "noWorkspaceSelected": "未選擇群組",
+      "membersLabel_one": "{{count}} 位成員",
+      "membersLabel_other": "{{count}} 位成員",
+      "maxTurnsLabel_one": "{{count}} 輪自動輪次",
+      "maxTurnsLabel_other": "{{count}} 輪自動輪次",
+      "newThread": "新增群組執行緒",
+      "configureGroup": "編輯群組",
+      "setupIncompleteTitle": "群組配置尚未完成。",
+      "setupIncompleteDescription": "發送前請至少選擇一位成員。",
+      "emptyTitle": "未選擇群組執行緒",
+      "emptyDescription": "選擇現有執行緒或建立新的群組執行緒以開始協作。",
+      "thinking": "{{name}} 正在思考...",
+      "submitting": "發送中...",
+      "composer": {
+        "placeholderSelected": "向群組描述一個需要共同完成的任務...",
+        "placeholderEmpty": "建立或選擇一個群組執行緒後開始聊天。",
+        "ariaLabel": "群組訊息輸入框",
+        "helperSelected": "訊息會被加入共享房間記錄中，供目前成員協作處理。",
+        "helperEmpty": "先選擇群組並建立一個群組執行緒。"
+      }
+    },
+    "messageList": {
+      "you": "你",
+      "orchestrator": "協調器",
+      "system": "系統",
+      "loadingHistory": "正在載入群組房間歷史...",
+      "emptyTitle": "還沒有房間訊息",
+      "emptyDescription": "開始對話後，共享記錄會顯示在這裡。"
+    },
+    "configDialog": {
+      "closeAriaLabel": "關閉群組配置對話框",
+      "title": "編輯群組",
+      "createTitle": "建立群組",
+      "description": "更新群組資訊，並選擇加入這個群組的助手。",
+      "createDescription": "為群組命名，並選擇要加入的助手。",
+      "fields": {
+        "name": "群組名稱",
+        "groupDescription": "群組描述",
+        "maxAutoTurns": "最大自動輪次",
+        "members": "群組成員"
+      },
+      "validation": {
+        "name": "請輸入群組名稱。",
+        "maxAutoTurns": "請輸入 1 到 12 之間的最大自動輪次。",
+        "members": "請至少選擇一位群組成員。"
+      },
+      "saveButton": "儲存群組",
+      "createButton": "建立群組"
+    },
+    "readiness": {
+      "threadSelected": "已選擇群組執行緒",
+      "membersSelected": "已至少選擇一位群組成員"
     }
   },
   "team": {
