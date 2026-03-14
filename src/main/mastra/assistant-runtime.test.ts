@@ -1,6 +1,6 @@
 import os from 'node:os'
 import path from 'node:path'
-import { access, mkdtemp, rm } from 'node:fs/promises'
+import { access, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { describe, expect, it, vi } from 'vitest'
 import type { Mastra } from '@mastra/core/mastra'
 import { RequestContext } from '@mastra/core/request-context'
@@ -12,7 +12,6 @@ import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import { ChannelEventBus } from '../channels/channel-event-bus'
-import { GroupEventBus } from '../groups/group-event-bus'
 import { appendWorkLogEntry } from '../cron/work-log-writer'
 import type { AssistantCronJobsService } from '../cron/assistant-cron-jobs-service'
 import { AssistantRuntimeService } from './assistant-runtime'
@@ -20,9 +19,10 @@ import * as modelResolver from './model-resolver'
 import { createMastraInstance } from './store'
 import { HEARTBEAT_RUN_CONTEXT_KEY } from './tool-context'
 
-const { handleChatStreamMock, toAISdkV5MessagesMock } = vi.hoisted(() => ({
+const { handleChatStreamMock, toAISdkV5MessagesMock, generateTextMock } = vi.hoisted(() => ({
   handleChatStreamMock: vi.fn(),
-  toAISdkV5MessagesMock: vi.fn()
+  toAISdkV5MessagesMock: vi.fn(),
+  generateTextMock: vi.fn()
 }))
 
 vi.mock('@mastra/ai-sdk', () => ({
@@ -32,6 +32,14 @@ vi.mock('@mastra/ai-sdk', () => ({
 vi.mock('@mastra/ai-sdk/ui', () => ({
   toAISdkV5Messages: (messages: unknown) => toAISdkV5MessagesMock(messages)
 }))
+
+vi.mock('ai', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('ai')>()
+  return {
+    ...actual,
+    generateText: (options: unknown) => generateTextMock(options)
+  }
+})
 
 vi.mock('electron', () => ({
   app: {
@@ -305,6 +313,211 @@ describe('AssistantRuntimeService', () => {
     )
   })
 
+  it('tells channel-targeted runs when sendImage is available or unavailable', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.enqueue({ type: 'finish' } as UIMessageChunk)
+          controller.close()
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const provider = buildProvider()
+    const threadRecord = {
+      id: 'thread-1',
+      assistantId: assistant.id,
+      resourceId: 'profile-1',
+      title: 'New Thread',
+      lastMessageAt: null,
+      createdAt: '2026-03-02T00:00:00.000Z',
+      updatedAt: '2026-03-02T00:00:00.000Z'
+    }
+
+    const telegramMastra = await createMastraInstance(':memory:')
+    const telegramRuntime = new AssistantRuntimeService({
+      mastra: telegramMastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => provider)
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => threadRecord),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    await drainStream(
+      await telegramRuntime.streamChat({
+        assistantId: assistant.id,
+        threadId: threadRecord.id,
+        profileId: threadRecord.resourceId,
+        messages: [],
+        channelTarget: {
+          channelId: 'channel-1',
+          channelType: 'telegram',
+          remoteChatId: 'chat-1'
+        }
+      })
+    )
+
+    await expect(
+      getAgentInstructions(telegramMastra.getAgentById(assistant.id))
+    ).resolves.toContain('This channel supports sendImage')
+
+    const wecomMastra = await createMastraInstance(':memory:')
+    const wecomRuntime = new AssistantRuntimeService({
+      mastra: wecomMastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => provider)
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => threadRecord),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    await drainStream(
+      await wecomRuntime.streamChat({
+        assistantId: assistant.id,
+        threadId: threadRecord.id,
+        profileId: threadRecord.resourceId,
+        messages: [],
+        channelTarget: {
+          channelId: 'channel-1',
+          channelType: 'wecom',
+          remoteChatId: 'chat-1'
+        }
+      })
+    )
+
+    await expect(getAgentInstructions(wecomMastra.getAgentById(assistant.id))).resolves.toContain(
+      'WeCom does not support sendImage right now'
+    )
+  })
+
+  it('adds shared web fetch guidance to agent instructions', async () => {
+    const mastra = await createMastraInstance(':memory:')
+    const runtime = new AssistantRuntimeService({
+      mastra,
+      assistantsRepo: {} as AssistantsRepository,
+      providersRepo: {} as ProvidersRepository,
+      threadsRepo: {
+        hasAnyThreads: vi.fn(async () => true)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing')
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    await (
+      runtime as unknown as {
+        ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+      }
+    ).ensureAgentRegistered(buildAssistant(), buildProvider())
+
+    const instructions = await getAgentInstructions(mastra.getAgentById('assistant-1'))
+
+    expect(instructions).toContain('Use webFetch only when you already know the exact page URL')
+    expect(instructions).toContain(
+      'prefer browser-oriented tools such as agent-browser or Playwright MCP'
+    )
+    expect(instructions).toContain('remote debugging port 10531')
+    expect(instructions).toContain('--session-name tia-built-in-browser --cdp 10531')
+    expect(instructions).toContain('login sessions should survive normal app restarts')
+    expect(instructions).toContain('Do not rely on hidden tool-call UI')
+    expect(instructions).toContain('send the screenshot to the user first')
+    expect(instructions).toContain('recommend installing agent-browser')
+    expect(instructions).toContain(
+      'Fall back to webFetch only when richer browser tooling is unavailable'
+    )
+  })
+
+  it('registers the browser handoff tool when a built-in browser manager is available', async () => {
+    const mastra = await createMastraInstance(':memory:')
+    const builtInBrowserManager = {
+      getRemoteDebuggingPort: vi.fn(() => 10531),
+      requestHumanHandoff: vi.fn(async () => ({
+        status: 'completed' as const,
+        currentUrl: 'https://example.test/account',
+        remoteDebuggingPort: 10531
+      }))
+    }
+    const runtime = new AssistantRuntimeService({
+      mastra,
+      assistantsRepo: {} as AssistantsRepository,
+      providersRepo: {} as ProvidersRepository,
+      threadsRepo: {
+        hasAnyThreads: vi.fn(async () => true)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing')
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never,
+      builtInBrowserManager
+    })
+
+    await (
+      runtime as unknown as {
+        ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+      }
+    ).ensureAgentRegistered(buildAssistant(), buildProvider())
+
+    const agent = mastra.getAgentById('assistant-1')
+    const instructions = await getAgentInstructions(agent)
+    const tools = (await agent.listTools()) as Record<
+      string,
+      {
+        execute?: (input: Record<string, unknown>) => Promise<Record<string, unknown>>
+      }
+    >
+
+    expect(Object.keys(tools)).toEqual(expect.arrayContaining(['requestBrowserHumanHandoff']))
+    expect(instructions).toContain('use the request-browser-human-handoff tool')
+
+    const result = await tools.requestBrowserHumanHandoff.execute?.({
+      message: 'Please finish logging in.',
+      timeoutSeconds: 1
+    })
+
+    expect(result).toMatchObject({
+      status: 'completed',
+      currentUrl: 'https://example.test/account',
+      remoteDebuggingPort: 10531
+    })
+    expect(builtInBrowserManager.requestHumanHandoff).toHaveBeenCalledWith({
+      message: 'Please finish logging in.',
+      buttonLabel: undefined,
+      timeoutMs: 1000
+    })
+  })
+
   it('bootstraps assistant workspace files when registering an agent', async () => {
     const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-assistant-runtime-'))
 
@@ -438,7 +651,7 @@ describe('AssistantRuntimeService', () => {
 
       expect(Object.keys(tools)).toEqual(
         expect.arrayContaining([
-          'browserSearch',
+          'webFetch',
           'readSoulMemory',
           'updateSoulMemory',
           'listWorkLogs',
@@ -455,48 +668,6 @@ describe('AssistantRuntimeService', () => {
     } finally {
       await rm(workspaceRoot, { recursive: true, force: true })
     }
-  })
-
-  it('registers group room tools when group turns are enabled', async () => {
-    const assistant = buildAssistant()
-    const mastra = await createMastraInstance(':memory:')
-    const runtime = new AssistantRuntimeService({
-      mastra,
-      assistantsRepo: {} as AssistantsRepository,
-      providersRepo: {} as ProvidersRepository,
-      threadsRepo: {} as ThreadsRepository,
-      webSearchSettingsRepo: {
-        getDefaultEngine: vi.fn(async () => 'bing')
-      } as unknown as WebSearchSettingsRepository,
-      mcpServersRepo: {
-        getSettings: vi.fn(async () => ({ mcpServers: {} }))
-      } as never,
-      groupEventBus: new GroupEventBus()
-    })
-
-    await (
-      runtime as unknown as {
-        ensureAgentRegistered: (
-          assistant: AppAssistant,
-          provider: AppProvider,
-          options?: {
-            channelDeliveryEnabled: boolean
-            cronToolsEnabled?: boolean
-            groupToolsEnabled?: boolean
-          }
-        ) => Promise<void>
-      }
-    ).ensureAgentRegistered(assistant, buildProvider(), {
-      channelDeliveryEnabled: false,
-      groupToolsEnabled: true
-    })
-
-    const agent = mastra.getAgentById(assistant.id)
-    const tools = await agent.listTools()
-
-    expect(Object.keys(tools)).toEqual(
-      expect.arrayContaining(['postToGroup', 'passGroupTurn'])
-    )
   })
 
   it('does not register work-log tools for assistants without workspaces', async () => {
@@ -1189,91 +1360,6 @@ describe('AssistantRuntimeService', () => {
     }
   })
 
-  it('runs a group turn and publishes a fallback room message when no group tool is called', async () => {
-    handleChatStreamMock.mockReset()
-    toAISdkV5MessagesMock.mockReset()
-    toAISdkV5MessagesMock.mockImplementation((messages) => messages)
-    handleChatStreamMock.mockResolvedValue(
-      new ReadableStream<UIMessageChunk>({
-        start(controller) {
-          controller.enqueue({ type: 'text-delta', delta: 'Ask Researcher to verify the numbers.' } as UIMessageChunk)
-          controller.enqueue({ type: 'finish' } as UIMessageChunk)
-          controller.close()
-        }
-      })
-    )
-
-    const bus = new GroupEventBus()
-    const publishedMessages: string[] = []
-    bus.subscribe('group.message.requested', (event) => {
-      publishedMessages.push(event.content)
-    })
-
-    const assistant = buildAssistant()
-    const touchLastMessageAt = vi.fn(async () => undefined)
-    const runtime = new AssistantRuntimeService({
-      mastra: await createMastraInstance(':memory:'),
-      assistantsRepo: {
-        getById: vi.fn(async () => assistant)
-      } as unknown as AssistantsRepository,
-      providersRepo: {
-        getById: vi.fn(async () => buildProvider())
-      } as unknown as ProvidersRepository,
-      threadsRepo: {
-        getById: vi.fn(async () => ({
-          id: 'assistant-thread-1',
-          assistantId: assistant.id,
-          resourceId: 'default-profile',
-          title: 'Group thread',
-          metadata: {},
-          lastMessageAt: null,
-          createdAt: '2026-03-02T00:00:00.000Z',
-          updatedAt: '2026-03-02T00:00:00.000Z'
-        })),
-        touchLastMessageAt
-      } as unknown as ThreadsRepository,
-      webSearchSettingsRepo: {
-        getDefaultEngine: vi.fn(async () => 'bing'),
-        getKeepBrowserWindowOpen: vi.fn(async () => false)
-      } as unknown as WebSearchSettingsRepository,
-      mcpServersRepo: {
-        getSettings: vi.fn(async () => ({ mcpServers: {} }))
-      } as never,
-      groupEventBus: bus
-    })
-
-    const result = await runtime.runGroupTurn({
-      assistantId: assistant.id,
-      threadId: 'assistant-thread-1',
-      profileId: 'default-profile',
-      messages: [
-        {
-          id: 'msg-1',
-          role: 'user',
-          content: 'You are in a room. Ask @Researcher to verify the numbers.',
-          parts: [
-            {
-              type: 'text',
-              text: 'You are in a room. Ask @Researcher to verify the numbers.'
-            }
-          ]
-        }
-      ],
-      groupContext: {
-        runId: 'run-1',
-        groupThreadId: 'group-thread-1',
-        allowedMentions: [{ assistantId: 'assistant-2', name: 'Researcher' }]
-      }
-    })
-
-    expect(result.outputText).toBe('Ask Researcher to verify the numbers.')
-    expect(publishedMessages).toEqual(['Ask Researcher to verify the numbers.'])
-    expect(touchLastMessageAt).toHaveBeenCalledWith(
-      'assistant-thread-1',
-      expect.any(String)
-    )
-  })
-
   it('collects final assistant output text for cron runs', async () => {
     handleChatStreamMock.mockReset()
     toAISdkV5MessagesMock.mockReset()
@@ -1721,6 +1807,442 @@ describe('AssistantRuntimeService', () => {
 
     expect(publishedEvents).toEqual([])
   })
+
+  it('records usage for chat streams with the persisted assistant message id', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.enqueue({
+            type: 'start',
+            messageId: 'assistant-msg-1'
+          } as UIMessageChunk)
+          controller.enqueue({ type: 'finish-step' } as UIMessageChunk)
+          controller.enqueue({ type: 'finish-step' } as UIMessageChunk)
+          controller.enqueue({
+            type: 'finish',
+            totalUsage: {
+              inputTokens: 120,
+              outputTokens: 40,
+              totalTokens: 160,
+              reasoningTokens: 12,
+              cachedInputTokens: 30
+            },
+            finishReason: 'stop'
+          } as UIMessageChunk)
+          controller.close()
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const recordMessageUsage = vi.fn(async () => undefined)
+    const runtime = new AssistantRuntimeService({
+      mastra: {
+        getStorage: () => null
+      } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          title: 'Usage thread',
+          lastMessageAt: null,
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        })),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as ThreadsRepository,
+      threadUsageRepo: {
+        recordMessageUsage
+      },
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+    ;(
+      runtime as unknown as {
+        ensureAgentRegistered: () => Promise<void>
+      }
+    ).ensureAgentRegistered = vi.fn(async () => undefined)
+
+    await drainStream(
+      await runtime.streamChat({
+        assistantId: assistant.id,
+        threadId: 'thread-1',
+        profileId: 'profile-1',
+        messages: []
+      })
+    )
+
+    expect(recordMessageUsage).toHaveBeenCalledWith({
+      messageId: 'assistant-msg-1',
+      threadId: 'thread-1',
+      assistantId: assistant.id,
+      resourceId: 'profile-1',
+      providerId: 'provider-1',
+      model: 'gpt-4.1',
+      source: 'chat',
+      usage: {
+        inputTokens: 120,
+        outputTokens: 40,
+        totalTokens: 160,
+        reasoningTokens: 12,
+        cachedInputTokens: 30
+      },
+      stepCount: 2,
+      finishReason: 'stop',
+      createdAt: expect.any(String)
+    })
+  })
+
+  it('falls back to the latest assistant message id when cron streams do not emit a start message id', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.enqueue({ type: 'text-delta', delta: 'Scheduled reply' } as UIMessageChunk)
+          controller.enqueue({ type: 'finish-step' } as UIMessageChunk)
+          controller.enqueue({
+            type: 'finish',
+            totalUsage: {
+              inputTokens: 80,
+              outputTokens: 20,
+              totalTokens: 100
+            },
+            finishReason: 'stop'
+          } as UIMessageChunk)
+          controller.close()
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const recordMessageUsage = vi.fn(async () => undefined)
+    const runtime = new AssistantRuntimeService({
+      mastra: {
+        getStorage: () => ({
+          getStore: async () => ({
+            listMessages: async () => ({
+              messages: [
+                {
+                  id: 'assistant-msg-older',
+                  role: 'assistant',
+                  createdAt: new Date('2026-03-13T23:59:00.000Z')
+                },
+                {
+                  id: 'assistant-msg-2',
+                  role: 'assistant',
+                  createdAt: new Date('2026-03-14T00:00:00.000Z')
+                }
+              ]
+            })
+          })
+        })
+      } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          title: 'Cron thread',
+          lastMessageAt: null,
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        }))
+      } as unknown as ThreadsRepository,
+      threadUsageRepo: {
+        recordMessageUsage
+      },
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+    ;(
+      runtime as unknown as {
+        ensureAgentRegistered: () => Promise<void>
+      }
+    ).ensureAgentRegistered = vi.fn(async () => undefined)
+
+    await runtime.runCronJob({
+      assistantId: assistant.id,
+      threadId: 'thread-1',
+      prompt: 'Send the scheduled reminder'
+    })
+
+    expect(recordMessageUsage).toHaveBeenCalledWith({
+      messageId: 'assistant-msg-2',
+      threadId: 'thread-1',
+      assistantId: assistant.id,
+      resourceId: 'profile-1',
+      providerId: 'provider-1',
+      model: 'gpt-4.1',
+      source: 'cron',
+      usage: {
+        inputTokens: 80,
+        outputTokens: 20,
+        totalTokens: 100,
+        reasoningTokens: 0,
+        cachedInputTokens: 0
+      },
+      stepCount: 1,
+      finishReason: 'stop',
+      createdAt: expect.any(String)
+    })
+  })
+
+  it('records usage for heartbeat runs', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.enqueue({
+            type: 'start',
+            messageId: 'assistant-msg-heartbeat'
+          } as UIMessageChunk)
+          controller.enqueue({ type: 'finish-step' } as UIMessageChunk)
+          controller.enqueue({
+            type: 'finish',
+            totalUsage: {
+              inputTokens: 90,
+              outputTokens: 35,
+              totalTokens: 125,
+              cachedInputTokens: 10
+            },
+            finishReason: 'stop'
+          } as UIMessageChunk)
+          controller.close()
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const recordMessageUsage = vi.fn(async () => undefined)
+    const runtime = new AssistantRuntimeService({
+      mastra: {
+        getStorage: () => null
+      } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          title: 'Heartbeat thread',
+          lastMessageAt: null,
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        }))
+      } as unknown as ThreadsRepository,
+      threadUsageRepo: {
+        recordMessageUsage
+      },
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+    ;(
+      runtime as unknown as {
+        ensureAgentRegistered: () => Promise<void>
+      }
+    ).ensureAgentRegistered = vi.fn(async () => undefined)
+
+    await runtime.runHeartbeat({
+      assistantId: assistant.id,
+      threadId: 'thread-1',
+      prompt: 'Write the heartbeat update',
+      intervalMinutes: 30
+    })
+
+    expect(recordMessageUsage).toHaveBeenCalledWith({
+      messageId: 'assistant-msg-heartbeat',
+      threadId: 'thread-1',
+      assistantId: assistant.id,
+      resourceId: 'profile-1',
+      providerId: 'provider-1',
+      model: 'gpt-4.1',
+      source: 'heartbeat',
+      usage: {
+        inputTokens: 90,
+        outputTokens: 35,
+        totalTokens: 125,
+        reasoningTokens: 0,
+        cachedInputTokens: 10
+      },
+      stepCount: 1,
+      finishReason: 'stop',
+      createdAt: expect.any(String)
+    })
+  })
+
+  it('does not record usage when a streamed chat is aborted', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.enqueue({
+            type: 'start',
+            messageId: 'assistant-msg-aborted'
+          } as UIMessageChunk)
+          controller.enqueue({
+            type: 'finish',
+            totalUsage: {
+              inputTokens: 10,
+              outputTokens: 5,
+              totalTokens: 15
+            }
+          } as UIMessageChunk)
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const recordMessageUsage = vi.fn(async () => undefined)
+    const runtime = new AssistantRuntimeService({
+      mastra: {
+        getStorage: () => null
+      } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          title: 'Abort thread',
+          lastMessageAt: null,
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        })),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as ThreadsRepository,
+      threadUsageRepo: {
+        recordMessageUsage
+      },
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+    ;(
+      runtime as unknown as {
+        ensureAgentRegistered: () => Promise<void>
+      }
+    ).ensureAgentRegistered = vi.fn(async () => undefined)
+
+    const stream = await runtime.streamChat({
+      assistantId: assistant.id,
+      threadId: 'thread-1',
+      profileId: 'profile-1',
+      messages: []
+    })
+
+    await stream.cancel()
+
+    expect(recordMessageUsage).not.toHaveBeenCalled()
+  })
+
+  it('does not record usage when a background stream errors', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.enqueue({
+            type: 'start',
+            messageId: 'assistant-msg-error'
+          } as UIMessageChunk)
+          controller.error(new Error('stream failed'))
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const recordMessageUsage = vi.fn(async () => undefined)
+    const runtime = new AssistantRuntimeService({
+      mastra: {
+        getStorage: () => null
+      } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          title: 'Error thread',
+          lastMessageAt: null,
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        }))
+      } as unknown as ThreadsRepository,
+      threadUsageRepo: {
+        recordMessageUsage
+      },
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+    ;(
+      runtime as unknown as {
+        ensureAgentRegistered: () => Promise<void>
+      }
+    ).ensureAgentRegistered = vi.fn(async () => undefined)
+
+    await expect(
+      runtime.runCronJob({
+        assistantId: assistant.id,
+        threadId: 'thread-1',
+        prompt: 'Run the failing job'
+      })
+    ).rejects.toThrow('stream failed')
+
+    expect(recordMessageUsage).not.toHaveBeenCalled()
+  })
+
   it('touches thread lastMessageAt after streaming completes', async () => {
     handleChatStreamMock.mockReset()
     handleChatStreamMock.mockResolvedValue(
@@ -1936,7 +2458,159 @@ describe('AssistantRuntimeService', () => {
     expect(updateTitle).not.toHaveBeenCalled()
   })
 
-  it('uses toAISdkV5Messages for chat history and excludes non-chat roles', async () => {
+  it('archives a compacted thread into the assistant workspace before clearing memory', async () => {
+    generateTextMock.mockReset()
+    generateTextMock.mockResolvedValue({
+      text: '## Goal\n\nWrap up investigation.\n\n## Key Outcomes\n\n- Found the root cause.\n'
+    })
+
+    const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-thread-command-'))
+    const assistant = buildAssistant({
+      workspaceConfig: {
+        rootPath: workspaceRoot
+      }
+    })
+    const provider = buildProvider({
+      name: 'OpenAI',
+      selectedModel: 'gpt-5'
+    })
+    const persistedMessages = [
+      {
+        id: 'persisted-user-1',
+        role: 'user',
+        content: {
+          parts: [
+            {
+              type: 'text',
+              text: 'Please investigate the webhook bug.'
+            }
+          ]
+        }
+      },
+      {
+        id: 'persisted-assistant-1',
+        role: 'assistant',
+        content: {
+          parts: [
+            {
+              type: 'text',
+              text: 'The issue is caused by a missing signature header.'
+            }
+          ]
+        }
+      }
+    ]
+
+    toAISdkV5MessagesMock.mockReset()
+    toAISdkV5MessagesMock.mockReturnValue([
+      {
+        id: 'user-msg-1',
+        role: 'user',
+        parts: [
+          {
+            type: 'text',
+            text: 'Please investigate the webhook bug.'
+          }
+        ]
+      },
+      {
+        id: 'assistant-msg-1',
+        role: 'assistant',
+        parts: [
+          {
+            type: 'text',
+            text: 'The issue is caused by a missing signature header.'
+          }
+        ]
+      }
+    ])
+
+    const listMessages = vi.fn(async () => ({
+      messages: persistedMessages
+    }))
+    const deleteThread = vi.fn(async () => undefined)
+    const getThreadById = vi.fn(async () => ({
+      title: 'Webhook bug investigation'
+    }))
+    const appendMessagesUpdated = vi.fn()
+
+    const runtime = new AssistantRuntimeService({
+      mastra: {
+        getStorage: () => ({
+          getStore: async () => ({
+            listMessages,
+            deleteThread,
+            getThreadById
+          })
+        })
+      } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => provider)
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          title: '',
+          metadata: {},
+          lastMessageAt: null,
+          createdAt: '2026-03-14T00:00:00.000Z',
+          updatedAt: '2026-03-14T00:00:00.000Z'
+        }))
+      } as unknown as ThreadsRepository,
+      threadMessageEventsStore: {
+        appendMessagesUpdated
+      },
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing')
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    try {
+      const result = await runtime.runThreadCommand({
+        assistantId: assistant.id,
+        threadId: 'thread-1',
+        profileId: 'profile-1',
+        command: 'new'
+      })
+
+      expect(result.command).toBe('new')
+      expect(result.archiveFileName).toMatch(/^thread_history_\d{4}-\d{2}-\d{2}\.md$/)
+      expect(result.archiveFilePath).toContain(workspaceRoot)
+      expect(result.threadTitle).toBe('Webhook bug investigation')
+      await expect(readFile(result.archiveFilePath, 'utf8')).resolves.toContain('## Summary')
+      await expect(readFile(result.archiveFilePath, 'utf8')).resolves.toContain(
+        'missing signature header'
+      )
+      await expect(readFile(path.join(workspaceRoot, 'MEMORY.md'), 'utf8')).resolves.toContain(
+        'User compacted thread memory of Webhook bug investigation'
+      )
+      expect(deleteThread).toHaveBeenCalledWith({ threadId: 'thread-1' })
+      expect(appendMessagesUpdated).toHaveBeenCalledWith({
+        assistantId: assistant.id,
+        threadId: 'thread-1',
+        profileId: 'profile-1',
+        source: 'command'
+      })
+      expect(generateTextMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          providerOptions: undefined,
+          temperature: 0
+        })
+      )
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('enriches assistant chat history with persisted usage and excludes non-chat roles', async () => {
     toAISdkV5MessagesMock.mockReset()
     const assistant = buildAssistant()
     const persistedMessages = [
@@ -2016,6 +2690,15 @@ describe('AssistantRuntimeService', () => {
     const listMessages = vi.fn(async () => ({
       messages: persistedMessages
     }))
+    const listByMessageIds = vi.fn(async () => ({
+      'assistant-msg-1': {
+        inputTokens: 140,
+        outputTokens: 32,
+        totalTokens: 172,
+        reasoningTokens: 15,
+        cachedInputTokens: 24
+      }
+    }))
 
     const runtime = new AssistantRuntimeService({
       mastra: {
@@ -2036,6 +2719,10 @@ describe('AssistantRuntimeService', () => {
           resourceId: 'profile-1'
         }))
       } as unknown as ThreadsRepository,
+      threadUsageRepo: {
+        recordMessageUsage: vi.fn(async () => undefined),
+        listByMessageIds
+      },
       webSearchSettingsRepo: {
         getDefaultEngine: vi.fn(async () => 'bing')
       } as unknown as WebSearchSettingsRepository,
@@ -2051,6 +2738,7 @@ describe('AssistantRuntimeService', () => {
     })
 
     expect(toAISdkV5MessagesMock).toHaveBeenCalledWith(persistedMessages)
+    expect(listByMessageIds).toHaveBeenCalledWith(['assistant-msg-1', 'user-msg-1', 'system-msg-1'])
     expect(messages).toEqual([
       {
         id: 'assistant-msg-1',
@@ -2065,7 +2753,16 @@ describe('AssistantRuntimeService', () => {
             text: 'Final answer'
           }
         ],
-        metadata: { persisted: true }
+        metadata: {
+          persisted: true,
+          usage: {
+            inputTokens: 140,
+            outputTokens: 32,
+            totalTokens: 172,
+            reasoningTokens: 15,
+            cachedInputTokens: 24
+          }
+        }
       },
       {
         id: 'user-msg-1',

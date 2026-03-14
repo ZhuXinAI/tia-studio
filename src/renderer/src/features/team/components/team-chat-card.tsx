@@ -1,15 +1,10 @@
 import { Plus, Settings2, Users } from 'lucide-react'
 import type { UIMessage } from 'ai'
 import type { UseChatHelpers } from '@ai-sdk/react'
-import {
-  AssistantRuntimeProvider,
-  ComposerPrimitive,
-  ThreadPrimitive,
-  useAui,
-  useAuiState
-} from '@assistant-ui/react'
+import { AssistantRuntimeProvider, ThreadPrimitive } from '@assistant-ui/react'
 import { useAISDKRuntime } from '@assistant-ui/react-ai-sdk'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { Mention, MentionsInput, type MentionsInputStyle } from 'react-mentions'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { useTranslation } from '../../../i18n/use-app-translation'
@@ -37,18 +32,65 @@ type TeamChatCardProps = {
   onCreateThread: () => void
 }
 
-function ComposerClearer({ selectedThreadId }: { selectedThreadId: string | undefined }): null {
-  const aui = useAui()
-
-  useEffect(() => {
-    aui.composer().setText('')
-  }, [aui, selectedThreadId])
-
-  return null
+const composerStyle: MentionsInputStyle = {
+  control: {
+    fontSize: 14,
+    fontWeight: 400
+  },
+  '&multiLine': {
+    control: {
+      minHeight: 88
+    },
+    highlighter: {
+      padding: '8px 12px',
+      border: '1px solid transparent',
+      lineHeight: '1.5rem',
+      whiteSpace: 'pre-wrap',
+      overflow: 'hidden'
+    },
+    input: {
+      width: '100%',
+      minHeight: 88,
+      margin: 0,
+      border: '1px solid var(--input)',
+      borderRadius: 'calc(var(--radius) - 2px)',
+      backgroundColor: 'transparent',
+      color: 'inherit',
+      padding: '8px 12px',
+      outline: 'none',
+      lineHeight: '1.5rem',
+      boxShadow: 'var(--shadow-xs)',
+      overflow: 'auto'
+    }
+  },
+  suggestions: {
+    background: 'transparent',
+    list: {
+      backgroundColor: 'var(--popover)',
+      border: '1px solid var(--border)',
+      borderRadius: 'calc(var(--radius) - 2px)',
+      boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+      marginTop: 8,
+      overflow: 'hidden',
+      position: 'relative',
+      zIndex: 20
+    },
+    item: {
+      padding: '8px 12px',
+      backgroundColor: 'var(--popover)',
+      color: 'var(--popover-foreground)',
+      '&focused': {
+        backgroundColor: 'var(--accent)',
+        color: 'var(--accent-foreground)'
+      }
+    }
+  }
 }
 
 function TeamChatComposer({
+  selectedWorkspace,
   selectedThread,
+  selectedMembers,
   readiness,
   isChatStreaming,
   canAbortGeneration,
@@ -58,7 +100,9 @@ function TeamChatComposer({
   onOpenStatusDialog
 }: Pick<
   TeamChatCardProps,
+  | 'selectedWorkspace'
   | 'selectedThread'
+  | 'selectedMembers'
   | 'readiness'
   | 'isChatStreaming'
   | 'canAbortGeneration'
@@ -67,45 +111,75 @@ function TeamChatComposer({
   | 'onOpenStatusDialog'
 > & { canCompose: boolean }): React.JSX.Element {
   const { t } = useTranslation()
-  const aui = useAui()
-  const composerText = useAuiState((state) => (state.composer.isEditing ? state.composer.text : ''))
+  const [draftValue, setDraftValue] = useState('')
+  const [draftPlainTextValue, setDraftPlainTextValue] = useState('')
+  const mentionSuggestions = selectedMembers.map((member) => ({
+    id: member.id,
+    display: member.name
+  }))
+
+  useEffect(() => {
+    setDraftValue('')
+    setDraftPlainTextValue('')
+  }, [selectedThread?.id])
 
   const canSendMessage =
-    Boolean(selectedThread && readiness.canChat) &&
-    composerText.trim().length > 0 &&
+    Boolean(selectedWorkspace && readiness.canChat) &&
+    draftPlainTextValue.trim().length > 0 &&
     !isChatStreaming &&
     canCompose
 
   return (
     <div className="border-t border-border/70 p-4">
-      <ComposerPrimitive.Root
+      <form
         className="space-y-3"
         onSubmit={async (event) => {
           event.preventDefault()
-          const text = composerText.trim()
+          const text = draftPlainTextValue.trim()
           if (text.length === 0) {
             return
           }
 
-          aui.composer().setText('')
           await onSubmitMessage(text)
+          setDraftValue('')
+          setDraftPlainTextValue('')
         }}
       >
-        <ComposerPrimitive.Input
-          minRows={3}
+        <MentionsInput
+          value={draftValue}
+          onChange={(_event, nextValue, nextPlainTextValue) => {
+            setDraftValue(nextValue)
+            setDraftPlainTextValue(nextPlainTextValue)
+          }}
+          rows={3}
           disabled={!canCompose || !readiness.canChat}
           placeholder={
-            selectedThread
+            selectedThread || canCompose
               ? t('team.chat.composer.placeholderSelected')
               : t('team.chat.composer.placeholderEmpty')
           }
           aria-label={t('team.chat.composer.ariaLabel')}
-          className="border-input placeholder:text-muted-foreground focus-visible:ring-ring/50 flex w-full rounded-md border bg-transparent px-3 py-2 text-base shadow-xs outline-none transition-[color,box-shadow] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:ring-[3px]"
-        />
+          a11ySuggestionsListLabel={t('team.chat.composer.ariaLabel')}
+          allowSuggestionsAboveCursor
+          style={composerStyle}
+          className="team-chat-mentions text-base md:text-sm"
+        >
+          <Mention
+            trigger="@"
+            data={mentionSuggestions}
+            markup="@[__display__](__id__)"
+            appendSpaceOnAdd
+            displayTransform={(_id, display) => `@${display}`}
+            style={{
+              backgroundColor: 'color-mix(in srgb, var(--accent) 72%, transparent)',
+              color: 'inherit'
+            }}
+          />
+        </MentionsInput>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-muted-foreground text-xs">
-            {selectedThread
+            {selectedThread || canCompose
               ? t('team.chat.composer.helperSelected')
               : t('team.chat.composer.helperEmpty')}
           </p>
@@ -118,15 +192,13 @@ function TeamChatComposer({
                 {t('common.actions.stop')}
               </Button>
             ) : (
-              <ComposerPrimitive.Send asChild>
-                <Button type="submit" disabled={!canSendMessage}>
-                  {t('common.actions.send')}
-                </Button>
-              </ComposerPrimitive.Send>
+              <Button type="submit" disabled={!canSendMessage}>
+                {t('common.actions.send')}
+              </Button>
             )}
           </div>
         </div>
-      </ComposerPrimitive.Root>
+      </form>
     </div>
   )
 }
@@ -151,11 +223,10 @@ export function TeamChatCard({
   const { t } = useTranslation()
   const runtime = useAISDKRuntime(chat)
 
-  const canCompose = Boolean(selectedThread && readiness.canChat) && !isLoadingChatHistory
+  const canCompose = Boolean(selectedWorkspace && readiness.canChat) && !isLoadingChatHistory
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <ComposerClearer selectedThreadId={selectedThread?.id} />
       <Card className="flex h-full min-h-0 flex-col gap-0 border-border/80 bg-card/78">
         <CardHeader className="border-b border-border/70 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -218,6 +289,7 @@ export function TeamChatCard({
                 key={selectedThread.id}
                 threadId={selectedThread.id}
                 assistantName={t('team.chat.supervisorName')}
+                assistantMessageVariant="team"
                 isLoadingChatHistory={isLoadingChatHistory}
                 isChatStreaming={isChatStreaming}
                 loadError={loadError}
@@ -227,7 +299,9 @@ export function TeamChatCard({
           </CardContent>
 
           <TeamChatComposer
+            selectedWorkspace={selectedWorkspace}
             selectedThread={selectedThread}
+            selectedMembers={selectedMembers}
             readiness={readiness}
             isChatStreaming={isChatStreaming}
             canAbortGeneration={canAbortGeneration}

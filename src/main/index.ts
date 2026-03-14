@@ -19,6 +19,7 @@ import { resolveServerConfig } from './config/server-config'
 import { getCodexCliStatus } from './codex/codex-cli'
 import { ensureBuiltInDefaultAgent } from './default-agent/default-agent-bootstrap'
 import { ensureBuiltInProviders } from './default-agent/built-in-providers-bootstrap'
+import { ensureBuiltInDefaultTeamWorkspace } from './default-team/default-team-bootstrap'
 import { logger } from './utils/logger'
 import { ChannelEventBus } from './channels/channel-event-bus'
 import { resolveGroupRequireMention } from './channels/channel-config'
@@ -33,11 +34,9 @@ import { WhatsAppChannel } from './channels/whatsapp-channel'
 import { AssistantCronJobsService } from './cron/assistant-cron-jobs-service'
 import { NodeCronSchedulerService } from './cron/node-cron-scheduler-service'
 import { AssistantHeartbeatsService } from './heartbeat/assistant-heartbeats-service'
-import { GroupEventBus } from './groups/group-event-bus'
-import { GroupRunRouter } from './groups/group-run-router'
 import { HeartbeatSchedulerService } from './heartbeat/heartbeat-scheduler-service'
+import { BuiltInBrowserManager } from './built-in-browser-manager'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
-import { GroupRuntimeService } from './mastra/group-runtime'
 import { createMastraInstance } from './mastra/store'
 import { TeamRuntimeService } from './mastra/team-runtime'
 import { migrateAppSchema } from './persistence/migrate'
@@ -49,8 +48,6 @@ import { ChannelThreadBindingsRepository } from './persistence/repos/channel-thr
 import { ChannelsRepository } from './persistence/repos/channels-repo'
 import { CronJobRunsRepository } from './persistence/repos/cron-job-runs-repo'
 import { CronJobsRepository } from './persistence/repos/cron-jobs-repo'
-import { GroupThreadsRepository } from './persistence/repos/group-threads-repo'
-import { GroupWorkspacesRepository } from './persistence/repos/group-workspaces-repo'
 import {
   type ManagedRuntimeKind,
   ManagedRuntimesRepository
@@ -60,11 +57,11 @@ import { ProvidersRepository } from './persistence/repos/providers-repo'
 import { SecuritySettingsRepository } from './persistence/repos/security-settings-repo'
 import { TeamThreadsRepository } from './persistence/repos/team-threads-repo'
 import { TeamWorkspacesRepository } from './persistence/repos/team-workspaces-repo'
+import { ThreadUsageRepository } from './persistence/repos/thread-usage-repo'
 import { ThreadsRepository } from './persistence/repos/threads-repo'
+import { runThreadUsageBackfill } from './persistence/thread-usage-backfill'
 import { WebSearchSettingsRepository } from './persistence/repos/web-search-settings-repo'
 import { ManagedRuntimeService } from './runtimes/managed-runtime-service'
-import { GroupRunStatusStore } from './server/chat/group-run-status-store'
-import { GroupThreadEventsStore } from './server/chat/group-thread-events-store'
 import { TeamRunStatusStore } from './server/chat/team-run-status-store'
 import { ThreadMessageEventsStore } from './server/chat/thread-message-events-store'
 import { createApp } from './server/create-app'
@@ -106,10 +103,10 @@ let webSearchSettingsWindow: BrowserWindow | null = null
 let managedRuntimeService: ManagedRuntimeService | null = null
 let channelService: ChannelService | null = null
 let channelMessageRouter: ChannelMessageRouter | null = null
-let groupRunRouter: GroupRunRouter | null = null
 let cronSchedulerService: NodeCronSchedulerService | null = null
 let heartbeatSchedulerService: HeartbeatSchedulerService | null = null
-const searchBrowserPartition = 'persist:tia-browser-search'
+let builtInBrowserManager: BuiltInBrowserManager | null = null
+const webFetchBrowserPartition = 'persist:tia-web-fetch'
 let uiConfigStore: UiConfigStore | null = null
 
 function resolveUiConfigStore(): UiConfigStore {
@@ -169,6 +166,28 @@ function resolveManagedRuntimeService(): ManagedRuntimeService {
   return managedRuntimeService
 }
 
+function resolveBuiltInBrowserManager(): BuiltInBrowserManager {
+  if (!builtInBrowserManager) {
+    builtInBrowserManager = new BuiltInBrowserManager({
+      executablePath: process.execPath,
+      entryPath: join(__dirname, 'built-in-browser.js'),
+      profileRootPath: join(app.getPath('userData'), 'built-in-browser-profiles')
+    })
+  }
+
+  return builtInBrowserManager
+}
+
+async function syncBuiltInBrowserVisibility(visible: boolean): Promise<void> {
+  const manager = resolveBuiltInBrowserManager()
+  if (visible) {
+    await manager.showWindow()
+    return
+  }
+
+  await manager.hideWindow()
+}
+
 function resolveWebSearchSettingsWindow(parentWindow: BrowserWindow | null): BrowserWindow {
   if (webSearchSettingsWindow && !webSearchSettingsWindow.isDestroyed()) {
     return webSearchSettingsWindow
@@ -184,7 +203,7 @@ function resolveWebSearchSettingsWindow(parentWindow: BrowserWindow | null): Bro
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
-      partition: searchBrowserPartition
+      partition: webFetchBrowserPartition
     }
   })
 
@@ -223,12 +242,11 @@ async function startLocalApiServer(): Promise<void> {
   const heartbeatsRepo = new AssistantHeartbeatsRepository(db)
   const heartbeatRunsRepo = new AssistantHeartbeatRunsRepository(db)
   const channelThreadBindingsRepo = new ChannelThreadBindingsRepository(db)
-  const groupsRepo = new GroupWorkspacesRepository(db)
-  const groupThreadsRepo = new GroupThreadsRepository(db)
   const teamWorkspacesRepo = new TeamWorkspacesRepository(db)
   const teamThreadsRepo = new TeamThreadsRepository(db)
   const webSearchSettingsRepo = new WebSearchSettingsRepository(db)
   const securitySettingsRepo = new SecuritySettingsRepository(db)
+  const threadUsageRepo = new ThreadUsageRepository(db)
   const mcpServersRepo = new McpServersRepository(join(app.getPath('userData'), 'mcp.json'))
   const managedRuntimesRepo = new ManagedRuntimesRepository(
     join(app.getPath('userData'), 'managed-runtimes.json')
@@ -243,8 +261,12 @@ async function startLocalApiServer(): Promise<void> {
     providersRepo,
     userDataPath: app.getPath('userData')
   })
+  await ensureBuiltInDefaultTeamWorkspace({
+    teamWorkspacesRepo,
+    providersRepo,
+    userDataPath: app.getPath('userData')
+  })
   const channelEventBus = new ChannelEventBus()
-  const groupEventBus = new GroupEventBus()
   const whatsAppAuthStateStore = new WhatsAppAuthStateStore()
   const assistantCronJobsService = new AssistantCronJobsService({
     cronJobsRepo,
@@ -259,7 +281,13 @@ async function startLocalApiServer(): Promise<void> {
     threadsRepo,
     reloadScheduler: async () => heartbeatSchedulerService?.reload()
   })
-  const mastra = await createMastraInstance(join(app.getPath('userData'), 'mastra.db'))
+  const mastraDbPath = join(app.getPath('userData'), 'mastra.db')
+  const mastra = await createMastraInstance(mastraDbPath)
+  await runThreadUsageBackfill({
+    appDb: db,
+    mastraDbPath,
+    usageRepo: threadUsageRepo
+  })
   const threadMessageEventsStore = new ThreadMessageEventsStore()
   const assistantRuntime = new AssistantRuntimeService({
     mastra,
@@ -272,37 +300,21 @@ async function startLocalApiServer(): Promise<void> {
     mcpServersRepo,
     channelsRepo,
     channelEventBus,
-    groupEventBus,
     threadMessageEventsStore,
+    threadUsageRepo,
     cronJobService: assistantCronJobsService,
-    managedRuntimeResolver: managedRuntimeService
+    managedRuntimeResolver: managedRuntimeService,
+    builtInBrowserManager: resolveBuiltInBrowserManager()
   })
   const teamRunStatusStore = new TeamRunStatusStore()
-  const groupRunStatusStore = new GroupRunStatusStore()
-  const groupThreadEventsStore = new GroupThreadEventsStore()
-  const groupRuntime = new GroupRuntimeService({
-    groupThreadsRepo,
-    bus: groupEventBus,
-    statusStore: groupRunStatusStore,
-    threadEventsStore: groupThreadEventsStore
-  })
-  groupRunRouter = new GroupRunRouter({
-    bus: groupEventBus,
-    assistantsRepo,
-    groupThreadsRepo,
-    groupWorkspacesRepo: groupsRepo,
-    threadsRepo,
-    assistantRuntime,
-    statusStore: groupRunStatusStore,
-    threadEventsStore: groupThreadEventsStore
-  })
   const teamRuntime = new TeamRuntimeService({
     mastra,
     assistantsRepo,
     providersRepo,
     teamWorkspacesRepo,
     teamThreadsRepo,
-    statusStore: teamRunStatusStore
+    statusStore: teamRunStatusStore,
+    builtInBrowserManager: resolveBuiltInBrowserManager()
   })
   channelService = new ChannelService({
     channelsRepo,
@@ -465,25 +477,32 @@ async function startLocalApiServer(): Promise<void> {
       cronJobRuns: cronJobRunsRepo,
       heartbeats: heartbeatsRepo,
       heartbeatRuns: heartbeatRunsRepo,
-      groups: groupsRepo,
-      groupThreads: groupThreadsRepo,
       teamWorkspaces: teamWorkspacesRepo,
       teamThreads: teamThreadsRepo,
       webSearchSettings: webSearchSettingsRepo,
       securitySettings: securitySettingsRepo,
-      mcpServers: mcpServersRepo
+      mcpServers: mcpServersRepo,
+      threadUsage: threadUsageRepo
     },
     assistantRuntime,
-    groupRuntime,
     teamRuntime,
     teamRunStatusStore,
-    groupRunStatusStore,
-    groupThreadEventsStore,
     threadMessageEventsStore,
     channelService,
     cronSchedulerService,
     heartbeatSchedulerService,
-    whatsAppAuthStateStore
+    whatsAppAuthStateStore,
+    onShowBuiltInBrowserChange: async (show) => {
+      await syncBuiltInBrowserVisibility(show)
+    },
+    onShowBuiltInBrowserWindow: async () => {
+      await resolveBuiltInBrowserManager().showWindow()
+    }
+  })
+
+  const initialBuiltInBrowserVisible = await webSearchSettingsRepo.getShowBuiltInBrowser()
+  void syncBuiltInBrowserVisibility(initialBuiltInBrowserVisible).catch((error) => {
+    logger.error('[BuiltInBrowser] failed to apply initial visibility preference:', error)
   })
 
   localApiServer = serve(
@@ -502,7 +521,6 @@ async function startLocalApiServer(): Promise<void> {
     }
   )
 
-  await groupRunRouter.start()
   await channelMessageRouter.start()
   await channelService.start()
   await cronSchedulerService.start()
@@ -518,11 +536,6 @@ function stopLocalApiServer(): void {
   if (channelMessageRouter) {
     void channelMessageRouter.stop()
     channelMessageRouter = null
-  }
-
-  if (groupRunRouter) {
-    void groupRunRouter.stop()
-    groupRunRouter = null
   }
 
   if (cronSchedulerService) {
@@ -846,6 +859,7 @@ app.on('before-quit', () => {
     appTray.destroy()
     appTray = null
   }
+  builtInBrowserManager?.shutdown()
   stopLocalApiServer()
 })
 

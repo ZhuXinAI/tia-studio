@@ -1,4 +1,4 @@
-import { Telegraf } from 'telegraf'
+import { Input, Telegraf } from 'telegraf'
 import { message } from 'telegraf/filters'
 import type { ChannelPairingsRepository } from '../persistence/repos/channel-pairings-repo'
 import { AbstractChannel } from './abstract-channel'
@@ -27,6 +27,7 @@ type TelegramClientLike = {
   launch(): Promise<void>
   stop(reason?: string): void
   sendMessage(chatId: string, text: string): Promise<void>
+  sendPhoto(chatId: string, filePath: string): Promise<void>
 }
 
 type ChannelPairingsRepositoryLike = Pick<
@@ -108,6 +109,9 @@ function createTelegramClient(botToken: string): TelegramClientLike {
     },
     async sendMessage(chatId: string, text: string) {
       await bot.telegram.sendMessage(chatId, text)
+    },
+    async sendPhoto(chatId: string, filePath: string) {
+      await bot.telegram.sendPhoto(chatId, Input.fromLocalFile(filePath))
     }
   }
 }
@@ -194,6 +198,10 @@ export class TelegramChannel extends AbstractChannel {
 
   async send(remoteChatId: string, message: string): Promise<void> {
     await this.client.sendMessage(remoteChatId, message)
+  }
+
+  async sendImage(remoteChatId: string, filePath: string): Promise<void> {
+    await this.client.sendPhoto(remoteChatId, filePath)
   }
 
   private async handleInboundMessage(message: TelegramInboundTextMessage): Promise<void> {

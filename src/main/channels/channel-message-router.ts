@@ -2,15 +2,14 @@ import { randomUUID } from 'node:crypto'
 import type { UIMessageWithMetadata } from '@mastra/core/agent/message-list'
 import type { UIMessageChunk } from 'ai'
 import type { AssistantRuntime } from '../mastra/assistant-runtime'
+import { parseThreadSlashCommand } from '../chat/thread-slash-commands'
 import type { ChannelThreadBindingsRepository } from '../persistence/repos/channel-thread-bindings-repo'
 import type { ChannelsRepository } from '../persistence/repos/channels-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import { ChannelEventBus } from './channel-event-bus'
 import {
   formatChannelInterruptionReply,
-  formatChannelToolErrorUpdate,
-  formatChannelToolInputUpdate,
-  formatChannelToolOutputUpdate
+  formatChannelToolInputUpdate
 } from './channel-progress-messages'
 import type { ChannelMessageReceivedEvent } from './types'
 import { logger } from '../utils/logger'
@@ -92,6 +91,8 @@ const SOFT_QUEUE_PATTERNS = [
   /\b(additionally|in addition|by the way)\b/i
 ]
 const TOOL_PROGRESS_CHANNEL_BLACKLIST = new Set(['wechat-kf'])
+const STOPPED_ACTIVE_RUN_REPLY = 'Stopped the current run.'
+const STOP_NO_ACTIVE_RUN_REPLY = 'There is no active run to stop right now.'
 
 function toFriendlyErrorMessage(raw: string): string {
   let statusCode: number | undefined
@@ -139,7 +140,6 @@ async function drainStreamWithToolUpdates(
   const reader = stream.getReader()
   let assistantText = ''
   let streamError: string | null = null
-  const toolsByCallId = new Map<string, { toolName: string; title?: string }>()
 
   try {
     while (true) {
@@ -153,21 +153,7 @@ async function drainStreamWithToolUpdates(
       } else if (value.type === 'error') {
         streamError = value.errorText
       } else if (value.type === 'tool-input-available' && onToolUpdate) {
-        toolsByCallId.set(value.toolCallId, {
-          toolName: value.toolName,
-          ...(value.title ? { title: value.title } : {})
-        })
         await onToolUpdate(formatChannelToolInputUpdate(value, locale))
-      } else if (value.type === 'tool-output-available' && onToolUpdate) {
-        const tool = toolsByCallId.get(value.toolCallId) ?? {
-          toolName: value.toolCallId
-        }
-        await onToolUpdate(formatChannelToolOutputUpdate(value, tool, locale))
-      } else if (value.type === 'tool-output-error' && onToolUpdate) {
-        const tool = toolsByCallId.get(value.toolCallId) ?? {
-          toolName: value.toolCallId
-        }
-        await onToolUpdate(formatChannelToolErrorUpdate(value, tool, locale))
       }
     }
   } finally {
@@ -284,6 +270,18 @@ export class ChannelMessageRouter {
         remoteChatId: event.message.remoteChatId
       })
       const state = this.getConversationState(conversationKey)
+      const slashCommand = parseThreadSlashCommand(event.message.content)
+
+      if (slashCommand) {
+        await this.handleSlashCommand({
+          assistantId,
+          threadId,
+          event,
+          state,
+          command: slashCommand
+        })
+        return
+      }
 
       if (this.isResumeCommand(event.message.content) && !state.activeRun) {
         const pausedTask = state.pausedTasks.pop()
@@ -317,6 +315,45 @@ export class ChannelMessageRouter {
     })
 
     await (completionPromise ?? Promise.resolve())
+  }
+
+  private async handleSlashCommand(input: {
+    assistantId: string
+    threadId: string
+    event: ChannelMessageReceivedEvent
+    state: ConversationExecutionState
+    command: ReturnType<typeof parseThreadSlashCommand>
+  }): Promise<void> {
+    if (!input.command) {
+      return
+    }
+
+    if (input.command === 'stop') {
+      if (!input.state.activeRun) {
+        await this.publishReply(input.event, STOP_NO_ACTIVE_RUN_REPLY)
+        return
+      }
+
+      input.state.activeRun.abortController.abort('Stopped by slash command')
+      await this.publishReply(input.event, STOPPED_ACTIVE_RUN_REPLY)
+      return
+    }
+
+    input.state.activeRun?.abortController.abort('Reset by /new slash command')
+    input.state.queue = []
+    input.state.pausedTasks = []
+
+    const result = await this.options.assistantRuntime.runThreadCommand({
+      assistantId: input.assistantId,
+      threadId: input.threadId,
+      profileId: DEFAULT_PROFILE_ID,
+      command: 'new'
+    })
+
+    await this.publishReply(
+      input.event,
+      `Started a fresh memory session. Archived the previous thread to ${result.archiveFileName}.`
+    )
   }
 
   private async publishReply(event: ChannelMessageReceivedEvent, content: string): Promise<void> {

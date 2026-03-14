@@ -8,6 +8,21 @@ type RegisterThreadsRouteOptions = {
   threadsRepo: ThreadsRepository
   assistantsRepo?: AssistantsRepository
   channelThreadBindingsRepo?: Pick<ChannelThreadBindingsRepository, 'listByThreadIds'>
+  threadUsageRepo?: {
+    listThreadTotals(threadIds: string[]): Promise<
+      Record<
+        string,
+        {
+          assistantMessageCount: number
+          inputTokens: number
+          outputTokens: number
+          totalTokens: number
+          reasoningTokens: number
+          cachedInputTokens: number
+        }
+      >
+    >
+  }
 }
 
 type ThreadChannelBindingInfo = {
@@ -18,6 +33,49 @@ type ThreadChannelBindingInfo = {
 
 type ThreadResponse = AppThread & {
   channelBinding: ThreadChannelBindingInfo | null
+  usageTotals?: {
+    assistantMessageCount: number
+    inputTokens: number
+    outputTokens: number
+    totalTokens: number
+    reasoningTokens: number
+    cachedInputTokens: number
+  } | null
+}
+
+function toUsageTotalsResponse(
+  usageTotals:
+    | {
+        assistantMessageCount: number
+        inputTokens: number
+        outputTokens: number
+        totalTokens: number
+        reasoningTokens: number
+        cachedInputTokens: number
+      }
+    | {
+        threadId: string
+        assistantMessageCount: number
+        inputTokens: number
+        outputTokens: number
+        totalTokens: number
+        reasoningTokens: number
+        cachedInputTokens: number
+      }
+    | null
+): ThreadResponse['usageTotals'] {
+  if (!usageTotals) {
+    return null
+  }
+
+  return {
+    assistantMessageCount: usageTotals.assistantMessageCount,
+    inputTokens: usageTotals.inputTokens,
+    outputTokens: usageTotals.outputTokens,
+    totalTokens: usageTotals.totalTokens,
+    reasoningTokens: usageTotals.reasoningTokens,
+    cachedInputTokens: usageTotals.cachedInputTokens
+  }
 }
 
 function invalidBodyResponse(): { ok: false; error: string } {
@@ -26,11 +84,13 @@ function invalidBodyResponse(): { ok: false; error: string } {
 
 function toThreadResponse(
   thread: AppThread,
-  binding: ThreadChannelBindingInfo | null
+  binding: ThreadChannelBindingInfo | null,
+  usageTotals: ThreadResponse['usageTotals'] = null
 ): ThreadResponse {
   return {
     ...thread,
-    channelBinding: binding
+    channelBinding: binding,
+    usageTotals
   }
 }
 
@@ -43,8 +103,16 @@ export function registerThreadsRoute(app: Hono, options: RegisterThreadsRouteOpt
 
     const includeHidden = context.req.query('includeHidden') === 'true'
     const threads = await options.threadsRepo.listByAssistant(assistantId, { includeHidden })
+    const usageTotalsByThreadId = options.threadUsageRepo
+      ? await options.threadUsageRepo.listThreadTotals(threads.map((thread) => thread.id))
+      : {}
+
     if (!options.channelThreadBindingsRepo || threads.length === 0) {
-      return context.json(threads.map((thread) => toThreadResponse(thread, null)))
+      return context.json(
+        threads.map((thread) =>
+          toThreadResponse(thread, null, toUsageTotalsResponse(usageTotalsByThreadId[thread.id] ?? null))
+        )
+      )
     }
 
     const bindings = await options.channelThreadBindingsRepo.listByThreadIds(
@@ -62,7 +130,13 @@ export function registerThreadsRoute(app: Hono, options: RegisterThreadsRouteOpt
     }
 
     return context.json(
-      threads.map((thread) => toThreadResponse(thread, bindingByThreadId.get(thread.id) ?? null))
+      threads.map((thread) =>
+        toThreadResponse(
+          thread,
+          bindingByThreadId.get(thread.id) ?? null,
+          toUsageTotalsResponse(usageTotalsByThreadId[thread.id] ?? null)
+        )
+      )
     )
   })
 

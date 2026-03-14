@@ -6,6 +6,7 @@ export type WebSearchSettings = {
   defaultEngine: WebSearchEngine
   keepBrowserWindowOpen: boolean
   showBrowser: boolean
+  showBuiltInBrowser: boolean
   availableEngines: WebSearchEngine[]
 }
 
@@ -19,6 +20,7 @@ export async function updateWebSearchSettings(input: {
   defaultEngine?: WebSearchEngine
   keepBrowserWindowOpen?: boolean
   showBrowser?: boolean
+  showBuiltInBrowser?: boolean
 }): Promise<WebSearchSettings> {
   return apiClient.patch<WebSearchSettings>('/v1/settings/web-search', input)
 }

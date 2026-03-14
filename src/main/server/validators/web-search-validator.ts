@@ -5,13 +5,15 @@ export const updateWebSearchSettingsSchema = z
   .object({
     defaultEngine: z.enum(webSearchEngines).optional(),
     keepBrowserWindowOpen: z.boolean().optional(),
-    showBrowser: z.boolean().optional()
+    showBrowser: z.boolean().optional(),
+    showBuiltInBrowser: z.boolean().optional()
   })
   .refine(
     (input) =>
       input.defaultEngine !== undefined ||
       input.keepBrowserWindowOpen !== undefined ||
-      input.showBrowser !== undefined,
+      input.showBrowser !== undefined ||
+      input.showBuiltInBrowser !== undefined,
     {
       message: 'At least one web search setting must be provided'
     }

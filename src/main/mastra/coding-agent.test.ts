@@ -59,6 +59,8 @@ describe('createCodingSubagent', () => {
     expect(agent?.description).toContain(`Primary working directory: ${cwd}.`)
     expect(agent?.description).toContain(`Assistant workspace root: ${workspaceRootPath}.`)
     expect(agent?.description).toContain(`Can also access: ${sharedDir}, ${toolsDir}.`)
+    expect(agentConfigs.at(-1)?.instructions).toContain('remote debugging port 10531')
+    expect(agentConfigs.at(-1)?.instructions).toContain('recommend installing agent-browser')
     expect(codexAppServerMock).toHaveBeenCalledWith(DEFAULT_ASSISTANT_CODING_MODEL, {
       cwd,
       addDirs: [sharedDir, toolsDir]
@@ -83,6 +85,7 @@ describe('createCodingSubagent', () => {
     expect(agent).toBeDefined()
     expect(agent?.description).toContain(`Primary working directory: ${workspaceRootPath}.`)
     expect(agent?.description).not.toContain('Assistant workspace root:')
+    expect(agentConfigs.at(-1)?.instructions).toContain('TIA provides a built-in Electron browser')
     expect(codexAppServerMock).toHaveBeenCalledWith(DEFAULT_ASSISTANT_CODING_MODEL, {
       cwd: workspaceRootPath
     })

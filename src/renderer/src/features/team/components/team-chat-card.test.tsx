@@ -1,5 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
-import { renderToString } from 'react-dom/server'
+// @vitest-environment jsdom
+
+import { act } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { UIMessage } from 'ai'
 import type { UseChatHelpers } from '@ai-sdk/react'
 
@@ -21,151 +24,251 @@ vi.mock('@assistant-ui/react', () => ({
   AssistantRuntimeProvider: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   ThreadPrimitive: {
     Root: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>
-  },
-  ComposerPrimitive: {
-    Root: ({ children }: { children?: React.ReactNode }) => <form>{children}</form>,
-    Input: ({ minRows, ...props }: Record<string, unknown>) => (
-      <textarea rows={typeof minRows === 'number' ? minRows : undefined} {...props} />
-    ),
-    Send: ({ children, asChild }: { children?: React.ReactNode; asChild?: boolean }) =>
-      asChild ? <>{children}</> : <button type="submit">{children}</button>
-  },
-  useAui: () => ({
-    composer: () => ({
-      setText: () => undefined
-    })
-  }),
-  useAuiState: (selector: (state: unknown) => unknown) =>
-    selector({
-      composer: {
-        isEditing: true,
-        text: ''
-      }
-    })
+  }
 }))
 
 import { TeamChatCard } from './team-chat-card'
 
+function setTextareaValue(element: HTMLTextAreaElement, value: string): void {
+  const valueSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set
+  valueSetter?.call(element, value)
+  element.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+function findButtonByText(container: HTMLElement, text: string): HTMLButtonElement {
+  const button = Array.from(container.querySelectorAll('button')).find((candidate) =>
+    candidate.textContent?.includes(text)
+  )
+
+  if (!button) {
+    throw new Error(`Could not find button with text: ${text}`)
+  }
+
+  return button
+}
+
+function buildWorkspace() {
+  return {
+    id: 'workspace-1',
+    name: 'Docs Workspace',
+    rootPath: '/Users/demo/project',
+    teamDescription: '',
+    supervisorProviderId: 'provider-1',
+    supervisorModel: 'gpt-5',
+    createdAt: '2026-03-07T00:00:00.000Z',
+    updatedAt: '2026-03-07T00:00:00.000Z'
+  }
+}
+
+function buildThread() {
+  return {
+    id: 'thread-1',
+    workspaceId: 'workspace-1',
+    resourceId: 'default-profile',
+    title: 'Release Team',
+    teamDescription: '',
+    supervisorProviderId: 'provider-1',
+    supervisorModel: 'gpt-5',
+    lastMessageAt: null,
+    createdAt: '2026-03-07T00:00:00.000Z',
+    updatedAt: '2026-03-07T00:00:00.000Z'
+  }
+}
+
+function buildMember(name = 'Planner') {
+  return {
+    id: `assistant-${name.toLowerCase()}`,
+    name,
+    description: '',
+    instructions: '',
+    enabled: true,
+    providerId: 'provider-1',
+    workspaceConfig: {},
+    skillsConfig: {},
+    mcpConfig: {},
+    maxSteps: 100,
+    memoryConfig: null,
+    createdAt: '2026-03-07T00:00:00.000Z',
+    updatedAt: '2026-03-07T00:00:00.000Z'
+  }
+}
+
 describe('TeamChatCard', () => {
-  it('renders the team workspace metadata and shows the setup blocker when incomplete', () => {
+  let container: HTMLDivElement
+  let root: Root
+
+  beforeEach(() => {
+    ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
     useAISDKRuntimeMock.mockClear()
-
-    const html = renderToString(
-      <TeamChatCard
-        selectedWorkspace={{
-          id: 'workspace-1',
-          name: 'Docs Workspace',
-          rootPath: '/Users/demo/project',
-          teamDescription: '',
-          supervisorProviderId: null,
-          supervisorModel: '',
-          createdAt: '2026-03-07T00:00:00.000Z',
-          updatedAt: '2026-03-07T00:00:00.000Z'
-        }}
-        selectedThread={{
-          id: 'thread-1',
-          workspaceId: 'workspace-1',
-          resourceId: 'default-profile',
-          title: 'Release Team',
-          teamDescription: '',
-          supervisorProviderId: null,
-          supervisorModel: '',
-          lastMessageAt: null,
-          createdAt: '2026-03-07T00:00:00.000Z',
-          updatedAt: '2026-03-07T00:00:00.000Z'
-        }}
-        selectedMembers={[]}
-        chat={{} as UseChatHelpers<UIMessage>}
-        readiness={{
-          canChat: false,
-          checks: [
-            {
-              id: 'members',
-              label: 'At least one live team member is selected',
-              ready: false
-            }
-          ]
-        }}
-        isLoadingChatHistory={false}
-        isChatStreaming={false}
-        chatError={null}
-        loadError={null}
-        canAbortGeneration={false}
-        onSubmitMessage={async () => undefined}
-        onAbortGeneration={() => undefined}
-        onOpenTeamConfig={() => undefined}
-        onOpenStatusDialog={() => undefined}
-        onCreateThread={() => undefined}
-      />
-    )
-
-    expect(useAISDKRuntimeMock).toHaveBeenCalledTimes(1)
-    expect(html).toContain('Docs Workspace')
-    expect(html).toContain('Configure Team')
-    expect(html).toContain('Team setup is incomplete.')
-    expect(html).toContain('Open Team Status')
   })
 
-  it('shows stop while team chat is streaming', () => {
-    useAISDKRuntimeMock.mockClear()
+  afterEach(() => {
+    act(() => {
+      root.unmount()
+    })
+    container.remove()
+    delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT
+    vi.clearAllMocks()
+  })
 
-    const html = renderToString(
-      <TeamChatCard
-        selectedWorkspace={{
-          id: 'workspace-1',
-          name: 'Docs Workspace',
-          rootPath: '/Users/demo/project',
-          teamDescription: '',
-          supervisorProviderId: 'provider-1',
-          supervisorModel: 'gpt-5',
-          createdAt: '2026-03-07T00:00:00.000Z',
-          updatedAt: '2026-03-07T00:00:00.000Z'
-        }}
-        selectedThread={{
-          id: 'thread-1',
-          workspaceId: 'workspace-1',
-          resourceId: 'default-profile',
-          title: 'Release Team',
-          teamDescription: '',
-          supervisorProviderId: 'provider-1',
-          supervisorModel: 'gpt-5',
-          lastMessageAt: null,
-          createdAt: '2026-03-07T00:00:00.000Z',
-          updatedAt: '2026-03-07T00:00:00.000Z'
-        }}
-        selectedMembers={[
-          {
-            id: 'assistant-1',
-            name: 'Planner',
-            description: '',
-            instructions: '',
-            enabled: true,
-            providerId: 'provider-1',
-            workspaceConfig: {},
-            skillsConfig: {},
-            mcpConfig: {},
-            maxSteps: 100,
-            memoryConfig: null,
-            createdAt: '2026-03-07T00:00:00.000Z',
-            updatedAt: '2026-03-07T00:00:00.000Z'
-          }
-        ]}
-        chat={{} as UseChatHelpers<UIMessage>}
-        readiness={{ canChat: true, checks: [] }}
-        isLoadingChatHistory={false}
-        isChatStreaming
-        chatError={null}
-        loadError={null}
-        canAbortGeneration
-        onSubmitMessage={async () => undefined}
-        onAbortGeneration={() => undefined}
-        onOpenTeamConfig={() => undefined}
-        onOpenStatusDialog={() => undefined}
-        onCreateThread={() => undefined}
-      />
-    )
+  it('renders the team workspace metadata and shows the setup blocker when incomplete', async () => {
+    await act(async () => {
+      root.render(
+        <TeamChatCard
+          selectedWorkspace={buildWorkspace()}
+          selectedThread={{
+            ...buildThread(),
+            supervisorProviderId: null,
+            supervisorModel: ''
+          }}
+          selectedMembers={[]}
+          chat={{} as UseChatHelpers<UIMessage>}
+          readiness={{
+            canChat: false,
+            checks: [
+              {
+                id: 'members',
+                label: 'At least one live team member is selected',
+                ready: false
+              }
+            ]
+          }}
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          chatError={null}
+          loadError={null}
+          canAbortGeneration={false}
+          onSubmitMessage={async () => undefined}
+          onAbortGeneration={() => undefined}
+          onOpenTeamConfig={() => undefined}
+          onOpenStatusDialog={() => undefined}
+          onCreateThread={() => undefined}
+        />
+      )
+    })
 
     expect(useAISDKRuntimeMock).toHaveBeenCalledTimes(1)
-    expect(html).toContain('Stop')
+    expect(container.textContent).toContain('Docs Workspace')
+    expect(container.textContent).toContain('Configure Team')
+    expect(container.textContent).toContain('Team setup is incomplete.')
+    expect(container.textContent).toContain('Open Team Status')
+  })
+
+  it('shows stop while team chat is streaming', async () => {
+    await act(async () => {
+      root.render(
+        <TeamChatCard
+          selectedWorkspace={buildWorkspace()}
+          selectedThread={buildThread()}
+          selectedMembers={[buildMember()]}
+          chat={{} as UseChatHelpers<UIMessage>}
+          readiness={{ canChat: true, checks: [] }}
+          isLoadingChatHistory={false}
+          isChatStreaming
+          chatError={null}
+          loadError={null}
+          canAbortGeneration
+          onSubmitMessage={async () => undefined}
+          onAbortGeneration={() => undefined}
+          onOpenTeamConfig={() => undefined}
+          onOpenStatusDialog={() => undefined}
+          onCreateThread={() => undefined}
+        />
+      )
+    })
+
+    expect(useAISDKRuntimeMock).toHaveBeenCalledTimes(1)
+    expect(container.textContent).toContain('Stop')
+  })
+
+  it('submits mention-rich plain text from the team composer', async () => {
+    const onSubmitMessage = vi.fn(async () => undefined)
+
+    await act(async () => {
+      root.render(
+        <TeamChatCard
+          selectedWorkspace={buildWorkspace()}
+          selectedThread={buildThread()}
+          selectedMembers={[buildMember('Planner'), buildMember('Researcher')]}
+          chat={{} as UseChatHelpers<UIMessage>}
+          readiness={{ canChat: true, checks: [] }}
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          chatError={null}
+          loadError={null}
+          canAbortGeneration={false}
+          onSubmitMessage={onSubmitMessage}
+          onAbortGeneration={() => undefined}
+          onOpenTeamConfig={() => undefined}
+          onOpenStatusDialog={() => undefined}
+          onCreateThread={() => undefined}
+        />
+      )
+    })
+
+    expect(container.querySelector('.team-chat-mentions')).not.toBeNull()
+
+    const composer = container.querySelector('textarea')
+    expect(composer).not.toBeNull()
+
+    await act(async () => {
+      setTextareaValue(composer as HTMLTextAreaElement, 'Route this to @Planner')
+    })
+
+    const sendButton = findButtonByText(container, 'Send')
+    expect(sendButton.disabled).toBe(false)
+
+    await act(async () => {
+      sendButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(onSubmitMessage).toHaveBeenCalledWith('Route this to @Planner')
+    expect((composer as HTMLTextAreaElement).value).toBe('')
+  })
+
+  it('allows sending without a preselected thread when the team is otherwise ready', async () => {
+    const onSubmitMessage = vi.fn(async () => undefined)
+
+    await act(async () => {
+      root.render(
+        <TeamChatCard
+          selectedWorkspace={buildWorkspace()}
+          selectedThread={null}
+          selectedMembers={[buildMember('Planner')]}
+          chat={{} as UseChatHelpers<UIMessage>}
+          readiness={{ canChat: true, checks: [] }}
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          chatError={null}
+          loadError={null}
+          canAbortGeneration={false}
+          onSubmitMessage={onSubmitMessage}
+          onAbortGeneration={() => undefined}
+          onOpenTeamConfig={() => undefined}
+          onOpenStatusDialog={() => undefined}
+          onCreateThread={() => undefined}
+        />
+      )
+    })
+
+    const composer = container.querySelector('textarea')
+    expect(composer).not.toBeNull()
+
+    await act(async () => {
+      setTextareaValue(composer as HTMLTextAreaElement, 'Kick off a fresh team thread')
+    })
+
+    const sendButton = findButtonByText(container, 'Send')
+    expect(sendButton.disabled).toBe(false)
+
+    await act(async () => {
+      sendButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(onSubmitMessage).toHaveBeenCalledWith('Kick off a fresh team thread')
+    expect((composer as HTMLTextAreaElement).value).toBe('')
   })
 })

@@ -264,6 +264,7 @@ describe('useTeamPageController', () => {
       messages: []
     }))
     mockState.sendMessageMock.mockReset()
+    mockState.sendMessageMock.mockResolvedValue(undefined)
     mockState.setMessagesMock.mockReset()
     mockState.stopMock.mockReset()
 
@@ -446,6 +447,72 @@ describe('useTeamPageController', () => {
     expect(mockState.createTeamThreadMock).toHaveBeenCalledWith({
       workspaceId: 'workspace-1',
       resourceId: 'default-profile'
+    })
+  })
+
+  it('creates a team thread on first send when only a workspace is selected', async () => {
+    mockState.routeParams.threadId = undefined
+    mockState.listTeamWorkspacesMock.mockResolvedValue([
+      {
+        id: 'workspace-1',
+        name: 'Docs Workspace',
+        rootPath: '/Users/demo/project',
+        teamDescription: '',
+        supervisorProviderId: 'provider-1',
+        supervisorModel: 'gpt-5',
+        createdAt: '2026-03-07T00:00:00.000Z',
+        updatedAt: '2026-03-07T00:00:00.000Z'
+      }
+    ])
+    mockState.listTeamThreadsMock.mockResolvedValue([])
+    mockState.listTeamWorkspaceMembersMock.mockResolvedValue([
+      {
+        workspaceId: 'workspace-1',
+        assistantId: 'assistant-1',
+        sortOrder: 0,
+        createdAt: '2026-03-07T00:00:00.000Z'
+      }
+    ])
+    mockState.createTeamThreadMock.mockResolvedValue({
+      id: 'thread-2',
+      workspaceId: 'workspace-1',
+      resourceId: 'default-profile',
+      title: '',
+      teamDescription: '',
+      supervisorProviderId: null,
+      supervisorModel: '',
+      lastMessageAt: null,
+      createdAt: '2026-03-07T00:00:00.000Z',
+      updatedAt: '2026-03-07T00:00:00.000Z'
+    })
+    mockState.listTeamThreadMessagesMock.mockResolvedValue([])
+
+    await rerenderHarness()
+
+    await waitForCondition(
+      () =>
+        controller?.selectedWorkspace?.id === 'workspace-1' &&
+        controller?.selectedThread === null &&
+        controller?.readiness.canChat === true,
+      'workspace-only team readiness'
+    )
+
+    await act(async () => {
+      await controller?.handleSubmitMessage('Kick off a team thread')
+    })
+
+    await waitForCondition(
+      () => mockState.createTeamThreadMock.mock.calls.length === 1,
+      'team thread creation'
+    )
+    await waitForCondition(() => mockState.sendMessageMock.mock.calls.length === 1, 'team send')
+
+    expect(mockState.createTeamThreadMock).toHaveBeenCalledWith({
+      workspaceId: 'workspace-1',
+      resourceId: 'default-profile'
+    })
+    expect(mockState.sendMessageMock).toHaveBeenCalledWith({
+      text: 'Kick off a team thread'
     })
   })
 

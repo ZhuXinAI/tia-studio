@@ -3,6 +3,8 @@ import { renderToString } from 'react-dom/server'
 import type { UIMessage } from 'ai'
 import type { UseChatHelpers } from '@ai-sdk/react'
 
+const mockThreadMessages: UIMessage[] = []
+
 const useAISDKRuntimeMock = vi.fn((chat: unknown, options?: unknown) => {
   void chat
   void options
@@ -48,6 +50,9 @@ vi.mock('@assistant-ui/react', () => {
         composer: {
           isEditing: true,
           text: ''
+        },
+        thread: {
+          messages: mockThreadMessages
         }
       })
   }
@@ -56,7 +61,72 @@ vi.mock('@assistant-ui/react', () => {
 import { ThreadChatCard } from './thread-chat-card'
 
 describe('ThreadChatCard', () => {
+  it('shows a built-in browser handoff banner when the browser handoff tool is waiting', () => {
+    mockThreadMessages.length = 0
+    mockThreadMessages.push({
+      id: 'msg-assistant-1',
+      role: 'assistant',
+      parts: [
+        {
+          type: 'tool-requestBrowserHumanHandoff',
+          toolCallId: 'tool-handoff-1',
+          state: 'input-available',
+          input: {
+            message: 'Finish signing in before the agent resumes.'
+          }
+        }
+      ]
+    })
+
+    const html = renderToString(
+      <ThreadChatCard
+        selectedAssistant={{
+          id: 'assistant-1',
+          name: 'Planner',
+          description: '',
+          instructions: 'Keep plans concise.',
+          enabled: true,
+          providerId: 'provider-1',
+          workspaceConfig: { rootPath: '/tmp/workspace' },
+          skillsConfig: {},
+          mcpConfig: {},
+          maxSteps: 100,
+          memoryConfig: null,
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z'
+        }}
+        selectedThread={{
+          id: 'thread-1',
+          assistantId: 'assistant-1',
+          resourceId: 'default-profile',
+          title: 'Thread title',
+          lastMessageAt: '2026-03-01T00:00:00.000Z',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z'
+        }}
+        chat={{} as UseChatHelpers<UIMessage>}
+        readiness={{ canChat: true, checks: [] }}
+        isLoadingChatHistory={false}
+        isChatStreaming={true}
+        chatError={null}
+        loadError={null}
+        canAbortGeneration
+        supportsVision
+        tokenUsage={null}
+        onSubmitMessage={async () => undefined}
+        onAbortGeneration={() => undefined}
+        onOpenAssistantConfig={() => undefined}
+        onCreateThread={() => undefined}
+      />
+    )
+
+    expect(html).toContain('Human action needed in the built-in browser')
+    expect(html).toContain('Finish signing in before the agent resumes.')
+    expect(html).toContain('Show browser again')
+  })
+
   it('keeps the header compact, single-line, and shows the selected assistant name', () => {
+    mockThreadMessages.length = 0
     useAISDKRuntimeMock.mockClear()
 
     const html = renderToString(
@@ -111,6 +181,7 @@ describe('ThreadChatCard', () => {
   })
 
   it('shows a remote channel badge when the thread is bound to a channel chat', () => {
+    mockThreadMessages.length = 0
     const html = renderToString(
       <ThreadChatCard
         selectedAssistant={{
@@ -161,7 +232,73 @@ describe('ThreadChatCard', () => {
     expect(html).toContain('Remote channel')
   })
 
+  it('renders the persisted thread token totals in the header', () => {
+    mockThreadMessages.length = 0
+    const html = renderToString(
+      <ThreadChatCard
+        selectedAssistant={{
+          id: 'assistant-1',
+          name: 'Planner',
+          description: '',
+          instructions: 'Keep plans concise.',
+          enabled: true,
+          providerId: 'provider-1',
+          workspaceConfig: { rootPath: '/tmp/workspace' },
+          skillsConfig: {},
+          mcpConfig: {},
+          maxSteps: 100,
+          memoryConfig: null,
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z'
+        }}
+        selectedThread={{
+          id: 'thread-1',
+          assistantId: 'assistant-1',
+          resourceId: 'default-profile',
+          title: 'Usage thread',
+          lastMessageAt: '2026-03-01T00:00:00.000Z',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+          usageTotals: {
+            assistantMessageCount: 2,
+            inputTokens: 120,
+            outputTokens: 45,
+            totalTokens: 165,
+            reasoningTokens: 9,
+            cachedInputTokens: 18
+          }
+        }}
+        chat={{} as UseChatHelpers<UIMessage>}
+        readiness={{ canChat: true, checks: [] }}
+        isLoadingChatHistory={false}
+        isChatStreaming={false}
+        chatError={null}
+        loadError={null}
+        canAbortGeneration={false}
+        supportsVision
+        tokenUsage={{
+          assistantMessageCount: 2,
+          inputTokens: 120,
+          outputTokens: 45,
+          totalTokens: 165,
+          reasoningTokens: 9,
+          cachedInputTokens: 18
+        }}
+        onSubmitMessage={async () => undefined}
+        onAbortGeneration={() => undefined}
+        onOpenAssistantConfig={() => undefined}
+        onCreateThread={() => undefined}
+      />
+    )
+
+    expect(html).toContain('data-testid="thread-token-usage"')
+    expect(html).toContain('165')
+    expect(html).toContain('120 in')
+    expect(html).toContain('45 out')
+  })
+
   it('shows stop action while streaming a response', () => {
+    mockThreadMessages.length = 0
     useAISDKRuntimeMock.mockClear()
 
     const html = renderToString(

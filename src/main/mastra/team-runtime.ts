@@ -4,19 +4,24 @@ import path from 'node:path'
 import { Agent } from '@mastra/core/agent'
 import type { AgentExecutionOptions } from '@mastra/core/agent'
 import type { Mastra } from '@mastra/core/mastra'
+import { createTool } from '@mastra/core/tools'
 import { LocalFilesystem, LocalSandbox, Workspace } from '@mastra/core/workspace'
 import { toAISdkStream as toAISdkV5Stream } from '@mastra/ai-sdk'
 import { toAISdkV5Messages } from '@mastra/ai-sdk/ui'
 import { Memory } from '@mastra/memory'
 import type { UIMessage, UIMessageChunk } from 'ai'
+import { z } from 'zod'
+import type { BuiltInBrowserController } from '../built-in-browser-manager'
+import { buildBuiltInBrowserGuidance } from '../built-in-browser-contract'
 import type { AppAssistant, AssistantsRepository } from '../persistence/repos/assistants-repo'
-import type { ProvidersRepository } from '../persistence/repos/providers-repo'
+import type { AppProvider, ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { TeamThreadsRepository } from '../persistence/repos/team-threads-repo'
 import type { TeamWorkspacesRepository } from '../persistence/repos/team-workspaces-repo'
 import { ChatRouteError } from '../server/chat/chat-errors'
 import { TeamRunStatusStore } from '../server/chat/team-run-status-store'
 import { createCodingSubagent } from './coding-agent'
 import { resolveModel } from './model-resolver'
+import { createBuiltInBrowserTools } from './tools/built-in-browser-tools'
 import { createContainedLocalFilesystemInstructions } from './workspace-filesystem-instructions'
 
 type StreamTeamChatParams = {
@@ -46,9 +51,69 @@ type TeamRuntimeServiceOptions = {
   teamWorkspacesRepo: TeamWorkspacesRepository
   teamThreadsRepo: TeamThreadsRepository
   statusStore: TeamRunStatusStore
+  builtInBrowserManager?: BuiltInBrowserController
 }
 
 type JsonObject = Record<string, unknown>
+
+type TeamMemberRuntime = {
+  assistant: AppAssistant
+  provider: AppProvider
+  agent: Agent
+  toolName: string
+}
+
+type TeamMemberIdentity = {
+  assistantId: string
+  name: string
+}
+
+const DEFAULT_TEAM_SUPERVISOR_MAX_STEPS = 100
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function extractMentionedAssistantIds(
+  content: string,
+  members: TeamMemberIdentity[]
+): string[] {
+  const resolvedMentions: string[] = []
+
+  for (const member of members) {
+    const mentionPatterns = [member.name, member.assistantId]
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0)
+      .map((value) => new RegExp(`(^|\\s)@${escapeRegExp(value)}(?=\\s|$|[.,!?])`, 'i'))
+
+    if (
+      mentionPatterns.some((pattern) => pattern.test(content)) &&
+      !resolvedMentions.includes(member.assistantId)
+    ) {
+      resolvedMentions.push(member.assistantId)
+    }
+  }
+
+  return resolvedMentions
+}
+
+type TeamMemberToolResult = {
+  kind: 'team-member-result'
+  assistantId: string
+  assistantName: string
+  task: string
+  text: string
+  mentions: string[]
+  mentionNames: string[]
+  subAgentThreadId: string | null
+  subAgentResourceId: string | null
+}
+
+type TeamCompletionToolResult = {
+  kind: 'team-complete'
+  status: 'complete'
+  summary: string | null
+}
 
 export class TeamRuntimeService implements TeamRuntime {
   constructor(private readonly options: TeamRuntimeServiceOptions) {}
@@ -88,11 +153,21 @@ export class TeamRuntimeService implements TeamRuntime {
       )
     ).filter((assistant): assistant is AppAssistant => assistant !== null)
 
-    const memberAgents = await this.buildRunnableMemberAgents({
-      assistants: liveAssistants,
-      teamWorkspaceRootPath: workspace.rootPath
+    const storage = this.options.mastra.getStorage()
+    const sharedMemory = new Memory({
+      ...(storage ? { storage } : {}),
+      options: {
+        generateTitle: true
+      }
     })
-    if (Object.keys(memberAgents).length === 0) {
+
+    const runnableMembers = await this.buildRunnableMembers({
+      assistants: liveAssistants,
+      teamWorkspaceRootPath: workspace.rootPath,
+      sharedMemory,
+      teamDescription: workspace.teamDescription
+    })
+    if (runnableMembers.length === 0) {
       throw new ChatRouteError(
         409,
         'team_not_ready',
@@ -100,35 +175,33 @@ export class TeamRuntimeService implements TeamRuntime {
       )
     }
 
+    const runId = randomUUID()
     const supervisorWorkspace = await this.buildWorkspace(workspace.rootPath, {})
-    const storage = this.options.mastra.getStorage()
-    const memory = new Memory({
-      ...(storage ? { storage } : {}),
-      options: {
-        generateTitle: true
-      }
+    const supervisorTools = this.buildSupervisorTools({
+      members: runnableMembers,
+      runId,
+      threadId: thread.id,
+      profileId: params.profileId
     })
-
-    const supervisor = new Agent({
+    const runtimeSupervisor = new Agent({
       id: `team-supervisor:${thread.id}`,
       name: 'Team Supervisor',
-      instructions: this.buildSupervisorInstructions(workspace.teamDescription, liveAssistants),
+      instructions: this.buildSupervisorInstructions(workspace.teamDescription, runnableMembers),
       model: resolveModel({
         type: supervisorProvider.type,
         apiKey: supervisorProvider.apiKey,
         apiHost: supervisorProvider.apiHost,
         selectedModel: supervisorModel
       }) as never,
-      agents: memberAgents,
-      memory: memory as never,
+      tools: supervisorTools,
+      memory: sharedMemory as never,
       workspace: supervisorWorkspace
     })
-
-    const runId = randomUUID()
     this.options.statusStore.startRun({ runId, threadId: thread.id })
 
     try {
-      const stream = await supervisor.stream(params.messages as never, {
+      const stream = await runtimeSupervisor.stream(params.messages as never, {
+        maxSteps: DEFAULT_TEAM_SUPERVISOR_MAX_STEPS,
         providerOptions: this.buildProviderOptions(supervisorProvider.type),
         memory: {
           thread: thread.id,
@@ -139,29 +212,7 @@ export class TeamRuntimeService implements TeamRuntime {
         },
         runId,
         abortSignal: params.abortSignal,
-        delegation: {
-          onDelegationStart: async (context) => {
-            this.options.statusStore.append(runId, {
-              type: 'delegation-started',
-              data: {
-                primitiveId: context.primitiveId,
-                primitiveType: context.primitiveType,
-                iteration: context.iteration
-              }
-            })
-          },
-          onDelegationComplete: async (context) => {
-            this.options.statusStore.append(runId, {
-              type: 'delegation-finished',
-              data: {
-                primitiveId: context.primitiveId,
-                primitiveType: context.primitiveType,
-                iteration: context.iteration,
-                result: context.result.text
-              }
-            })
-          }
-        },
+        toolChoice: 'required',
         onIterationComplete: async (context) => {
           this.options.statusStore.append(runId, {
             type: 'iteration-complete',
@@ -170,6 +221,14 @@ export class TeamRuntimeService implements TeamRuntime {
               text: typeof context['text'] === 'string' ? context['text'] : undefined
             }
           })
+
+          if (this.didSupervisorCompleteTurn(context)) {
+            return {
+              continue: false
+            }
+          }
+
+          return undefined
         }
       } satisfies AgentExecutionOptions)
 
@@ -229,12 +288,14 @@ export class TeamRuntimeService implements TeamRuntime {
     return thread
   }
 
-  private async buildRunnableMemberAgents(input: {
+  private async buildRunnableMembers(input: {
     assistants: AppAssistant[]
     teamWorkspaceRootPath: string
-  }): Promise<Record<string, Agent>> {
+    sharedMemory: Memory
+    teamDescription: string
+  }): Promise<TeamMemberRuntime[]> {
     const entries = await Promise.all(
-      input.assistants.map(async (assistant) => {
+      input.assistants.map(async (assistant, index) => {
         const providerId = this.toNonEmptyString(assistant.providerId)
         if (!providerId) {
           return null
@@ -255,12 +316,21 @@ export class TeamRuntimeService implements TeamRuntime {
           workspaceRootPath: input.teamWorkspaceRootPath,
           codingConfig: assistant.codingConfig
         })
+        const builtInBrowserTools = this.options.builtInBrowserManager
+          ? createBuiltInBrowserTools({
+              controller: this.options.builtInBrowserManager
+            })
+          : {}
 
         const agent = new Agent({
           id: assistant.id,
           name: assistant.name,
           description: this.toNonEmptyString(assistant.description) ?? undefined,
-          instructions: assistant.instructions || 'You are a helpful team member.',
+          instructions: this.buildMemberInstructions({
+            assistant,
+            teamDescription: input.teamDescription,
+            teamMembers: input.assistants
+          }),
           model: resolveModel({
             type: provider.type,
             apiKey: provider.apiKey,
@@ -268,29 +338,362 @@ export class TeamRuntimeService implements TeamRuntime {
             selectedModel: provider.selectedModel
           }) as never,
           ...(codingAgent ? { agents: { codingAgent } } : {}),
+          ...(Object.keys(builtInBrowserTools).length > 0 ? { tools: builtInBrowserTools } : {}),
+          memory: input.sharedMemory as never,
           workspace
         })
 
-        return [assistant.id, agent] as const
+        return {
+          assistant,
+          provider,
+          agent,
+          toolName: this.buildMemberToolName(assistant, index)
+        } satisfies TeamMemberRuntime
       })
     )
 
-    return Object.fromEntries(
-      entries.filter((entry): entry is readonly [string, Agent] => entry !== null)
-    )
+    return entries.filter((entry): entry is TeamMemberRuntime => entry !== null)
   }
 
-  private buildSupervisorInstructions(teamDescription: string, assistants: AppAssistant[]): string {
+  private buildSupervisorInstructions(
+    teamDescription: string,
+    members: TeamMemberRuntime[]
+  ): string {
     const normalizedDescription =
       this.toNonEmptyString(teamDescription) ?? 'Coordinate the team to answer the user request.'
-    const roster = assistants
-      .map((assistant) => {
-        const description = this.toNonEmptyString(assistant.description)
-        return description ? `- ${assistant.name}: ${description}` : `- ${assistant.name}`
+    const roster = members
+      .map((member) => {
+        const description = this.toNonEmptyString(member.assistant.description)
+        return description
+          ? `- ${member.assistant.name}: ${description}`
+          : `- ${member.assistant.name}`
+      })
+      .join('\n')
+    const tools = members
+      .map((member) => {
+        const description = this.toNonEmptyString(member.assistant.description)
+        const detail = description ? `: ${description}` : ''
+        return `- ${member.toolName} -> ${member.assistant.name}${detail}`
+      })
+      .concat('- complete -> End the current supervisor turn without emitting raw assistant text.')
+      .join('\n')
+
+    return `${normalizedDescription}
+
+You are the invisible supervisor coordinating a team of specialist members.
+Never produce a raw assistant reply to the user. Every supervisor turn must end with a tool call.
+Delegate work by calling the team-member tools whenever specialist help is useful.
+Each delegation tool streams the member's work and returns a structured result with their final text plus any routing mentions.
+Call complete only when no further delegation is needed for the current user turn.
+
+Routing rules:
+- Prefer the most relevant specialist tool instead of round-robin turns.
+- You may revisit the same specialist multiple times in a single user turn when follow-up, refinement, or verification is needed.
+- Do not assume each specialist should be used only once, and do not delegate to everyone unless it is actually useful.
+- Treat inline @Name mentions from the user, delegated members, and returned mentions as strong hints for who should go next.
+- If a member clearly points to the next teammate, delegate again instead of asking the user whether another round is needed.
+- Keep delegating only while it adds value.
+- Do not ask the user whether another round is needed when a reasonable next delegation exists.
+- Unless the user explicitly asks to stop, do not call complete before at least one relevant delegation for the current request.
+- When the work is done, call complete instead of replying in natural language.
+- Keep internal routing concise unless the user explicitly asks about it.
+
+Shared browser capability:
+${buildBuiltInBrowserGuidance({ handoffToolAvailable: false })}
+
+Available team members:
+${roster}
+
+Available team-member tools:
+${tools}`
+  }
+
+  private buildSupervisorTools(input: {
+    members: TeamMemberRuntime[]
+    runId: string
+    threadId: string
+    profileId: string
+  }) {
+    const memberTools = this.buildMemberTools(input)
+    const completeTool = createTool({
+      id: 'complete',
+      description:
+        'Finish the current supervisor turn once the team has already done enough work. Do not emit any raw assistant text after calling this tool.',
+      inputSchema: z.object({
+        summary: z.string().trim().min(1).optional()
+      }),
+      outputSchema: z.object({
+        kind: z.literal('team-complete'),
+        status: z.literal('complete'),
+        summary: z.string().nullable()
+      }),
+      execute: async ({ summary }) =>
+        ({
+          kind: 'team-complete',
+          status: 'complete',
+          summary: this.toNonEmptyString(summary)
+        }) satisfies TeamCompletionToolResult
+    })
+
+    return {
+      ...memberTools,
+      complete: completeTool
+    }
+  }
+
+  private buildMemberInstructions(input: {
+    assistant: AppAssistant
+    teamDescription: string
+    teamMembers: AppAssistant[]
+  }): string {
+    const baseInstructions =
+      this.toNonEmptyString(input.assistant.instructions) ?? 'You are a helpful team member.'
+    const normalizedDescription =
+      this.toNonEmptyString(input.teamDescription) ?? 'Coordinate with the team to help the user.'
+    const roster = input.teamMembers
+      .filter((member) => member.id !== input.assistant.id)
+      .map((member) => {
+        const description = this.toNonEmptyString(member.description)
+        return description ? `- ${member.name}: ${description}` : `- ${member.name}`
       })
       .join('\n')
 
-    return `${normalizedDescription}\n\nAvailable team members:\n${roster}`
+    return `${baseInstructions}
+
+Team context:
+- You are working inside a supervised team, not alone.
+- The supervisor is your immediate collaborator and will call you when your expertise is needed.
+- Team goal: ${normalizedDescription}
+
+Working rules:
+- Do the part of the task that best matches your expertise and report back to the supervisor.
+- If another teammate should act next, mention them inline as @Name in your final response.
+- Only mention teammates from the roster below, and do not mention yourself.
+- If no handoff is needed, do not invent a mention.
+- Keep your update actionable and grounded in the work you performed.
+
+Browser capability:
+${buildBuiltInBrowserGuidance({
+  handoffToolAvailable: Boolean(this.options.builtInBrowserManager)
+})}
+
+Available teammates:
+${roster.length > 0 ? roster : '- No other teammates are available.'}`
+  }
+
+  private buildMemberToolName(assistant: AppAssistant, index: number): string {
+    const base = assistant.name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+
+    return `delegate_to_${base || 'member'}_${index + 1}`
+  }
+
+  private buildMemberTools(input: {
+    members: TeamMemberRuntime[]
+    runId: string
+    threadId: string
+    profileId: string
+  }) {
+    const teamRoster: TeamMemberIdentity[] = input.members.map((member) => ({
+      assistantId: member.assistant.id,
+      name: member.assistant.name
+    }))
+
+    return Object.fromEntries(
+      input.members.map((member) => {
+        const tool = createTool({
+          id: member.toolName,
+          description: [
+            `Delegate a specialist subtask to ${member.assistant.name}.`,
+            this.toNonEmptyString(member.assistant.description),
+            'This streams the member output live and returns their final response plus routing mentions.'
+          ]
+            .filter((value): value is string => typeof value === 'string' && value.length > 0)
+            .join(' '),
+          inputSchema: z.object({
+            task: z.string().trim().min(1),
+            reason: z.string().trim().min(1).optional()
+          }),
+          outputSchema: z.object({
+            kind: z.literal('team-member-result'),
+            assistantId: z.string(),
+            assistantName: z.string(),
+            task: z.string(),
+            text: z.string(),
+            mentions: z.array(z.string()),
+            mentionNames: z.array(z.string()),
+            subAgentThreadId: z.string().nullable(),
+            subAgentResourceId: z.string().nullable()
+          }),
+          execute: async ({ task }, context) => {
+            const delegationIndex =
+              this.options.statusStore
+                .getEvents(input.runId)
+                .filter((event) => event.type === 'delegation-started').length + 1
+            const subAgentThreadId = `${input.threadId}:${member.assistant.id}:${randomUUID()}`
+            const subAgentResourceId = `${input.profileId}:${member.assistant.id}`
+
+            this.options.statusStore.append(input.runId, {
+              type: 'delegation-started',
+              data: {
+                primitiveId: member.assistant.id,
+                primitiveType: 'tool',
+                iteration: delegationIndex,
+                assistantName: member.assistant.name,
+                toolName: member.toolName
+              }
+            })
+
+            const stream = await member.agent.stream([{ role: 'user', content: task }] as never, {
+              requestContext: context.requestContext,
+              maxSteps: member.assistant.maxSteps,
+              providerOptions: this.buildProviderOptions(member.provider.type),
+              memory: {
+                resource: subAgentResourceId,
+                thread: subAgentThreadId,
+                options: {
+                  lastMessages: false
+                }
+              }
+            } satisfies AgentExecutionOptions)
+
+            const text = await this.streamTeamMemberOutput({
+              stream: stream.fullStream as ReadableStream<unknown>,
+              writer: (context.writer ?? undefined) as WritableStream<unknown> | undefined
+            })
+            const mentions = extractMentionedAssistantIds(
+              text,
+              teamRoster.filter((candidate) => candidate.assistantId !== member.assistant.id)
+            )
+            const mentionNames = mentions.map(
+              (assistantId) =>
+                teamRoster.find((candidate) => candidate.assistantId === assistantId)?.name ??
+                assistantId
+            )
+            const result: TeamMemberToolResult = {
+              kind: 'team-member-result',
+              assistantId: member.assistant.id,
+              assistantName: member.assistant.name,
+              task,
+              text,
+              mentions,
+              mentionNames,
+              subAgentThreadId,
+              subAgentResourceId
+            }
+
+            this.options.statusStore.append(input.runId, {
+              type: 'delegation-finished',
+              data: {
+                primitiveId: member.assistant.id,
+                primitiveType: 'tool',
+                iteration: delegationIndex,
+                assistantName: member.assistant.name,
+                toolName: member.toolName,
+                result: text,
+                mentions,
+                mentionNames,
+                subAgentThreadId,
+                subAgentResourceId
+              }
+            })
+
+            return result
+          }
+        })
+
+        return [member.toolName, tool] as const
+      })
+    )
+  }
+
+  private didSupervisorCompleteTurn(context: {
+    toolCalls?: unknown
+    toolResults?: unknown
+  }): boolean {
+    const toolCalls = Array.isArray(context.toolCalls) ? context.toolCalls : []
+    if (
+      toolCalls.some(
+        (toolCall) =>
+          toolCall &&
+          typeof toolCall === 'object' &&
+          (toolCall as { name?: unknown }).name === 'complete'
+      )
+    ) {
+      return true
+    }
+
+    const toolResults = Array.isArray(context.toolResults) ? context.toolResults : []
+    return toolResults.some(
+      (toolResult) =>
+        toolResult &&
+        typeof toolResult === 'object' &&
+        (toolResult as { name?: unknown }).name === 'complete'
+    )
+  }
+
+  private async streamTeamMemberOutput(input: {
+    stream: ReadableStream<unknown>
+    writer?: WritableStream<unknown>
+  }): Promise<string> {
+    if (!input.writer) {
+      return this.collectTeamMemberText(input.stream)
+    }
+
+    const [streamForWriter, streamForCollection] = input.stream.tee()
+    const [text] = await Promise.all([
+      this.collectTeamMemberText(streamForCollection),
+      streamForWriter.pipeTo(input.writer)
+    ])
+
+    return text
+  }
+
+  private async collectTeamMemberText(stream: ReadableStream<unknown>): Promise<string> {
+    const reader = stream.getReader()
+    let text = ''
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) {
+          return text.trim()
+        }
+
+        const delta = this.extractTeamMemberTextDelta(value)
+        if (delta) {
+          text += delta
+        }
+      }
+    } finally {
+      reader.releaseLock()
+    }
+  }
+
+  private extractTeamMemberTextDelta(value: unknown): string {
+    if (!value || typeof value !== 'object') {
+      return ''
+    }
+
+    const chunk = value as {
+      type?: unknown
+      payload?: {
+        text?: unknown
+      }
+      textDelta?: unknown
+    }
+    if (chunk.type !== 'text-delta') {
+      return ''
+    }
+
+    if (typeof chunk.payload?.text === 'string') {
+      return chunk.payload.text
+    }
+
+    return typeof chunk.textDelta === 'string' ? chunk.textDelta : ''
   }
 
   private async syncGeneratedThreadTitle(params: {

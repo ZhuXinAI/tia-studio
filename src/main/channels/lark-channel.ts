@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import * as Lark from '@larksuiteoapi/node-sdk'
 import { AbstractChannel } from './abstract-channel'
 import type { ChannelMessage } from './types'
@@ -10,6 +11,16 @@ type LarkLoggerLevel = {
 type LarkClientLike = {
   im: {
     v1: {
+      image: {
+        create(input: {
+          data: {
+            image_type: 'message' | 'avatar'
+            image: Buffer
+          }
+        }): Promise<{
+          image_key?: string
+        } | null>
+      }
       message: {
         create(input: {
           params: {
@@ -17,7 +28,7 @@ type LarkClientLike = {
           }
           data: {
             receive_id: string
-            msg_type: 'text'
+            msg_type: 'text' | 'image'
             content: string
           }
         }): Promise<unknown>
@@ -204,6 +215,34 @@ export class LarkChannel extends AbstractChannel {
         msg_type: 'text',
         content: JSON.stringify({
           text: message
+        })
+      }
+    })
+  }
+
+  async sendImage(remoteChatId: string, filePath: string): Promise<void> {
+    const imageBuffer = await readFile(filePath)
+    const uploadResult = await this.client.im.v1.image.create({
+      data: {
+        image_type: 'message',
+        image: imageBuffer
+      }
+    })
+
+    const imageKey = uploadResult?.image_key?.trim()
+    if (!imageKey) {
+      throw new Error('Lark image upload did not return an image key.')
+    }
+
+    await this.client.im.v1.message.create({
+      params: {
+        receive_id_type: 'chat_id'
+      },
+      data: {
+        receive_id: remoteChatId,
+        msg_type: 'image',
+        content: JSON.stringify({
+          image_key: imageKey
         })
       }
     })

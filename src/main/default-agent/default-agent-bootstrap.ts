@@ -8,8 +8,10 @@ const DEFAULT_AGENT_SKILLS_DIRECTORY = 'skills'
 export const BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__tiaBuiltInDefaultAgent'
 
 export const DEFAULT_AGENT_NAME = 'Default Agent'
+// Built-in browser guidance is injected for every assistant at runtime, so the seed prompt
+// here stays focused on the default agent's role rather than duplicating shared capability text.
 export const DEFAULT_AGENT_PROMPT =
-  "You are Tia's built-in default agent. Use workspace tools, available global skills, and workspace skills to help with local development tasks."
+  "You are TIA's built-in default agent. Use workspace tools, available global skills, and workspace skills to help with local development tasks."
 
 type EnsureBuiltInDefaultAgentOptions = {
   assistantsRepo: AssistantsRepository

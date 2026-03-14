@@ -126,6 +126,11 @@ class TelegramClientStub {
     void text
     return undefined
   })
+  readonly sendPhoto = vi.fn(async (chatId: string, filePath: string) => {
+    void chatId
+    void filePath
+    return undefined
+  })
 
   private textHandler:
     | ((message: {
@@ -256,6 +261,20 @@ describe('TelegramChannel', () => {
         new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 0))
       ])
     ).resolves.toBe('started')
+  })
+
+  it('sends outbound images back to the same Telegram chat', async () => {
+    const client = new TelegramClientStub()
+    const channel = new TelegramChannel({
+      id: 'channel-telegram',
+      botToken: '123456:test-token',
+      client,
+      pairingsRepo: new PairingsRepoStub()
+    })
+
+    await channel.sendImage('1001', '/tmp/reply.png')
+
+    expect(client.sendPhoto).toHaveBeenCalledWith('1001', '/tmp/reply.png')
   })
 
   it('creates a pending pairing for an unknown dm and replies with its code', async () => {

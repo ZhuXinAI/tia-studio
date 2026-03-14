@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createApiClient } from '../../lib/api-client'
 
+export type ThreadUsageTotals = {
+  assistantMessageCount: number
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+  reasoningTokens: number
+  cachedInputTokens: number
+}
+
 export type ThreadRecord = {
   id: string
   assistantId: string
@@ -12,6 +21,7 @@ export type ThreadRecord = {
     remoteChatId: string
     createdAt: string
   } | null
+  usageTotals?: ThreadUsageTotals | null
   lastMessageAt: string | null
   createdAt: string
   updatedAt: string

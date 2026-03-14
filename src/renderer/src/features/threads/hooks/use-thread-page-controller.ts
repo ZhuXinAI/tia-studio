@@ -31,7 +31,8 @@ import {
 import {
   openAssistantMessageEventsStream,
   createThreadChatTransport,
-  listThreadChatMessages
+  listThreadChatMessages,
+  runThreadCommand
 } from '../chat-query'
 import {
   buildAssistantThreadBranches,
@@ -108,11 +109,6 @@ export function useThreadPageController() {
   const pendingThreadMessageRef = useRef<PendingThreadMessage | null>(null)
   const [hasPendingMessage, setHasPendingMessage] = useState(false)
   const hasLoadedInitialMessagesRef = useRef(false)
-  const [tokenUsage, setTokenUsage] = useState<{
-    inputTokens: number
-    outputTokens: number
-    totalTokens: number
-  } | null>(null)
   const profileId = useMemo(() => getActiveResourceId(), [])
 
   const selectedAssistant = useMemo(() => {
@@ -143,6 +139,7 @@ export function useThreadPageController() {
 
     return threads.find((thread) => thread.id === params.threadId) ?? null
   }, [params.threadId, threads])
+  const tokenUsage = useMemo(() => selectedThread?.usageTotals ?? null, [selectedThread])
 
   const readiness = useMemo(() => {
     return evaluateAssistantReadiness({
@@ -185,20 +182,10 @@ export function useThreadPageController() {
     transport: chatTransport,
     resume: Boolean(selectedThread && chatTransport),
     experimental_throttle: 48,
-    onFinish: ({ message }) => {
+    onFinish: () => {
       const selectedAssistantId = selectedAssistant?.id
       if (!selectedThread || !selectedAssistantId) {
         return
-      }
-
-      // Extract usage from message metadata
-      if (message.metadata && typeof message.metadata === 'object' && 'usage' in message.metadata) {
-        const usage = message.metadata.usage as {
-          inputTokens: number
-          outputTokens: number
-          totalTokens: number
-        }
-        setTokenUsage(usage)
       }
 
       const now = new Date().toISOString()
@@ -411,10 +398,6 @@ export function useThreadPageController() {
       })
     )
   }, [selectedAssistant?.id, threadsData])
-
-  useEffect(() => {
-    setTokenUsage(null)
-  }, [selectedAssistant?.id, selectedThread?.id])
 
   useEffect(() => {
     if (!selectedAssistant?.id || !selectedThread?.id) {
@@ -688,7 +671,40 @@ export function useThreadPageController() {
       return
     }
 
+    if (nextMessage.startsWith('/') && selectedThread) {
+      try {
+        const result = await runThreadCommand({
+          assistantId: selectedAssistant.id,
+          threadId: selectedThread.id,
+          profileId,
+          text: nextMessage
+        })
+
+        if (result.handled) {
+          pendingThreadMessageRef.current = null
+          setHasPendingMessage(false)
+          return
+        }
+      } catch (error) {
+        toast.error(toErrorMessage(error))
+        return
+      }
+    }
+
+    const queuePendingMessage = (threadId: string, text: string): void => {
+      pendingThreadMessageRef.current = {
+        threadId,
+        text
+      }
+      setHasPendingMessage(true)
+    }
+
     if (selectedThread) {
+      if (!chatTransport || isLoadingChatHistory || !hasLoadedInitialMessagesRef.current) {
+        queuePendingMessage(selectedThread.id, nextMessage)
+        return
+      }
+
       try {
         await sendMessage({
           text: nextMessage
@@ -704,11 +720,7 @@ export function useThreadPageController() {
       return
     }
 
-    pendingThreadMessageRef.current = {
-      threadId: createdThread.id,
-      text: nextMessage
-    }
-    setHasPendingMessage(true)
+    queuePendingMessage(createdThread.id, nextMessage)
   }
 
   const handleAbortGeneration = useCallback(() => {

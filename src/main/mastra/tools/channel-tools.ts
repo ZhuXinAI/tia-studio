@@ -4,6 +4,11 @@ import { stat } from 'node:fs/promises'
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 import { ChannelEventBus } from '../../channels/channel-event-bus'
+import {
+  formatChannelTypeLabel,
+  isKnownChannelType,
+  supportsChannelImageDelivery
+} from '../../channels/channel-media-support'
 import type { RecentConversation } from '../../heartbeat/recent-conversations'
 import { resolveAssistantWorkspacePath } from '../assistant-workspace'
 import { getChannelExecutionContext, getHeartbeatRunId } from '../tool-context'
@@ -150,7 +155,8 @@ export function createChannelTools(options: ChannelToolsOptions) {
 
   const sendImage = createTool({
     id: 'send-image',
-    description: 'Publish an image send request to the channel pipeline bus.',
+    description:
+      'Publish an image send request to the channel pipeline bus. Some channels do not support image delivery yet.',
     inputSchema: targetInputSchema.extend({
       filePath: z.string().min(1)
     }),
@@ -173,6 +179,15 @@ export function createChannelTools(options: ChannelToolsOptions) {
       )
       const resolvedFilePath = resolveFilePath(options.workspaceRootPath, filePath)
       await assertReadableFile(resolvedFilePath)
+
+      if (
+        isKnownChannelType(target.channelType) &&
+        !supportsChannelImageDelivery(target.channelType)
+      ) {
+        throw new Error(
+          `${formatChannelTypeLabel(target.channelType)} does not support sendImage right now.`
+        )
+      }
 
       await options.bus.publish('channel.message.send-requested', {
         eventId: randomUUID(),

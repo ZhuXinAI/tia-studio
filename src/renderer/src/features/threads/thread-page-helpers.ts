@@ -50,6 +50,28 @@ function areChannelBindingsEquivalent(
   )
 }
 
+function areUsageTotalsEquivalent(
+  left?: ThreadRecord['usageTotals'],
+  right?: ThreadRecord['usageTotals']
+): boolean {
+  if (!left && !right) {
+    return true
+  }
+
+  if (!left || !right) {
+    return false
+  }
+
+  return (
+    left.assistantMessageCount === right.assistantMessageCount &&
+    left.inputTokens === right.inputTokens &&
+    left.outputTokens === right.outputTokens &&
+    left.totalTokens === right.totalTokens &&
+    left.reasoningTokens === right.reasoningTokens &&
+    left.cachedInputTokens === right.cachedInputTokens
+  )
+}
+
 export function evaluateAssistantReadiness(input: {
   assistant: AssistantRecord | null
   providers: ProviderRecord[]
@@ -95,6 +117,7 @@ function areThreadsEquivalent(left: ThreadRecord[], right: ThreadRecord[]): bool
       thread.resourceId === candidate.resourceId &&
       thread.title === candidate.title &&
       areChannelBindingsEquivalent(thread.channelBinding, candidate.channelBinding) &&
+      areUsageTotalsEquivalent(thread.usageTotals, candidate.usageTotals) &&
       thread.lastMessageAt === candidate.lastMessageAt &&
       thread.createdAt === candidate.createdAt &&
       thread.updatedAt === candidate.updatedAt

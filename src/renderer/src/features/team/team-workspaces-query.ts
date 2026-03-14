@@ -7,6 +7,7 @@ export type TeamWorkspaceRecord = {
   teamDescription: string
   supervisorProviderId: string | null
   supervisorModel: string
+  isBuiltInDefault?: boolean
   createdAt: string
   updatedAt: string
 }
@@ -40,7 +41,8 @@ function normalizeTeamWorkspaceRecord(record: TeamWorkspaceRecord): TeamWorkspac
       typeof record.supervisorProviderId === 'string' && record.supervisorProviderId.length > 0
         ? record.supervisorProviderId
         : null,
-    supervisorModel: typeof record.supervisorModel === 'string' ? record.supervisorModel : ''
+    supervisorModel: typeof record.supervisorModel === 'string' ? record.supervisorModel : '',
+    ...(record.isBuiltInDefault === true ? { isBuiltInDefault: true } : {})
   }
 }
 

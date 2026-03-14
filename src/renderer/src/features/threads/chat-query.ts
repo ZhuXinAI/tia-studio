@@ -13,6 +13,43 @@ type ThreadChatHistoryInput = {
   profileId: string
 }
 
+type RunThreadCommandInput = {
+  assistantId: string
+  threadId: string
+  profileId: string
+  text: string
+}
+
+type HandledThreadCommandResult =
+  | {
+      ok: true
+      handled: true
+      command: 'stop'
+      stopped: boolean
+    }
+  | {
+      ok: true
+      handled: true
+      command: 'new'
+      archiveFileName: string
+      archiveFilePath: string
+      threadTitle: string
+      compactedAt: string
+    }
+
+export type ThreadCommandResult =
+  | {
+      ok: true
+      handled: false
+    }
+  | HandledThreadCommandResult
+
+export type ThreadCommandHandledResult = Extract<ThreadCommandResult, { handled: true }>
+
+export type ThreadCommandNewResult = Extract<ThreadCommandResult, { command: 'new' }>
+
+export type ThreadCommandStopResult = Extract<ThreadCommandResult, { command: 'stop' }>
+
 export type ThreadMessageEventType = 'thread-messages-updated'
 
 export type ThreadMessageEvent = {
@@ -20,7 +57,7 @@ export type ThreadMessageEvent = {
   assistantId: string
   threadId: string
   profileId: string
-  source: 'channel'
+  source: 'channel' | 'cron' | 'heartbeat' | 'command'
   createdAt: string
 }
 
@@ -98,6 +135,30 @@ export async function listThreadChatMessages(input: ThreadChatHistoryInput): Pro
   }
 
   return (await response.json()) as UIMessage[]
+}
+
+export async function runThreadCommand(
+  input: RunThreadCommandInput
+): Promise<ThreadCommandResult> {
+  const chatFetch = createDesktopChatFetch()
+  const response = await chatFetch(`/chat/${input.assistantId}/commands`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      text: input.text,
+      threadId: input.threadId,
+      profileId: input.profileId
+    })
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(errorText || `Request failed with status ${response.status}`)
+  }
+
+  return (await response.json()) as ThreadCommandResult
 }
 
 export function createThreadChatTransport(

@@ -4,7 +4,6 @@
       "chats": "Chats",
       "home": "Home",
       "claws": "Claws",
-      "group": "Group",
       "team": "Team",
       "openSettings": "Open settings"
     },
@@ -14,7 +13,6 @@
       "workspace": "Workspace",
       "settings": "Settings",
       "chat": "Chat",
-      "group": "Group",
       "team": "Team",
       "modelProviders": "Model Providers",
       "notes": "TIA Studio Notes"
@@ -259,7 +257,10 @@
         "backgroundDisabled": "Creates and closes a BrowserWindow per search request.",
         "showBrowserTitle": "Show Browser",
         "showBrowserVisible": "Browser window is visible during search.",
-        "showBrowserHidden": "Browser window is hidden during search."
+        "showBrowserHidden": "Browser window is hidden during search.",
+        "showBuiltInBrowserTitle": "Show Built-in Browser",
+        "showBuiltInBrowserVisible": "Built-in browser window stays visible so you can observe automation.",
+        "showBuiltInBrowserHidden": "Built-in browser window stays hidden unless an agent explicitly brings it forward."
       },
       "engines": {
         "google": {
@@ -281,6 +282,7 @@
         "backgroundEnabled": "enabled",
         "backgroundDisabled": "disabled",
         "browserVisibility": "Browser window is now {{state}}.",
+        "builtInBrowserVisibility": "Built-in browser window is now {{state}}.",
         "browserVisible": "visible",
         "browserHidden": "hidden",
         "openSettingsError": "Failed to open {{engine}} settings: {{message}}",
@@ -722,83 +724,6 @@
       }
     }
   },
-  "group": {
-    "sidebar": {
-      "eyebrow": "Group",
-      "title": "Groups",
-      "defaultWorkspaceName": "Group",
-      "createWorkspaceAriaLabel": "Create group",
-      "creatingWorkspace": "Creating group...",
-      "newWorkspace": "New Group",
-      "workspaces": "Groups",
-      "createThreadAriaLabel": "Create group thread",
-      "newThread": "New Thread",
-      "loadingWorkspaces": "Loading groups...",
-      "emptyWorkspaces": "No groups yet. Create one to start collaborating.",
-      "loadingThreads": "Loading group threads...",
-      "emptyThreads": "No Group threads yet.",
-      "untitledThread": "Untitled Group Thread",
-      "deleteThreadAriaLabel": "Delete group thread {{title}}",
-      "deleteThreadPrompt": "Delete thread?",
-      "confirmDeleteThreadAriaLabel": "Confirm delete group thread {{title}}",
-      "deletingThread": "Deleting..."
-    },
-    "chat": {
-      "defaultTitle": "Group Chat",
-      "noWorkspaceSelected": "No group selected",
-      "membersLabel_one": "{{count}} member",
-      "membersLabel_other": "{{count}} members",
-      "maxTurnsLabel_one": "{{count}} auto turn",
-      "maxTurnsLabel_other": "{{count}} auto turns",
-      "newThread": "New Group Thread",
-      "configureGroup": "Edit Group",
-      "setupIncompleteTitle": "Group setup is incomplete.",
-      "setupIncompleteDescription": "Select at least one member before sending.",
-      "emptyTitle": "No Group thread selected",
-      "emptyDescription": "Choose an existing thread or create a new Group thread to start collaborating.",
-      "thinking": "{{name}} is thinking...",
-      "submitting": "Sending...",
-      "composer": {
-        "placeholderSelected": "Ask the group to work through a task...",
-        "placeholderEmpty": "Create or select a Group thread to start chatting.",
-        "ariaLabel": "Group message composer",
-        "helperSelected": "Messages are added to the shared room transcript for the selected members.",
-        "helperEmpty": "Pick a group and create a Group thread first."
-      }
-    },
-    "messageList": {
-      "you": "You",
-      "orchestrator": "Orchestrator",
-      "system": "System",
-      "loadingHistory": "Loading group room history...",
-      "emptyTitle": "No room messages yet",
-      "emptyDescription": "Start the conversation and the shared transcript will appear here."
-    },
-    "configDialog": {
-      "closeAriaLabel": "Close group config dialog",
-      "title": "Edit Group",
-      "createTitle": "Create Group",
-      "description": "Update the group details and choose which assistants join this group.",
-      "createDescription": "Name the group and choose which assistants should join it.",
-      "fields": {
-        "name": "Group Name",
-        "groupDescription": "Group Description",
-        "maxAutoTurns": "Max Auto Turns",
-        "members": "Group Members"
-      },
-      "validation": {
-        "name": "Enter a group name.",
-        "maxAutoTurns": "Enter a max auto turns value between 1 and 12.",
-        "members": "Select at least one group member."
-      },
-      "saveButton": "Save Group",
-      "createButton": "Create Group"
-    },
-    "readiness": {
-      "threadSelected": "Group thread is selected",
-      "membersSelected": "At least one group member is selected"
-    }
-  },
   "team": {
     "sidebar": {
       "eyebrow": "Team",
@@ -923,6 +848,13 @@
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "New thread",
       "setupIncomplete": "Assistant setup is incomplete. Open Configure to set provider and model before sending messages.",
+      "handoffBanner": {
+        "title": "Human action needed in the built-in browser",
+        "description": "The assistant is waiting for you to finish a step in the built-in browser and click \"Done, continue\" there.",
+        "details": "Requested step: {{message}}",
+        "showBrowser": "Show browser again",
+        "showFailed": "Failed to bring the built-in browser window forward."
+      },
       "composer": {
         "placeholderSelectedThread": "Type a message for this thread...",
         "placeholderSelectedAssistant": "Type a message to create a new thread...",

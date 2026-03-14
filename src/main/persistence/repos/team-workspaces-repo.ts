@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import type { AppDatabase } from '../client'
 
+const BUILT_IN_DEFAULT_TEAM_WORKSPACE_PREFERENCE_KEY = 'built_in_default_team_workspace_id'
+
 export type AppTeamWorkspace = {
   id: string
   name: string
@@ -52,15 +54,45 @@ function parseTeamWorkspaceMemberRow(row: Record<string, unknown>): AppTeamWorks
   }
 }
 
+function parseBuiltInAssistantMemberRow(
+  workspaceId: string,
+  row: Record<string, unknown>,
+  sortOrder: number
+): AppTeamWorkspaceMember {
+  return {
+    workspaceId,
+    assistantId: String(row.id),
+    sortOrder,
+    createdAt: String(row.created_at)
+  }
+}
+
 export class TeamWorkspacesRepository {
   constructor(private readonly db: AppDatabase) {}
 
   async list(): Promise<AppTeamWorkspace[]> {
+    const builtInWorkspaceId = await this.getBuiltInDefaultWorkspaceId()
     const result = await this.db.execute(
       'SELECT id, name, root_path, team_description, supervisor_provider_id, supervisor_model, created_at, updated_at FROM app_team_workspaces ORDER BY created_at DESC'
     )
 
-    return result.rows.map((row) => parseTeamWorkspaceRow(row as Record<string, unknown>))
+    const workspaces = result.rows.map((row) => parseTeamWorkspaceRow(row as Record<string, unknown>))
+
+    if (!builtInWorkspaceId) {
+      return workspaces
+    }
+
+    return [...workspaces].sort((left, right) => {
+      if (left.id === builtInWorkspaceId) {
+        return -1
+      }
+
+      if (right.id === builtInWorkspaceId) {
+        return 1
+      }
+
+      return Date.parse(right.createdAt) - Date.parse(left.createdAt)
+    })
   }
 
   async getById(id: string): Promise<AppTeamWorkspace | null> {
@@ -75,6 +107,53 @@ export class TeamWorkspacesRepository {
     }
 
     return parseTeamWorkspaceRow(row as Record<string, unknown>)
+  }
+
+  async findByRootPath(rootPath: string): Promise<AppTeamWorkspace | null> {
+    const result = await this.db.execute(
+      `
+        SELECT id, name, root_path, team_description, supervisor_provider_id, supervisor_model, created_at, updated_at
+        FROM app_team_workspaces
+        WHERE root_path = ?
+        LIMIT 1
+      `,
+      [rootPath]
+    )
+    const row = result.rows.at(0)
+
+    if (!row) {
+      return null
+    }
+
+    return parseTeamWorkspaceRow(row as Record<string, unknown>)
+  }
+
+  async getBuiltInDefaultWorkspaceId(): Promise<string | null> {
+    const result = await this.db.execute(
+      'SELECT value FROM app_preferences WHERE key = ? LIMIT 1',
+      [BUILT_IN_DEFAULT_TEAM_WORKSPACE_PREFERENCE_KEY]
+    )
+    const row = result.rows.at(0) as Record<string, unknown> | undefined
+    const value = typeof row?.value === 'string' ? row.value.trim() : ''
+
+    return value.length > 0 ? value : null
+  }
+
+  async setBuiltInDefaultWorkspaceId(workspaceId: string): Promise<void> {
+    await this.db.execute(
+      `
+        INSERT INTO app_preferences (key, value, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(key)
+        DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+      `,
+      [BUILT_IN_DEFAULT_TEAM_WORKSPACE_PREFERENCE_KEY, workspaceId]
+    )
+  }
+
+  async isBuiltInDefaultWorkspace(workspaceId: string): Promise<boolean> {
+    const builtInWorkspaceId = await this.getBuiltInDefaultWorkspaceId()
+    return builtInWorkspaceId === workspaceId
   }
 
   async create(input: CreateTeamWorkspaceInput): Promise<AppTeamWorkspace> {
@@ -129,6 +208,20 @@ export class TeamWorkspacesRepository {
   }
 
   async listMembers(workspaceId: string): Promise<AppTeamWorkspaceMember[]> {
+    if (await this.isBuiltInDefaultWorkspace(workspaceId)) {
+      const assistantsResult = await this.db.execute(
+        `
+          SELECT id, created_at
+          FROM app_assistants
+          ORDER BY created_at ASC
+        `
+      )
+
+      return assistantsResult.rows.map((row, index) =>
+        parseBuiltInAssistantMemberRow(workspaceId, row as Record<string, unknown>, index)
+      )
+    }
+
     const result = await this.db.execute(
       `
         SELECT workspace_id, assistant_id, sort_order, created_at
@@ -143,6 +236,10 @@ export class TeamWorkspacesRepository {
   }
 
   async replaceMembers(workspaceId: string, assistantIds: string[]): Promise<void> {
+    if (await this.isBuiltInDefaultWorkspace(workspaceId)) {
+      return
+    }
+
     const uniqueAssistantIds = assistantIds.filter(
       (assistantId, index) => assistantIds.indexOf(assistantId) === index
     )
@@ -160,6 +257,10 @@ export class TeamWorkspacesRepository {
   }
 
   async delete(id: string): Promise<boolean> {
+    if (await this.isBuiltInDefaultWorkspace(id)) {
+      return false
+    }
+
     const existing = await this.getById(id)
     if (!existing) {
       return false

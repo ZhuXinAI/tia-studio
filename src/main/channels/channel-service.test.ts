@@ -13,6 +13,11 @@ class FakeChannel extends AbstractChannel {
     void message
     return undefined
   })
+  readonly sendImageMock = vi.fn(async (remoteChatId: string, filePath: string) => {
+    void remoteChatId
+    void filePath
+    return undefined
+  })
 
   constructor(id: string, type: ChannelType) {
     super(id, type)
@@ -28,6 +33,10 @@ class FakeChannel extends AbstractChannel {
 
   async send(remoteChatId: string, message: string): Promise<void> {
     await this.sendMock(remoteChatId, message)
+  }
+
+  async sendImage(remoteChatId: string, filePath: string): Promise<void> {
+    await this.sendImageMock(remoteChatId, filePath)
   }
 
   async deliver(message: ChannelMessage): Promise<void> {
@@ -104,6 +113,73 @@ describe('ChannelService', () => {
       }
     })
     expect(adapter.sendMock).toHaveBeenCalledWith('chat-1', 'reply')
+  })
+
+  it('routes image payloads to adapter media delivery', async () => {
+    const bus = new ChannelEventBus()
+    const channel = createChannelRecord()
+    const adapter = new FakeChannel(channel.id, channel.type as ChannelType)
+    const service = new ChannelService({
+      channelsRepo: {
+        listRuntimeEnabled: vi.fn(async () => [channel]),
+        setLastError: vi.fn(async () => null)
+      },
+      eventBus: bus,
+      adapterFactories: {
+        lark: async () => adapter
+      }
+    })
+
+    await service.start()
+    await bus.publish('channel.message.send-requested', {
+      eventId: 'evt-image',
+      channelId: channel.id,
+      channelType: channel.type as ChannelType,
+      remoteChatId: 'chat-1',
+      payload: {
+        type: 'image',
+        filePath: '/tmp/chart.png'
+      }
+    })
+
+    expect(adapter.sendImageMock).toHaveBeenCalledWith('chat-1', '/tmp/chart.png')
+    expect(adapter.sendMock).not.toHaveBeenCalled()
+  })
+
+  it('fails loudly when a channel does not support image payloads', async () => {
+    const bus = new ChannelEventBus()
+    const channel = createChannelRecord({
+      type: 'telegram'
+    })
+    const adapter = new FakeChannel(channel.id, 'telegram')
+    Object.assign(adapter, {
+      sendImage: undefined
+    })
+    const service = new ChannelService({
+      channelsRepo: {
+        listRuntimeEnabled: vi.fn(async () => [channel]),
+        setLastError: vi.fn(async () => null)
+      },
+      eventBus: bus,
+      adapterFactories: {
+        telegram: async () => adapter
+      }
+    })
+
+    await service.start()
+
+    await expect(
+      bus.publish('channel.message.send-requested', {
+        eventId: 'evt-image-unsupported',
+        channelId: channel.id,
+        channelType: channel.type as ChannelType,
+        remoteChatId: 'chat-1',
+        payload: {
+          type: 'image',
+          filePath: '/tmp/chart.png'
+        }
+      })
+    ).rejects.toThrow('does not support image messages')
   })
 
   it('stops current adapters and recreates them on reload', async () => {

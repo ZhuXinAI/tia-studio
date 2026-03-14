@@ -10,6 +10,8 @@ describe('web search settings route', () => {
     const setKeepBrowserWindowOpen = vi.fn(async () => true)
     const getShowBrowser = vi.fn(async () => false)
     const setShowBrowser = vi.fn(async () => false)
+    const getShowBuiltInBrowser = vi.fn(async () => false)
+    const setShowBuiltInBrowser = vi.fn(async () => false)
     const app = new Hono()
 
     registerWebSearchSettingsRoute(app, {
@@ -19,7 +21,9 @@ describe('web search settings route', () => {
         getKeepBrowserWindowOpen,
         setKeepBrowserWindowOpen,
         getShowBrowser,
-        setShowBrowser
+        setShowBrowser,
+        getShowBuiltInBrowser,
+        setShowBuiltInBrowser
       } as never
     })
 
@@ -30,6 +34,7 @@ describe('web search settings route', () => {
       defaultEngine: 'bing',
       keepBrowserWindowOpen: true,
       showBrowser: false,
+      showBuiltInBrowser: false,
       availableEngines: ['google', 'bing', 'baidu']
     })
     expect(getDefaultEngine).toHaveBeenCalledTimes(1)
@@ -38,6 +43,8 @@ describe('web search settings route', () => {
     expect(setKeepBrowserWindowOpen).not.toHaveBeenCalled()
     expect(getShowBrowser).toHaveBeenCalledTimes(1)
     expect(setShowBrowser).not.toHaveBeenCalled()
+    expect(getShowBuiltInBrowser).toHaveBeenCalledTimes(1)
+    expect(setShowBuiltInBrowser).not.toHaveBeenCalled()
   })
 
   it('updates default engine with validated payload', async () => {
@@ -47,6 +54,8 @@ describe('web search settings route', () => {
     const setKeepBrowserWindowOpen = vi.fn(async () => true)
     const getShowBrowser = vi.fn(async () => false)
     const setShowBrowser = vi.fn(async () => false)
+    const getShowBuiltInBrowser = vi.fn(async () => false)
+    const setShowBuiltInBrowser = vi.fn(async () => false)
     const app = new Hono()
 
     registerWebSearchSettingsRoute(app, {
@@ -56,7 +65,9 @@ describe('web search settings route', () => {
         getKeepBrowserWindowOpen,
         setKeepBrowserWindowOpen,
         getShowBrowser,
-        setShowBrowser
+        setShowBrowser,
+        getShowBuiltInBrowser,
+        setShowBuiltInBrowser
       } as never
     })
 
@@ -71,6 +82,7 @@ describe('web search settings route', () => {
       defaultEngine: 'google',
       keepBrowserWindowOpen: true,
       showBrowser: false,
+      showBuiltInBrowser: false,
       availableEngines: ['google', 'bing', 'baidu']
     })
     expect(setDefaultEngine).toHaveBeenCalledWith('google')
@@ -78,6 +90,8 @@ describe('web search settings route', () => {
     expect(setKeepBrowserWindowOpen).not.toHaveBeenCalled()
     expect(getShowBrowser).toHaveBeenCalledTimes(1)
     expect(setShowBrowser).not.toHaveBeenCalled()
+    expect(getShowBuiltInBrowser).toHaveBeenCalledTimes(1)
+    expect(setShowBuiltInBrowser).not.toHaveBeenCalled()
   })
 
   it('updates keepBrowserWindowOpen with validated payload', async () => {
@@ -87,6 +101,8 @@ describe('web search settings route', () => {
     const setKeepBrowserWindowOpen = vi.fn(async () => false)
     const getShowBrowser = vi.fn(async () => false)
     const setShowBrowser = vi.fn(async () => false)
+    const getShowBuiltInBrowser = vi.fn(async () => false)
+    const setShowBuiltInBrowser = vi.fn(async () => false)
     const app = new Hono()
 
     registerWebSearchSettingsRoute(app, {
@@ -96,7 +112,9 @@ describe('web search settings route', () => {
         getKeepBrowserWindowOpen,
         setKeepBrowserWindowOpen,
         getShowBrowser,
-        setShowBrowser
+        setShowBrowser,
+        getShowBuiltInBrowser,
+        setShowBuiltInBrowser
       } as never
     })
 
@@ -111,12 +129,15 @@ describe('web search settings route', () => {
       defaultEngine: 'bing',
       keepBrowserWindowOpen: false,
       showBrowser: false,
+      showBuiltInBrowser: false,
       availableEngines: ['google', 'bing', 'baidu']
     })
     expect(setKeepBrowserWindowOpen).toHaveBeenCalledWith(false)
     expect(setDefaultEngine).not.toHaveBeenCalled()
     expect(getShowBrowser).toHaveBeenCalledTimes(1)
     expect(setShowBrowser).not.toHaveBeenCalled()
+    expect(getShowBuiltInBrowser).toHaveBeenCalledTimes(1)
+    expect(setShowBuiltInBrowser).not.toHaveBeenCalled()
   })
 
   it('rejects unsupported search engines', async () => {
@@ -129,7 +150,9 @@ describe('web search settings route', () => {
         getKeepBrowserWindowOpen: vi.fn(async () => true),
         setKeepBrowserWindowOpen: vi.fn(async () => true),
         getShowBrowser: vi.fn(async () => false),
-        setShowBrowser: vi.fn(async () => false)
+        setShowBrowser: vi.fn(async () => false),
+        getShowBuiltInBrowser: vi.fn(async () => false),
+        setShowBuiltInBrowser: vi.fn(async () => false)
       } as never
     })
 
@@ -155,7 +178,9 @@ describe('web search settings route', () => {
         getKeepBrowserWindowOpen: vi.fn(async () => true),
         setKeepBrowserWindowOpen: vi.fn(async () => true),
         getShowBrowser: vi.fn(async () => false),
-        setShowBrowser: vi.fn(async () => false)
+        setShowBrowser: vi.fn(async () => false),
+        getShowBuiltInBrowser: vi.fn(async () => false),
+        setShowBuiltInBrowser: vi.fn(async () => false)
       } as never
     })
 
@@ -179,6 +204,8 @@ describe('web search settings route', () => {
     const setKeepBrowserWindowOpen = vi.fn(async () => true)
     const getShowBrowser = vi.fn(async () => false)
     const setShowBrowser = vi.fn(async () => true)
+    const getShowBuiltInBrowser = vi.fn(async () => false)
+    const setShowBuiltInBrowser = vi.fn(async () => false)
     const app = new Hono()
 
     registerWebSearchSettingsRoute(app, {
@@ -188,7 +215,9 @@ describe('web search settings route', () => {
         getKeepBrowserWindowOpen,
         setKeepBrowserWindowOpen,
         getShowBrowser,
-        setShowBrowser
+        setShowBrowser,
+        getShowBuiltInBrowser,
+        setShowBuiltInBrowser
       } as never
     })
 
@@ -203,10 +232,60 @@ describe('web search settings route', () => {
       defaultEngine: 'bing',
       keepBrowserWindowOpen: true,
       showBrowser: true,
+      showBuiltInBrowser: false,
       availableEngines: ['google', 'bing', 'baidu']
     })
     expect(setShowBrowser).toHaveBeenCalledWith(true)
     expect(setDefaultEngine).not.toHaveBeenCalled()
     expect(setKeepBrowserWindowOpen).not.toHaveBeenCalled()
+    expect(getShowBuiltInBrowser).toHaveBeenCalledTimes(1)
+    expect(setShowBuiltInBrowser).not.toHaveBeenCalled()
+  })
+
+  it('updates showBuiltInBrowser and applies the live visibility callback', async () => {
+    const getDefaultEngine = vi.fn(async () => 'bing')
+    const setDefaultEngine = vi.fn(async () => 'bing')
+    const getKeepBrowserWindowOpen = vi.fn(async () => true)
+    const setKeepBrowserWindowOpen = vi.fn(async () => true)
+    const getShowBrowser = vi.fn(async () => false)
+    const setShowBrowser = vi.fn(async () => false)
+    const getShowBuiltInBrowser = vi.fn(async () => false)
+    const setShowBuiltInBrowser = vi.fn(async () => true)
+    const onShowBuiltInBrowserChange = vi.fn(async () => undefined)
+    const app = new Hono()
+
+    registerWebSearchSettingsRoute(app, {
+      webSearchSettingsRepo: {
+        getDefaultEngine,
+        setDefaultEngine,
+        getKeepBrowserWindowOpen,
+        setKeepBrowserWindowOpen,
+        getShowBrowser,
+        setShowBrowser,
+        getShowBuiltInBrowser,
+        setShowBuiltInBrowser
+      } as never,
+      onShowBuiltInBrowserChange
+    })
+
+    const response = await app.request('http://localhost/v1/settings/web-search', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ showBuiltInBrowser: true })
+    })
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      defaultEngine: 'bing',
+      keepBrowserWindowOpen: true,
+      showBrowser: false,
+      showBuiltInBrowser: true,
+      availableEngines: ['google', 'bing', 'baidu']
+    })
+    expect(setShowBuiltInBrowser).toHaveBeenCalledWith(true)
+    expect(onShowBuiltInBrowserChange).toHaveBeenCalledWith(true)
+    expect(setDefaultEngine).not.toHaveBeenCalled()
+    expect(setKeepBrowserWindowOpen).not.toHaveBeenCalled()
+    expect(setShowBrowser).not.toHaveBeenCalled()
   })
 })

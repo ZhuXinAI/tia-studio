@@ -1,6 +1,7 @@
 import os from 'node:os'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { access, readFile, writeFile } from 'node:fs/promises'
 import { Agent } from '@mastra/core/agent'
 import type { AgentExecutionOptions, ToolsInput } from '@mastra/core/agent'
 import type { MessageInput, MessageListInput } from '@mastra/core/agent/message-list'
@@ -13,11 +14,13 @@ import { handleChatStream } from '@mastra/ai-sdk'
 import { toAISdkV5Messages } from '@mastra/ai-sdk/ui'
 import { Memory } from '@mastra/memory'
 import { MCPClient, type MastraMCPServerDefinition } from '@mastra/mcp'
-import type { UIMessage, UIMessageChunk } from 'ai'
+import { generateText, type LanguageModel, type UIMessage, type UIMessageChunk } from 'ai'
+import type { BuiltInBrowserController } from '../built-in-browser-manager'
+import { buildBuiltInBrowserGuidance } from '../built-in-browser-contract'
 import { ChannelEventBus } from '../channels/channel-event-bus'
+import { buildChannelImageSupportGuidance } from '../channels/channel-media-support'
 import type { ChannelTarget } from '../channels/types'
 import type { AssistantCronJobsService } from '../cron/assistant-cron-jobs-service'
-import { GroupEventBus } from '../groups/group-event-bus'
 import { buildHeartbeatWorklogContext } from '../heartbeat/heartbeat-context'
 import { listRecentConversations } from '../heartbeat/recent-conversations'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
@@ -37,21 +40,17 @@ import { ensureAssistantWorkspaceFiles } from './assistant-workspace'
 import { resolveModel } from './model-resolver'
 import { AttachmentUploader } from './processors/attachment-uploader'
 import { createCodingSubagent } from './coding-agent'
-import { createBrowserSearchTool } from './tools/browser-search-tool'
+import { createBuiltInBrowserTools } from './tools/built-in-browser-tools'
+import { createWebFetchTool } from './tools/web-fetch-tool'
 import { createChannelTools } from './tools/channel-tools'
 import { createCronTools } from './tools/cron-tools'
-import { createGroupTools } from './tools/group-tools'
 import { createMemorySessionTools } from './tools/memory-session-tools'
 import {
   assistantWorkspaceContextInputProcessor,
   createSoulMemoryTools
 } from './tools/soul-memory-tools'
 import { createWorkLogTools } from './tools/work-log-tools'
-import {
-  GROUP_CONTEXT_KEY,
-  HEARTBEAT_RUN_CONTEXT_KEY,
-  getGroupExecutionContext
-} from './tool-context'
+import { HEARTBEAT_RUN_CONTEXT_KEY } from './tool-context'
 import { createContainedLocalFilesystemInstructions } from './workspace-filesystem-instructions'
 import { logger } from '../utils/logger'
 
@@ -71,6 +70,31 @@ type ListThreadMessagesParams = {
   profileId: string
 }
 
+type RunThreadCommandParams = {
+  assistantId: string
+  threadId: string
+  profileId: string
+  command: 'new'
+}
+
+type ThreadCommandResult = {
+  command: 'new'
+  archiveFileName: string
+  archiveFilePath: string
+  threadTitle: string
+  compactedAt: string
+}
+
+type RuntimeMemoryStore = {
+  listMessages(input: {
+    threadId: string
+    resourceId: string
+    perPage: false
+  }): Promise<{ messages: unknown[] }>
+  getThreadById?(input: { threadId: string }): Promise<{ title?: unknown } | null>
+  deleteThread?(input: { threadId: string }): Promise<void>
+}
+
 type RunCronJobParams = {
   assistantId: string
   threadId: string
@@ -86,24 +110,7 @@ type RunHeartbeatParams = {
   intervalMinutes: number
 }
 
-type RunGroupTurnParams = {
-  assistantId: string
-  threadId: string
-  profileId: string
-  messages: MessageListInput
-  groupContext: {
-    runId: string
-    groupThreadId: string
-    allowedMentions: Array<{ assistantId: string; name: string }>
-    replyToMessageId?: string
-  }
-}
-
 type CronJobRunResult = {
-  outputText: string
-}
-
-type GroupTurnResult = {
   outputText: string
 }
 
@@ -118,6 +125,10 @@ const CHANNEL_SPLITTER_INSTRUCTION =
 const WECHAT_KF_CHANNEL_TYPE = 'wechat-kf'
 const PROMPT_INJECTION_THRESHOLD = 0.8
 const PII_THRESHOLD = 0.6
+const EMPTY_THREAD_COMPACTION_SUMMARY =
+  'No persisted user or assistant messages were available when this thread was compacted.'
+const THREAD_HISTORY_FILE_PREFIX = 'thread_history_'
+const THREAD_HISTORY_FILE_SUFFIX = '.md'
 
 const ONBOARDING_INSTRUCTIONS = `
 # First Conversation Onboarding
@@ -147,39 +158,22 @@ This is your first conversation! Let's set up your identity and personality.
 Keep it conversational and friendly. This is about co-creating your identity together!
 `.trim()
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-function resolveInlineGroupMentions(
-  content: string,
-  allowedMentions: Array<{ assistantId: string; name: string }>
-): string[] {
-  const resolvedMentions: string[] = []
-
-  for (const allowedMention of allowedMentions) {
-    const mentionPatterns = [allowedMention.name, allowedMention.assistantId]
-      .map((value) => value.trim())
-      .filter((value) => value.length > 0)
-      .map((value) => new RegExp(`(^|\\s)@${escapeRegExp(value)}(?=\\s|$|[.,!?])`, 'i'))
-
-    if (
-      mentionPatterns.some((pattern) => pattern.test(content)) &&
-      !resolvedMentions.includes(allowedMention.assistantId)
-    ) {
-      resolvedMentions.push(allowedMention.assistantId)
-    }
-  }
-
-  return resolvedMentions
-}
+const WEB_FETCH_INSTRUCTIONS = `
+Web browsing guidance:
+- Please use built-in browser approach with agent-browser first unless the task is simply to fetch one specific page.
+- Use webFetch only when you already know the exact page URL you need.
+- Do not use webFetch to search the web, discover candidate pages, or crawl across multiple pages.
+- For long-running browser work or page interaction, prefer browser-oriented tools such as agent-browser or Playwright MCP.
+- If the user has not named a browser tool preference and browser work would help, first recommend choosing agent-browser, Playwright MCP, or installing a browser-related skill.
+- Fall back to webFetch only when richer browser tooling is unavailable or the task is simply to fetch one specific page.
+`.trim()
 
 export type AssistantRuntime = {
   streamChat: (params: StreamChatParams) => Promise<ReadableStream<UIMessageChunk>>
   listThreadMessages: (params: ListThreadMessagesParams) => Promise<UIMessage[]>
+  runThreadCommand: (params: RunThreadCommandParams) => Promise<ThreadCommandResult>
   runCronJob: (params: RunCronJobParams) => Promise<CronJobRunResult>
   runHeartbeat: (params: RunHeartbeatParams) => Promise<CronJobRunResult>
-  runGroupTurn: (params: RunGroupTurnParams) => Promise<GroupTurnResult>
 }
 
 type AssistantRuntimeServiceOptions = {
@@ -195,13 +189,12 @@ type AssistantRuntimeServiceOptions = {
     getByAssistantId(assistantId: string): Promise<{ id: string; type: string } | null>
   }
   channelEventBus?: ChannelEventBus
-  groupEventBus?: GroupEventBus
   threadMessageEventsStore?: {
     appendMessagesUpdated(input: {
       assistantId: string
       threadId: string
       profileId: string
-      source?: 'channel' | 'cron' | 'heartbeat'
+      source?: 'channel' | 'cron' | 'heartbeat' | 'command'
     }): void
   }
   cronJobService?: Pick<
@@ -220,6 +213,40 @@ type AssistantRuntimeServiceOptions = {
       env: NodeJS.ProcessEnv
     }>
   }
+  builtInBrowserManager?: BuiltInBrowserController
+  threadUsageRepo?: {
+    recordMessageUsage(input: {
+      messageId: string
+      threadId: string
+      assistantId: string
+      resourceId: string
+      providerId: string
+      model: string
+      source: 'chat' | 'cron' | 'heartbeat'
+      usage: {
+        inputTokens: number
+        outputTokens: number
+        totalTokens: number
+        reasoningTokens?: number
+        cachedInputTokens?: number
+      }
+      stepCount: number
+      finishReason?: string | null
+      createdAt: string
+    }): Promise<void>
+    listByMessageIds?(messageIds: string[]): Promise<
+      Record<
+        string,
+        {
+          inputTokens: number
+          outputTokens: number
+          totalTokens: number
+          reasoningTokens: number
+          cachedInputTokens: number
+        }
+      >
+    >
+  }
 }
 
 type JsonObject = Record<string, unknown>
@@ -232,15 +259,39 @@ type ResolvedGuardrailConfig = {
   source: 'assistant' | 'override'
 }
 
+type ThreadUsageMetrics = {
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+  reasoningTokens: number
+  cachedInputTokens: number
+}
+
+type StreamUsageObservation = {
+  assistantMessageId: string | null
+  totalUsage: ThreadUsageMetrics | null
+  rawUsage: unknown
+  stepCount: number
+  finishReason: string | null
+  createdAt: string | null
+}
+
+type PersistThreadUsageInput = {
+  assistantId: string
+  threadId: string
+  resourceId: string
+  providerId: string
+  model: string
+  source: 'chat' | 'cron' | 'heartbeat'
+}
+
 export class AssistantRuntimeService implements AssistantRuntime {
   private readonly registeredAgentSignatures = new Map<string, string>()
   private readonly assistantMcpClients = new Map<string, MCPClient>()
   private readonly channelEventBus: ChannelEventBus
-  private readonly groupEventBus: GroupEventBus
 
   constructor(private readonly options: AssistantRuntimeServiceOptions) {
     this.channelEventBus = options.channelEventBus ?? new ChannelEventBus()
-    this.groupEventBus = options.groupEventBus ?? new GroupEventBus()
   }
 
   async streamChat(params: StreamChatParams): Promise<ReadableStream<UIMessageChunk>> {
@@ -292,7 +343,15 @@ export class AssistantRuntimeService implements AssistantRuntime {
     return this.streamWithThreadTitleSync(stream as ReadableStream<UIMessageChunk>, {
       threadId: params.threadId,
       profileId: params.profileId,
-      channelTarget: params.channelTarget
+      channelTarget: params.channelTarget,
+      usageContext: {
+        assistantId: assistant.id,
+        threadId: params.threadId,
+        resourceId: thread.resourceId,
+        providerId: provider.id,
+        model: provider.selectedModel,
+        source: 'chat'
+      }
     })
   }
 
@@ -376,7 +435,14 @@ export class AssistantRuntimeService implements AssistantRuntime {
       sendReasoning: true
     })
 
-    const outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>)
+    const outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>, {
+      assistantId: assistant.id,
+      threadId: params.threadId,
+      resourceId: thread.resourceId,
+      providerId: provider.id,
+      model: provider.selectedModel,
+      source: 'cron'
+    })
 
     logger.debug('[AssistantRuntime] Cron job stream completed')
     logger.debug('[AssistantRuntime] Collected output text length:', outputText.length)
@@ -448,7 +514,14 @@ export class AssistantRuntimeService implements AssistantRuntime {
       sendReasoning: true
     })
 
-    const outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>)
+    const outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>, {
+      assistantId: assistant.id,
+      threadId: params.threadId,
+      resourceId: thread.resourceId,
+      providerId: provider.id,
+      model: provider.selectedModel,
+      source: 'heartbeat'
+    })
 
     // Notify UI that thread has new messages
     this.options.threadMessageEventsStore?.appendMessagesUpdated({
@@ -460,136 +533,6 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
     return {
       outputText
-    }
-  }
-
-  async runGroupTurn(params: RunGroupTurnParams): Promise<GroupTurnResult> {
-    const { assistant, provider } = await this.getAssistantContext(params.assistantId)
-    const thread = await this.getThreadForAssistant({
-      assistantId: params.assistantId,
-      threadId: params.threadId
-    })
-    if (thread.resourceId !== params.profileId) {
-      throw new ChatRouteError(404, 'thread_not_found', 'Thread not found')
-    }
-
-    await this.ensureAgentRegistered(assistant, provider, {
-      channelDeliveryEnabled: false,
-      cronToolsEnabled: false,
-      groupToolsEnabled: true
-    })
-
-    const requestContext = new RequestContext()
-    requestContext.set(GROUP_CONTEXT_KEY, {
-      runId: params.groupContext.runId,
-      groupThreadId: params.groupContext.groupThreadId,
-      assistantId: params.assistantId,
-      allowedMentions: params.groupContext.allowedMentions,
-      replyToMessageId: params.groupContext.replyToMessageId ?? null,
-      publishedMessagesCount: 0,
-      passedTurn: false
-    })
-
-    logger.info('[GroupFlow] Invoking assistant runtime for group turn', {
-      runId: params.groupContext.runId,
-      groupThreadId: params.groupContext.groupThreadId,
-      assistantId: params.assistantId,
-      assistantThreadId: params.threadId,
-      profileId: params.profileId,
-      allowedMentionIds: params.groupContext.allowedMentions.map((entry) => entry.assistantId)
-    })
-
-    try {
-      const stream = await handleChatStream({
-        mastra: this.options.mastra,
-        agentId: assistant.id,
-        params: {
-          messages: toAISdkV5Messages(params.messages),
-          maxSteps: assistant.maxSteps,
-          providerOptions: this.buildProviderOptions(provider.type),
-          requestContext,
-          memory: {
-            thread: params.threadId,
-            resource: params.profileId,
-            options: {
-              generateTitle: true
-            }
-          }
-        },
-        sendReasoning: true
-      })
-
-      logger.info('[GroupFlow] Assistant stream opened for group turn', {
-        runId: params.groupContext.runId,
-        groupThreadId: params.groupContext.groupThreadId,
-        assistantId: params.assistantId
-      })
-
-      const outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>)
-      const groupContext = getGroupExecutionContext(requestContext)
-
-      logger.info('[GroupFlow] Assistant stream completed for group turn', {
-        runId: params.groupContext.runId,
-        groupThreadId: params.groupContext.groupThreadId,
-        assistantId: params.assistantId,
-        outputTextLength: outputText.length
-      })
-
-      if (
-        groupContext &&
-        !groupContext.passedTurn &&
-        groupContext.publishedMessagesCount === 0 &&
-        outputText.trim().length > 0
-      ) {
-        const resolvedMentions = resolveInlineGroupMentions(outputText, groupContext.allowedMentions)
-        logger.info('[GroupFlow] Publishing fallback group message from assistant output', {
-          runId: groupContext.runId,
-          groupThreadId: groupContext.groupThreadId,
-          assistantId: params.assistantId,
-          mentionIds: resolvedMentions,
-          replyToMessageId: groupContext.replyToMessageId ?? null,
-          contentLength: outputText.trim().length
-        })
-
-        await this.groupEventBus.publish('group.message.requested', {
-          eventId: randomUUID(),
-          runId: groupContext.runId,
-          groupThreadId: groupContext.groupThreadId,
-          assistantId: params.assistantId,
-          content: outputText.trim(),
-          mentions: resolvedMentions,
-          ...(groupContext.replyToMessageId
-            ? { replyToMessageId: groupContext.replyToMessageId }
-            : {})
-        })
-        groupContext.publishedMessagesCount += 1
-      }
-
-      await this.syncThreadAfterStreaming({
-        threadId: params.threadId,
-        profileId: params.profileId
-      }).catch(() => undefined)
-
-      logger.info('[GroupFlow] Assistant group turn completed', {
-        runId: params.groupContext.runId,
-        groupThreadId: params.groupContext.groupThreadId,
-        assistantId: params.assistantId,
-        publishedMessagesCount: groupContext?.publishedMessagesCount ?? 0,
-        passedTurn: groupContext?.passedTurn ?? false
-      })
-
-      return {
-        outputText
-      }
-    } catch (error) {
-      logger.error('[GroupFlow] Assistant group turn failed', {
-        runId: params.groupContext.runId,
-        groupThreadId: params.groupContext.groupThreadId,
-        assistantId: params.assistantId,
-        assistantThreadId: params.threadId,
-        error
-      })
-      throw error
     }
   }
 
@@ -668,11 +611,13 @@ ${input.prompt}`
       threadId: string
       profileId: string
       channelTarget?: ChannelTarget
+      usageContext?: PersistThreadUsageInput
     }
   ): ReadableStream<UIMessageChunk> {
     const reader = stream.getReader()
     let isSynced = false
     let channelTextBuffer = ''
+    const usageObservation = this.createStreamUsageObservation()
     const bufferSingleChannelReply = params.channelTarget?.channelType === WECHAT_KF_CHANNEL_TYPE
 
     const publishCompletedChannelChunks = async (): Promise<void> => {
@@ -727,70 +672,57 @@ ${input.prompt}`
               isSynced = true
               await flushFinalChannelChunk()
               await this.syncThreadAfterStreaming(params)
+              if (params.usageContext) {
+                await this.persistObservedThreadUsage(params.usageContext, usageObservation)
+              }
             }
             controller.close()
             reader.releaseLock()
             return
           }
 
+          const observedValue = this.observeStreamChunk(usageObservation, value)
+
           // Handle text deltas for channel delivery
-          if (value.type === 'text-delta' && typeof value.delta === 'string') {
-            channelTextBuffer += value.delta
+          if (observedValue.type === 'text-delta' && typeof observedValue.delta === 'string') {
+            channelTextBuffer += observedValue.delta
             await publishCompletedChannelChunks()
           }
 
           // Pass through tool-input-available events immediately for UI visibility
-          if (value.type === 'tool-input-available') {
-            controller.enqueue(value)
+          if (observedValue.type === 'tool-input-available') {
+            controller.enqueue(observedValue)
             return
           }
 
           // Pass through tool-output-available events immediately for UI visibility
-          if (value.type === 'tool-output-available') {
-            controller.enqueue(value)
+          if (observedValue.type === 'tool-output-available') {
+            controller.enqueue(observedValue)
             return
           }
 
           // Pass through tool-output-error events for error visibility
-          if (value.type === 'tool-output-error') {
-            controller.enqueue(value)
+          if (observedValue.type === 'tool-output-error') {
+            controller.enqueue(observedValue)
             return
           }
 
           // Pass through start-step events for multi-step visibility
-          if (value.type === 'start-step') {
+          if (observedValue.type === 'start-step') {
             // Flush any accumulated text to channel before starting a new step
             await flushChannelTextBeforeStep()
-            controller.enqueue(value)
+            controller.enqueue(observedValue)
             return
           }
 
           // Pass through finish-step events
-          if (value.type === 'finish-step') {
-            controller.enqueue(value)
+          if (observedValue.type === 'finish-step') {
+            controller.enqueue(observedValue)
             return
           }
 
-          // Capture usage from finish chunk and add to message metadata
-          if (value.type === 'finish' && 'totalUsage' in value) {
-            const usage = value.totalUsage as {
-              inputTokens: number
-              outputTokens: number
-              totalTokens: number
-            }
-
-            // Add usage to message metadata
-            controller.enqueue({
-              ...value,
-              messageMetadata: {
-                ...(value.messageMetadata || {}),
-                usage
-              }
-            } as UIMessageChunk)
-          } else {
-            // Pass through all other events (text-delta, etc.)
-            controller.enqueue(value)
-          }
+          // Pass through all other events (text-delta, finish, etc.)
+          controller.enqueue(observedValue)
         } catch (error) {
           controller.error(error)
           reader.releaseLock()
@@ -919,9 +851,320 @@ ${input.prompt}`
       perPage: false
     })
 
-    return toAISdkV5Messages(messages)
+    const aiSdkMessages = toAISdkV5Messages(messages)
+    const usageByMessageId = this.options.threadUsageRepo?.listByMessageIds
+      ? await this.options.threadUsageRepo.listByMessageIds(aiSdkMessages.map((message) => message.id))
+      : {}
+
+    return aiSdkMessages
       .filter((message) => message.role === 'assistant' || message.role === 'user')
-      .map((message) => message as UIMessage)
+      .map((message) => {
+        const persistedUsage = usageByMessageId[message.id]
+        if (!persistedUsage) {
+          return message as UIMessage
+        }
+
+        const existingMetadata =
+          message.metadata && typeof message.metadata === 'object' && !Array.isArray(message.metadata)
+            ? message.metadata
+            : {}
+
+        return {
+          ...message,
+          metadata: {
+            ...existingMetadata,
+            usage: {
+              inputTokens: persistedUsage.inputTokens,
+              outputTokens: persistedUsage.outputTokens,
+              totalTokens: persistedUsage.totalTokens,
+              reasoningTokens: persistedUsage.reasoningTokens,
+              cachedInputTokens: persistedUsage.cachedInputTokens
+            }
+          }
+        } as UIMessage
+      })
+  }
+
+  async runThreadCommand(params: RunThreadCommandParams): Promise<ThreadCommandResult> {
+    switch (params.command) {
+      case 'new': {
+        const result = await this.compactThreadMemory(params)
+        this.options.threadMessageEventsStore?.appendMessagesUpdated({
+          assistantId: params.assistantId,
+          threadId: params.threadId,
+          profileId: params.profileId,
+          source: 'command'
+        })
+
+        return {
+          command: 'new',
+          ...result
+        }
+      }
+    }
+  }
+
+  private async compactThreadMemory(params: {
+    assistantId: string
+    threadId: string
+    profileId: string
+  }): Promise<Omit<ThreadCommandResult, 'command'>> {
+    const { assistant, provider } = await this.getAssistantContext(params.assistantId)
+    const thread = await this.getThreadForAssistant({
+      assistantId: params.assistantId,
+      threadId: params.threadId
+    })
+    if (thread.resourceId !== params.profileId) {
+      throw new ChatRouteError(404, 'thread_not_found', 'Thread not found')
+    }
+
+    const workspaceRootPath = this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})
+    if (!workspaceRootPath) {
+      throw new ChatRouteError(409, 'assistant_not_ready', 'Assistant workspace is not configured')
+    }
+
+    const memoryStore = await this.getMemoryStore()
+    if (!memoryStore || typeof memoryStore.deleteThread !== 'function') {
+      throw new ChatRouteError(503, 'memory_unavailable', 'Thread memory is unavailable')
+    }
+
+    await ensureAssistantWorkspaceFiles(workspaceRootPath)
+
+    const messages = await this.listThreadMessages({
+      assistantId: params.assistantId,
+      threadId: params.threadId,
+      profileId: params.profileId
+    })
+    const threadTitle = await this.resolveThreadCompactionTitle({
+      appThreadTitle: thread.title,
+      memoryStore,
+      threadId: params.threadId
+    })
+    const transcript = this.buildThreadCompactionTranscript(messages)
+    const compactedAt = new Date().toISOString()
+    const archiveFileName = await this.resolveThreadHistoryFileName(workspaceRootPath, compactedAt)
+    const archiveFilePath = path.join(workspaceRootPath, archiveFileName)
+    const summary =
+      transcript.trim().length > 0
+        ? await this.generateThreadCompactionSummary({
+            provider,
+            threadTitle,
+            transcript
+          })
+        : EMPTY_THREAD_COMPACTION_SUMMARY
+
+    await writeFile(
+      archiveFilePath,
+      this.buildThreadHistoryDocument({
+        assistantName: assistant.name,
+        providerName: provider.name,
+        modelName: provider.selectedModel,
+        threadTitle,
+        compactedAt,
+        summary,
+        transcript
+      }),
+      'utf8'
+    )
+
+    await this.appendThreadCompactionMemoryReference({
+      workspaceRootPath,
+      archiveFileName,
+      threadTitle,
+      compactedAt
+    })
+
+    await memoryStore.deleteThread({ threadId: params.threadId })
+
+    return {
+      archiveFileName,
+      archiveFilePath,
+      threadTitle,
+      compactedAt
+    }
+  }
+
+  private async getMemoryStore(): Promise<RuntimeMemoryStore | null> {
+    const storage = this.options.mastra.getStorage()
+    if (!storage) {
+      return null
+    }
+
+    const memoryStore = await storage.getStore('memory')
+    if (!memoryStore) {
+      return null
+    }
+
+    return memoryStore as RuntimeMemoryStore
+  }
+
+  private async resolveThreadCompactionTitle(input: {
+    appThreadTitle: string
+    memoryStore: RuntimeMemoryStore
+    threadId: string
+  }): Promise<string> {
+    const generatedTitle =
+      typeof input.memoryStore.getThreadById === 'function'
+        ? this.toNonEmptyString((await input.memoryStore.getThreadById({ threadId: input.threadId }))?.title)
+        : null
+
+    if (generatedTitle && this.shouldReplaceThreadTitle(input.appThreadTitle)) {
+      return generatedTitle
+    }
+
+    return this.toNonEmptyString(input.appThreadTitle) ?? generatedTitle ?? 'Untitled Thread'
+  }
+
+  private buildThreadCompactionTranscript(messages: UIMessage[]): string {
+    return messages
+      .map((message, index) => {
+        const speaker = message.role === 'assistant' ? 'Assistant' : 'User'
+        return `### ${index + 1}. ${speaker}\n${this.extractCompactionMessageText(message)}`
+      })
+      .join('\n\n')
+      .trim()
+  }
+
+  private extractCompactionMessageText(message: UIMessage): string {
+    const textParts = message.parts
+      .map((part) => {
+        if (!part || typeof part !== 'object') {
+          return null
+        }
+
+        const record = part as Record<string, unknown>
+        if (record.type === 'text') {
+          return this.toNonEmptyString(record.text)
+        }
+
+        if (record.type === 'image') {
+          return '[Image attachment omitted]'
+        }
+
+        if (record.type === 'file') {
+          return '[File attachment omitted]'
+        }
+
+        return null
+      })
+      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+
+    if (textParts.length > 0) {
+      return textParts.join('\n')
+    }
+
+    const fallbackContent = this.toNonEmptyString((message as { content?: unknown }).content)
+    return fallbackContent ?? '[Non-text content omitted]'
+  }
+
+  private async generateThreadCompactionSummary(input: {
+    provider: AppProvider
+    threadTitle: string
+    transcript: string
+  }): Promise<string> {
+    const model = resolveModel({
+      type: input.provider.type,
+      apiKey: input.provider.apiKey,
+      apiHost: input.provider.apiHost,
+      selectedModel: input.provider.selectedModel
+    }) as unknown as LanguageModel
+
+    const result = await generateText({
+      model,
+      system:
+        'You are archiving an assistant conversation. Write a compact markdown summary that captures the goal, important decisions, progress made, unresolved questions, and durable facts worth remembering later.',
+      prompt: [
+        `Thread title: ${input.threadTitle}`,
+        '',
+        'Conversation transcript:',
+        input.transcript,
+        '',
+        'Return markdown with these sections:',
+        '## Goal',
+        '## Key Outcomes',
+        '## Open Questions',
+        '## Durable Notes'
+      ].join('\n'),
+      temperature: 0,
+      providerOptions: this.buildProviderOptions(input.provider.type)
+    })
+
+    return this.toNonEmptyString(result.text) ?? EMPTY_THREAD_COMPACTION_SUMMARY
+  }
+
+  private buildThreadHistoryDocument(input: {
+    assistantName: string
+    providerName: string
+    modelName: string
+    threadTitle: string
+    compactedAt: string
+    summary: string
+    transcript: string
+  }): string {
+    const transcriptBody =
+      input.transcript.trim().length > 0 ? input.transcript : '(No persisted transcript was available.)'
+
+    return [
+      '# Thread History',
+      '',
+      `- Thread: ${input.threadTitle}`,
+      `- Compacted at: ${input.compactedAt}`,
+      `- Assistant: ${input.assistantName}`,
+      `- Summary provider: ${input.providerName} / ${input.modelName}`,
+      '',
+      '## Summary',
+      '',
+      input.summary.trim(),
+      '',
+      '## Transcript Snapshot',
+      '',
+      transcriptBody,
+      ''
+    ].join('\n')
+  }
+
+  private async appendThreadCompactionMemoryReference(input: {
+    workspaceRootPath: string
+    archiveFileName: string
+    threadTitle: string
+    compactedAt: string
+  }): Promise<void> {
+    const memoryPath = path.join(input.workspaceRootPath, 'MEMORY.md')
+    const existingContent = await readFile(memoryPath, 'utf8')
+    const compactedDate = this.formatDateToken(new Date(input.compactedAt))
+    const entry = `- User compacted thread memory of ${input.threadTitle} on ${compactedDate}. See [${input.archiveFileName}](./${input.archiveFileName}).`
+    const separator = existingContent.endsWith('\n') ? '' : '\n'
+    await writeFile(memoryPath, `${existingContent}${separator}\n${entry}\n`, 'utf8')
+  }
+
+  private async resolveThreadHistoryFileName(
+    workspaceRootPath: string,
+    compactedAt: string
+  ): Promise<string> {
+    const dateToken = this.formatDateToken(new Date(compactedAt))
+
+    for (let index = 1; ; index += 1) {
+      const suffix = index === 1 ? '' : `-${index}`
+      const fileName = `${THREAD_HISTORY_FILE_PREFIX}${dateToken}${suffix}${THREAD_HISTORY_FILE_SUFFIX}`
+      const filePath = path.join(workspaceRootPath, fileName)
+
+      try {
+        await access(filePath)
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          return fileName
+        }
+
+        throw error
+      }
+    }
+  }
+
+  private formatDateToken(date: Date): string {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
   }
 
   private async assertAssistantExists(assistantId: string): Promise<void> {
@@ -943,9 +1186,13 @@ ${input.prompt}`
     return thread
   }
 
-  private async collectStreamText(stream: ReadableStream<UIMessageChunk>): Promise<string> {
+  private async collectStreamText(
+    stream: ReadableStream<UIMessageChunk>,
+    usageContext?: PersistThreadUsageInput
+  ): Promise<string> {
     const reader = stream.getReader()
     const responseTextParts: string[] = []
+    const usageObservation = this.createStreamUsageObservation()
 
     try {
       while (true) {
@@ -954,15 +1201,225 @@ ${input.prompt}`
           break
         }
 
-        if (value.type === 'text-delta' && typeof value.delta === 'string') {
-          responseTextParts.push(value.delta)
+        const observedValue = this.observeStreamChunk(usageObservation, value)
+
+        if (observedValue.type === 'text-delta' && typeof observedValue.delta === 'string') {
+          responseTextParts.push(observedValue.delta)
         }
+      }
+
+      if (usageContext) {
+        await this.persistObservedThreadUsage(usageContext, usageObservation)
       }
     } finally {
       reader.releaseLock()
     }
 
     return responseTextParts.join('')
+  }
+
+  private createStreamUsageObservation(): StreamUsageObservation {
+    return {
+      assistantMessageId: null,
+      totalUsage: null,
+      rawUsage: null,
+      stepCount: 0,
+      finishReason: null,
+      createdAt: null
+    }
+  }
+
+  private observeStreamChunk(
+    observation: StreamUsageObservation,
+    chunk: UIMessageChunk
+  ): UIMessageChunk {
+    const chunkRecord = chunk as Record<string, unknown>
+
+    if (chunkRecord.type === 'start') {
+      if (typeof chunkRecord.messageId === 'string' && chunkRecord.messageId.trim().length > 0) {
+        observation.assistantMessageId = chunkRecord.messageId
+      }
+
+      const createdAt = this.normalizeTimestamp(chunkRecord.createdAt)
+      if (createdAt) {
+        observation.createdAt = createdAt
+      }
+
+      return chunk
+    }
+
+    if (chunkRecord.type === 'finish-step') {
+      observation.stepCount += 1
+      return chunk
+    }
+
+    if (chunkRecord.type !== 'finish') {
+      return chunk
+    }
+
+    const usage = this.normalizeUsageMetrics(chunkRecord.totalUsage)
+    if (!usage) {
+      if (typeof chunkRecord.finishReason === 'string') {
+        observation.finishReason = chunkRecord.finishReason
+      }
+
+      return chunk
+    }
+
+    observation.totalUsage = usage
+    observation.rawUsage = chunkRecord.totalUsage
+    if (typeof chunkRecord.finishReason === 'string') {
+      observation.finishReason = chunkRecord.finishReason
+    }
+
+    const existingMetadata =
+      chunkRecord.messageMetadata &&
+      typeof chunkRecord.messageMetadata === 'object' &&
+      !Array.isArray(chunkRecord.messageMetadata)
+        ? (chunkRecord.messageMetadata as Record<string, unknown>)
+        : {}
+
+    return {
+      ...(chunkRecord as UIMessageChunk),
+      messageMetadata: {
+        ...existingMetadata,
+        usage
+      }
+    } as UIMessageChunk
+  }
+
+  private normalizeUsageMetrics(value: unknown): ThreadUsageMetrics | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null
+    }
+
+    const record = value as Record<string, unknown>
+    return {
+      inputTokens: this.normalizeInteger(record.inputTokens),
+      outputTokens: this.normalizeInteger(record.outputTokens),
+      totalTokens: this.normalizeInteger(record.totalTokens),
+      reasoningTokens: this.normalizeInteger(record.reasoningTokens),
+      cachedInputTokens: this.normalizeInteger(record.cachedInputTokens)
+    }
+  }
+
+  private normalizeInteger(value: unknown): number {
+    const numericValue =
+      typeof value === 'number'
+        ? value
+        : typeof value === 'string' && value.trim().length > 0
+          ? Number(value)
+          : 0
+
+    if (!Number.isFinite(numericValue)) {
+      return 0
+    }
+
+    return Math.max(0, Math.round(numericValue))
+  }
+
+  private normalizeTimestamp(value: unknown): string | null {
+    if (value instanceof Date && !Number.isNaN(value.valueOf())) {
+      return value.toISOString()
+    }
+
+    if (typeof value === 'string' && value.trim().length > 0) {
+      const parsedDate = new Date(value)
+      if (!Number.isNaN(parsedDate.valueOf())) {
+        return parsedDate.toISOString()
+      }
+    }
+
+    return null
+  }
+
+  private async persistObservedThreadUsage(
+    context: PersistThreadUsageInput,
+    observation: StreamUsageObservation
+  ): Promise<void> {
+    if (!this.options.threadUsageRepo || !observation.totalUsage) {
+      return
+    }
+
+    let messageId = observation.assistantMessageId
+    let createdAt = observation.createdAt
+
+    if (!messageId) {
+      const fallbackMessage = await this.resolveLatestAssistantMessage({
+        threadId: context.threadId,
+        resourceId: context.resourceId
+      })
+      if (!fallbackMessage) {
+        return
+      }
+
+      messageId = fallbackMessage.messageId
+      createdAt ??= fallbackMessage.createdAt
+    }
+
+    await this.options.threadUsageRepo.recordMessageUsage({
+      messageId,
+      threadId: context.threadId,
+      assistantId: context.assistantId,
+      resourceId: context.resourceId,
+      providerId: context.providerId,
+      model: context.model,
+      source: context.source,
+      usage: observation.totalUsage,
+      stepCount: observation.stepCount,
+      finishReason: observation.finishReason,
+      createdAt: createdAt ?? new Date().toISOString()
+    })
+  }
+
+  private async resolveLatestAssistantMessage(params: {
+    threadId: string
+    resourceId: string
+  }): Promise<{ messageId: string; createdAt: string | null } | null> {
+    const storage = this.options.mastra.getStorage()
+    if (!storage) {
+      return null
+    }
+
+    const memoryStore = await storage.getStore('memory')
+    if (!memoryStore || typeof memoryStore.listMessages !== 'function') {
+      return null
+    }
+
+    const { messages } = await memoryStore.listMessages({
+      threadId: params.threadId,
+      resourceId: params.resourceId,
+      perPage: false
+    })
+
+    let latestMessage: { messageId: string; createdAt: string | null; timestamp: number } | null =
+      null
+
+    for (const message of messages as Array<Record<string, unknown>>) {
+      if (message.role !== 'assistant' || typeof message.id !== 'string') {
+        continue
+      }
+
+      const createdAt = this.normalizeTimestamp(message.createdAt)
+      const timestamp = createdAt ? new Date(createdAt).valueOf() : Number.NEGATIVE_INFINITY
+
+      if (!latestMessage || timestamp >= latestMessage.timestamp) {
+        latestMessage = {
+          messageId: message.id,
+          createdAt,
+          timestamp
+        }
+      }
+    }
+
+    if (!latestMessage) {
+      return null
+    }
+
+    return {
+      messageId: latestMessage.messageId,
+      createdAt: latestMessage.createdAt
+    }
   }
 
   private async getAssistantContext(assistantId: string): Promise<AssistantContext> {
@@ -998,11 +1455,9 @@ ${input.prompt}`
       channelDeliveryEnabled: boolean
       channelType?: string
       cronToolsEnabled?: boolean
-      groupToolsEnabled?: boolean
     } = {
       channelDeliveryEnabled: false,
-      cronToolsEnabled: true,
-      groupToolsEnabled: false
+      cronToolsEnabled: true
     }
   ): Promise<void> {
     const enabledMcpServers = await this.resolveEnabledMcpServers(assistant.mcpConfig ?? {})
@@ -1035,8 +1490,7 @@ ${input.prompt}`
       guardrailConfig.provider.apiHost ?? '',
       options.channelDeliveryEnabled ? 'channel-delivery:on' : 'channel-delivery:off',
       options.channelType ?? '',
-      options.cronToolsEnabled !== false ? 'cron-tools:on' : 'cron-tools:off',
-      options.groupToolsEnabled ? 'group-tools:on' : 'group-tools:off'
+      options.cronToolsEnabled !== false ? 'cron-tools:on' : 'cron-tools:off'
     ].join('|')
 
     if (this.registeredAgentSignatures.get(assistant.id) === nextSignature) {
@@ -1045,8 +1499,7 @@ ${input.prompt}`
 
     this.options.mastra.removeAgent(assistant.id)
 
-    const browserSearchTool = createBrowserSearchTool({
-      resolveDefaultEngine: async () => this.options.webSearchSettingsRepo.getDefaultEngine(),
+    const webFetchTool = createWebFetchTool({
       resolveKeepBrowserWindowOpen: async () =>
         this.options.webSearchSettingsRepo.getKeepBrowserWindowOpen(),
       resolveShowBrowser: async () => this.options.webSearchSettingsRepo.getShowBrowser()
@@ -1101,32 +1554,30 @@ ${input.prompt}`
             : undefined
         })
       : {}
-    const groupTools = options.groupToolsEnabled
-      ? createGroupTools({
-          bus: this.groupEventBus
-        })
-      : {}
 
     logger.debug('[AssistantRuntime] Agent tools registered:', {
+      hasBuiltInBrowserTools: Boolean(this.options.builtInBrowserManager),
       hasCronTools: Object.keys(cronTools).length > 0,
       hasChannelTools: Object.keys(channelTools).length > 0,
-      hasGroupTools: Object.keys(groupTools).length > 0,
       channelToolNames: Object.keys(channelTools),
-      groupToolNames: Object.keys(groupTools),
       cronToolsEnabled: options.cronToolsEnabled,
       channelDeliveryEnabled: options.channelDeliveryEnabled,
-      channelType: options.channelType ?? null,
-      groupToolsEnabled: options.groupToolsEnabled
+      channelType: options.channelType ?? null
     })
 
     const memorySessionTools = createMemorySessionTools(memory)
+    const builtInBrowserTools = this.options.builtInBrowserManager
+      ? createBuiltInBrowserTools({
+          controller: this.options.builtInBrowserManager
+        })
+      : {}
     const tools: ToolsInput = {
-      browserSearch: browserSearchTool,
+      webFetch: webFetchTool,
+      ...builtInBrowserTools,
       ...soulMemoryTools,
       ...workLogTools,
       ...cronTools,
       ...channelTools,
-      ...groupTools,
       ...memorySessionTools,
       ...mcpTools
     }
@@ -1149,15 +1600,19 @@ ${input.prompt}`
     const isFirstConversation = !hasAnyThreads
     const baseInstructions = assistant.instructions || 'You are a helpful assistant.'
     const onboardingInstructions = isFirstConversation ? `\n\n${ONBOARDING_INSTRUCTIONS}\n` : ''
+    const webFetchInstructions = `\n${WEB_FETCH_INSTRUCTIONS}\n`
+    const builtInBrowserInstructions = `\n${buildBuiltInBrowserGuidance({
+      handoffToolAvailable: Boolean(this.options.builtInBrowserManager)
+    })}\n`
+    const channelImageGuidance = buildChannelImageSupportGuidance(options.channelType)
+      .map((line) => `${line}\n`)
+      .join('')
     const channelInstructions = options.channelDeliveryEnabled
       ? options.channelType === WECHAT_KF_CHANNEL_TYPE
-        ? '\nChannel delivery guidelines:\n- Reply in a single message.\n- Do not use [[BR]] in your reply.\n- Keep channel replies short and natural.\n'
-        : `\nChannel delivery guidelines:\n- ${CHANNEL_SPLITTER_INSTRUCTION}\n- Keep channel replies short and natural.\n- Do not mention [[BR]] to the user.\n`
+        ? `\nChannel delivery guidelines:\n- Reply in a single message.\n- Do not use [[BR]] in your reply.\n- Keep channel replies short and natural.\n${channelImageGuidance}`
+        : `\nChannel delivery guidelines:\n- ${CHANNEL_SPLITTER_INSTRUCTION}\n- Keep channel replies short and natural.\n- Do not mention [[BR]] to the user.\n${channelImageGuidance}`
       : ''
-    const groupInstructions = options.groupToolsEnabled
-      ? '\nGroup room guidelines:\n- Use the postToGroup tool to speak in the shared room.\n- Use the passGroupTurn tool if you have no useful next step.\n- Only mention assistants from the provided roster.\n'
-      : ''
-    const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${channelInstructions}${groupInstructions}\n`
+    const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${webFetchInstructions}${builtInBrowserInstructions}${channelInstructions}\n`
     const workspace = await this.buildWorkspace(
       assistant.workspaceConfig ?? {},
       assistant.skillsConfig ?? {}

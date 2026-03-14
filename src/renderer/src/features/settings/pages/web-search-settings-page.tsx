@@ -50,6 +50,7 @@ export function WebSearchSettingsPage(): React.JSX.Element {
   const [savingEngine, setSavingEngine] = useState<WebSearchEngine | null>(null)
   const [isSavingWindowBehavior, setIsSavingWindowBehavior] = useState(false)
   const [isSavingShowBrowser, setIsSavingShowBrowser] = useState(false)
+  const [isSavingShowBuiltInBrowser, setIsSavingShowBuiltInBrowser] = useState(false)
 
   const localizedEnginePresentation: Record<WebSearchEngine, EnginePresentation> = {
     google: {
@@ -177,6 +178,32 @@ export function WebSearchSettingsPage(): React.JSX.Element {
     }
   }
 
+  const setShowBuiltInBrowser = async (showBuiltInBrowser: boolean): Promise<void> => {
+    if (!settings || settings.showBuiltInBrowser === showBuiltInBrowser) {
+      return
+    }
+
+    setIsSavingShowBuiltInBrowser(true)
+
+    try {
+      const nextSettings = await updateWebSearchSettings({
+        showBuiltInBrowser
+      })
+      setSettings(nextSettings)
+      toast.success(
+        t('settings.webSearch.toasts.builtInBrowserVisibility', {
+          state: showBuiltInBrowser
+            ? t('settings.webSearch.toasts.browserVisible')
+            : t('settings.webSearch.toasts.browserHidden')
+        })
+      )
+    } catch (error) {
+      toast.error(toErrorMessage(error))
+    } finally {
+      setIsSavingShowBuiltInBrowser(false)
+    }
+  }
+
   const openEngineSettings = async (engine: WebSearchEngine): Promise<void> => {
     const details = localizedEnginePresentation[engine]
     const openInSearchContext = window.tiaDesktop?.openWebSearchSettings
@@ -249,7 +276,8 @@ export function WebSearchSettingsPage(): React.JSX.Element {
                       isDefault ||
                       Boolean(savingEngine) ||
                       isSavingWindowBehavior ||
-                      isSavingShowBrowser
+                      isSavingShowBrowser ||
+                      isSavingShowBuiltInBrowser
                     }
                     onClick={() => {
                       void setDefaultEngine(engine)
@@ -272,7 +300,8 @@ export function WebSearchSettingsPage(): React.JSX.Element {
                       isSaving ||
                       Boolean(savingEngine) ||
                       isSavingWindowBehavior ||
-                      isSavingShowBrowser
+                      isSavingShowBrowser ||
+                      isSavingShowBuiltInBrowser
                     }
                     onClick={() => {
                       void openEngineSettings(engine)
@@ -318,6 +347,7 @@ export function WebSearchSettingsPage(): React.JSX.Element {
                     Boolean(savingEngine) ||
                     isSavingWindowBehavior ||
                     isSavingShowBrowser ||
+                    isSavingShowBuiltInBrowser ||
                     !settings
                   }
                   onCheckedChange={(checked) => {
@@ -343,10 +373,37 @@ export function WebSearchSettingsPage(): React.JSX.Element {
                     Boolean(savingEngine) ||
                     isSavingWindowBehavior ||
                     isSavingShowBrowser ||
+                    isSavingShowBuiltInBrowser ||
                     !settings
                   }
                   onCheckedChange={(checked) => {
                     void setShowBrowser(checked)
+                  }}
+                />
+              </div>
+
+              <div className="flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-card/60 px-4 py-3">
+                <div className="space-y-1 flex-1">
+                  <h2 className="text-base font-medium">
+                    {t('settings.webSearch.browserBehavior.showBuiltInBrowserTitle')}
+                  </h2>
+                  <p className="text-muted-foreground text-sm">
+                    {settings?.showBuiltInBrowser
+                      ? t('settings.webSearch.browserBehavior.showBuiltInBrowserVisible')
+                      : t('settings.webSearch.browserBehavior.showBuiltInBrowserHidden')}
+                  </p>
+                </div>
+                <Switch
+                  checked={settings?.showBuiltInBrowser ?? false}
+                  disabled={
+                    Boolean(savingEngine) ||
+                    isSavingWindowBehavior ||
+                    isSavingShowBrowser ||
+                    isSavingShowBuiltInBrowser ||
+                    !settings
+                  }
+                  onCheckedChange={(checked) => {
+                    void setShowBuiltInBrowser(checked)
                   }}
                 />
               </div>
