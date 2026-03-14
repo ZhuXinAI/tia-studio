@@ -68,10 +68,9 @@ describe('ThreadChatCard', () => {
       role: 'assistant',
       parts: [
         {
-          type: 'tool-call',
-          toolName: 'requestBrowserHumanHandoff',
+          type: 'tool-requestBrowserHumanHandoff',
           toolCallId: 'tool-handoff-1',
-          status: { type: 'running' },
+          state: 'input-available',
           input: {
             message: 'Finish signing in before the agent resumes.'
           }

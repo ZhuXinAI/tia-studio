@@ -7,7 +7,7 @@ import {
   Sparkles,
   Settings2
 } from 'lucide-react'
-import type { UIMessage } from 'ai'
+import { getToolName, isToolUIPart, type UIMessage } from 'ai'
 import type { UseChatHelpers } from '@ai-sdk/react'
 import {
   AssistantRuntimeProvider,
@@ -87,22 +87,8 @@ function readHandoffMessageCandidate(value: unknown): string | null {
   return null
 }
 
-function extractHandoffMessageFromToolPart(part: Record<string, unknown>): string | null {
-  const directArgsMessage =
-    readHandoffMessageCandidate(part.args) ?? readHandoffMessageCandidate(part.input)
-  if (directArgsMessage) {
-    return directArgsMessage
-  }
-
-  if (typeof part.argsText === 'string' && part.argsText.trim().length > 0) {
-    try {
-      return readHandoffMessageCandidate(JSON.parse(part.argsText))
-    } catch {
-      return null
-    }
-  }
-
-  return null
+function extractHandoffMessageFromToolInput(input: unknown): string | null {
+  return readHandoffMessageCandidate(input)
 }
 
 function extractActiveBuiltInBrowserHandoff(
@@ -114,29 +100,24 @@ function extractActiveBuiltInBrowserHandoff(
 
     for (let partIndex = parts.length - 1; partIndex >= 0; partIndex -= 1) {
       const rawPart = parts[partIndex]
-      if (!isRecord(rawPart) || rawPart.type !== 'tool-call') {
+      if (!isToolUIPart(rawPart)) {
         continue
       }
 
-      const toolName =
-        typeof rawPart.toolName === 'string'
-          ? rawPart.toolName
-          : typeof rawPart.tool === 'string'
-            ? rawPart.tool
-            : null
-      if (!toolName || !isBuiltInBrowserHandoffToolName(toolName)) {
+      if (!isBuiltInBrowserHandoffToolName(getToolName(rawPart))) {
         continue
       }
 
-      const status = isRecord(rawPart.status) ? rawPart.status : null
-      const statusType = typeof status?.type === 'string' ? status.type : null
-      const hasResult = rawPart.result !== undefined
-      if (statusType === 'complete' || statusType === 'incomplete' || hasResult) {
+      if (
+        rawPart.state === 'output-available' ||
+        rawPart.state === 'output-error' ||
+        rawPart.state === 'output-denied'
+      ) {
         continue
       }
 
       return {
-        message: extractHandoffMessageFromToolPart(rawPart)
+        message: extractHandoffMessageFromToolInput(rawPart.input)
       }
     }
   }
@@ -147,7 +128,7 @@ function extractActiveBuiltInBrowserHandoff(
 function BuiltInBrowserHandoffBanner(): React.JSX.Element | null {
   const { t } = useTranslation()
   const [isShowingBrowser, setIsShowingBrowser] = useState(false)
-  const messages = useAuiState((state) => state.thread.messages as UIMessage[])
+  const messages = useAuiState((state) => state.thread.messages) as unknown as readonly UIMessage[]
   const activeHandoff = useMemo(() => extractActiveBuiltInBrowserHandoff(messages), [messages])
 
   if (!activeHandoff) {
