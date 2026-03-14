@@ -46,6 +46,11 @@ import {
   observeStreamChunk,
   type StreamUsageObservation
 } from './assistant-runtime/stream-observation'
+import {
+  buildThreadCompactionTranscript,
+  buildThreadHistoryDocument,
+  formatDateToken
+} from './assistant-runtime/thread-compaction'
 import type {
   AssistantRuntime,
   CronJobRunResult,
@@ -783,7 +788,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       memoryStore,
       threadId: params.threadId
     })
-    const transcript = this.buildThreadCompactionTranscript(messages)
+    const transcript = buildThreadCompactionTranscript(messages)
     const compactedAt = new Date().toISOString()
     const archiveFileName = await this.resolveThreadHistoryFileName(workspaceRootPath, compactedAt)
     const archiveFilePath = path.join(workspaceRootPath, archiveFileName)
@@ -798,7 +803,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
     await writeFile(
       archiveFilePath,
-      this.buildThreadHistoryDocument({
+      buildThreadHistoryDocument({
         assistantName: assistant.name,
         providerName: provider.name,
         modelName: provider.selectedModel,
@@ -858,48 +863,6 @@ export class AssistantRuntimeService implements AssistantRuntime {
     return this.toNonEmptyString(input.appThreadTitle) ?? generatedTitle ?? 'Untitled Thread'
   }
 
-  private buildThreadCompactionTranscript(messages: UIMessage[]): string {
-    return messages
-      .map((message, index) => {
-        const speaker = message.role === 'assistant' ? 'Assistant' : 'User'
-        return `### ${index + 1}. ${speaker}\n${this.extractCompactionMessageText(message)}`
-      })
-      .join('\n\n')
-      .trim()
-  }
-
-  private extractCompactionMessageText(message: UIMessage): string {
-    const textParts = message.parts
-      .map((part) => {
-        if (!part || typeof part !== 'object') {
-          return null
-        }
-
-        const record = part as Record<string, unknown>
-        if (record.type === 'text') {
-          return this.toNonEmptyString(record.text)
-        }
-
-        if (record.type === 'image') {
-          return '[Image attachment omitted]'
-        }
-
-        if (record.type === 'file') {
-          return '[File attachment omitted]'
-        }
-
-        return null
-      })
-      .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-
-    if (textParts.length > 0) {
-      return textParts.join('\n')
-    }
-
-    const fallbackContent = this.toNonEmptyString((message as { content?: unknown }).content)
-    return fallbackContent ?? '[Non-text content omitted]'
-  }
-
   private async generateThreadCompactionSummary(input: {
     provider: AppProvider
     threadTitle: string
@@ -935,37 +898,6 @@ export class AssistantRuntimeService implements AssistantRuntime {
     return this.toNonEmptyString(result.text) ?? EMPTY_THREAD_COMPACTION_SUMMARY
   }
 
-  private buildThreadHistoryDocument(input: {
-    assistantName: string
-    providerName: string
-    modelName: string
-    threadTitle: string
-    compactedAt: string
-    summary: string
-    transcript: string
-  }): string {
-    const transcriptBody =
-      input.transcript.trim().length > 0 ? input.transcript : '(No persisted transcript was available.)'
-
-    return [
-      '# Thread History',
-      '',
-      `- Thread: ${input.threadTitle}`,
-      `- Compacted at: ${input.compactedAt}`,
-      `- Assistant: ${input.assistantName}`,
-      `- Summary provider: ${input.providerName} / ${input.modelName}`,
-      '',
-      '## Summary',
-      '',
-      input.summary.trim(),
-      '',
-      '## Transcript Snapshot',
-      '',
-      transcriptBody,
-      ''
-    ].join('\n')
-  }
-
   private async appendThreadCompactionMemoryReference(input: {
     workspaceRootPath: string
     archiveFileName: string
@@ -974,7 +906,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
   }): Promise<void> {
     const memoryPath = path.join(input.workspaceRootPath, 'MEMORY.md')
     const existingContent = await readFile(memoryPath, 'utf8')
-    const compactedDate = this.formatDateToken(new Date(input.compactedAt))
+    const compactedDate = formatDateToken(new Date(input.compactedAt))
     const entry = `- User compacted thread memory of ${input.threadTitle} on ${compactedDate}. See [${input.archiveFileName}](./${input.archiveFileName}).`
     const separator = existingContent.endsWith('\n') ? '' : '\n'
     await writeFile(memoryPath, `${existingContent}${separator}\n${entry}\n`, 'utf8')
@@ -984,7 +916,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
     workspaceRootPath: string,
     compactedAt: string
   ): Promise<string> {
-    const dateToken = this.formatDateToken(new Date(compactedAt))
+    const dateToken = formatDateToken(new Date(compactedAt))
 
     for (let index = 1; ; index += 1) {
       const suffix = index === 1 ? '' : `-${index}`
@@ -1001,13 +933,6 @@ export class AssistantRuntimeService implements AssistantRuntime {
         throw error
       }
     }
-  }
-
-  private formatDateToken(date: Date): string {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
   }
 
   private async assertAssistantExists(assistantId: string): Promise<void> {
