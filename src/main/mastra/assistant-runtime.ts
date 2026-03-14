@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { access, readFile, writeFile } from 'node:fs/promises'
 import { Agent } from '@mastra/core/agent'
 import type { AgentExecutionOptions, ToolsInput } from '@mastra/core/agent'
-import type { MessageInput, MessageListInput } from '@mastra/core/agent/message-list'
+import type { MessageInput } from '@mastra/core/agent/message-list'
 import type { MemoryConfig } from '@mastra/core/memory'
 import type { Mastra } from '@mastra/core/mastra'
 import { BatchPartsProcessor, PIIDetector, PromptInjectionDetector } from '@mastra/core/processors'
@@ -16,10 +16,7 @@ import { Memory } from '@mastra/memory'
 import { MCPClient, type MastraMCPServerDefinition } from '@mastra/mcp'
 import { generateText, type LanguageModel, type UIMessage, type UIMessageChunk } from 'ai'
 import type { BuiltInBrowserController } from '../built-in-browser-manager'
-import { buildBuiltInBrowserGuidance } from '../built-in-browser-contract'
 import { ChannelEventBus } from '../channels/channel-event-bus'
-import { buildChannelImageSupportGuidance } from '../channels/channel-media-support'
-import type { ChannelTarget } from '../channels/types'
 import type { AssistantCronJobsService } from '../cron/assistant-cron-jobs-service'
 import { buildHeartbeatWorklogContext } from '../heartbeat/heartbeat-context'
 import { listRecentConversations } from '../heartbeat/recent-conversations'
@@ -37,6 +34,21 @@ import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import { ChatRouteError } from '../server/chat/chat-errors'
 import { ensureAssistantWorkspaceFiles } from './assistant-workspace'
+import {
+  buildAssistantInstructions,
+  CHANNEL_BREAK_TAG,
+  WECHAT_KF_CHANNEL_TYPE
+} from './assistant-runtime/instructions'
+import type {
+  AssistantRuntime,
+  CronJobRunResult,
+  ListThreadMessagesParams,
+  RunCronJobParams,
+  RunHeartbeatParams,
+  RunThreadCommandParams,
+  StreamChatParams,
+  ThreadCommandResult
+} from './assistant-runtime/types'
 import { resolveModel } from './model-resolver'
 import { AttachmentUploader } from './processors/attachment-uploader'
 import { createCodingSubagent } from './coding-agent'
@@ -54,37 +66,6 @@ import { HEARTBEAT_RUN_CONTEXT_KEY } from './tool-context'
 import { createContainedLocalFilesystemInstructions } from './workspace-filesystem-instructions'
 import { logger } from '../utils/logger'
 
-type StreamChatParams = {
-  assistantId: string
-  messages: MessageListInput
-  threadId: string
-  profileId: string
-  channelTarget?: ChannelTarget
-  trigger?: 'submit-message' | 'regenerate-message'
-  abortSignal?: AbortSignal
-}
-
-type ListThreadMessagesParams = {
-  assistantId: string
-  threadId: string
-  profileId: string
-}
-
-type RunThreadCommandParams = {
-  assistantId: string
-  threadId: string
-  profileId: string
-  command: 'new'
-}
-
-type ThreadCommandResult = {
-  command: 'new'
-  archiveFileName: string
-  archiveFilePath: string
-  threadTitle: string
-  compactedAt: string
-}
-
 type RuntimeMemoryStore = {
   listMessages(input: {
     threadId: string
@@ -95,86 +76,17 @@ type RuntimeMemoryStore = {
   deleteThread?(input: { threadId: string }): Promise<void>
 }
 
-type RunCronJobParams = {
-  assistantId: string
-  threadId: string
-  prompt: string
-  channelId?: string
-  remoteChatId?: string
-}
-
-type RunHeartbeatParams = {
-  assistantId: string
-  threadId: string
-  prompt: string
-  intervalMinutes: number
-}
-
-type CronJobRunResult = {
-  outputText: string
-}
-
 type AssistantContext = {
   assistant: NonNullable<Awaited<ReturnType<AssistantsRepository['getById']>>>
   provider: NonNullable<Awaited<ReturnType<ProvidersRepository['getById']>>>
 }
-
-const CHANNEL_BREAK_TAG = '[[BR]]'
-const CHANNEL_SPLITTER_INSTRUCTION =
-  'When you want to split a reply into multiple channel messages, insert [[BR]] between chunks.'
-const WECHAT_KF_CHANNEL_TYPE = 'wechat-kf'
 const PROMPT_INJECTION_THRESHOLD = 0.8
 const PII_THRESHOLD = 0.6
 const EMPTY_THREAD_COMPACTION_SUMMARY =
   'No persisted user or assistant messages were available when this thread was compacted.'
 const THREAD_HISTORY_FILE_PREFIX = 'thread_history_'
 const THREAD_HISTORY_FILE_SUFFIX = '.md'
-
-const ONBOARDING_INSTRUCTIONS = `
-# First Conversation Onboarding
-
-This is your first conversation! Let's set up your identity and personality.
-
-## Your Task
-1. **Introduce yourself warmly** - Tell the user you're a new assistant and excited to work with them
-2. **Ask about your identity** - Ask the user:
-   - What should your name be?
-   - What kind of personality should you have? (professional, friendly, casual, etc.)
-   - What's your main purpose? (customer support, coding assistant, general helper, etc.)
-   - Any specific traits or characteristics they want you to have?
-
-3. **Explain your workspace** - Let them know you have a workspace with these files:
-   - IDENTITY.md - Where you'll save your name, personality, and avatar
-   - SOUL.md - Your core values and how you should behave
-   - MEMORY.md - Long-term facts and preferences you should remember
-   - These files live directly at the workspace root
-
-4. **After gathering their input**, use your tools to:
-   - Update IDENTITY.md with your name, personality, and purpose
-   - Update SOUL.md with your behavioral guidelines based on their preferences
-   - Use workspace-root paths like \`IDENTITY.md\` or \`/IDENTITY.md\`, not \`/<workspace-name>/IDENTITY.md\`
-   - Confirm the changes and let them know you're ready to help
-
-Keep it conversational and friendly. This is about co-creating your identity together!
-`.trim()
-
-const WEB_FETCH_INSTRUCTIONS = `
-Web browsing guidance:
-- Please use built-in browser approach with agent-browser first unless the task is simply to fetch one specific page.
-- Use webFetch only when you already know the exact page URL you need.
-- Do not use webFetch to search the web, discover candidate pages, or crawl across multiple pages.
-- For long-running browser work or page interaction, prefer browser-oriented tools such as agent-browser or Playwright MCP.
-- If the user has not named a browser tool preference and browser work would help, first recommend choosing agent-browser, Playwright MCP, or installing a browser-related skill.
-- Fall back to webFetch only when richer browser tooling is unavailable or the task is simply to fetch one specific page.
-`.trim()
-
-export type AssistantRuntime = {
-  streamChat: (params: StreamChatParams) => Promise<ReadableStream<UIMessageChunk>>
-  listThreadMessages: (params: ListThreadMessagesParams) => Promise<UIMessage[]>
-  runThreadCommand: (params: RunThreadCommandParams) => Promise<ThreadCommandResult>
-  runCronJob: (params: RunCronJobParams) => Promise<CronJobRunResult>
-  runHeartbeat: (params: RunHeartbeatParams) => Promise<CronJobRunResult>
-}
+export type { AssistantRuntime } from './assistant-runtime/types'
 
 type AssistantRuntimeServiceOptions = {
   mastra: Mastra
@@ -1599,20 +1511,14 @@ ${input.prompt}`
         : true
     const isFirstConversation = !hasAnyThreads
     const baseInstructions = assistant.instructions || 'You are a helpful assistant.'
-    const onboardingInstructions = isFirstConversation ? `\n\n${ONBOARDING_INSTRUCTIONS}\n` : ''
-    const webFetchInstructions = `\n${WEB_FETCH_INSTRUCTIONS}\n`
-    const builtInBrowserInstructions = `\n${buildBuiltInBrowserGuidance({
-      handoffToolAvailable: Boolean(this.options.builtInBrowserManager)
-    })}\n`
-    const channelImageGuidance = buildChannelImageSupportGuidance(options.channelType)
-      .map((line) => `${line}\n`)
-      .join('')
-    const channelInstructions = options.channelDeliveryEnabled
-      ? options.channelType === WECHAT_KF_CHANNEL_TYPE
-        ? `\nChannel delivery guidelines:\n- Reply in a single message.\n- Do not use [[BR]] in your reply.\n- Keep channel replies short and natural.\n${channelImageGuidance}`
-        : `\nChannel delivery guidelines:\n- ${CHANNEL_SPLITTER_INSTRUCTION}\n- Keep channel replies short and natural.\n- Do not mention [[BR]] to the user.\n${channelImageGuidance}`
-      : ''
-    const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${webFetchInstructions}${builtInBrowserInstructions}${channelInstructions}\n`
+    const agentInstructions = buildAssistantInstructions({
+      baseInstructions,
+      currentDateTime,
+      isFirstConversation,
+      channelDeliveryEnabled: options.channelDeliveryEnabled,
+      channelType: options.channelType,
+      builtInBrowserHandoffAvailable: Boolean(this.options.builtInBrowserManager)
+    })
     const workspace = await this.buildWorkspace(
       assistant.workspaceConfig ?? {},
       assistant.skillsConfig ?? {}
