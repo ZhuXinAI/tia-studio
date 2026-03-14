@@ -4,7 +4,6 @@ import { randomUUID } from 'node:crypto'
 import { access, readFile, writeFile } from 'node:fs/promises'
 import { Agent } from '@mastra/core/agent'
 import type { AgentExecutionOptions, ToolsInput } from '@mastra/core/agent'
-import type { MessageInput } from '@mastra/core/agent/message-list'
 import type { MemoryConfig } from '@mastra/core/memory'
 import type { Mastra } from '@mastra/core/mastra'
 import { BatchPartsProcessor, PIIDetector, PromptInjectionDetector } from '@mastra/core/processors'
@@ -39,6 +38,14 @@ import {
   CHANNEL_BREAK_TAG,
   WECHAT_KF_CHANNEL_TYPE
 } from './assistant-runtime/instructions'
+import { buildScheduledRunMessages } from './assistant-runtime/scheduled-runs'
+import {
+  collectStreamText,
+  createStreamUsageObservation,
+  normalizeTimestamp,
+  observeStreamChunk,
+  type StreamUsageObservation
+} from './assistant-runtime/stream-observation'
 import type {
   AssistantRuntime,
   CronJobRunResult,
@@ -169,23 +176,6 @@ type ResolvedGuardrailConfig = {
   requestedProviderId: string | null
   provider: AppProvider
   source: 'assistant' | 'override'
-}
-
-type ThreadUsageMetrics = {
-  inputTokens: number
-  outputTokens: number
-  totalTokens: number
-  reasoningTokens: number
-  cachedInputTokens: number
-}
-
-type StreamUsageObservation = {
-  assistantMessageId: string | null
-  totalUsage: ThreadUsageMetrics | null
-  rawUsage: unknown
-  stepCount: number
-  finishReason: string | null
-  createdAt: string | null
 }
 
 type PersistThreadUsageInput = {
@@ -319,7 +309,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       requestContext.set('channelContext', channelContext)
     }
 
-    const messages = this.buildScheduledRunMessages({
+    const messages = buildScheduledRunMessages({
       kind: 'cron',
       threadId: params.threadId,
       prompt: params.prompt
@@ -347,14 +337,19 @@ export class AssistantRuntimeService implements AssistantRuntime {
       sendReasoning: true
     })
 
-    const outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>, {
-      assistantId: assistant.id,
-      threadId: params.threadId,
-      resourceId: thread.resourceId,
-      providerId: provider.id,
-      model: provider.selectedModel,
-      source: 'cron'
-    })
+    const cronStreamResult = await collectStreamText(stream as ReadableStream<UIMessageChunk>)
+    await this.persistObservedThreadUsage(
+      {
+        assistantId: assistant.id,
+        threadId: params.threadId,
+        resourceId: thread.resourceId,
+        providerId: provider.id,
+        model: provider.selectedModel,
+        source: 'cron'
+      },
+      cronStreamResult.observation
+    )
+    const outputText = cronStreamResult.text
 
     logger.debug('[AssistantRuntime] Cron job stream completed')
     logger.debug('[AssistantRuntime] Collected output text length:', outputText.length)
@@ -413,7 +408,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       mastra: this.options.mastra,
       agentId: assistant.id,
       params: {
-        messages: this.buildScheduledRunMessages({
+        messages: buildScheduledRunMessages({
           kind: 'heartbeat',
           threadId: params.threadId,
           prompt: params.prompt,
@@ -426,14 +421,19 @@ export class AssistantRuntimeService implements AssistantRuntime {
       sendReasoning: true
     })
 
-    const outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>, {
-      assistantId: assistant.id,
-      threadId: params.threadId,
-      resourceId: thread.resourceId,
-      providerId: provider.id,
-      model: provider.selectedModel,
-      source: 'heartbeat'
-    })
+    const heartbeatStreamResult = await collectStreamText(stream as ReadableStream<UIMessageChunk>)
+    await this.persistObservedThreadUsage(
+      {
+        assistantId: assistant.id,
+        threadId: params.threadId,
+        resourceId: thread.resourceId,
+        providerId: provider.id,
+        model: provider.selectedModel,
+        source: 'heartbeat'
+      },
+      heartbeatStreamResult.observation
+    )
+    const outputText = heartbeatStreamResult.text
 
     // Notify UI that thread has new messages
     this.options.threadMessageEventsStore?.appendMessagesUpdated({
@@ -448,75 +448,6 @@ export class AssistantRuntimeService implements AssistantRuntime {
     }
   }
 
-  private buildScheduledRunMessages(input: {
-    kind: 'cron' | 'heartbeat'
-    threadId: string
-    prompt: string
-    systemContext?: string | null
-  }): ReturnType<typeof toAISdkV5Messages> {
-    logger.debug('[buildScheduledRunMessages] Input:', {
-      kind: input.kind,
-      prompt: input.prompt,
-      promptLength: input.prompt?.length
-    })
-
-    const messages: MessageInput[] = []
-
-    // For cron jobs, prepend instructions to the user message since AI SDK v5 doesn't support system messages
-    let userMessage = input.prompt
-    if (input.kind === 'cron') {
-      const now = new Date()
-      const cronInstructions = `[CRON JOB EXECUTION - ${now.toLocaleString('en-US', { timeZone: 'UTC', dateStyle: 'full', timeStyle: 'long' })}]
-
-You are executing a SCHEDULED REMINDER that was already created. This is NOT a new request.
-
-CRITICAL INSTRUCTIONS:
-1. The user is NOT asking you to create a reminder - the reminder ALREADY EXISTS and is running NOW
-2. DO NOT save anything to SOUL.md or MEMORY.md - this is just executing an existing reminder
-3. DO NOT create new cron jobs - this reminder is already scheduled
-4. You MUST call the sendMessageToChannel tool to deliver the reminder message
-5. Keep the message simple and direct - just deliver the reminder
-
-Example:
-- Task: "提醒我：开会了。"
-- Action: Call sendMessageToChannel({ message: "提醒：开会了。" })
-
-DO NOT explain, DO NOT save to memory, DO NOT create tasks - JUST SEND THE REMINDER MESSAGE.
-
----
-TASK TO EXECUTE NOW:
-${input.prompt}`
-
-      userMessage = cronInstructions
-      logger.debug('[buildScheduledRunMessages] Prepended cron instructions to user message')
-    }
-
-    if (input.systemContext) {
-      // For heartbeat, prepend system context to user message
-      userMessage = `${input.systemContext}\n\n---\n${userMessage}`
-    }
-
-    // Add the user message with instructions prepended
-    logger.debug('[buildScheduledRunMessages] Adding user message, length:', userMessage.length)
-    messages.push({
-      id: `${input.kind}:${input.threadId}:${randomUUID()}`,
-      role: 'user',
-      content: userMessage,
-      parts: [
-        {
-          type: 'text',
-          text: userMessage
-        }
-      ]
-    })
-
-    logger.debug('[buildScheduledRunMessages] Messages before transformation:', messages.length)
-    const transformed = toAISdkV5Messages(messages)
-    logger.debug('[buildScheduledRunMessages] Messages after transformation:', transformed.length)
-
-    return transformed
-  }
-
   private streamWithThreadTitleSync(
     stream: ReadableStream<UIMessageChunk>,
     params: {
@@ -529,7 +460,7 @@ ${input.prompt}`
     const reader = stream.getReader()
     let isSynced = false
     let channelTextBuffer = ''
-    const usageObservation = this.createStreamUsageObservation()
+    const usageObservation = createStreamUsageObservation()
     const bufferSingleChannelReply = params.channelTarget?.channelType === WECHAT_KF_CHANNEL_TYPE
 
     const publishCompletedChannelChunks = async (): Promise<void> => {
@@ -593,7 +524,7 @@ ${input.prompt}`
             return
           }
 
-          const observedValue = this.observeStreamChunk(usageObservation, value)
+          const observedValue = observeStreamChunk(usageObservation, value)
 
           // Handle text deltas for channel delivery
           if (observedValue.type === 'text-delta' && typeof observedValue.delta === 'string') {
@@ -1098,153 +1029,6 @@ ${input.prompt}`
     return thread
   }
 
-  private async collectStreamText(
-    stream: ReadableStream<UIMessageChunk>,
-    usageContext?: PersistThreadUsageInput
-  ): Promise<string> {
-    const reader = stream.getReader()
-    const responseTextParts: string[] = []
-    const usageObservation = this.createStreamUsageObservation()
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) {
-          break
-        }
-
-        const observedValue = this.observeStreamChunk(usageObservation, value)
-
-        if (observedValue.type === 'text-delta' && typeof observedValue.delta === 'string') {
-          responseTextParts.push(observedValue.delta)
-        }
-      }
-
-      if (usageContext) {
-        await this.persistObservedThreadUsage(usageContext, usageObservation)
-      }
-    } finally {
-      reader.releaseLock()
-    }
-
-    return responseTextParts.join('')
-  }
-
-  private createStreamUsageObservation(): StreamUsageObservation {
-    return {
-      assistantMessageId: null,
-      totalUsage: null,
-      rawUsage: null,
-      stepCount: 0,
-      finishReason: null,
-      createdAt: null
-    }
-  }
-
-  private observeStreamChunk(
-    observation: StreamUsageObservation,
-    chunk: UIMessageChunk
-  ): UIMessageChunk {
-    const chunkRecord = chunk as Record<string, unknown>
-
-    if (chunkRecord.type === 'start') {
-      if (typeof chunkRecord.messageId === 'string' && chunkRecord.messageId.trim().length > 0) {
-        observation.assistantMessageId = chunkRecord.messageId
-      }
-
-      const createdAt = this.normalizeTimestamp(chunkRecord.createdAt)
-      if (createdAt) {
-        observation.createdAt = createdAt
-      }
-
-      return chunk
-    }
-
-    if (chunkRecord.type === 'finish-step') {
-      observation.stepCount += 1
-      return chunk
-    }
-
-    if (chunkRecord.type !== 'finish') {
-      return chunk
-    }
-
-    const usage = this.normalizeUsageMetrics(chunkRecord.totalUsage)
-    if (!usage) {
-      if (typeof chunkRecord.finishReason === 'string') {
-        observation.finishReason = chunkRecord.finishReason
-      }
-
-      return chunk
-    }
-
-    observation.totalUsage = usage
-    observation.rawUsage = chunkRecord.totalUsage
-    if (typeof chunkRecord.finishReason === 'string') {
-      observation.finishReason = chunkRecord.finishReason
-    }
-
-    const existingMetadata =
-      chunkRecord.messageMetadata &&
-      typeof chunkRecord.messageMetadata === 'object' &&
-      !Array.isArray(chunkRecord.messageMetadata)
-        ? (chunkRecord.messageMetadata as Record<string, unknown>)
-        : {}
-
-    return {
-      ...(chunkRecord as UIMessageChunk),
-      messageMetadata: {
-        ...existingMetadata,
-        usage
-      }
-    } as UIMessageChunk
-  }
-
-  private normalizeUsageMetrics(value: unknown): ThreadUsageMetrics | null {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return null
-    }
-
-    const record = value as Record<string, unknown>
-    return {
-      inputTokens: this.normalizeInteger(record.inputTokens),
-      outputTokens: this.normalizeInteger(record.outputTokens),
-      totalTokens: this.normalizeInteger(record.totalTokens),
-      reasoningTokens: this.normalizeInteger(record.reasoningTokens),
-      cachedInputTokens: this.normalizeInteger(record.cachedInputTokens)
-    }
-  }
-
-  private normalizeInteger(value: unknown): number {
-    const numericValue =
-      typeof value === 'number'
-        ? value
-        : typeof value === 'string' && value.trim().length > 0
-          ? Number(value)
-          : 0
-
-    if (!Number.isFinite(numericValue)) {
-      return 0
-    }
-
-    return Math.max(0, Math.round(numericValue))
-  }
-
-  private normalizeTimestamp(value: unknown): string | null {
-    if (value instanceof Date && !Number.isNaN(value.valueOf())) {
-      return value.toISOString()
-    }
-
-    if (typeof value === 'string' && value.trim().length > 0) {
-      const parsedDate = new Date(value)
-      if (!Number.isNaN(parsedDate.valueOf())) {
-        return parsedDate.toISOString()
-      }
-    }
-
-    return null
-  }
-
   private async persistObservedThreadUsage(
     context: PersistThreadUsageInput,
     observation: StreamUsageObservation
@@ -1312,7 +1096,7 @@ ${input.prompt}`
         continue
       }
 
-      const createdAt = this.normalizeTimestamp(message.createdAt)
+      const createdAt = normalizeTimestamp(message.createdAt)
       const timestamp = createdAt ? new Date(createdAt).valueOf() : Number.NEGATIVE_INFINITY
 
       if (!latestMessage || timestamp >= latestMessage.timestamp) {
