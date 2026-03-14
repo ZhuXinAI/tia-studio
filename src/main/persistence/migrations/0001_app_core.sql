@@ -93,62 +93,40 @@ CREATE TABLE IF NOT EXISTS app_team_thread_members (
   FOREIGN KEY (team_thread_id) REFERENCES app_team_threads(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS app_group_workspaces (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  root_path TEXT NOT NULL DEFAULT '',
-  group_description TEXT NOT NULL DEFAULT '',
-  max_auto_turns INTEGER NOT NULL DEFAULT 6,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS app_group_workspace_members (
-  workspace_id TEXT NOT NULL,
-  assistant_id TEXT NOT NULL,
-  sort_order INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (workspace_id, assistant_id),
-  FOREIGN KEY (workspace_id) REFERENCES app_group_workspaces(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS app_group_threads (
-  id TEXT PRIMARY KEY,
-  workspace_id TEXT NOT NULL,
-  resource_id TEXT NOT NULL,
-  title TEXT NOT NULL DEFAULT '',
-  last_message_at TEXT,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (workspace_id) REFERENCES app_group_workspaces(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS app_group_thread_messages (
-  id TEXT PRIMARY KEY,
-  thread_id TEXT NOT NULL,
-  role TEXT NOT NULL,
-  author_type TEXT NOT NULL,
-  author_id TEXT,
-  author_name TEXT NOT NULL,
-  content TEXT NOT NULL,
-  mentions_json TEXT NOT NULL DEFAULT '[]',
-  reply_to_message_id TEXT,
-  created_at TEXT NOT NULL,
-  FOREIGN KEY (thread_id) REFERENCES app_group_threads(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS app_group_thread_assistant_threads (
-  group_thread_id TEXT NOT NULL,
-  assistant_id TEXT NOT NULL,
-  assistant_thread_id TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (group_thread_id, assistant_id),
-  FOREIGN KEY (group_thread_id) REFERENCES app_group_threads(id) ON DELETE CASCADE
-);
-
 CREATE TABLE IF NOT EXISTS app_preferences (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_thread_message_usage (
+  message_id TEXT PRIMARY KEY,
+  thread_id TEXT NOT NULL,
+  assistant_id TEXT NOT NULL,
+  resource_id TEXT NOT NULL,
+  provider_id TEXT,
+  model TEXT,
+  input_tokens INTEGER NOT NULL DEFAULT 0,
+  output_tokens INTEGER NOT NULL DEFAULT 0,
+  total_tokens INTEGER NOT NULL DEFAULT 0,
+  reasoning_tokens INTEGER NOT NULL DEFAULT 0,
+  cached_input_tokens INTEGER NOT NULL DEFAULT 0,
+  step_count INTEGER NOT NULL DEFAULT 0,
+  finish_reason TEXT,
+  source TEXT NOT NULL,
+  raw_usage_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_thread_usage_totals (
+  thread_id TEXT PRIMARY KEY,
+  assistant_message_count INTEGER NOT NULL DEFAULT 0,
+  input_tokens_total INTEGER NOT NULL DEFAULT 0,
+  output_tokens_total INTEGER NOT NULL DEFAULT 0,
+  total_tokens_total INTEGER NOT NULL DEFAULT 0,
+  reasoning_tokens_total INTEGER NOT NULL DEFAULT 0,
+  cached_input_tokens_total INTEGER NOT NULL DEFAULT 0,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -164,10 +142,5 @@ CREATE INDEX IF NOT EXISTS idx_app_team_workspace_members_workspace_id ON app_te
 CREATE INDEX IF NOT EXISTS idx_app_team_workspace_members_assistant_id ON app_team_workspace_members(assistant_id);
 CREATE INDEX IF NOT EXISTS idx_app_team_thread_members_team_thread_id ON app_team_thread_members(team_thread_id);
 CREATE INDEX IF NOT EXISTS idx_app_team_thread_members_assistant_id ON app_team_thread_members(assistant_id);
-CREATE INDEX IF NOT EXISTS idx_app_group_threads_workspace_id ON app_group_threads(workspace_id);
-CREATE INDEX IF NOT EXISTS idx_app_group_threads_resource_id ON app_group_threads(resource_id);
-CREATE INDEX IF NOT EXISTS idx_app_group_workspace_members_workspace_id ON app_group_workspace_members(workspace_id);
-CREATE INDEX IF NOT EXISTS idx_app_group_workspace_members_assistant_id ON app_group_workspace_members(assistant_id);
-CREATE INDEX IF NOT EXISTS idx_app_group_thread_messages_thread_id ON app_group_thread_messages(thread_id);
-CREATE INDEX IF NOT EXISTS idx_app_group_thread_assistant_threads_group_thread_id ON app_group_thread_assistant_threads(group_thread_id);
-CREATE INDEX IF NOT EXISTS idx_app_group_thread_assistant_threads_assistant_id ON app_group_thread_assistant_threads(assistant_id);
+CREATE INDEX IF NOT EXISTS idx_app_thread_message_usage_thread_id ON app_thread_message_usage(thread_id);
+CREATE INDEX IF NOT EXISTS idx_app_thread_message_usage_assistant_id ON app_thread_message_usage(assistant_id);

@@ -3,12 +3,6 @@ import { BrowserWindow } from 'electron'
 import { htmlToMarkdown } from 'mdream'
 import { withMinimalPreset } from 'mdream/preset/minimal'
 import { z } from 'zod'
-import {
-  defaultWebSearchEngine,
-  isWebSearchEngine,
-  webSearchEngines,
-  type WebSearchEngine
-} from '../../web-search/web-search-engine'
 
 const maxMarkdownLength = 16_000
 const defaultKeepBrowserWindowOpen = true
@@ -28,58 +22,29 @@ const extractDocumentHtmlScript = `
   })()
 `
 
-const searchToolInputSchema = z
-  .object({
-    action: z.enum(['search', 'visit']).default('search'),
-    query: z.string().optional().default(''),
-    url: z.string().url().optional()
-  })
-  .refine(
-    (data) => {
-      if (data.action === 'visit') {
-        return !!data.url
-      }
-      return true
-    },
-    {
-      message: 'URL is required when action is "visit"',
-      path: ['url']
-    }
-  )
+const webFetchInputSchema = z.object({
+  url: z.string().url()
+})
 
-const searchToolOutputSchema = z.object({
-  engine: z.enum(webSearchEngines),
-  query: z.string(),
+const webFetchOutputSchema = z.object({
   url: z.string().url(),
   markdown: z.string(),
   truncated: z.boolean()
 })
 
-type BrowserSearchToolOptions = {
-  resolveDefaultEngine?: () => WebSearchEngine | Promise<WebSearchEngine>
+type WebFetchToolOptions = {
   resolveKeepBrowserWindowOpen?: () => boolean | Promise<boolean>
   resolveShowBrowser?: () => boolean | Promise<boolean>
-  loadHtmlFromUrl?: (input: { url: string; keepBrowserWindowOpen: boolean }) => Promise<string>
+  loadHtmlFromUrl?: (input: {
+    url: string
+    keepBrowserWindowOpen: boolean
+    showBrowser: boolean
+  }) => Promise<string>
 }
 
-let sharedSearchWindow: BrowserWindow | null = null
+let sharedWebFetchWindow: BrowserWindow | null = null
 
-export type BrowserSearchInput = z.infer<typeof searchToolInputSchema>
-
-export function buildSearchUrl(input: { query: string; engine: WebSearchEngine }): string {
-  const query = input.query.trim()
-  const encodedQuery = encodeURIComponent(query)
-
-  if (input.engine === 'bing') {
-    return `https://www.bing.com/search?q=${encodedQuery}`
-  }
-
-  if (input.engine === 'baidu') {
-    return `https://www.baidu.com/s?wd=${encodedQuery}`
-  }
-
-  return `https://www.google.com/search?q=${encodedQuery}`
-}
+export type WebFetchInput = z.infer<typeof webFetchInputSchema>
 
 export function sanitizeHtmlForModel(html: string): string {
   return html
@@ -106,31 +71,12 @@ function clampMarkdown(markdown: string): {
   }
 }
 
-async function resolveDefaultSearchEngine(
-  resolver?: BrowserSearchToolOptions['resolveDefaultEngine']
-): Promise<WebSearchEngine> {
-  if (!resolver) {
-    return defaultWebSearchEngine
-  }
-
-  try {
-    const resolved = await resolver()
-    if (isWebSearchEngine(resolved)) {
-      return resolved
-    }
-  } catch {
-    // fall back to default engine
-  }
-
-  return defaultWebSearchEngine
-}
-
 function normalizeKeepBrowserWindowOpen(value: unknown): boolean {
   return typeof value === 'boolean' ? value : defaultKeepBrowserWindowOpen
 }
 
 async function resolveKeepBrowserWindowOpen(
-  resolver?: BrowserSearchToolOptions['resolveKeepBrowserWindowOpen']
+  resolver?: WebFetchToolOptions['resolveKeepBrowserWindowOpen']
 ): Promise<boolean> {
   if (!resolver) {
     return defaultKeepBrowserWindowOpen
@@ -148,7 +94,7 @@ function normalizeShowBrowser(value: unknown): boolean {
 }
 
 async function resolveShowBrowser(
-  resolver?: BrowserSearchToolOptions['resolveShowBrowser']
+  resolver?: WebFetchToolOptions['resolveShowBrowser']
 ): Promise<boolean> {
   if (!resolver) {
     return defaultShowBrowser
@@ -161,7 +107,7 @@ async function resolveShowBrowser(
   }
 }
 
-function createSearchWindow(showBrowser: boolean): BrowserWindow {
+function createWebFetchWindow(showBrowser: boolean): BrowserWindow {
   const window = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -171,7 +117,7 @@ function createSearchWindow(showBrowser: boolean): BrowserWindow {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
-      partition: 'persist:tia-browser-search'
+      partition: 'persist:tia-web-fetch'
     }
   })
 
@@ -179,17 +125,20 @@ function createSearchWindow(showBrowser: boolean): BrowserWindow {
   return window
 }
 
-function resolveSearchWindow(keepBrowserWindowOpen: boolean, showBrowser: boolean): BrowserWindow {
-  if (keepBrowserWindowOpen && sharedSearchWindow && !sharedSearchWindow.isDestroyed()) {
-    return sharedSearchWindow
+function resolveWebFetchWindow(
+  keepBrowserWindowOpen: boolean,
+  showBrowser: boolean
+): BrowserWindow {
+  if (keepBrowserWindowOpen && sharedWebFetchWindow && !sharedWebFetchWindow.isDestroyed()) {
+    return sharedWebFetchWindow
   }
 
-  const window = createSearchWindow(showBrowser)
+  const window = createWebFetchWindow(showBrowser)
   if (keepBrowserWindowOpen) {
-    sharedSearchWindow = window
+    sharedWebFetchWindow = window
     window.once('closed', () => {
-      if (sharedSearchWindow === window) {
-        sharedSearchWindow = null
+      if (sharedWebFetchWindow === window) {
+        sharedWebFetchWindow = null
       }
     })
   }
@@ -210,7 +159,7 @@ async function loadHtmlViaFetch(url: string): Promise<string> {
   })
 
   if (!response.ok) {
-    throw new Error(`Search request failed with status ${response.status}`)
+    throw new Error(`Web fetch request failed with status ${response.status}`)
   }
 
   return response.text()
@@ -221,7 +170,7 @@ async function loadHtmlWithBrowserWindow(input: {
   keepBrowserWindowOpen: boolean
   showBrowser: boolean
 }): Promise<string> {
-  const window = resolveSearchWindow(input.keepBrowserWindowOpen, input.showBrowser)
+  const window = resolveWebFetchWindow(input.keepBrowserWindowOpen, input.showBrowser)
   const shouldCloseWindowAfterUse = !input.keepBrowserWindowOpen
 
   try {
@@ -234,7 +183,7 @@ async function loadHtmlWithBrowserWindow(input: {
 
     const html = await window.webContents.executeJavaScript(extractDocumentHtmlScript, true)
     if (typeof html !== 'string' || html.trim().length === 0) {
-      throw new Error('Search window returned empty HTML')
+      throw new Error('Web fetch window returned empty HTML')
     }
 
     return html
@@ -257,33 +206,24 @@ async function loadHtmlFromUrl(input: {
   return loadHtmlWithBrowserWindow(input)
 }
 
-export function createBrowserSearchTool(
-  options?: BrowserSearchToolOptions
-): Tool<BrowserSearchInput, z.infer<typeof searchToolOutputSchema>> {
+export function createWebFetchTool(
+  options?: WebFetchToolOptions
+): Tool<WebFetchInput, z.infer<typeof webFetchOutputSchema>> {
   return createTool({
-    id: 'browser-search',
+    id: 'web-fetch',
     description:
-      'Search the web or visit a specific URL and return markdown converted from the HTML. Use action="search" to search with the configured engine, or action="visit" to directly visit a URL.',
-    inputSchema: searchToolInputSchema,
-    outputSchema: searchToolOutputSchema,
+      'Fetch a specific URL and return markdown converted from the HTML. Use this only when you already know the page URL.',
+    inputSchema: webFetchInputSchema,
+    outputSchema: webFetchOutputSchema,
     execute: async (input) => {
-      const parsedInput = searchToolInputSchema.parse(input)
-      const engine = await resolveDefaultSearchEngine(options?.resolveDefaultEngine)
+      const parsedInput = webFetchInputSchema.parse(input)
       const keepBrowserWindowOpen = await resolveKeepBrowserWindowOpen(
         options?.resolveKeepBrowserWindowOpen
       )
       const showBrowser = await resolveShowBrowser(options?.resolveShowBrowser)
 
-      const url =
-        parsedInput.action === 'visit'
-          ? parsedInput.url!
-          : buildSearchUrl({
-              query: parsedInput.query,
-              engine
-            })
-
       const html = await (options?.loadHtmlFromUrl ?? loadHtmlFromUrl)({
-        url,
+        url: parsedInput.url,
         keepBrowserWindowOpen,
         showBrowser
       })
@@ -291,7 +231,7 @@ export function createBrowserSearchTool(
       const markdown = htmlToMarkdown(
         sanitizedHtml,
         withMinimalPreset({
-          origin: url
+          origin: parsedInput.url
         })
       )
 
@@ -299,9 +239,7 @@ export function createBrowserSearchTool(
       const clamped = clampMarkdown(normalizedMarkdown)
 
       return {
-        engine,
-        query: parsedInput.query,
-        url,
+        url: parsedInput.url,
         markdown: clamped.markdown,
         truncated: clamped.truncated
       }
@@ -309,4 +247,4 @@ export function createBrowserSearchTool(
   })
 }
 
-export const browserSearchTool = createBrowserSearchTool()
+export const webFetchTool = createWebFetchTool()

@@ -24,6 +24,24 @@ describe('channel progress messages', () => {
     expect(message).toBe('Using tool: Workspace Read File\nInput:\n{\n  "path": "README.md"\n}')
   })
 
+  it('uses the web fetch display name override', () => {
+    const message = formatChannelToolInputUpdate(
+      {
+        type: 'tool-input-available',
+        toolCallId: 'tool-2',
+        toolName: 'webFetch',
+        input: {
+          url: 'https://example.com'
+        }
+      },
+      'en-US'
+    )
+
+    expect(message).toBe(
+      'Using tool: Web Fetch\nInput:\n{\n  "url": "https://example.com"\n}'
+    )
+  })
+
   it('formats localized tool output and error updates', () => {
     const outputMessage = formatChannelToolOutputUpdate(
       {

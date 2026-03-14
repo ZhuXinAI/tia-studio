@@ -12,7 +12,6 @@ describe('StudioSidebar', () => {
     )
 
     expect(html).toContain('flex flex-col gap-1')
-    expect(html).toContain('Group')
     expect(html).toContain('Team')
   })
 })

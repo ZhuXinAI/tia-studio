@@ -72,6 +72,8 @@ export function TeamConfigDialog({
     return null
   }
 
+  const isBuiltInDefaultWorkspace = workspace.isBuiltInDefault === true
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault()
 
@@ -82,7 +84,7 @@ export function TeamConfigDialog({
     if (supervisorModel.trim().length === 0) {
       nextValidationErrors.push(t('team.configDialog.validation.supervisorModel'))
     }
-    if (assistantIds.length === 0) {
+    if (!isBuiltInDefaultWorkspace && assistantIds.length === 0) {
       nextValidationErrors.push(t('team.configDialog.validation.members'))
     }
 
@@ -95,7 +97,9 @@ export function TeamConfigDialog({
       teamDescription: teamDescription.trim(),
       supervisorProviderId: supervisorProviderId.trim(),
       supervisorModel: supervisorModel.trim(),
-      assistantIds
+      assistantIds: isBuiltInDefaultWorkspace
+        ? sortedAssistants.map((assistant) => assistant.id)
+        : assistantIds
     })
   }
 
@@ -196,28 +200,30 @@ export function TeamConfigDialog({
               />
             </label>
 
-            <fieldset className="space-y-3">
-              <legend className="text-sm font-medium">
-                {t('team.configDialog.fields.teamMembers')}
-              </legend>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {sortedAssistants.map((assistant) => (
-                  <label
-                    key={assistant.id}
-                    className="flex items-center gap-2 rounded-md border border-border/70 px-3 py-2 text-sm"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={assistantIds.includes(assistant.id)}
-                      onChange={() =>
-                        setAssistantIds((current) => toggleAssistantId(current, assistant.id))
-                      }
-                    />
-                    <span>{assistant.name}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
+            {!isBuiltInDefaultWorkspace ? (
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-medium">
+                  {t('team.configDialog.fields.teamMembers')}
+                </legend>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {sortedAssistants.map((assistant) => (
+                    <label
+                      key={assistant.id}
+                      className="flex items-center gap-2 rounded-md border border-border/70 px-3 py-2 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={assistantIds.includes(assistant.id)}
+                        onChange={() =>
+                          setAssistantIds((current) => toggleAssistantId(current, assistant.id))
+                        }
+                      />
+                      <span>{assistant.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            ) : null}
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>

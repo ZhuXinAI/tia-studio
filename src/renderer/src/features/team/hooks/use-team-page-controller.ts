@@ -28,7 +28,7 @@ import {
 } from '../team-workspaces-query'
 import type { TeamConfigDialogValues } from '../components/team-config-dialog'
 
-type TeamReadinessCheckId = 'thread' | 'workspace' | 'provider' | 'model' | 'members'
+type TeamReadinessCheckId = 'workspace' | 'provider' | 'model' | 'members'
 
 export type TeamReadinessCheck = {
   id: TeamReadinessCheckId
@@ -42,6 +42,11 @@ export type TeamReadiness = {
 }
 
 export type TeamPageController = ReturnType<typeof useTeamPageController>
+
+type PendingTeamMessage = {
+  threadId: string
+  text: string
+}
 
 function routeToTeam(workspaceId?: string | null, threadId?: string | null): string {
   if (workspaceId && threadId) {
@@ -74,7 +79,6 @@ function hasNonEmptyText(value: string | null | undefined): boolean {
 
 function evaluateTeamReadiness(input: {
   selectedWorkspace: TeamWorkspaceRecord | null
-  selectedThread: TeamThreadRecord | null
   providers: ProviderRecord[]
   selectedMemberIds: string[]
   selectedMembers: AssistantRecord[]
@@ -88,11 +92,6 @@ function evaluateTeamReadiness(input: {
       : null
 
   const checks: TeamReadinessCheck[] = [
-    {
-      id: 'thread',
-      label: i18n.t('team.readiness.threadSelected'),
-      ready: Boolean(input.selectedThread)
-    },
     {
       id: 'workspace',
       label: i18n.t('team.readiness.workspaceConfigured'),
@@ -142,6 +141,9 @@ export function useTeamPageController() {
   const [configError, setConfigError] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const statusStreamRef = useRef<TeamStatusStreamHandle | null>(null)
+  const pendingTeamMessageRef = useRef<PendingTeamMessage | null>(null)
+  const hasLoadedInitialMessagesRef = useRef(false)
+  const [hasPendingMessage, setHasPendingMessage] = useState(false)
   const profileId = useMemo(() => getActiveResourceId(), [])
 
   const selectedWorkspace = useMemo(() => {
@@ -171,12 +173,11 @@ export function useTeamPageController() {
   const readiness = useMemo(() => {
     return evaluateTeamReadiness({
       selectedWorkspace,
-      selectedThread,
       providers,
       selectedMemberIds,
       selectedMembers
     })
-  }, [providers, selectedMemberIds, selectedMembers, selectedThread, selectedWorkspace])
+  }, [providers, selectedMemberIds, selectedMembers, selectedWorkspace])
   const selectedThreadProfileId = selectedThread?.resourceId ?? profileId
 
   const handleRunStarted = useCallback(
@@ -373,9 +374,18 @@ export function useTeamPageController() {
   }, [selectedWorkspace])
 
   useEffect(() => {
+    if (!selectedWorkspace?.isBuiltInDefault) {
+      return
+    }
+
+    setSelectedMemberIds(assistants.map((assistant) => assistant.id))
+  }, [assistants, selectedWorkspace?.isBuiltInDefault])
+
+  useEffect(() => {
     if (!selectedThread) {
       setIsLoadingChatHistory(false)
       setMessages([])
+      hasLoadedInitialMessagesRef.current = false
       setStatusEvents([])
       setActiveRunId(null)
       statusStreamRef.current?.close()
@@ -385,6 +395,7 @@ export function useTeamPageController() {
 
     let active = true
     setIsLoadingChatHistory(true)
+    hasLoadedInitialMessagesRef.current = false
     setStatusEvents([])
     setActiveRunId(null)
     statusStreamRef.current?.close()
@@ -400,6 +411,7 @@ export function useTeamPageController() {
         }
 
         setMessages(messages)
+        hasLoadedInitialMessagesRef.current = true
       })
       .catch((error) => {
         if (!active) {
@@ -407,6 +419,7 @@ export function useTeamPageController() {
         }
 
         setMessages([])
+        hasLoadedInitialMessagesRef.current = true
         setLoadError(toErrorMessage(error))
       })
       .finally(() => {
@@ -469,9 +482,9 @@ export function useTeamPageController() {
     }
   }, [navigate, selectWorkspacePath])
 
-  const handleCreateThread = useCallback(async (): Promise<void> => {
+  const createNewThread = useCallback(async (): Promise<TeamThreadRecord | null> => {
     if (!selectedWorkspace) {
-      return
+      return null
     }
 
     setIsCreatingThread(true)
@@ -485,12 +498,18 @@ export function useTeamPageController() {
 
       setThreads((currentThreads) => sortTeamThreadsByRecentActivity([thread, ...currentThreads]))
       navigate(routeToTeam(selectedWorkspace.id, thread.id))
+      return thread
     } catch (error) {
       setLoadError(toErrorMessage(error))
+      return null
     } finally {
       setIsCreatingThread(false)
     }
   }, [navigate, profileId, selectedWorkspace])
+
+  const handleCreateThread = useCallback(async (): Promise<void> => {
+    await createNewThread()
+  }, [createNewThread])
 
   const handleDeleteThread = useCallback(
     async (thread: TeamThreadRecord): Promise<void> => {
@@ -530,13 +549,16 @@ export function useTeamPageController() {
           supervisorProviderId: input.supervisorProviderId,
           supervisorModel: input.supervisorModel
         })
-        await replaceTeamWorkspaceMembers(selectedWorkspace.id, input.assistantIds)
+        const effectiveAssistantIds = selectedWorkspace.isBuiltInDefault
+          ? assistants.map((assistant) => assistant.id)
+          : input.assistantIds
+        await replaceTeamWorkspaceMembers(selectedWorkspace.id, effectiveAssistantIds)
         setWorkspaces((currentWorkspaces) =>
           currentWorkspaces.map((workspace) =>
             workspace.id === updatedWorkspace.id ? updatedWorkspace : workspace
           )
         )
-        setSelectedMemberIds(input.assistantIds)
+        setSelectedMemberIds(effectiveAssistantIds)
         setIsConfigDialogOpen(false)
       } catch (error) {
         setConfigError(toErrorMessage(error))
@@ -544,12 +566,12 @@ export function useTeamPageController() {
         setIsSavingConfig(false)
       }
     },
-    [selectedWorkspace]
+    [assistants, selectedWorkspace]
   )
 
   const handleSubmitMessage = useCallback(
     async (messageText: string): Promise<void> => {
-      if (!selectedThread || !readiness.canChat) {
+      if (!selectedWorkspace || !readiness.canChat) {
         return
       }
 
@@ -558,12 +580,76 @@ export function useTeamPageController() {
         return
       }
 
-      await sendMessage({
-        text: nextMessage
-      })
+      const queuePendingMessage = (threadId: string, text: string): void => {
+        pendingTeamMessageRef.current = {
+          threadId,
+          text
+        }
+        setHasPendingMessage(true)
+      }
+
+      if (selectedThread) {
+        if (!chatTransport || isLoadingChatHistory || !hasLoadedInitialMessagesRef.current) {
+          queuePendingMessage(selectedThread.id, nextMessage)
+          return
+        }
+
+        await sendMessage({
+          text: nextMessage
+        })
+        return
+      }
+
+      const createdThread = await createNewThread()
+      if (!createdThread) {
+        return
+      }
+
+      queuePendingMessage(createdThread.id, nextMessage)
     },
-    [readiness.canChat, selectedThread, sendMessage]
+    [
+      chatTransport,
+      createNewThread,
+      isLoadingChatHistory,
+      readiness.canChat,
+      selectedThread,
+      selectedWorkspace,
+      sendMessage
+    ]
   )
+
+  useEffect(() => {
+    if (!hasPendingMessage) {
+      return
+    }
+
+    const pendingMessage = pendingTeamMessageRef.current
+    if (!pendingMessage) {
+      return
+    }
+
+    if (!selectedThread || selectedThread.id !== pendingMessage.threadId) {
+      return
+    }
+
+    if (isLoadingChatHistory) {
+      return
+    }
+
+    if (!chatTransport || !hasLoadedInitialMessagesRef.current) {
+      return
+    }
+
+    const messageToSend = pendingMessage.text
+    pendingTeamMessageRef.current = null
+    setHasPendingMessage(false)
+
+    void sendMessage({
+      text: messageToSend
+    }).catch((error) => {
+      setLoadError(toErrorMessage(error))
+    })
+  }, [chatTransport, hasPendingMessage, isLoadingChatHistory, selectedThread, sendMessage])
 
   const handleAbortGeneration = useCallback(() => {
     if (!isChatStreaming) {

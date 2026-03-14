@@ -57,7 +57,7 @@ TIA Studio is a desktop AI assistant workspace: Electron + React + TypeScript.
 
 - Agents are Mastra `Agent` instances registered dynamically in `AssistantRuntimeService`
 - Agents are cached by signature (hash of config values); re-registered when config changes
-- Each agent gets: model (via provider), memory (Mastra Memory with LibSQL), workspace, tools (browser search + MCP tools)
+- Each agent gets: model (via provider), memory (Mastra Memory with LibSQL), workspace, tools (`webFetch` + MCP tools)
 - MCP (Model Context Protocol) client manages external tool servers per assistant
 
 ### Database

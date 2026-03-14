@@ -8,22 +8,18 @@ import type { ChannelPairingsRepository } from '../persistence/repos/channel-pai
 import type { ChannelThreadBindingsRepository } from '../persistence/repos/channel-thread-bindings-repo'
 import type { CronJobsRepository } from '../persistence/repos/cron-jobs-repo'
 import type { CronJobRunsRepository } from '../persistence/repos/cron-job-runs-repo'
-import type { GroupThreadsRepository } from '../persistence/repos/group-threads-repo'
-import type { GroupWorkspacesRepository } from '../persistence/repos/group-workspaces-repo'
 import type { McpServersRepository } from '../persistence/repos/mcp-servers-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { SecuritySettingsRepository } from '../persistence/repos/security-settings-repo'
 import type { TeamThreadsRepository } from '../persistence/repos/team-threads-repo'
 import type { TeamWorkspacesRepository } from '../persistence/repos/team-workspaces-repo'
+import type { ThreadUsageRepository } from '../persistence/repos/thread-usage-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import type { AssistantRuntime } from '../mastra/assistant-runtime'
-import type { GroupRuntime } from '../mastra/group-runtime'
 import type { TeamRuntime } from '../mastra/team-runtime'
 import type { WhatsAppAuthStateStore } from '../channels/whatsapp-auth-state-store'
 import { createBearerAuthMiddleware } from './auth-middleware'
-import type { GroupRunStatusStore } from './chat/group-run-status-store'
-import type { GroupThreadEventsStore } from './chat/group-thread-events-store'
 import type { ThreadMessageEventsStore } from './chat/thread-message-events-store'
 import type { TeamRunStatusStore } from './chat/team-run-status-store'
 import { registerAssistantHeartbeatRoute } from './routes/assistant-heartbeat-route'
@@ -31,9 +27,6 @@ import { registerAssistantsRoute } from './routes/assistants-route'
 import { registerChatRoute } from './routes/chat-route'
 import { registerClawsRoute } from './routes/claws-route'
 import { registerCronJobsRoute } from './routes/cron-jobs-route'
-import { registerGroupChatRoute } from './routes/group-chat-route'
-import { registerGroupGroupsRoute } from './routes/group-groups-route'
-import { registerGroupThreadsRoute } from './routes/group-threads-route'
 import { registerHealthRoute } from './routes/health-route'
 import { registerMcpServersRoute } from './routes/mcp-servers-route'
 import { registerProvidersRoute } from './routes/providers-route'
@@ -50,13 +43,12 @@ type CreateAppOptions = {
     providers: ProvidersRepository
     assistants: AssistantsRepository
     threads: ThreadsRepository
-    groups: GroupWorkspacesRepository
-    groupThreads: GroupThreadsRepository
     teamWorkspaces: TeamWorkspacesRepository
     teamThreads: TeamThreadsRepository
     webSearchSettings: WebSearchSettingsRepository
     securitySettings?: SecuritySettingsRepository
     mcpServers: McpServersRepository
+    threadUsage: ThreadUsageRepository
     channels: ChannelsRepository
     pairings: ChannelPairingsRepository
     channelThreadBindings: ChannelThreadBindingsRepository
@@ -66,11 +58,8 @@ type CreateAppOptions = {
     heartbeatRuns: AssistantHeartbeatRunsRepository
   }
   assistantRuntime?: AssistantRuntime
-  groupRuntime?: GroupRuntime
   teamRuntime?: TeamRuntime
   teamRunStatusStore?: TeamRunStatusStore
-  groupRunStatusStore?: GroupRunStatusStore
-  groupThreadEventsStore?: GroupThreadEventsStore
   threadMessageEventsStore?: ThreadMessageEventsStore
   channelService?: {
     reload(): Promise<void>
@@ -114,15 +103,6 @@ export function createApp(options: CreateAppOptions): Hono {
     })
   )
   app.use('/team-chat/*', createBearerAuthMiddleware(options.token))
-  app.use(
-    '/group-chat/*',
-    cors({
-      origin: (origin) => origin ?? '*',
-      allowMethods: ['GET', 'POST', 'OPTIONS'],
-      allowHeaders: ['Authorization', 'Content-Type']
-    })
-  )
-  app.use('/group-chat/*', createBearerAuthMiddleware(options.token))
   registerHealthRoute(app)
 
   if (options.repositories) {
@@ -160,14 +140,8 @@ export function createApp(options: CreateAppOptions): Hono {
     registerThreadsRoute(app, {
       threadsRepo: options.repositories.threads,
       assistantsRepo: options.repositories.assistants,
-      channelThreadBindingsRepo: options.repositories.channelThreadBindings
-    })
-    registerGroupGroupsRoute(app, {
-      groupsRepo: options.repositories.groups
-    })
-    registerGroupThreadsRoute(app, {
-      groupThreadsRepo: options.repositories.groupThreads,
-      groupsRepo: options.repositories.groups
+      channelThreadBindingsRepo: options.repositories.channelThreadBindings,
+      threadUsageRepo: options.repositories.threadUsage
     })
     registerTeamWorkspacesRoute(app, {
       teamWorkspacesRepo: options.repositories.teamWorkspaces
@@ -210,14 +184,6 @@ export function createApp(options: CreateAppOptions): Hono {
     registerTeamChatRoute(app, {
       teamRuntime: options.teamRuntime,
       teamRunStatusStore: options.teamRunStatusStore
-    })
-  }
-
-  if (options.groupRuntime && options.groupRunStatusStore && options.groupThreadEventsStore) {
-    registerGroupChatRoute(app, {
-      groupRuntime: options.groupRuntime,
-      groupRunStatusStore: options.groupRunStatusStore,
-      groupThreadEventsStore: options.groupThreadEventsStore
     })
   }
 

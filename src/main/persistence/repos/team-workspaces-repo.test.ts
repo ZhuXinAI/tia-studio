@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { AppDatabase } from '../client'
 import { migrateAppSchema } from '../migrate'
+import { AssistantsRepository } from './assistants-repo'
 import { ProvidersRepository } from './providers-repo'
 import { TeamThreadsRepository } from './team-threads-repo'
 import { TeamWorkspacesRepository } from './team-workspaces-repo'
@@ -10,6 +11,7 @@ describe('TeamWorkspacesRepository', () => {
   let repo: TeamWorkspacesRepository
   let teamThreadsRepo: TeamThreadsRepository
   let providersRepo: ProvidersRepository
+  let assistantsRepo: AssistantsRepository
   let providerId: string
 
   beforeEach(async () => {
@@ -17,6 +19,7 @@ describe('TeamWorkspacesRepository', () => {
     repo = new TeamWorkspacesRepository(db)
     teamThreadsRepo = new TeamThreadsRepository(db)
     providersRepo = new ProvidersRepository(db)
+    assistantsRepo = new AssistantsRepository(db)
     const provider = await providersRepo.create({
       name: 'OpenAI',
       type: 'openai',
@@ -82,6 +85,31 @@ describe('TeamWorkspacesRepository', () => {
 
     const members = await repo.listMembers(workspace.id)
     expect(members.map((member) => member.assistantId)).toEqual(['assistant-2', 'assistant-1'])
+    expect(members.map((member) => member.sortOrder)).toEqual([0, 1])
+  })
+
+  it('derives built-in default workspace members from all assistants', async () => {
+    const workspace = await repo.create({
+      name: 'Default Team',
+      rootPath: '/Users/demo/default_root/default_team'
+    })
+    await repo.setBuiltInDefaultWorkspaceId(workspace.id)
+
+    await assistantsRepo.create({
+      name: 'Planner',
+      providerId,
+      enabled: true
+    })
+    await assistantsRepo.create({
+      name: 'Researcher',
+      providerId,
+      enabled: true
+    })
+
+    const members = await repo.listMembers(workspace.id)
+
+    expect(members).toHaveLength(2)
+    expect(members.map((member) => member.assistantId)).toHaveLength(2)
     expect(members.map((member) => member.sortOrder)).toEqual([0, 1])
   })
 

@@ -29,12 +29,15 @@ const {
 
 vi.mock('@mastra/core/agent', () => ({
   Agent: class {
+    private readonly config: Record<string, unknown>
+
     constructor(config: Record<string, unknown>) {
+      this.config = config
       agentConfigs.push(config)
     }
 
     async stream(messages: unknown, options: Record<string, unknown>) {
-      return agentStreamMock(messages, options)
+      return agentStreamMock(this.config, messages, options)
     }
   }
 }))
@@ -207,6 +210,19 @@ async function drainStream(stream: ReadableStream<UIMessageChunk>): Promise<void
   }
 }
 
+function createMastraStream(chunks: unknown[] = []) {
+  return {
+    fullStream: new ReadableStream({
+      start(controller) {
+        for (const chunk of chunks) {
+          controller.enqueue(chunk)
+        }
+        controller.close()
+      }
+    })
+  }
+}
+
 describe('TeamRuntimeService', () => {
   beforeEach(() => {
     agentConfigs.length = 0
@@ -216,58 +232,22 @@ describe('TeamRuntimeService', () => {
     toAISdkV5MessagesMock.mockReset()
     workspaceInitMock.mockClear()
 
-    agentStreamMock.mockImplementation(async (_messages, options) => {
-      const delegation = options['delegation'] as
-        | {
-            onDelegationStart?: (context: Record<string, unknown>) => Promise<void> | void
-            onDelegationComplete?: (context: Record<string, unknown>) => Promise<void> | void
-          }
-        | undefined
+    agentStreamMock.mockImplementation(async (config, _messages, options) => {
       const onIterationComplete = options['onIterationComplete'] as
         | ((context: Record<string, unknown>) => Promise<void> | void)
         | undefined
-      const runId = options['runId'] as string
+      const configId = String(config['id'] ?? '')
 
-      await delegation?.onDelegationStart?.({
-        primitiveId: 'assistant-1',
-        primitiveType: 'agent',
-        prompt: 'delegate',
-        params: {},
-        iteration: 1,
-        runId,
-        threadId: 'team-thread-1',
-        resourceId: 'default-profile',
-        parentAgentId: 'team-supervisor:team-thread-1',
-        parentAgentName: 'Team Supervisor',
-        toolCallId: 'tool-1',
-        messages: []
-      })
-      await delegation?.onDelegationComplete?.({
-        primitiveId: 'assistant-1',
-        primitiveType: 'agent',
-        prompt: 'delegate',
-        result: {
-          text: 'member result'
-        },
-        iteration: 1,
-        runId,
-        threadId: 'team-thread-1',
-        resourceId: 'default-profile',
-        parentAgentId: 'team-supervisor:team-thread-1',
-        parentAgentName: 'Team Supervisor',
-        toolCallId: 'tool-1',
-        bail: vi.fn()
-      })
-      await onIterationComplete?.({
-        iteration: 1,
-        text: 'synthesized answer'
-      })
+      if (configId.startsWith('team-supervisor:')) {
+        await onIterationComplete?.({
+          iteration: 1,
+          text: 'synthesized answer'
+        })
 
-      return new ReadableStream({
-        start(controller) {
-          controller.close()
-        }
-      })
+        return createMastraStream()
+      }
+
+      return createMastraStream([{ type: 'text-delta', payload: { text: 'member result' } }])
     })
 
     toAISdkStreamMock.mockImplementation(
@@ -352,9 +332,12 @@ describe('TeamRuntimeService', () => {
       messages: []
     })
 
-    const supervisorConfig = agentConfigs.at(-1) as { agents?: Record<string, unknown> } | undefined
-    expect(supervisorConfig?.agents).toBeDefined()
-    expect(Object.keys(supervisorConfig?.agents ?? {})).toEqual(['assistant-live'])
+    const supervisorConfig = agentConfigs.at(-1) as { tools?: Record<string, unknown> } | undefined
+    expect(supervisorConfig?.tools).toBeDefined()
+    expect(Object.keys(supervisorConfig?.tools ?? {})).toEqual([
+      'delegate_to_researcher_1',
+      'complete'
+    ])
   })
 
   it('passes assistant descriptions into team routing context', async () => {
@@ -396,6 +379,174 @@ describe('TeamRuntimeService', () => {
     expect(supervisorConfig?.instructions).toContain(
       '- Researcher: Investigates bugs, facts, and source material.'
     )
+    expect(supervisorConfig?.instructions).toContain(
+      'delegate again instead of asking the user whether another round is needed'
+    )
+    expect(supervisorConfig?.instructions).toContain(
+      'Never produce a raw assistant reply to the user'
+    )
+    expect(supervisorConfig?.instructions).toContain(
+      'When the work is done, call complete instead of replying in natural language'
+    )
+  })
+
+  it('requires supervisor tool usage on each team turn', async () => {
+    const runtime = new TeamRuntimeService({
+      mastra: { getStorage: () => null } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => buildAssistant())
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async (id: string) => buildProvider({ id }))
+      } as unknown as ProvidersRepository,
+      teamWorkspacesRepo: {
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [buildWorkspaceMember('assistant-1')])
+      } as unknown as TeamWorkspacesRepository,
+      teamThreadsRepo: {
+        getById: vi.fn(async () => buildTeamThread()),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as TeamThreadsRepository,
+      statusStore: new TeamRunStatusStore()
+    })
+
+    await runtime.streamTeamChat({
+      threadId: 'team-thread-1',
+      profileId: 'default-profile',
+      messages: []
+    })
+
+    expect(agentStreamMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'team-supervisor:team-thread-1'
+      }),
+      [],
+      expect.objectContaining({
+        toolChoice: 'required'
+      })
+    )
+  })
+
+  it('exposes a complete tool for ending the supervisor turn without raw text', async () => {
+    const runtime = new TeamRuntimeService({
+      mastra: { getStorage: () => null } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => buildAssistant())
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async (id: string) => buildProvider({ id }))
+      } as unknown as ProvidersRepository,
+      teamWorkspacesRepo: {
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [buildWorkspaceMember('assistant-1')])
+      } as unknown as TeamWorkspacesRepository,
+      teamThreadsRepo: {
+        getById: vi.fn(async () => buildTeamThread()),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as TeamThreadsRepository,
+      statusStore: new TeamRunStatusStore()
+    })
+
+    await runtime.streamTeamChat({
+      threadId: 'team-thread-1',
+      profileId: 'default-profile',
+      messages: []
+    })
+
+    const supervisorConfig = agentConfigs.at(-1) as
+      | {
+          tools?: Record<
+            string,
+            {
+              execute?: (
+                input: Record<string, unknown>,
+                context: Record<string, unknown>
+              ) => Promise<unknown>
+            }
+          >
+        }
+      | undefined
+    const result = await supervisorConfig?.tools?.complete?.execute?.(
+      {
+        summary: 'The delegated work is complete.'
+      },
+      {
+        requestContext: new Map<string, unknown>()
+      }
+    )
+
+    expect(result).toEqual({
+      kind: 'team-complete',
+      status: 'complete',
+      summary: 'The delegated work is complete.'
+    })
+  })
+
+  it('stops iterating once the supervisor calls complete', async () => {
+    agentStreamMock.mockImplementation(async (config, _messages, options) => {
+      const configId = String(config['id'] ?? '')
+
+      if (configId.startsWith('team-supervisor:')) {
+        const onIterationComplete = options['onIterationComplete'] as
+          | ((context: Record<string, unknown>) => Promise<unknown>)
+          | undefined
+        const decision = await onIterationComplete?.({
+          iteration: 1,
+          text: '',
+          toolCalls: [
+            {
+              id: 'tool-complete-1',
+              name: 'complete',
+              args: {}
+            }
+          ],
+          toolResults: [],
+          finishReason: 'tool-calls',
+          isFinal: false,
+          runId: 'run-1',
+          agentId: 'team-supervisor:team-thread-1',
+          agentName: 'Team Supervisor',
+          messages: []
+        })
+
+        expect(decision).toEqual({
+          continue: false
+        })
+
+        return createMastraStream()
+      }
+
+      return createMastraStream([{ type: 'text-delta', payload: { text: 'member result' } }])
+    })
+
+    const runtime = new TeamRuntimeService({
+      mastra: { getStorage: () => null } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => buildAssistant())
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async (id: string) => buildProvider({ id }))
+      } as unknown as ProvidersRepository,
+      teamWorkspacesRepo: {
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [buildWorkspaceMember('assistant-1')])
+      } as unknown as TeamWorkspacesRepository,
+      teamThreadsRepo: {
+        getById: vi.fn(async () => buildTeamThread()),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as TeamThreadsRepository,
+      statusStore: new TeamRunStatusStore()
+    })
+
+    await drainStream(
+      (
+        await runtime.streamTeamChat({
+          threadId: 'team-thread-1',
+          profileId: 'default-profile',
+          messages: []
+        })
+      ).stream
+    )
   })
 
   it('disables OpenAI Responses storage for openai-response supervisors', async () => {
@@ -429,6 +580,9 @@ describe('TeamRuntimeService', () => {
     })
 
     expect(agentStreamMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'team-supervisor:team-thread-1'
+      }),
       [],
       expect.objectContaining({
         providerOptions: {
@@ -472,6 +626,42 @@ describe('TeamRuntimeService', () => {
   })
 
   it('emits status events during delegation', async () => {
+    agentStreamMock.mockImplementation(async (config, _messages, options) => {
+      const onIterationComplete = options['onIterationComplete'] as
+        | ((context: Record<string, unknown>) => Promise<void> | void)
+        | undefined
+      const configId = String(config['id'] ?? '')
+
+      if (configId.startsWith('team-supervisor:')) {
+        const tools = (config['tools'] ?? {}) as Record<
+          string,
+          {
+            execute?: (
+              input: Record<string, unknown>,
+              context: Record<string, unknown>
+            ) => Promise<unknown>
+          }
+        >
+        const firstTool = Object.values(tools)[0]
+        await firstTool?.execute?.(
+          {
+            task: 'delegate the research'
+          },
+          {
+            requestContext: new Map<string, unknown>()
+          }
+        )
+        await onIterationComplete?.({
+          iteration: 1,
+          text: 'synthesized answer'
+        })
+
+        return createMastraStream()
+      }
+
+      return createMastraStream([{ type: 'text-delta', payload: { text: 'member result' } }])
+    })
+
     const statusStore = new TeamRunStatusStore()
     const runtime = new TeamRuntimeService({
       mastra: { getStorage: () => null } as unknown as Mastra,
@@ -506,6 +696,188 @@ describe('TeamRuntimeService', () => {
       'iteration-complete',
       'run-finished'
     ])
+    expect(statusStore.getEvents(runId)[1]?.data).toMatchObject({
+      primitiveId: 'assistant-1',
+      primitiveType: 'tool',
+      assistantName: 'Researcher'
+    })
+  })
+
+  it('returns mention-based routing hints from member tools', async () => {
+    agentStreamMock.mockImplementation(async (config) => {
+      const configId = String(config['id'] ?? '')
+
+      if (configId === 'assistant-1') {
+        return createMastraStream([
+          {
+            type: 'text-delta',
+            payload: {
+              text: 'I verified the facts. @Planner should turn this into the rollout plan.'
+            }
+          }
+        ])
+      }
+
+      return createMastraStream()
+    })
+
+    const runtime = new TeamRuntimeService({
+      mastra: { getStorage: () => null } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async (assistantId: string) => {
+          if (assistantId === 'assistant-2') {
+            return buildAssistant({
+              id: 'assistant-2',
+              name: 'Planner',
+              description: 'Turns research into execution plans.'
+            })
+          }
+
+          return buildAssistant()
+        })
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async (id: string) => buildProvider({ id }))
+      } as unknown as ProvidersRepository,
+      teamWorkspacesRepo: {
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [
+          buildWorkspaceMember('assistant-1', { sortOrder: 0 }),
+          buildWorkspaceMember('assistant-2', { sortOrder: 1 })
+        ])
+      } as unknown as TeamWorkspacesRepository,
+      teamThreadsRepo: {
+        getById: vi.fn(async () => buildTeamThread()),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as TeamThreadsRepository,
+      statusStore: new TeamRunStatusStore()
+    })
+
+    await runtime.streamTeamChat({
+      threadId: 'team-thread-1',
+      profileId: 'default-profile',
+      messages: []
+    })
+
+    const supervisorConfig = agentConfigs.at(-1) as
+      | {
+          tools?: Record<
+            string,
+            {
+              execute?: (
+                input: Record<string, unknown>,
+                context: Record<string, unknown>
+              ) => Promise<unknown>
+            }
+          >
+        }
+      | undefined
+    const tool = supervisorConfig?.tools?.delegate_to_researcher_1
+    const result = await tool?.execute?.(
+      {
+        task: 'check the factual risks'
+      },
+      {
+        requestContext: new Map<string, unknown>()
+      }
+    )
+
+    expect(result).toMatchObject({
+      kind: 'team-member-result',
+      assistantId: 'assistant-1',
+      assistantName: 'Researcher',
+      mentions: ['assistant-2'],
+      mentionNames: ['Planner']
+    })
+  })
+
+  it('pipes delegated member stream chunks into the tool writer', async () => {
+    const delegatedChunks = [
+      {
+        type: 'text-delta',
+        payload: {
+          text: 'Partial '
+        }
+      },
+      {
+        type: 'text-delta',
+        payload: {
+          text: 'member update'
+        }
+      }
+    ]
+
+    agentStreamMock.mockImplementation(async (config) => {
+      const configId = String(config['id'] ?? '')
+
+      if (configId === 'assistant-1') {
+        return createMastraStream(delegatedChunks)
+      }
+
+      return createMastraStream()
+    })
+
+    const runtime = new TeamRuntimeService({
+      mastra: { getStorage: () => null } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => buildAssistant())
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async (id: string) => buildProvider({ id }))
+      } as unknown as ProvidersRepository,
+      teamWorkspacesRepo: {
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [buildWorkspaceMember('assistant-1')])
+      } as unknown as TeamWorkspacesRepository,
+      teamThreadsRepo: {
+        getById: vi.fn(async () => buildTeamThread()),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as TeamThreadsRepository,
+      statusStore: new TeamRunStatusStore()
+    })
+
+    await runtime.streamTeamChat({
+      threadId: 'team-thread-1',
+      profileId: 'default-profile',
+      messages: []
+    })
+
+    const supervisorConfig = agentConfigs.at(-1) as
+      | {
+          tools?: Record<
+            string,
+            {
+              execute?: (
+                input: Record<string, unknown>,
+                context: Record<string, unknown>
+              ) => Promise<unknown>
+            }
+          >
+        }
+      | undefined
+    const tool = supervisorConfig?.tools?.delegate_to_researcher_1
+    const streamedChunks: unknown[] = []
+    const writer = new WritableStream<unknown>({
+      write(chunk) {
+        streamedChunks.push(chunk)
+      }
+    })
+
+    const result = await tool?.execute?.(
+      {
+        task: 'share your current findings'
+      },
+      {
+        requestContext: new Map<string, unknown>(),
+        writer
+      }
+    )
+
+    expect(streamedChunks).toEqual(delegatedChunks)
+    expect(result).toMatchObject({
+      kind: 'team-member-result',
+      text: 'Partial member update'
+    })
   })
 
   it('lists team thread history from persisted Mastra memory', async () => {

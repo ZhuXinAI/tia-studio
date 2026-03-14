@@ -31,7 +31,8 @@ import {
 import {
   openAssistantMessageEventsStream,
   createThreadChatTransport,
-  listThreadChatMessages
+  listThreadChatMessages,
+  runThreadCommand
 } from '../chat-query'
 import {
   buildAssistantThreadBranches,
@@ -51,6 +52,27 @@ import {
 type PendingThreadMessage = {
   threadId: string
   text: string
+}
+
+type ThreadSlashCommand = 'new' | 'stop'
+
+function parseThreadSlashCommand(messageText: string): ThreadSlashCommand | null {
+  const trimmed = messageText.trim()
+  if (!trimmed.startsWith('/')) {
+    return null
+  }
+
+  const [rawCommand] = trimmed.slice(1).split(/\s+/, 1)
+  if (!rawCommand) {
+    return null
+  }
+
+  const normalizedCommand = rawCommand.toLowerCase()
+  if (normalizedCommand === 'new' || normalizedCommand === 'stop') {
+    return normalizedCommand
+  }
+
+  return null
 }
 
 const BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__tiaBuiltInDefaultAgent'
@@ -108,11 +130,6 @@ export function useThreadPageController() {
   const pendingThreadMessageRef = useRef<PendingThreadMessage | null>(null)
   const [hasPendingMessage, setHasPendingMessage] = useState(false)
   const hasLoadedInitialMessagesRef = useRef(false)
-  const [tokenUsage, setTokenUsage] = useState<{
-    inputTokens: number
-    outputTokens: number
-    totalTokens: number
-  } | null>(null)
   const profileId = useMemo(() => getActiveResourceId(), [])
 
   const selectedAssistant = useMemo(() => {
@@ -143,6 +160,7 @@ export function useThreadPageController() {
 
     return threads.find((thread) => thread.id === params.threadId) ?? null
   }, [params.threadId, threads])
+  const tokenUsage = useMemo(() => selectedThread?.usageTotals ?? null, [selectedThread])
 
   const readiness = useMemo(() => {
     return evaluateAssistantReadiness({
@@ -185,20 +203,10 @@ export function useThreadPageController() {
     transport: chatTransport,
     resume: Boolean(selectedThread && chatTransport),
     experimental_throttle: 48,
-    onFinish: ({ message }) => {
+    onFinish: () => {
       const selectedAssistantId = selectedAssistant?.id
       if (!selectedThread || !selectedAssistantId) {
         return
-      }
-
-      // Extract usage from message metadata
-      if (message.metadata && typeof message.metadata === 'object' && 'usage' in message.metadata) {
-        const usage = message.metadata.usage as {
-          inputTokens: number
-          outputTokens: number
-          totalTokens: number
-        }
-        setTokenUsage(usage)
       }
 
       const now = new Date().toISOString()
@@ -411,10 +419,6 @@ export function useThreadPageController() {
       })
     )
   }, [selectedAssistant?.id, threadsData])
-
-  useEffect(() => {
-    setTokenUsage(null)
-  }, [selectedAssistant?.id, selectedThread?.id])
 
   useEffect(() => {
     if (!selectedAssistant?.id || !selectedThread?.id) {
@@ -688,7 +692,56 @@ export function useThreadPageController() {
       return
     }
 
+    const slashCommand = parseThreadSlashCommand(nextMessage)
+    if (slashCommand === 'stop') {
+      if (isChatStreaming) {
+        await stop()
+      }
+      return
+    }
+
+    if (slashCommand === 'new') {
+      pendingThreadMessageRef.current = null
+      setHasPendingMessage(false)
+
+      if (isChatStreaming) {
+        await stop()
+        await Promise.resolve()
+      }
+
+      if (!selectedThread) {
+        await createNewThread({ notify: false })
+        return
+      }
+
+      try {
+        await runThreadCommand({
+          assistantId: selectedAssistant.id,
+          threadId: selectedThread.id,
+          profileId,
+          command: 'new'
+        })
+        await createNewThread({ notify: false })
+      } catch (error) {
+        toast.error(toErrorMessage(error))
+      }
+      return
+    }
+
+    const queuePendingMessage = (threadId: string, text: string): void => {
+      pendingThreadMessageRef.current = {
+        threadId,
+        text
+      }
+      setHasPendingMessage(true)
+    }
+
     if (selectedThread) {
+      if (!chatTransport || isLoadingChatHistory || !hasLoadedInitialMessagesRef.current) {
+        queuePendingMessage(selectedThread.id, nextMessage)
+        return
+      }
+
       try {
         await sendMessage({
           text: nextMessage
@@ -704,11 +757,7 @@ export function useThreadPageController() {
       return
     }
 
-    pendingThreadMessageRef.current = {
-      threadId: createdThread.id,
-      text: nextMessage
-    }
-    setHasPendingMessage(true)
+    queuePendingMessage(createdThread.id, nextMessage)
   }
 
   const handleAbortGeneration = useCallback(() => {

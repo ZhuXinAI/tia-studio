@@ -12,8 +12,26 @@ type RegisterTeamWorkspacesRouteOptions = {
   providersRepo?: ProvidersRepository
 }
 
+type TeamWorkspaceResponse = Awaited<ReturnType<TeamWorkspacesRepository['list']>>[number] & {
+  isBuiltInDefault?: boolean
+}
+
 function invalidBodyResponse(): { ok: false; error: string } {
   return { ok: false as const, error: 'Invalid JSON body' }
+}
+
+function toWorkspaceResponse(
+  workspace: Awaited<ReturnType<TeamWorkspacesRepository['list']>>[number],
+  builtInWorkspaceId: string | null
+): TeamWorkspaceResponse {
+  if (workspace.id !== builtInWorkspaceId) {
+    return workspace
+  }
+
+  return {
+    ...workspace,
+    isBuiltInDefault: true
+  }
 }
 
 export function registerTeamWorkspacesRoute(
@@ -21,8 +39,9 @@ export function registerTeamWorkspacesRoute(
   options: RegisterTeamWorkspacesRouteOptions
 ): void {
   app.get('/v1/team/workspaces', async (context) => {
+    const builtInWorkspaceId = await options.teamWorkspacesRepo.getBuiltInDefaultWorkspaceId()
     const workspaces = await options.teamWorkspacesRepo.list()
-    return context.json(workspaces)
+    return context.json(workspaces.map((workspace) => toWorkspaceResponse(workspace, builtInWorkspaceId)))
   })
 
   app.post('/v1/team/workspaces', async (context) => {
@@ -42,7 +61,8 @@ export function registerTeamWorkspacesRoute(
     }
 
     const workspace = await options.teamWorkspacesRepo.create(parsed.data)
-    return context.json(workspace, 201)
+    const builtInWorkspaceId = await options.teamWorkspacesRepo.getBuiltInDefaultWorkspaceId()
+    return context.json(toWorkspaceResponse(workspace, builtInWorkspaceId), 201)
   })
 
   app.patch('/v1/team/workspaces/:workspaceId', async (context) => {
@@ -76,7 +96,8 @@ export function registerTeamWorkspacesRoute(
       return context.json({ ok: false, error: 'Team workspace not found' }, 404)
     }
 
-    return context.json(workspace)
+    const builtInWorkspaceId = await options.teamWorkspacesRepo.getBuiltInDefaultWorkspaceId()
+    return context.json(toWorkspaceResponse(workspace, builtInWorkspaceId))
   })
 
   app.get('/v1/team/workspaces/:workspaceId/members', async (context) => {
@@ -120,6 +141,10 @@ export function registerTeamWorkspacesRoute(
   })
 
   app.delete('/v1/team/workspaces/:workspaceId', async (context) => {
+    if (await options.teamWorkspacesRepo.isBuiltInDefaultWorkspace(context.req.param('workspaceId'))) {
+      return context.json({ ok: false, error: 'Built-in default team cannot be deleted' }, 409)
+    }
+
     const deleted = await options.teamWorkspacesRepo.delete(context.req.param('workspaceId'))
     if (!deleted) {
       return context.json({ ok: false, error: 'Team workspace not found' }, 404)

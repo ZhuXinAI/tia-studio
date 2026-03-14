@@ -10,9 +10,18 @@ function createAssistantRuntimeStub(overrides: Partial<AssistantRuntime>): Assis
   return {
     streamChat: vi.fn(async () => new ReadableStream()),
     listThreadMessages: vi.fn(async () => []),
+    runThreadCommand: vi.fn(
+      async () =>
+        ({
+          command: 'new',
+          archiveFileName: 'thread_history_2026-03-14.md',
+          archiveFilePath: '/workspace/thread_history_2026-03-14.md',
+          threadTitle: 'New Thread',
+          compactedAt: '2026-03-14T00:00:00.000Z'
+        }) as const
+    ),
     runCronJob: vi.fn(async () => ({ outputText: '' })),
     runHeartbeat: vi.fn(async () => ({ outputText: '' })),
-    runGroupTurn: vi.fn(async () => ({ outputText: '' })),
     ...overrides
   }
 }
@@ -137,6 +146,51 @@ describe('chat route', () => {
     await expect(response.json()).resolves.toEqual(historyMessages)
     expect(listThreadMessages).toHaveBeenCalledWith({
       assistantId: 'assistant-1',
+      threadId: 'thread-1',
+      profileId: 'profile-1'
+    })
+    expect(streamChat).not.toHaveBeenCalled()
+  })
+
+  it('runs assistant thread commands without starting chat streaming', async () => {
+    const runThreadCommand = vi.fn(async () => ({
+      command: 'new' as const,
+      archiveFileName: 'thread_history_2026-03-14.md',
+      archiveFilePath: '/workspace/thread_history_2026-03-14.md',
+      threadTitle: 'Investigate webhook bug',
+      compactedAt: '2026-03-14T09:30:00.000Z'
+    }))
+    const streamChat = vi.fn(async () => new ReadableStream())
+    const app = new Hono()
+    registerChatRoute(app, {
+      assistantRuntime: createAssistantRuntimeStub({
+        streamChat,
+        runThreadCommand
+      })
+    })
+
+    const response = await app.request('http://localhost/chat/assistant-1/commands', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        command: 'new',
+        threadId: 'thread-1',
+        profileId: 'profile-1'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      command: 'new',
+      archiveFileName: 'thread_history_2026-03-14.md',
+      archiveFilePath: '/workspace/thread_history_2026-03-14.md',
+      threadTitle: 'Investigate webhook bug',
+      compactedAt: '2026-03-14T09:30:00.000Z'
+    })
+    expect(runThreadCommand).toHaveBeenCalledWith({
+      assistantId: 'assistant-1',
+      command: 'new',
       threadId: 'thread-1',
       profileId: 'profile-1'
     })

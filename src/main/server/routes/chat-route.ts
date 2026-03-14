@@ -19,6 +19,14 @@ const chatHistoryQuerySchema = z.object({
   profileId: z.string().min(1)
 })
 
+const threadCommandRequestSchema = z.discriminatedUnion('command', [
+  z.object({
+    command: z.literal('new'),
+    threadId: z.string().min(1),
+    profileId: z.string().min(1)
+  })
+])
+
 type RegisterChatRouteOptions = {
   assistantRuntime: AssistantRuntime
   threadMessageEventsStore?: {
@@ -88,6 +96,60 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
     return new Response(stream.pipeThrough(new TextEncoderStream()), {
       headers: UI_MESSAGE_STREAM_HEADERS
     })
+  })
+
+  app.post('/chat/:assistantId/commands', async (context) => {
+    let body: unknown
+    try {
+      body = await context.req.json()
+    } catch {
+      return context.json({ ok: false, error: 'Invalid JSON body' }, 400)
+    }
+
+    const parsed = threadCommandRequestSchema.safeParse(body)
+    if (!parsed.success) {
+      return context.json(
+        { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' },
+        400
+      )
+    }
+
+    try {
+      const result = await options.assistantRuntime.runThreadCommand({
+        assistantId: context.req.param('assistantId'),
+        ...parsed.data
+      })
+
+      return context.json({
+        ok: true,
+        ...result
+      })
+    } catch (error) {
+      if (isChatRouteError(error)) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            code: error.code,
+            error: error.message
+          }),
+          {
+            status: error.statusCode,
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+      }
+
+      return context.json(
+        {
+          ok: false,
+          code: 'chat_command_error',
+          error: 'Failed to run thread command'
+        },
+        500
+      )
+    }
   })
 
   app.get('/chat/:assistantId/events', async (context) => {

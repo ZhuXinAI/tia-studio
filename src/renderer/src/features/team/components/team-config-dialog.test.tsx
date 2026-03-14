@@ -175,4 +175,85 @@ describe('TeamConfigDialog', () => {
       assistantIds: ['assistant-1']
     })
   })
+
+  it('skips manual member selection for the built-in default team', async () => {
+    const onSubmit = vi.fn(async () => undefined)
+
+    await act(async () => {
+      root.render(
+        <TeamConfigDialog
+          isOpen
+          workspace={{
+            id: 'workspace-1',
+            name: 'Default Team',
+            rootPath: '/Users/demo/default_root/default_team',
+            teamDescription: '',
+            supervisorProviderId: 'provider-1',
+            supervisorModel: 'gpt-5',
+            isBuiltInDefault: true,
+            createdAt: '2026-03-07T00:00:00.000Z',
+            updatedAt: '2026-03-07T00:00:00.000Z'
+          }}
+          providers={[
+            {
+              id: 'provider-1',
+              name: 'OpenAI',
+              type: 'openai',
+              apiKey: 'secret',
+              apiHost: null,
+              selectedModel: 'gpt-5',
+              providerModels: null,
+              enabled: true,
+              supportsVision: false,
+              isBuiltIn: false,
+              icon: null,
+              officialSite: null,
+              createdAt: '2026-03-07T00:00:00.000Z',
+              updatedAt: '2026-03-07T00:00:00.000Z'
+            }
+          ]}
+          assistants={[
+            {
+              id: 'assistant-1',
+              name: 'Planner',
+              description: '',
+              instructions: '',
+              enabled: true,
+              providerId: 'provider-1',
+              workspaceConfig: {},
+              skillsConfig: {},
+              mcpConfig: {},
+              maxSteps: 100,
+              memoryConfig: null,
+              createdAt: '2026-03-07T00:00:00.000Z',
+              updatedAt: '2026-03-07T00:00:00.000Z'
+            }
+          ]}
+          selectedAssistantIds={[]}
+          isSaving={false}
+          errorMessage={null}
+          onClose={() => undefined}
+          onSubmit={onSubmit}
+        />
+      )
+    })
+
+    expect(container.textContent).not.toContain('Team Members')
+
+    const submitButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Save Team')
+    )
+
+    await act(async () => {
+      submitButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(container.textContent).not.toContain('Select at least one team member.')
+    expect(onSubmit).toHaveBeenCalledWith({
+      teamDescription: '',
+      supervisorProviderId: 'provider-1',
+      supervisorModel: 'gpt-5',
+      assistantIds: ['assistant-1']
+    })
+  })
 })

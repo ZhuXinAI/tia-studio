@@ -59,7 +59,7 @@ For a claw, that means channel conversations are still represented as assistant 
 
 ### 4. Workspace and tool access remain assistant-owned
 
-If an assistant has a workspace root, TIA Studio builds a Mastra workspace around it and enables local tools such as work logs, soul memory helpers, cron helpers, browser search, and channel-aware tools.
+If an assistant has a workspace root, TIA Studio builds a Mastra workspace around it and enables local tools such as work logs, soul memory helpers, cron helpers, `webFetch`, and channel-aware tools.
 
 This is a big part of the claw design: channel access is an extra transport capability, not a forked identity. The same assistant can still act inside its own workspace and tool environment.
 

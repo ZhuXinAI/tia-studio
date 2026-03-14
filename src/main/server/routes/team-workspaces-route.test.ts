@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { AppDatabase } from '../../persistence/client'
 import { migrateAppSchema } from '../../persistence/migrate'
+import { AssistantsRepository } from '../../persistence/repos/assistants-repo'
 import { ProvidersRepository } from '../../persistence/repos/providers-repo'
 import { TeamWorkspacesRepository } from '../../persistence/repos/team-workspaces-repo'
 import { registerTeamWorkspacesRoute } from './team-workspaces-route'
@@ -11,12 +12,14 @@ describe('team workspaces route', () => {
   let app: Hono
   let teamWorkspacesRepo: TeamWorkspacesRepository
   let providersRepo: ProvidersRepository
+  let assistantsRepo: AssistantsRepository
   let providerId: string
 
   beforeEach(async () => {
     db = await migrateAppSchema(':memory:')
     teamWorkspacesRepo = new TeamWorkspacesRepository(db)
     providersRepo = new ProvidersRepository(db)
+    assistantsRepo = new AssistantsRepository(db)
     const provider = await providersRepo.create({
       name: 'OpenAI',
       type: 'openai',
@@ -163,5 +166,70 @@ describe('team workspaces route', () => {
     })
 
     expect(updateResponse.status).toBe(400)
+  })
+
+  it('marks the built-in default team workspace and blocks deleting it', async () => {
+    const workspace = await teamWorkspacesRepo.create({
+      name: 'Default Team',
+      rootPath: '/Users/demo/default_root/default_team'
+    })
+    await teamWorkspacesRepo.setBuiltInDefaultWorkspaceId(workspace.id)
+
+    const listResponse = await app.request('http://localhost/v1/team/workspaces')
+    expect(listResponse.status).toBe(200)
+    await expect(listResponse.json()).resolves.toEqual([
+      expect.objectContaining({
+        id: workspace.id,
+        isBuiltInDefault: true
+      })
+    ])
+
+    const deleteResponse = await app.request(`http://localhost/v1/team/workspaces/${workspace.id}`, {
+      method: 'DELETE'
+    })
+
+    expect(deleteResponse.status).toBe(409)
+    await expect(deleteResponse.json()).resolves.toEqual({
+      ok: false,
+      error: 'Built-in default team cannot be deleted'
+    })
+  })
+
+  it('lists built-in workspace members from assistants', async () => {
+    const workspace = await teamWorkspacesRepo.create({
+      name: 'Default Team',
+      rootPath: '/Users/demo/default_root/default_team'
+    })
+    await teamWorkspacesRepo.setBuiltInDefaultWorkspaceId(workspace.id)
+    await assistantsRepo.create({
+      name: 'Planner',
+      providerId,
+      enabled: true
+    })
+    await assistantsRepo.create({
+      name: 'Researcher',
+      providerId,
+      enabled: true
+    })
+
+    const listResponse = await app.request(
+      `http://localhost/v1/team/workspaces/${workspace.id}/members`
+    )
+
+    expect(listResponse.status).toBe(200)
+    const members = await listResponse.json()
+    expect(members).toHaveLength(2)
+    expect(members[0]).toEqual(
+      expect.objectContaining({
+        workspaceId: workspace.id,
+        sortOrder: 0
+      })
+    )
+    expect(members[1]).toEqual(
+      expect.objectContaining({
+        workspaceId: workspace.id,
+        sortOrder: 1
+      })
+    )
   })
 })

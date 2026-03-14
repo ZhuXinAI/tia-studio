@@ -40,9 +40,18 @@ function createAssistantRuntimeStub(streamChat: AssistantRuntime['streamChat']):
   return {
     streamChat,
     listThreadMessages: vi.fn(async () => []),
+    runThreadCommand: vi.fn(
+      async () =>
+        ({
+          command: 'new',
+          archiveFileName: 'thread_history_2026-03-14.md',
+          archiveFilePath: '/workspace/thread_history_2026-03-14.md',
+          threadTitle: 'New Thread',
+          compactedAt: '2026-03-14T00:00:00.000Z'
+        }) as const
+    ),
     runCronJob: vi.fn(async () => ({ outputText: '' })),
-    runHeartbeat: vi.fn(async () => ({ outputText: '' })),
-    runGroupTurn: vi.fn(async () => ({ outputText: '' }))
+    runHeartbeat: vi.fn(async () => ({ outputText: '' }))
   }
 }
 

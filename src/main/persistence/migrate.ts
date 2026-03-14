@@ -291,6 +291,14 @@ async function ensureTeamTables(db: AppDatabase): Promise<void> {
   }
 }
 
+async function removeLegacyGroupTables(db: AppDatabase): Promise<void> {
+  await db.execute('DROP TABLE IF EXISTS app_group_thread_assistant_threads')
+  await db.execute('DROP TABLE IF EXISTS app_group_thread_messages')
+  await db.execute('DROP TABLE IF EXISTS app_group_threads')
+  await db.execute('DROP TABLE IF EXISTS app_group_workspace_members')
+  await db.execute('DROP TABLE IF EXISTS app_group_workspaces')
+}
+
 async function ensureChannelsTables(db: AppDatabase): Promise<void> {
   await db.execute(`
     CREATE TABLE IF NOT EXISTS app_channels (
@@ -367,6 +375,50 @@ async function ensureThreadMetadataColumn(db: AppDatabase): Promise<void> {
   }
 
   await db.execute("ALTER TABLE app_threads ADD COLUMN metadata TEXT NOT NULL DEFAULT '{}'")
+}
+
+async function ensureThreadUsageTables(db: AppDatabase): Promise<void> {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_thread_message_usage (
+      message_id TEXT PRIMARY KEY,
+      thread_id TEXT NOT NULL,
+      assistant_id TEXT NOT NULL,
+      resource_id TEXT NOT NULL,
+      provider_id TEXT,
+      model TEXT,
+      input_tokens INTEGER NOT NULL DEFAULT 0,
+      output_tokens INTEGER NOT NULL DEFAULT 0,
+      total_tokens INTEGER NOT NULL DEFAULT 0,
+      reasoning_tokens INTEGER NOT NULL DEFAULT 0,
+      cached_input_tokens INTEGER NOT NULL DEFAULT 0,
+      step_count INTEGER NOT NULL DEFAULT 0,
+      finish_reason TEXT,
+      source TEXT NOT NULL,
+      raw_usage_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_thread_usage_totals (
+      thread_id TEXT PRIMARY KEY,
+      assistant_message_count INTEGER NOT NULL DEFAULT 0,
+      input_tokens_total INTEGER NOT NULL DEFAULT 0,
+      output_tokens_total INTEGER NOT NULL DEFAULT 0,
+      total_tokens_total INTEGER NOT NULL DEFAULT 0,
+      reasoning_tokens_total INTEGER NOT NULL DEFAULT 0,
+      cached_input_tokens_total INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_thread_message_usage_thread_id ON app_thread_message_usage(thread_id)'
+  )
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_thread_message_usage_assistant_id ON app_thread_message_usage(assistant_id)'
+  )
 }
 
 async function ensureCronTables(db: AppDatabase): Promise<void> {
@@ -588,9 +640,11 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   await ensureProviderSupportsVisionColumn(db)
   await ensureBuiltInProviderColumns(db)
   await ensureTeamTables(db)
+  await removeLegacyGroupTables(db)
   await ensureChannelsTables(db)
   await backfillAssistantEnabledFromChannels(db)
   await ensureThreadMetadataColumn(db)
+  await ensureThreadUsageTables(db)
   await ensureCronTables(db)
   await ensureAssistantHeartbeatTables(db)
 

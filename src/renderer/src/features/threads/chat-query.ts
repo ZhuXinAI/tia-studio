@@ -13,6 +13,22 @@ type ThreadChatHistoryInput = {
   profileId: string
 }
 
+type RunThreadCommandInput = {
+  assistantId: string
+  threadId: string
+  profileId: string
+  command: 'new'
+}
+
+export type ThreadCommandResult = {
+  ok: true
+  command: 'new'
+  archiveFileName: string
+  archiveFilePath: string
+  threadTitle: string
+  compactedAt: string
+}
+
 export type ThreadMessageEventType = 'thread-messages-updated'
 
 export type ThreadMessageEvent = {
@@ -20,7 +36,7 @@ export type ThreadMessageEvent = {
   assistantId: string
   threadId: string
   profileId: string
-  source: 'channel'
+  source: 'channel' | 'cron' | 'heartbeat' | 'command'
   createdAt: string
 }
 
@@ -98,6 +114,30 @@ export async function listThreadChatMessages(input: ThreadChatHistoryInput): Pro
   }
 
   return (await response.json()) as UIMessage[]
+}
+
+export async function runThreadCommand(
+  input: RunThreadCommandInput
+): Promise<ThreadCommandResult> {
+  const chatFetch = createDesktopChatFetch()
+  const response = await chatFetch(`/chat/${input.assistantId}/commands`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      command: input.command,
+      threadId: input.threadId,
+      profileId: input.profileId
+    })
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(errorText || `Request failed with status ${response.status}`)
+  }
+
+  return (await response.json()) as ThreadCommandResult
 }
 
 export function createThreadChatTransport(

@@ -4,7 +4,6 @@
       "chats": "チャット",
       "home": "ホーム",
       "claws": "Claws",
-      "group": "Group",
       "team": "チーム",
       "openSettings": "設定を開く"
     },
@@ -14,7 +13,6 @@
       "workspace": "ワークスペース",
       "settings": "設定",
       "chat": "チャット",
-      "group": "Group",
       "team": "Team",
       "modelProviders": "モデルプロバイダー",
       "notes": "TIA Studio メモ"
@@ -720,83 +718,6 @@
         "loadFailed": "ペアリングの読み込みに失敗しました",
         "updateFailed": "ペアリングの更新に失敗しました"
       }
-    }
-  },
-  "group": {
-    "sidebar": {
-      "eyebrow": "Group",
-      "title": "Group Workspaces",
-      "defaultWorkspaceName": "Group Workspace",
-      "createWorkspaceAriaLabel": "Create group workspace",
-      "creatingWorkspace": "Creating workspace...",
-      "newWorkspace": "New Workspace",
-      "workspaces": "Workspaces",
-      "createThreadAriaLabel": "Create group thread",
-      "newThread": "New Thread",
-      "loadingWorkspaces": "Loading group workspaces...",
-      "emptyWorkspaces": "No workspaces yet. Create one to start a Group room.",
-      "loadingThreads": "Loading group threads...",
-      "emptyThreads": "No Group threads yet.",
-      "untitledThread": "Untitled Group Thread",
-      "deleteThreadAriaLabel": "Delete group thread {{title}}",
-      "deleteThreadPrompt": "Delete thread?",
-      "confirmDeleteThreadAriaLabel": "Confirm delete group thread {{title}}",
-      "deletingThread": "Deleting..."
-    },
-    "chat": {
-      "defaultTitle": "Group Chat",
-      "noWorkspaceSelected": "No workspace selected",
-      "membersLabel_one": "{{count}} member",
-      "membersLabel_other": "{{count}} members",
-      "maxTurnsLabel_one": "{{count}} auto turn",
-      "maxTurnsLabel_other": "{{count}} auto turns",
-      "newThread": "New Group Thread",
-      "configureGroup": "Configure Group",
-      "setupIncompleteTitle": "Group setup is incomplete.",
-      "setupIncompleteDescription": "Add a workspace path and select at least one member before sending.",
-      "emptyTitle": "No Group thread selected",
-      "emptyDescription": "Choose an existing thread or create a new Group thread to start collaborating.",
-      "thinking": "{{name}} is thinking...",
-      "submitting": "Sending...",
-      "composer": {
-        "placeholderSelected": "Ask the group to work through a task...",
-        "placeholderEmpty": "Create or select a Group thread to start chatting.",
-        "ariaLabel": "Group message composer",
-        "helperSelected": "Messages are added to the shared room transcript for the selected members.",
-        "helperEmpty": "Pick a workspace and create a Group thread first."
-      }
-    },
-    "messageList": {
-      "you": "You",
-      "orchestrator": "Orchestrator",
-      "system": "System",
-      "loadingHistory": "Loading group room history...",
-      "emptyTitle": "No room messages yet",
-      "emptyDescription": "Start the conversation and the shared transcript will appear here."
-    },
-    "configDialog": {
-      "closeAriaLabel": "Close group config dialog",
-      "title": "Configure Group",
-      "createTitle": "Create Group",
-      "description": "Set the workspace path, describe the room goal, and choose which assistants join this group.",
-      "createDescription": "Name the group and choose which assistants should join it.",
-      "fields": {
-        "name": "Group Name",
-        "groupDescription": "Group Description",
-        "maxAutoTurns": "Max Auto Turns",
-        "members": "Group Members"
-      },
-      "validation": {
-        "name": "Enter a group name.",
-        "maxAutoTurns": "Enter a max auto turns value between 1 and 12.",
-        "members": "Select at least one group member."
-      },
-      "saveButton": "Save Group",
-      "createButton": "Create Group"
-    },
-    "readiness": {
-      "threadSelected": "Group thread is selected",
-      "membersSelected": "At least one group member is selected"
     }
   },
   "team": {

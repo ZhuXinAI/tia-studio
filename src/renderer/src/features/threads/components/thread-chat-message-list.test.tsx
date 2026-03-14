@@ -17,10 +17,15 @@ const actionBarRootPropsMock = vi.fn((props: unknown) => {
 const actionBarMoreRootPropsMock = vi.fn((props: unknown) => {
   void props
 })
+const messagePartsPropsMock = vi.fn((props: unknown) => {
+  void props
+})
 const messageState = {
   message: {
     createdAt: new Date('2026-03-01T12:34:00.000Z'),
-    isHovering: true
+    isHovering: true,
+    metadata: null as Record<string, unknown> | null,
+    parts: [] as unknown[]
   },
   thread: {
     messages: [{}, {}]
@@ -117,7 +122,10 @@ vi.mock('@assistant-ui/react', () => {
     },
     MessagePrimitive: {
       Root: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-      Parts: () => null
+      Parts: (props: unknown) => {
+        messagePartsPropsMock(props)
+        return null
+      }
     },
     ThreadPrimitive: {
       MessageByIndex: ({
@@ -154,8 +162,11 @@ describe('thread chat message list', () => {
     virtuosoPropsMock.mockClear()
     actionBarRootPropsMock.mockClear()
     actionBarMoreRootPropsMock.mockClear()
+    messagePartsPropsMock.mockClear()
     messageState.message.createdAt = new Date('2026-03-01T12:34:00.000Z')
     messageState.message.isHovering = true
+    messageState.message.metadata = null
+    messageState.message.parts = []
     messageState.thread.messages = [{}, {}]
   })
 
@@ -221,6 +232,167 @@ describe('thread chat message list', () => {
       | { AssistantMessage?: unknown }
       | undefined
     expect(secondComponents?.AssistantMessage).toBe(firstComponents?.AssistantMessage)
+  })
+
+  it('registers a delegated tool-agent data renderer for nested member streams', async () => {
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    const partsCalls = messagePartsPropsMock.mock.calls
+      .map((call) => call[0] as { components?: Record<string, unknown> } | undefined)
+      .filter(Boolean)
+    const assistantParts = partsCalls.find((call) => {
+      const components = call?.components as { tools?: unknown } | undefined
+      return Boolean(components?.tools)
+    })
+    const dataConfig = assistantParts?.components?.['data'] as
+      | {
+          by_name?: Record<string, unknown>
+        }
+      | undefined
+
+    expect(dataConfig?.by_name?.['tool-agent']).toBeTypeOf('function')
+  })
+
+  it('renders team turns as delegated member blocks and hides supervisor summary text', async () => {
+    messageState.message.parts = [
+      {
+        type: 'text',
+        text: 'Should I ask Planner if they want another round?'
+      },
+      {
+        type: 'tool-call',
+        toolName: 'delegate_to_researcher_1',
+        toolCallId: 'tool-1',
+        status: { type: 'complete' },
+        result: {
+          kind: 'team-member-result',
+          assistantId: 'assistant-1',
+          assistantName: 'Researcher',
+          task: 'Check the factual risks',
+          text: 'I verified the facts and flagged the unsupported claims.',
+          mentions: ['assistant-2'],
+          mentionNames: ['Planner'],
+          subAgentThreadId: 'sub-thread-1',
+          subAgentResourceId: 'sub-resource-1'
+        }
+      }
+    ]
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Team Supervisor"
+          assistantMessageVariant="team"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    expect(container.textContent).toContain('Researcher')
+    expect(container.textContent).toContain(
+      'I verified the facts and flagged the unsupported claims.'
+    )
+    expect(container.textContent).toContain('Suggested next: Planner')
+    expect(container.textContent).not.toContain('Should I ask Planner if they want another round?')
+  })
+
+  it('renders running delegated streams as agent-authored team blocks', async () => {
+    messageState.message.parts = [
+      {
+        type: 'tool-call',
+        toolName: 'delegate_to_researcher_1',
+        toolCallId: 'tool-1',
+        status: { type: 'running' }
+      },
+      {
+        type: 'data',
+        name: 'tool-agent',
+        data: {
+          text: 'Gathering sources for the release note.',
+          status: 'running',
+          toolCalls: [
+            {
+              payload: {
+                toolCallId: 'search-1',
+                toolName: 'web_search'
+              }
+            }
+          ],
+          toolResults: []
+        }
+      }
+    ]
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Team Supervisor"
+          assistantMessageVariant="team"
+          isLoadingChatHistory={false}
+          isChatStreaming={true}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    expect(container.textContent).toContain('Researcher')
+    expect(container.textContent).toContain('Gathering sources for the release note.')
+    expect(container.textContent).toContain('Tools')
+    expect(container.textContent).toContain('Web Search')
+  })
+
+  it('hides completion-only supervisor turns in team mode', async () => {
+    messageState.message.parts = [
+      {
+        type: 'text',
+        text: 'All set, I will summarize this myself.'
+      },
+      {
+        type: 'tool-call',
+        toolName: 'complete',
+        toolCallId: 'tool-complete-1',
+        status: { type: 'complete' },
+        result: {
+          kind: 'team-complete',
+          status: 'complete',
+          summary: 'The delegated work is complete.'
+        }
+      }
+    ]
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Team Supervisor"
+          assistantMessageVariant="team"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    expect(container.textContent).not.toContain('All set, I will summarize this myself.')
+    expect(container.textContent).not.toContain('Team Supervisor')
   })
 
   it('applies custom scrollbar styling to the thread viewport', async () => {
@@ -466,5 +638,64 @@ describe('thread chat message list', () => {
     for (const timestamp of timestamps) {
       expect(timestamp.className).not.toContain('invisible')
     }
+  })
+
+  it('shows token usage details when hovering a message with usage metadata', async () => {
+    messageState.message.metadata = {
+      usage: {
+        inputTokens: 120,
+        outputTokens: 40,
+        totalTokens: 160,
+        reasoningTokens: 12,
+        cachedInputTokens: 30
+      }
+    }
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    const usageLines = Array.from(container.querySelectorAll('[data-testid="message-usage"]'))
+    expect(usageLines.length).toBeGreaterThan(0)
+    expect(usageLines[0]?.textContent).toContain('160')
+    expect(usageLines[0]?.textContent).toContain('120')
+    expect(usageLines[0]?.textContent).toContain('40')
+    expect(usageLines[0]?.textContent).toContain('12 reasoning')
+    expect(usageLines[0]?.textContent).toContain('30 cached')
+  })
+
+  it('hides token usage details when the message is not hovered', async () => {
+    messageState.message.isHovering = false
+    messageState.message.metadata = {
+      usage: {
+        inputTokens: 120,
+        outputTokens: 40,
+        totalTokens: 160
+      }
+    }
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    expect(container.querySelector('[data-testid="message-usage"]')).toBeNull()
   })
 })

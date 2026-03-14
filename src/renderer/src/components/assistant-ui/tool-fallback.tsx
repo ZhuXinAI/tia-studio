@@ -12,6 +12,35 @@ import { cn } from '../../lib/utils'
 
 const ANIMATION_DURATION = 200
 
+type TeamMemberToolResult = {
+  kind: 'team-member-result'
+  assistantId: string
+  assistantName: string
+  task: string
+  text: string
+  mentions: string[]
+  mentionNames: string[]
+  subAgentThreadId: string | null
+  subAgentResourceId: string | null
+}
+
+function isTeamMemberToolResult(value: unknown): value is TeamMemberToolResult {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const candidate = value as Partial<TeamMemberToolResult>
+  return (
+    candidate.kind === 'team-member-result' &&
+    typeof candidate.assistantId === 'string' &&
+    typeof candidate.assistantName === 'string' &&
+    typeof candidate.task === 'string' &&
+    typeof candidate.text === 'string' &&
+    Array.isArray(candidate.mentions) &&
+    Array.isArray(candidate.mentionNames)
+  )
+}
+
 export type ToolFallbackRootProps = Omit<
   React.ComponentProps<typeof Collapsible>,
   'open' | 'onOpenChange'
@@ -207,10 +236,53 @@ function ToolFallbackResult({
       className={cn('aui-tool-fallback-result border-t border-dashed px-4 pt-2', className)}
       {...props}
     >
-      <p className="aui-tool-fallback-result-header font-semibold">Result:</p>
-      <pre className="aui-tool-fallback-result-content whitespace-pre-wrap">
-        {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
-      </pre>
+      {isTeamMemberToolResult(result) ? (
+        <>
+          <p className="aui-tool-fallback-result-header font-semibold">Delegated response:</p>
+          <div className="aui-tool-fallback-team-result mt-2 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-xs font-medium">
+                {result.assistantName}
+              </span>
+              {result.mentionNames.length > 0 ? (
+                <span className="text-muted-foreground text-xs">
+                  Suggested next: {result.mentionNames.join(', ')}
+                </span>
+              ) : null}
+            </div>
+
+            <div>
+              <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+                Task
+              </p>
+              <p className="whitespace-pre-wrap">{result.task}</p>
+            </div>
+
+            <div>
+              <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+                Response
+              </p>
+              <div className="whitespace-pre-wrap">{result.text}</div>
+            </div>
+
+            {result.mentionNames.length > 0 ? (
+              <div>
+                <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+                  Routing hints
+                </p>
+                <p className="whitespace-pre-wrap">{result.mentionNames.join(', ')}</p>
+              </div>
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="aui-tool-fallback-result-header font-semibold">Result:</p>
+          <pre className="aui-tool-fallback-result-content whitespace-pre-wrap">
+            {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
+          </pre>
+        </>
+      )}
     </div>
   )
 }

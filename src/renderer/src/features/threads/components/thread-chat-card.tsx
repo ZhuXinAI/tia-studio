@@ -33,11 +33,7 @@ type ThreadChatCardProps = {
   loadError: string | null
   canAbortGeneration: boolean
   supportsVision: boolean
-  tokenUsage: {
-    inputTokens: number
-    outputTokens: number
-    totalTokens: number
-  } | null
+  tokenUsage: ThreadRecord['usageTotals']
   onSubmitMessage: (messageText: string) => Promise<void>
   onAbortGeneration: () => void
   onOpenAssistantConfig: () => void
@@ -209,7 +205,11 @@ export function ThreadChatCard({
             </CardTitle>
             <div className="flex shrink-0 items-center gap-2">
               {tokenUsage && (
-                <div className="bg-muted/50 text-muted-foreground inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs">
+                <div
+                  data-testid="thread-token-usage"
+                  title="Persisted total token usage for this thread"
+                  className="bg-muted/50 text-muted-foreground inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs"
+                >
                   <span className="font-medium">
                     {tokenUsage.totalTokens.toLocaleString(i18n.resolvedLanguage)}
                   </span>
