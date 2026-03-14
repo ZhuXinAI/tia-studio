@@ -1,17 +1,12 @@
-import os from 'node:os'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { access, readFile, writeFile } from 'node:fs/promises'
-import { Agent } from '@mastra/core/agent'
 import type { AgentExecutionOptions, ToolsInput } from '@mastra/core/agent'
-import type { MemoryConfig } from '@mastra/core/memory'
 import type { Mastra } from '@mastra/core/mastra'
-import { BatchPartsProcessor, PIIDetector, PromptInjectionDetector } from '@mastra/core/processors'
 import { RequestContext } from '@mastra/core/request-context'
-import { LocalFilesystem, LocalSandbox, Workspace } from '@mastra/core/workspace'
+import type { Workspace } from '@mastra/core/workspace'
 import { handleChatStream } from '@mastra/ai-sdk'
 import { toAISdkV5Messages } from '@mastra/ai-sdk/ui'
-import { Memory } from '@mastra/memory'
 import { MCPClient, type MastraMCPServerDefinition } from '@mastra/mcp'
 import { generateText, type LanguageModel, type UIMessage, type UIMessageChunk } from 'ai'
 import type { BuiltInBrowserController } from '../built-in-browser-manager'
@@ -21,11 +16,7 @@ import { buildHeartbeatWorklogContext } from '../heartbeat/heartbeat-context'
 import { listRecentConversations } from '../heartbeat/recent-conversations'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { ChannelThreadBindingsRepository } from '../persistence/repos/channel-thread-bindings-repo'
-import type {
-  ManagedRuntimeKind,
-  ManagedRuntimeRecord,
-  ManagedRuntimesState
-} from '../persistence/repos/managed-runtimes-repo'
+import type { ManagedRuntimeKind, ManagedRuntimeRecord } from '../persistence/repos/managed-runtimes-repo'
 import type { AppMcpServer, McpServersRepository } from '../persistence/repos/mcp-servers-repo'
 import type { AppProvider, ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { SecuritySettingsRepository } from '../persistence/repos/security-settings-repo'
@@ -33,6 +24,11 @@ import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import { ChatRouteError } from '../server/chat/chat-errors'
 import { ensureAssistantWorkspaceFiles } from './assistant-workspace'
+import {
+  buildAgentRegistrationSignature,
+  buildRegisteredAgent,
+  type ResolvedGuardrailConfig
+} from './assistant-runtime/agent-registration'
 import {
   buildAssistantInstructions,
   CHANNEL_BREAK_TAG,
@@ -51,6 +47,18 @@ import {
   buildThreadHistoryDocument,
   formatDateToken
 } from './assistant-runtime/thread-compaction'
+import {
+  buildWorkspace,
+  resolveEnabledMcpServers,
+  resolveMemoryOptions,
+  resolveSkillsPaths,
+  resolveWorkspaceRootPath,
+  toBooleanMap,
+  toJsonObject,
+  toNonEmptyString,
+  toStringList,
+  type JsonObject
+} from './assistant-runtime/workspace-tools'
 import {
   getRequiredManagedRuntimeKind,
   isManagedRuntimeReady,
@@ -71,20 +79,7 @@ import type {
   ThreadCommandResult
 } from './assistant-runtime/types'
 import { resolveModel } from './model-resolver'
-import { AttachmentUploader } from './processors/attachment-uploader'
-import { createCodingSubagent } from './coding-agent'
-import { createBuiltInBrowserTools } from './tools/built-in-browser-tools'
-import { createWebFetchTool } from './tools/web-fetch-tool'
-import { createChannelTools } from './tools/channel-tools'
-import { createCronTools } from './tools/cron-tools'
-import { createMemorySessionTools } from './tools/memory-session-tools'
-import {
-  assistantWorkspaceContextInputProcessor,
-  createSoulMemoryTools
-} from './tools/soul-memory-tools'
-import { createWorkLogTools } from './tools/work-log-tools'
 import { HEARTBEAT_RUN_CONTEXT_KEY } from './tool-context'
-import { createContainedLocalFilesystemInstructions } from './workspace-filesystem-instructions'
 import { logger } from '../utils/logger'
 
 type RuntimeMemoryStore = {
@@ -180,16 +175,6 @@ type AssistantRuntimeServiceOptions = {
       >
     >
   }
-}
-
-type JsonObject = Record<string, unknown>
-
-type ResolvedGuardrailConfig = {
-  promptInjectionEnabled: boolean
-  piiDetectionEnabled: boolean
-  requestedProviderId: string | null
-  provider: AppProvider
-  source: 'assistant' | 'override'
 }
 
 type PersistThreadUsageInput = {
@@ -1090,38 +1075,18 @@ export class AssistantRuntimeService implements AssistantRuntime {
       cronToolsEnabled: true
     }
   ): Promise<void> {
-    const enabledMcpServers = await this.resolveEnabledMcpServers(assistant.mcpConfig ?? {})
-    const mcpServersSignature = JSON.stringify(enabledMcpServers)
+    const enabledMcpServers = await resolveEnabledMcpServers({
+      mcpConfig: assistant.mcpConfig ?? {},
+      mcpServersRepo: this.options.mcpServersRepo
+    })
     const guardrailConfig = await this.resolveGuardrailConfig(provider)
-    const nextSignature = [
-      assistant.id,
-      assistant.updatedAt,
-      assistant.instructions,
-      provider.id,
-      provider.updatedAt,
-      provider.type,
-      provider.selectedModel,
-      provider.apiHost ?? '',
-      JSON.stringify(assistant.workspaceConfig ?? {}),
-      JSON.stringify(assistant.skillsConfig ?? {}),
-      JSON.stringify(assistant.codingConfig ?? {}),
-      JSON.stringify(assistant.mcpConfig ?? {}),
-      assistant.maxSteps,
-      JSON.stringify(assistant.memoryConfig ?? {}),
-      mcpServersSignature,
-      guardrailConfig.promptInjectionEnabled ? 'prompt-injection:on' : 'prompt-injection:off',
-      guardrailConfig.piiDetectionEnabled ? 'pii:on' : 'pii:off',
-      guardrailConfig.requestedProviderId ?? '',
-      guardrailConfig.source,
-      guardrailConfig.provider.id,
-      guardrailConfig.provider.updatedAt,
-      guardrailConfig.provider.type,
-      guardrailConfig.provider.selectedModel,
-      guardrailConfig.provider.apiHost ?? '',
-      options.channelDeliveryEnabled ? 'channel-delivery:on' : 'channel-delivery:off',
-      options.channelType ?? '',
-      options.cronToolsEnabled !== false ? 'cron-tools:on' : 'cron-tools:off'
-    ].join('|')
+    const nextSignature = buildAgentRegistrationSignature({
+      assistant,
+      provider,
+      guardrailConfig,
+      enabledMcpServers,
+      registrationOptions: options
+    })
 
     if (this.registeredAgentSignatures.get(assistant.id) === nextSignature) {
       return
@@ -1129,177 +1094,42 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
     this.options.mastra.removeAgent(assistant.id)
 
-    const webFetchTool = createWebFetchTool({
-      resolveKeepBrowserWindowOpen: async () =>
-        this.options.webSearchSettingsRepo.getKeepBrowserWindowOpen(),
-      resolveShowBrowser: async () => this.options.webSearchSettingsRepo.getShowBrowser()
-    })
-
-    const model = resolveModel({
-      type: provider.type,
-      apiKey: provider.apiKey,
-      apiHost: provider.apiHost,
-      selectedModel: provider.selectedModel
-    })
-    const guardrailModel = resolveModel({
-      type: guardrailConfig.provider.type,
-      apiKey: guardrailConfig.provider.apiKey,
-      apiHost: guardrailConfig.provider.apiHost,
-      selectedModel: guardrailConfig.provider.selectedModel
-    })
-
-    const storage = this.options.mastra.getStorage()
-    const memory = new Memory({
-      ...(storage ? { storage } : {}),
-      options: {
-        ...this.resolveMemoryOptions(assistant.memoryConfig),
-        generateTitle: true
-      }
-    })
-
-    const mcpTools = await this.buildMcpTools(assistant.id, enabledMcpServers)
-    const workspaceRootPath = this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})
-    const soulMemoryTools = workspaceRootPath ? createSoulMemoryTools({ workspaceRootPath }) : {}
-    const workLogTools = workspaceRootPath ? createWorkLogTools({ workspaceRootPath }) : {}
-    const cronTools =
-      workspaceRootPath && this.options.cronJobService && options.cronToolsEnabled !== false
-        ? createCronTools({
-            assistantId: assistant.id,
-            cronJobService: this.options.cronJobService
-          })
-        : {}
-    const channelTools = options.channelDeliveryEnabled
-      ? createChannelTools({
-          bus: this.channelEventBus,
-          workspaceRootPath,
-          resolveRecentConversations: this.options.channelThreadBindingsRepo
-            ? async () =>
-                listRecentConversations({
-                  assistantId: assistant.id,
-                  threadsRepo: this.options.threadsRepo,
-                  channelThreadBindingsRepo: this.options
-                    .channelThreadBindingsRepo as ChannelThreadBindingsRepository,
-                  mastra: this.options.mastra
-                })
-            : undefined
-        })
-      : {}
-
-    logger.debug('[AssistantRuntime] Agent tools registered:', {
-      hasBuiltInBrowserTools: Boolean(this.options.builtInBrowserManager),
-      hasCronTools: Object.keys(cronTools).length > 0,
-      hasChannelTools: Object.keys(channelTools).length > 0,
-      channelToolNames: Object.keys(channelTools),
-      cronToolsEnabled: options.cronToolsEnabled,
-      channelDeliveryEnabled: options.channelDeliveryEnabled,
-      channelType: options.channelType ?? null
-    })
-
-    const memorySessionTools = createMemorySessionTools(memory)
-    const builtInBrowserTools = this.options.builtInBrowserManager
-      ? createBuiltInBrowserTools({
-          controller: this.options.builtInBrowserManager
-        })
-      : {}
-    const tools: ToolsInput = {
-      webFetch: webFetchTool,
-      ...builtInBrowserTools,
-      ...soulMemoryTools,
-      ...workLogTools,
-      ...cronTools,
-      ...channelTools,
-      ...memorySessionTools,
-      ...mcpTools
-    }
-    const now = new Date()
-    const currentDateTime = now.toLocaleString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      timeZoneName: 'short'
-    })
-
     const hasAnyThreads =
       typeof this.options.threadsRepo.hasAnyThreads === 'function'
         ? await this.options.threadsRepo.hasAnyThreads(assistant.id)
         : true
-    const isFirstConversation = !hasAnyThreads
-    const baseInstructions = assistant.instructions || 'You are a helpful assistant.'
-    const agentInstructions = buildAssistantInstructions({
-      baseInstructions,
-      currentDateTime,
-      isFirstConversation,
-      channelDeliveryEnabled: options.channelDeliveryEnabled,
-      channelType: options.channelType,
-      builtInBrowserHandoffAvailable: Boolean(this.options.builtInBrowserManager)
-    })
-    const workspace = await this.buildWorkspace(
-      assistant.workspaceConfig ?? {},
-      assistant.skillsConfig ?? {}
-    )
-    const codingAgent = createCodingSubagent({
-      assistantId: assistant.id,
-      assistantName: assistant.name,
-      workspaceRootPath,
-      codingConfig: assistant.codingConfig
-    })
-    const inputProcessors = [
-      ...(workspaceRootPath
-        ? [assistantWorkspaceContextInputProcessor({ workspaceRootPath })]
-        : []),
-      ...(guardrailConfig.promptInjectionEnabled
-        ? [
-            new PromptInjectionDetector({
-              model: guardrailModel,
-              threshold: PROMPT_INJECTION_THRESHOLD,
-              strategy: 'warn'
-            })
-          ]
-        : []),
-      ...(guardrailConfig.piiDetectionEnabled
-        ? [
-            new PIIDetector({
-              model: guardrailModel,
-              threshold: PII_THRESHOLD,
-              strategy: 'redact',
-              redactionMethod: 'mask'
-            })
-          ]
-        : []),
-      new AttachmentUploader()
-    ]
-    const outputProcessors = guardrailConfig.piiDetectionEnabled
-      ? [
-          new BatchPartsProcessor({
-            batchSize: 10
-          }),
-          new PIIDetector({
-            model: guardrailModel,
-            threshold: PII_THRESHOLD,
-            strategy: 'redact',
-            redactionMethod: 'mask'
-          })
-        ]
-      : []
 
-    const agent = new Agent({
-      id: assistant.id,
-      name: assistant.name,
-      instructions: agentInstructions,
-      model: model as never,
-      memory: memory as never,
-      ...(workspace ? { workspace } : {}),
-      ...(codingAgent ? { agents: { codingAgent } } : {}),
-      tools,
-      inputProcessors,
-      ...(outputProcessors.length > 0 ? { outputProcessors } : {})
+    const build = await buildRegisteredAgent({
+      assistant,
+      provider,
+      guardrailConfig,
+      enabledMcpServers,
+      registrationOptions: options,
+      isFirstConversation: !hasAnyThreads,
+      storage: this.options.mastra.getStorage(),
+      resolveKeepBrowserWindowOpen: async () =>
+        this.options.webSearchSettingsRepo.getKeepBrowserWindowOpen(),
+      resolveShowBrowser: async () => this.options.webSearchSettingsRepo.getShowBrowser(),
+      channelEventBus: this.channelEventBus,
+      builtInBrowserManager: this.options.builtInBrowserManager,
+      cronJobService: this.options.cronJobService,
+      resolveRecentConversations: this.options.channelThreadBindingsRepo
+        ? async () =>
+            listRecentConversations({
+              assistantId: assistant.id,
+              threadsRepo: this.options.threadsRepo,
+              channelThreadBindingsRepo: this.options
+                .channelThreadBindingsRepo as ChannelThreadBindingsRepository,
+              mastra: this.options.mastra
+            })
+        : undefined,
+      buildWorkspace: async (workspaceConfig, skillsConfig) =>
+        this.buildWorkspace(workspaceConfig, skillsConfig),
+      buildMcpTools: async (assistantId, enabledServers) =>
+        this.buildMcpTools(assistantId, enabledServers)
     })
 
-    this.options.mastra.addAgent(agent, assistant.id)
+    this.options.mastra.addAgent(build.agent, assistant.id)
     this.registeredAgentSignatures.set(assistant.id, nextSignature)
   }
 
@@ -1354,77 +1184,24 @@ export class AssistantRuntimeService implements AssistantRuntime {
     workspaceConfig: JsonObject,
     skillsConfig: JsonObject
   ): Promise<Workspace | undefined> {
-    const rootPath = this.resolveWorkspaceRootPath(workspaceConfig)
-    if (!rootPath) {
-      return undefined
-    }
-
-    await ensureAssistantWorkspaceFiles(rootPath)
-
-    const skillsPaths = this.resolveSkillsPaths(rootPath, skillsConfig)
-    const filesystem = new LocalFilesystem({
-      basePath: rootPath,
-      instructions: createContainedLocalFilesystemInstructions(rootPath)
-    })
-    const sandbox = new LocalSandbox({
-      workingDirectory: rootPath
-    })
-    const workspace = new Workspace({
-      filesystem,
-      sandbox,
-      ...(skillsPaths.length > 0 ? { skills: skillsPaths } : {})
-    })
-
-    await workspace.init()
-    return workspace
+    return buildWorkspace({ workspaceConfig, skillsConfig })
   }
 
   private resolveWorkspaceRootPath(workspaceConfig: JsonObject): string | null {
-    const rootPath = this.toNonEmptyString(workspaceConfig.rootPath)
-    return rootPath ? path.resolve(rootPath) : null
+    return resolveWorkspaceRootPath(workspaceConfig)
   }
 
   private resolveSkillsPaths(workspaceRootPath: string, skillsConfig: JsonObject): string[] {
-    const rawPaths = [
-      path.join(os.homedir(), '.claude', 'skills'),
-      path.join(os.homedir(), '.agent', 'skills'),
-      path.join(workspaceRootPath, 'skills'),
-      ...this.toStringList(skillsConfig.path),
-      ...this.toStringList(skillsConfig.paths),
-      ...this.toStringList(skillsConfig.skillPath),
-      ...this.toStringList(skillsConfig.skillPaths),
-      ...this.toStringList(skillsConfig.skills),
-      ...this.toStringList(skillsConfig.directories)
-    ]
-
-    const uniquePaths = new Set<string>()
-    for (const rawPath of rawPaths) {
-      uniquePaths.add(rawPath)
-    }
-
-    return [...uniquePaths]
+    return resolveSkillsPaths(workspaceRootPath, skillsConfig)
   }
 
   private async resolveEnabledMcpServers(
     mcpConfig: JsonObject
   ): Promise<Record<string, AppMcpServer>> {
-    let settings: Awaited<ReturnType<McpServersRepository['getSettings']>>
-    try {
-      settings = await this.options.mcpServersRepo.getSettings()
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to read MCP settings'
-      throw new ChatRouteError(409, 'mcp_settings_invalid', message)
-    }
-
-    const assistantEnabledServers = this.toBooleanMap(mcpConfig)
-
-    const entries = Object.entries(settings.mcpServers)
-      .filter(
-        ([serverName, server]) => server.isActive && assistantEnabledServers[serverName] === true
-      )
-      .sort(([left], [right]) => left.localeCompare(right))
-
-    return Object.fromEntries(entries)
+    return resolveEnabledMcpServers({
+      mcpConfig,
+      mcpServersRepo: this.options.mcpServersRepo
+    })
   }
 
   private async buildMcpTools(
@@ -1528,15 +1305,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
   }
 
   private resolveMemoryOptions(memoryConfig: JsonObject | null): MemoryConfig {
-    const memoryConfigObject = memoryConfig ?? {}
-    const explicitOptions = this.toJsonObject(memoryConfigObject.options)
-    const baseOptions =
-      Object.keys(explicitOptions).length > 0 ? explicitOptions : memoryConfigObject
-
-    return {
-      ...(baseOptions as MemoryConfig),
-      generateTitle: true
-    }
+    return resolveMemoryOptions(memoryConfig)
   }
 
   private buildProviderOptions(providerType: string): AgentExecutionOptions['providerOptions'] {
@@ -1552,56 +1321,11 @@ export class AssistantRuntimeService implements AssistantRuntime {
   }
 
   private toStringList(value: unknown): string[] {
-    if (typeof value === 'string') {
-      return this.toNonEmptyString(value) ? [value.trim()] : []
-    }
-
-    if (!Array.isArray(value)) {
-      return []
-    }
-
-    return value
-      .filter((item): item is string => typeof item === 'string')
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0)
+    return toStringList(value)
   }
 
   private toBooleanMap(value: unknown): Record<string, boolean> {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      return {}
-    }
-
-    const entries = Object.entries(value)
-      .map(([key, itemValue]) => {
-        const normalizedKey = key.trim()
-        if (normalizedKey.length === 0) {
-          return null
-        }
-
-        if (typeof itemValue === 'boolean') {
-          return [normalizedKey, itemValue] as const
-        }
-
-        if (typeof itemValue === 'string') {
-          const normalizedValue = itemValue.trim().toLowerCase()
-          if (normalizedValue === 'true' || normalizedValue === '1') {
-            return [normalizedKey, true] as const
-          }
-
-          if (normalizedValue === 'false' || normalizedValue === '0') {
-            return [normalizedKey, false] as const
-          }
-        }
-
-        if (typeof itemValue === 'number') {
-          return [normalizedKey, itemValue !== 0] as const
-        }
-
-        return null
-      })
-      .filter((entry): entry is readonly [string, boolean] => entry !== null)
-
-    return Object.fromEntries(entries)
+    return toBooleanMap(value)
   }
 
   private toStringMap(value: NodeJS.ProcessEnv): Record<string, string> {
@@ -1609,19 +1333,10 @@ export class AssistantRuntimeService implements AssistantRuntime {
   }
 
   private toNonEmptyString(value: unknown): string | null {
-    if (typeof value !== 'string') {
-      return null
-    }
-
-    const normalized = value.trim()
-    return normalized.length > 0 ? normalized : null
+    return toNonEmptyString(value)
   }
 
   private toJsonObject(value: unknown): JsonObject {
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      return value as JsonObject
-    }
-
-    return {}
+    return toJsonObject(value)
   }
 }
