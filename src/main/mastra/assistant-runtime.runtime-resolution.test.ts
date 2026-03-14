@@ -5,6 +5,7 @@ import type {
   ManagedRuntimesState
 } from '../persistence/repos/managed-runtimes-repo'
 import type { AppMcpServer } from '../persistence/repos/mcp-servers-repo'
+import type { AssistantRuntime } from './assistant-runtime'
 import { AssistantRuntimeService } from './assistant-runtime'
 
 vi.mock('electron', () => ({
@@ -80,6 +81,14 @@ function createRuntime(options?: {
 }
 
 describe('AssistantRuntimeService runtime resolution', () => {
+  it('exports AssistantRuntimeService and preserves the AssistantRuntime import path', async () => {
+    const module = await import('./assistant-runtime')
+    const runtimeTypeCheck: AssistantRuntime | null = null
+
+    expect(module.AssistantRuntimeService).toBe(AssistantRuntimeService)
+    expect(runtimeTypeCheck).toBeNull()
+  })
+
   it('resolves npx definitions through managed bunx', async () => {
     const runtime = createRuntime({
       getStatus: async () => createManagedRuntimeState(['bun']),

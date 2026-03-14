@@ -19,13 +19,13 @@ describe('thread compaction helpers', () => {
           { type: 'reasoning', text: 'ignored reasoning' } as never,
           { type: 'image', image: 'data:image/png;base64,abc' } as never
         ]
-      },
+      } as unknown as UIMessage,
       {
         id: 'assistant-1',
         role: 'assistant',
         content: '',
         parts: [{ type: 'file', mediaType: 'text/plain', filename: 'notes.txt' } as never]
-      }
+      } as unknown as UIMessage
     ]
 
     expect(extractCompactionMessageText(messages[0])).toBe(

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type {
   ManagedRuntimeKind,
   ManagedRuntimesState
-} from '../persistence/repos/managed-runtimes-repo'
+} from '../../persistence/repos/managed-runtimes-repo'
 import {
   getRequiredManagedRuntimeKind,
   isManagedRuntimeReady,

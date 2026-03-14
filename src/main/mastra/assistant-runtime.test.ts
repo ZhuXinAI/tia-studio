@@ -17,6 +17,7 @@ import type { AssistantCronJobsService } from '../cron/assistant-cron-jobs-servi
 import { AssistantRuntimeService } from './assistant-runtime'
 import * as modelResolver from './model-resolver'
 import { createMastraInstance } from './store'
+import { resolveSkillsPaths } from './assistant-runtime/workspace-tools'
 import { HEARTBEAT_RUN_CONTEXT_KEY } from './tool-context'
 
 const { handleChatStreamMock, toAISdkV5MessagesMock, generateTextMock } = vi.hoisted(() => ({
@@ -119,26 +120,8 @@ async function getAgentInstructions(agent: unknown): Promise<string> {
 
 describe('AssistantRuntimeService', () => {
   it('includes global and workspace skills directories by default', () => {
-    const runtime = new AssistantRuntimeService({
-      mastra: {} as Mastra,
-      assistantsRepo: {} as AssistantsRepository,
-      providersRepo: {} as ProvidersRepository,
-      threadsRepo: {} as ThreadsRepository,
-      webSearchSettingsRepo: {} as WebSearchSettingsRepository,
-      mcpServersRepo: {
-        getSettings: vi.fn(async () => ({ mcpServers: {} }))
-      } as never
-    })
-
     const workspaceRoot = '/tmp/workspace'
-    const skillsPaths = (
-      runtime as unknown as {
-        resolveSkillsPaths: (
-          workspaceRootPath: string,
-          skillsConfig: Record<string, unknown>
-        ) => string[]
-      }
-    ).resolveSkillsPaths(workspaceRoot, {})
+    const skillsPaths = resolveSkillsPaths(workspaceRoot, {})
 
     expect(skillsPaths).toEqual(
       expect.arrayContaining([
