@@ -30,22 +30,49 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        run: |
+          npm install --global pnpm@9
+          pnpm --version
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Check macOS signing and notarization secrets
+        if: matrix.is_macos
+        env:
+          HAS_MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE != '' }}
+          HAS_MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD != '' }}
+          HAS_KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD != '' }}
+          HAS_APPLE_ID: ${{ secrets.APPLE_ID != '' }}
+          HAS_APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD != '' }}
+          HAS_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID != '' }}
+        run: |
+          echo "MACOS_CERTIFICATE=$HAS_MACOS_CERTIFICATE"
+          echo "MACOS_CERTIFICATE_PASSWORD=$HAS_MACOS_CERTIFICATE_PASSWORD"
+          echo "KEYCHAIN_PASSWORD=$HAS_KEYCHAIN_PASSWORD"
+          echo "APPLE_ID=$HAS_APPLE_ID"
+          echo "APPLE_APP_SPECIFIC_PASSWORD=$HAS_APPLE_APP_SPECIFIC_PASSWORD"
+          echo "APPLE_TEAM_ID=$HAS_APPLE_TEAM_ID"
+
+          if [ "$HAS_MACOS_CERTIFICATE" != "true" ] || [ "$HAS_MACOS_CERTIFICATE_PASSWORD" != "true" ] || [ "$HAS_KEYCHAIN_PASSWORD" != "true" ]; then
+            echo "::error::The macOS signing certificate secrets are incomplete."
+            exit 1
+          fi
+
+          if [ "$HAS_APPLE_ID" != "true" ] || [ "$HAS_APPLE_APP_SPECIFIC_PASSWORD" != "true" ] || [ "$HAS_APPLE_TEAM_ID" != "true" ]; then
+            echo "::error::The Apple notarization secrets are incomplete. Expected APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, and APPLE_TEAM_ID."
+            exit 1
+          fi
 
       - name: Import Code Signing Certificate (macOS)
         if: matrix.is_macos
@@ -78,6 +105,27 @@ jobs:
           pnpm run build
           ${{ matrix.release_command }}
 
+      - name: Locate built app (macOS)
+        if: matrix.is_macos
+        id: locate_macos_app
+        run: |
+          APP_PATH=$(find dist -maxdepth 3 -name "*.app" | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "::error::Could not find a built .app bundle in dist."
+            find dist -maxdepth 3 -print || true
+            exit 1
+          fi
+
+          echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
+          echo "Found app bundle at $APP_PATH"
+
+      - name: Verify macOS codesign and Gatekeeper state
+        if: matrix.is_macos
+        run: |
+          codesign --verify --deep --strict --verbose=2 "${{ steps.locate_macos_app.outputs.app_path }}"
+          spctl -a -vvv --type exec "${{ steps.locate_macos_app.outputs.app_path }}"
+          xcrun stapler validate "${{ steps.locate_macos_app.outputs.app_path }}"
+
       - name: Cleanup Keychain (macOS)
         if: matrix.is_macos && always()
         run: |
@@ -92,7 +140,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
