@@ -2,24 +2,11 @@ import type { UIMessageChunk } from 'ai'
 import { supportedUiLanguages, type UiLanguage } from '../ui-config'
 
 const FALLBACK_LOCALE: UiLanguage = 'en-US'
-const MAX_TOOL_DETAIL_LENGTH = 600
 
 type ToolInputAvailableChunk = Extract<UIMessageChunk, { type: 'tool-input-available' }>
-type ToolOutputAvailableChunk = Extract<UIMessageChunk, { type: 'tool-output-available' }>
-type ToolOutputErrorChunk = Extract<UIMessageChunk, { type: 'tool-output-error' }>
-
-type ToolDescriptor = {
-  toolName: string
-  title?: string
-}
 
 type ChannelProgressMessages = {
   usingTool: string
-  toolOutput: string
-  toolFailed: string
-  inputLabel: string
-  outputLabel: string
-  errorLabel: string
 }
 
 type ChannelInterruptionMessages = {
@@ -29,92 +16,37 @@ type ChannelInterruptionMessages = {
 
 const channelProgressMessages: Record<UiLanguage, ChannelProgressMessages> = {
   'en-US': {
-    usingTool: 'Using tool: {{tool}}',
-    toolOutput: 'Tool output: {{tool}}',
-    toolFailed: 'Tool failed: {{tool}}',
-    inputLabel: 'Input',
-    outputLabel: 'Output',
-    errorLabel: 'Error'
+    usingTool: 'Using tool: {{tool}}'
   },
   'zh-CN': {
-    usingTool: '正在使用工具：{{tool}}',
-    toolOutput: '工具输出：{{tool}}',
-    toolFailed: '工具失败：{{tool}}',
-    inputLabel: '输入',
-    outputLabel: '输出',
-    errorLabel: '错误'
+    usingTool: '正在使用工具：{{tool}}'
   },
   'zh-HK': {
-    usingTool: '正在使用工具：{{tool}}',
-    toolOutput: '工具輸出：{{tool}}',
-    toolFailed: '工具失敗：{{tool}}',
-    inputLabel: '輸入',
-    outputLabel: '輸出',
-    errorLabel: '錯誤'
+    usingTool: '正在使用工具：{{tool}}'
   },
   'de-DE': {
-    usingTool: 'Verwende Tool: {{tool}}',
-    toolOutput: 'Tool-Ausgabe: {{tool}}',
-    toolFailed: 'Tool fehlgeschlagen: {{tool}}',
-    inputLabel: 'Eingabe',
-    outputLabel: 'Ausgabe',
-    errorLabel: 'Fehler'
+    usingTool: 'Verwende Tool: {{tool}}'
   },
   'ja-JP': {
-    usingTool: 'ツールを使用中: {{tool}}',
-    toolOutput: 'ツール出力: {{tool}}',
-    toolFailed: 'ツール失敗: {{tool}}',
-    inputLabel: '入力',
-    outputLabel: '出力',
-    errorLabel: 'エラー'
+    usingTool: 'ツールを使用中: {{tool}}'
   },
   'ru-RU': {
-    usingTool: 'Используется инструмент: {{tool}}',
-    toolOutput: 'Результат инструмента: {{tool}}',
-    toolFailed: 'Ошибка инструмента: {{tool}}',
-    inputLabel: 'Ввод',
-    outputLabel: 'Вывод',
-    errorLabel: 'Ошибка'
+    usingTool: 'Используется инструмент: {{tool}}'
   },
   'el-GR': {
-    usingTool: 'Χρήση εργαλείου: {{tool}}',
-    toolOutput: 'Έξοδος εργαλείου: {{tool}}',
-    toolFailed: 'Αποτυχία εργαλείου: {{tool}}',
-    inputLabel: 'Είσοδος',
-    outputLabel: 'Έξοδος',
-    errorLabel: 'Σφάλμα'
+    usingTool: 'Χρήση εργαλείου: {{tool}}'
   },
   'es-ES': {
-    usingTool: 'Usando herramienta: {{tool}}',
-    toolOutput: 'Salida de la herramienta: {{tool}}',
-    toolFailed: 'La herramienta falló: {{tool}}',
-    inputLabel: 'Entrada',
-    outputLabel: 'Salida',
-    errorLabel: 'Error'
+    usingTool: 'Usando herramienta: {{tool}}'
   },
   'fr-FR': {
-    usingTool: "Utilisation de l'outil : {{tool}}",
-    toolOutput: "Sortie de l'outil : {{tool}}",
-    toolFailed: "Échec de l'outil : {{tool}}",
-    inputLabel: 'Entrée',
-    outputLabel: 'Sortie',
-    errorLabel: 'Erreur'
+    usingTool: "Utilisation de l'outil : {{tool}}"
   },
   'pt-PT': {
-    usingTool: 'A usar ferramenta: {{tool}}',
-    toolOutput: 'Saída da ferramenta: {{tool}}',
-    toolFailed: 'Falha na ferramenta: {{tool}}',
-    inputLabel: 'Entrada',
-    outputLabel: 'Saída',
-    errorLabel: 'Erro'
+    usingTool: 'A usar ferramenta: {{tool}}'
   },
   'ro-RO': {
-    usingTool: 'Se folosește instrumentul: {{tool}}',
-    toolOutput: 'Ieșire instrument: {{tool}}',
-    toolFailed: 'Instrumentul a eșuat: {{tool}}',
-    inputLabel: 'Intrare',
-    outputLabel: 'Ieșire',
-    errorLabel: 'Eroare'
+    usingTool: 'Se folosește instrumentul: {{tool}}'
   }
 }
 
@@ -254,7 +186,7 @@ function fillTemplate(template: string, values: Record<string, string>): string 
   )
 }
 
-function resolveToolLabel(tool: ToolDescriptor): string {
+function resolveToolLabel(tool: { toolName: string; title?: string }): string {
   const title = typeof tool.title === 'string' ? tool.title.trim() : ''
   if (title.length > 0) {
     return title
@@ -280,31 +212,6 @@ function resolveToolLabel(tool: ToolDescriptor): string {
   return normalized.replace(/\b\w/g, (segment) => segment.toUpperCase())
 }
 
-function truncateText(value: string): string {
-  const normalized = value.trim()
-  if (normalized.length <= MAX_TOOL_DETAIL_LENGTH) {
-    return normalized
-  }
-
-  return `${normalized.slice(0, MAX_TOOL_DETAIL_LENGTH - 1).trimEnd()}…`
-}
-
-function serializeToolDetail(value: unknown): string | null {
-  if (value === undefined) {
-    return null
-  }
-
-  if (typeof value === 'string') {
-    return truncateText(value)
-  }
-
-  try {
-    return truncateText(JSON.stringify(value, null, 2))
-  } catch {
-    return truncateText(String(value))
-  }
-}
-
 export function formatChannelToolInputUpdate(
   chunk: ToolInputAvailableChunk,
   rawLocale?: string | null
@@ -317,39 +224,7 @@ export function formatChannelToolInputUpdate(
       title: chunk.title
     })
   })
-  const detail = serializeToolDetail(chunk.input)
-
-  return detail ? `${header}\n${messages.inputLabel}:\n${detail}` : header
-}
-
-export function formatChannelToolOutputUpdate(
-  chunk: ToolOutputAvailableChunk,
-  tool: ToolDescriptor,
-  rawLocale?: string | null
-): string {
-  const locale = resolveChannelProgressLocale(rawLocale)
-  const messages = channelProgressMessages[locale]
-  const header = fillTemplate(messages.toolOutput, {
-    tool: resolveToolLabel(tool)
-  })
-  const detail = serializeToolDetail(chunk.output)
-
-  return detail ? `${header}\n${messages.outputLabel}:\n${detail}` : header
-}
-
-export function formatChannelToolErrorUpdate(
-  chunk: ToolOutputErrorChunk,
-  tool: ToolDescriptor,
-  rawLocale?: string | null
-): string {
-  const locale = resolveChannelProgressLocale(rawLocale)
-  const messages = channelProgressMessages[locale]
-  const header = fillTemplate(messages.toolFailed, {
-    tool: resolveToolLabel(tool)
-  })
-  const detail = truncateText(chunk.errorText)
-
-  return detail ? `${header}\n${messages.errorLabel}:\n${detail}` : header
+  return header
 }
 
 export function formatChannelInterruptionReply(

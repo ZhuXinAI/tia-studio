@@ -36,7 +36,10 @@ function createAssistantReplyStream(text: string): ReadableStream<UIMessageChunk
   )
 }
 
-function createAssistantRuntimeStub(streamChat: AssistantRuntime['streamChat']): AssistantRuntime {
+function createAssistantRuntimeStub(
+  streamChat: AssistantRuntime['streamChat'],
+  overrides?: Partial<AssistantRuntime>
+): AssistantRuntime {
   return {
     streamChat,
     listThreadMessages: vi.fn(async () => []),
@@ -51,7 +54,8 @@ function createAssistantRuntimeStub(streamChat: AssistantRuntime['streamChat']):
         }) as const
     ),
     runCronJob: vi.fn(async () => ({ outputText: '' })),
-    runHeartbeat: vi.fn(async () => ({ outputText: '' }))
+    runHeartbeat: vi.fn(async () => ({ outputText: '' })),
+    ...overrides
   }
 }
 
@@ -539,17 +543,12 @@ describe('ChannelMessageRouter', () => {
       expect.objectContaining({
         channelId,
         remoteChatId: 'oc_123',
-        content: '正在使用工具：Workspace Read File\n输入:\n{\n  "path": "README.md"\n}'
-      }),
-      expect.objectContaining({
-        channelId,
-        remoteChatId: 'oc_123',
-        content: '工具失败：Workspace Read File\n错误:\nFile not found'
+        content: '正在使用工具：Workspace Read File'
       })
     ])
   })
 
-  it('publishes tool input and output updates to the channel', async () => {
+  it('publishes only the localized tool start update to the channel', async () => {
     const publishedEvents: unknown[] = []
     const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
       createStream([
@@ -602,12 +601,7 @@ describe('ChannelMessageRouter', () => {
       expect.objectContaining({
         channelId,
         remoteChatId: 'oc_123',
-        content: 'Using tool: Update Soul Memory\nInput:\n{\n  "content": "Remember this note."\n}'
-      }),
-      expect.objectContaining({
-        channelId,
-        remoteChatId: 'oc_123',
-        content: 'Tool output: Update Soul Memory\nOutput:\n{\n  "ok": true\n}'
+        content: 'Using tool: Update Soul Memory'
       })
     ])
   })
@@ -940,6 +934,112 @@ describe('ChannelMessageRouter', () => {
     const sent = publishedEvents[0] as { content: string }
     expect(sent.content).toBe(
       '[Error] Failed to generate a response. Please check the provider configuration.'
+    )
+  })
+
+  it('handles /stop in the channel router without calling the LLM', async () => {
+    const firstRun = createDeferredAssistantReplyStream()
+    let firstAbortSignal: AbortSignal | undefined
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async (params) => {
+      firstAbortSignal = params.abortSignal
+      firstRun.bindAbortSignal(params.abortSignal)
+      return firstRun.stream
+    })
+    const runThreadCommand = vi.fn<AssistantRuntime['runThreadCommand']>()
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat, {
+        runThreadCommand
+      })
+    })
+    const publishedEvents: string[] = []
+
+    eventBus.subscribe('channel.message.send-requested', (event) => {
+      if (typeof event.content === 'string') {
+        publishedEvents.push(event.content)
+      }
+    })
+
+    const firstPromise = router.handleInboundEvent(
+      createInboundEvent({
+        eventId: 'evt-stop-1',
+        channelId,
+        messageId: 'msg-stop-1',
+        content: 'draft the original answer'
+      })
+    )
+    await expectEventually(() => {
+      expect(streamChat).toHaveBeenCalledTimes(1)
+    })
+
+    await router.handleInboundEvent(
+      createInboundEvent({
+        eventId: 'evt-stop-2',
+        channelId,
+        messageId: 'msg-stop-2',
+        content: '/stop'
+      })
+    )
+
+    await expectEventually(() => {
+      expect(firstAbortSignal?.aborted).toBe(true)
+    })
+
+    firstRun.finish('stale reply')
+    await firstPromise
+
+    expect(runThreadCommand).not.toHaveBeenCalled()
+    expect(streamChat).toHaveBeenCalledTimes(1)
+    expect(publishedEvents).toContain('Stopped the current run.')
+  })
+
+  it('handles /new in the channel router without sending it to the LLM', async () => {
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () => createAssistantReplyStream('unused'))
+    const runThreadCommand = vi.fn<AssistantRuntime['runThreadCommand']>(async () => ({
+      command: 'new',
+      archiveFileName: 'thread_history_2026-03-14.md',
+      archiveFilePath: '/workspace/thread_history_2026-03-14.md',
+      threadTitle: 'New Thread',
+      compactedAt: '2026-03-14T00:00:00.000Z'
+    }))
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat, {
+        runThreadCommand
+      })
+    })
+    const publishedEvents: string[] = []
+
+    eventBus.subscribe('channel.message.send-requested', (event) => {
+      if (typeof event.content === 'string') {
+        publishedEvents.push(event.content)
+      }
+    })
+
+    await router.handleInboundEvent(
+      createInboundEvent({
+        eventId: 'evt-new-1',
+        channelId,
+        messageId: 'msg-new-1',
+        content: '/new'
+      })
+    )
+
+    expect(runThreadCommand).toHaveBeenCalledWith({
+      assistantId,
+      threadId: expect.any(String),
+      profileId: 'default-profile',
+      command: 'new'
+    })
+    expect(streamChat).not.toHaveBeenCalled()
+    expect(publishedEvents).toContain(
+      'Started a fresh memory session. Archived the previous thread to thread_history_2026-03-14.md.'
     )
   })
 

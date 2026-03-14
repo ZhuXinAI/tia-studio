@@ -154,6 +154,38 @@ describe('channel tools', () => {
     ])
   })
 
+  it('rejects sendImage on channels that do not support image delivery', async () => {
+    workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-channel-tools-'))
+    await writeFile(path.join(workspaceRoot, 'chart.png'), 'binary', 'utf8')
+
+    const requestContext = new RequestContext()
+    requestContext.set(CHANNEL_CONTEXT_KEY, {
+      channelId: 'channel-1',
+      channelType: 'wecom',
+      remoteChatId: 'chat-1',
+      userId: 'user-1'
+    })
+
+    const tools = createChannelTools({
+      bus: new ChannelEventBus(),
+      workspaceRootPath: workspaceRoot
+    })
+    if (!tools.sendImage.execute) {
+      throw new Error('Expected sendImage.execute to exist')
+    }
+
+    await expect(
+      tools.sendImage.execute(
+        {
+          filePath: 'chart.png'
+        },
+        {
+          requestContext
+        } as never
+      )
+    ).rejects.toThrow('WeCom does not support sendImage right now.')
+  })
+
   it('exposes recent conversations only for heartbeat runs and supports explicit send targets', async () => {
     const bus = new ChannelEventBus()
     const publishedEvents: unknown[] = []

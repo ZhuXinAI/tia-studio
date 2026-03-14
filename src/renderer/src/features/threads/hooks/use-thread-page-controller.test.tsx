@@ -299,6 +299,7 @@ describe('useThreadPageController', () => {
     mockState.runThreadCommandMock.mockReset()
     mockState.runThreadCommandMock.mockResolvedValue({
       ok: true,
+      handled: true,
       command: 'new',
       archiveFileName: 'thread_history_2026-03-14.md',
       archiveFilePath: '/workspace/demo/thread_history_2026-03-14.md',
@@ -619,7 +620,7 @@ describe('useThreadPageController', () => {
     })
   })
 
-  it('treats /stop as a local interrupt instead of sending a chat message', async () => {
+  it('routes /stop through the main-thread command handler instead of sending chat', async () => {
     mockState.chatStatus = 'streaming'
     mockState.routeParams.threadId = 'thread-1'
     mockState.threadsData = [
@@ -648,19 +649,29 @@ describe('useThreadPageController', () => {
     })
 
     await waitForCondition(() => controller?.selectedThread?.id === 'thread-1', 'selected thread')
-
+    mockState.runThreadCommandMock.mockResolvedValueOnce({
+      ok: true,
+      handled: true,
+      command: 'stop',
+      stopped: true
+    })
     mockState.stopMock.mockClear()
 
     await act(async () => {
       await controller?.onSubmitMessage('/stop')
     })
 
-    expect(mockState.stopMock).toHaveBeenCalledTimes(1)
+    expect(mockState.runThreadCommandMock).toHaveBeenCalledWith({
+      assistantId: 'assistant-1',
+      threadId: 'thread-1',
+      profileId: 'default-profile',
+      text: '/stop'
+    })
     expect(mockState.sendMessageMock).not.toHaveBeenCalled()
-    expect(mockState.runThreadCommandMock).not.toHaveBeenCalled()
+    expect(mockState.stopMock).not.toHaveBeenCalled()
   })
 
-  it('runs /new through the thread command endpoint and creates a fresh thread', async () => {
+  it('routes /new through the main-thread command handler without sending chat', async () => {
     mockState.routeParams.threadId = 'thread-1'
     mockState.threadsData = [
       {
@@ -673,15 +684,6 @@ describe('useThreadPageController', () => {
         updatedAt: '2026-03-01T00:00:00.000Z'
       }
     ]
-    mockState.createThreadMock.mockResolvedValue({
-      id: 'thread-2',
-      assistantId: 'assistant-1',
-      resourceId: 'default-profile',
-      title: 'New Thread',
-      lastMessageAt: null,
-      createdAt: '2026-03-01T00:00:00.000Z',
-      updatedAt: '2026-03-01T00:00:00.000Z'
-    })
 
     await act(async () => {
       root.render(
@@ -706,16 +708,59 @@ describe('useThreadPageController', () => {
       assistantId: 'assistant-1',
       threadId: 'thread-1',
       profileId: 'default-profile',
-      command: 'new'
+      text: '/new'
     })
-    expect(mockState.createThreadMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        assistantId: 'assistant-1',
-        resourceId: 'default-profile'
-      })
-    )
+    expect(mockState.createThreadMock).not.toHaveBeenCalled()
     expect(mockState.sendMessageMock).not.toHaveBeenCalled()
-    expect(mockState.routeParams.threadId).toBe('thread-2')
+  })
+
+  it('falls back to normal chat when the main-thread command parser does not handle a slash', async () => {
+    mockState.routeParams.threadId = 'thread-1'
+    mockState.threadsData = [
+      {
+        id: 'thread-1',
+        assistantId: 'assistant-1',
+        resourceId: 'default-profile',
+        title: 'Recovered thread',
+        lastMessageAt: null,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z'
+      }
+    ]
+    mockState.runThreadCommandMock.mockResolvedValueOnce({
+      ok: true,
+      handled: false
+    })
+    mockState.sendMessageMock.mockResolvedValueOnce(undefined)
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+          onForceRerenderReady={(value) => {
+            forceRerender = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(() => controller?.selectedThread?.id === 'thread-1', 'selected thread')
+
+    await act(async () => {
+      await controller?.onSubmitMessage('/unknown')
+    })
+
+    expect(mockState.runThreadCommandMock).toHaveBeenCalledWith({
+      assistantId: 'assistant-1',
+      threadId: 'thread-1',
+      profileId: 'default-profile',
+      text: '/unknown'
+    })
+    expect(mockState.sendMessageMock).toHaveBeenCalledWith({
+      text: '/unknown'
+    })
   })
 
   it('uses persisted thread usage totals as the canonical token usage state', async () => {

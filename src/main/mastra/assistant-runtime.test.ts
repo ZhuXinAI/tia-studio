@@ -313,6 +313,110 @@ describe('AssistantRuntimeService', () => {
     )
   })
 
+  it('tells channel-targeted runs when sendImage is available or unavailable', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(
+      new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.enqueue({ type: 'finish' } as UIMessageChunk)
+          controller.close()
+        }
+      })
+    )
+
+    const assistant = buildAssistant()
+    const provider = buildProvider()
+    const threadRecord = {
+      id: 'thread-1',
+      assistantId: assistant.id,
+      resourceId: 'profile-1',
+      title: 'New Thread',
+      lastMessageAt: null,
+      createdAt: '2026-03-02T00:00:00.000Z',
+      updatedAt: '2026-03-02T00:00:00.000Z'
+    }
+
+    const telegramMastra = await createMastraInstance(':memory:')
+    const telegramRuntime = new AssistantRuntimeService({
+      mastra: telegramMastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => provider)
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => threadRecord),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    await drainStream(
+      await telegramRuntime.streamChat({
+        assistantId: assistant.id,
+        threadId: threadRecord.id,
+        profileId: threadRecord.resourceId,
+        messages: [],
+        channelTarget: {
+          channelId: 'channel-1',
+          channelType: 'telegram',
+          remoteChatId: 'chat-1'
+        }
+      })
+    )
+
+    await expect(
+      getAgentInstructions(telegramMastra.getAgentById(assistant.id))
+    ).resolves.toContain('This channel supports sendImage')
+
+    const wecomMastra = await createMastraInstance(':memory:')
+    const wecomRuntime = new AssistantRuntimeService({
+      mastra: wecomMastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => provider)
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => threadRecord),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    await drainStream(
+      await wecomRuntime.streamChat({
+        assistantId: assistant.id,
+        threadId: threadRecord.id,
+        profileId: threadRecord.resourceId,
+        messages: [],
+        channelTarget: {
+          channelId: 'channel-1',
+          channelType: 'wecom',
+          remoteChatId: 'chat-1'
+        }
+      })
+    )
+
+    await expect(getAgentInstructions(wecomMastra.getAgentById(assistant.id))).resolves.toContain(
+      'WeCom does not support sendImage right now'
+    )
+  })
+
   it('adds shared web fetch guidance to agent instructions', async () => {
     const mastra = await createMastraInstance(':memory:')
     const runtime = new AssistantRuntimeService({
@@ -342,9 +446,76 @@ describe('AssistantRuntimeService', () => {
     expect(instructions).toContain(
       'prefer browser-oriented tools such as agent-browser or Playwright MCP'
     )
+    expect(instructions).toContain('remote debugging port 10531')
+    expect(instructions).toContain('--session-name tia-built-in-browser --cdp 10531')
+    expect(instructions).toContain('login sessions should survive normal app restarts')
+    expect(instructions).toContain('Do not rely on hidden tool-call UI')
+    expect(instructions).toContain('send the screenshot to the user first')
+    expect(instructions).toContain('recommend installing agent-browser')
     expect(instructions).toContain(
       'Fall back to webFetch only when richer browser tooling is unavailable'
     )
+  })
+
+  it('registers the browser handoff tool when a built-in browser manager is available', async () => {
+    const mastra = await createMastraInstance(':memory:')
+    const builtInBrowserManager = {
+      getRemoteDebuggingPort: vi.fn(() => 10531),
+      requestHumanHandoff: vi.fn(async () => ({
+        status: 'completed' as const,
+        currentUrl: 'https://example.test/account',
+        remoteDebuggingPort: 10531
+      }))
+    }
+    const runtime = new AssistantRuntimeService({
+      mastra,
+      assistantsRepo: {} as AssistantsRepository,
+      providersRepo: {} as ProvidersRepository,
+      threadsRepo: {
+        hasAnyThreads: vi.fn(async () => true)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing')
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never,
+      builtInBrowserManager
+    })
+
+    await (
+      runtime as unknown as {
+        ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+      }
+    ).ensureAgentRegistered(buildAssistant(), buildProvider())
+
+    const agent = mastra.getAgentById('assistant-1')
+    const instructions = await getAgentInstructions(agent)
+    const tools = (await agent.listTools()) as Record<
+      string,
+      {
+        execute?: (input: Record<string, unknown>) => Promise<Record<string, unknown>>
+      }
+    >
+
+    expect(Object.keys(tools)).toEqual(expect.arrayContaining(['requestBrowserHumanHandoff']))
+    expect(instructions).toContain('use the request-browser-human-handoff tool')
+
+    const result = await tools.requestBrowserHumanHandoff.execute?.({
+      message: 'Please finish logging in.',
+      timeoutSeconds: 1
+    })
+
+    expect(result).toMatchObject({
+      status: 'completed',
+      currentUrl: 'https://example.test/account',
+      remoteDebuggingPort: 10531
+    })
+    expect(builtInBrowserManager.requestHumanHandoff).toHaveBeenCalledWith({
+      message: 'Please finish logging in.',
+      buttonLabel: undefined,
+      timeoutMs: 1000
+    })
   })
 
   it('bootstraps assistant workspace files when registering an agent', async () => {

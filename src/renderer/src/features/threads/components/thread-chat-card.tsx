@@ -1,4 +1,12 @@
-import { Link2, Plus, Sparkles, Settings2 } from 'lucide-react'
+import {
+  AlertCircle,
+  ExternalLink,
+  Link2,
+  LoaderIcon,
+  Plus,
+  Sparkles,
+  Settings2
+} from 'lucide-react'
 import type { UIMessage } from 'ai'
 import type { UseChatHelpers } from '@ai-sdk/react'
 import {
@@ -9,13 +17,15 @@ import {
   useAuiState
 } from '@assistant-ui/react'
 import { useAISDKRuntime } from '@assistant-ui/react-ai-sdk'
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import type { AssistantRecord } from '../../assistants/assistants-query'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import type { AssistantReadiness } from '../thread-page-helpers'
 import type { ThreadRecord } from '../threads-query'
+import { showBuiltInBrowserWindow } from '../built-in-browser-query'
 import { ThreadChatMessageList } from './thread-chat-message-list'
 import {
   ComposerAddAttachment,
@@ -38,6 +48,167 @@ type ThreadChatCardProps = {
   onAbortGeneration: () => void
   onOpenAssistantConfig: () => void
   onCreateThread: () => void
+}
+
+type ActiveBuiltInBrowserHandoff = {
+  message: string | null
+}
+
+function normalizeToolName(toolName: string): string {
+  return toolName.toLowerCase().replace(/[^a-z0-9]+/g, '')
+}
+
+function isBuiltInBrowserHandoffToolName(toolName: string): boolean {
+  return normalizeToolName(toolName) === 'requestbrowserhumanhandoff'
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value))
+}
+
+function readHandoffMessageCandidate(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? trimmed : null
+  }
+
+  if (!isRecord(value)) {
+    return null
+  }
+
+  const directMessage =
+    typeof value.message === 'string' && value.message.trim().length > 0
+      ? value.message.trim()
+      : null
+  if (directMessage) {
+    return directMessage
+  }
+
+  return null
+}
+
+function extractHandoffMessageFromToolPart(part: Record<string, unknown>): string | null {
+  const directArgsMessage =
+    readHandoffMessageCandidate(part.args) ?? readHandoffMessageCandidate(part.input)
+  if (directArgsMessage) {
+    return directArgsMessage
+  }
+
+  if (typeof part.argsText === 'string' && part.argsText.trim().length > 0) {
+    try {
+      return readHandoffMessageCandidate(JSON.parse(part.argsText))
+    } catch {
+      return null
+    }
+  }
+
+  return null
+}
+
+function extractActiveBuiltInBrowserHandoff(
+  messages: readonly UIMessage[]
+): ActiveBuiltInBrowserHandoff | null {
+  for (let messageIndex = messages.length - 1; messageIndex >= 0; messageIndex -= 1) {
+    const message = messages[messageIndex]
+    const parts = Array.isArray(message?.parts) ? message.parts : []
+
+    for (let partIndex = parts.length - 1; partIndex >= 0; partIndex -= 1) {
+      const rawPart = parts[partIndex]
+      if (!isRecord(rawPart) || rawPart.type !== 'tool-call') {
+        continue
+      }
+
+      const toolName =
+        typeof rawPart.toolName === 'string'
+          ? rawPart.toolName
+          : typeof rawPart.tool === 'string'
+            ? rawPart.tool
+            : null
+      if (!toolName || !isBuiltInBrowserHandoffToolName(toolName)) {
+        continue
+      }
+
+      const status = isRecord(rawPart.status) ? rawPart.status : null
+      const statusType = typeof status?.type === 'string' ? status.type : null
+      const hasResult = rawPart.result !== undefined
+      if (statusType === 'complete' || statusType === 'incomplete' || hasResult) {
+        continue
+      }
+
+      return {
+        message: extractHandoffMessageFromToolPart(rawPart)
+      }
+    }
+  }
+
+  return null
+}
+
+function BuiltInBrowserHandoffBanner(): React.JSX.Element | null {
+  const { t } = useTranslation()
+  const [isShowingBrowser, setIsShowingBrowser] = useState(false)
+  const messages = useAuiState((state) => state.thread.messages as UIMessage[])
+  const activeHandoff = useMemo(() => extractActiveBuiltInBrowserHandoff(messages), [messages])
+
+  if (!activeHandoff) {
+    return null
+  }
+
+  const handleShowBrowser = async (): Promise<void> => {
+    setIsShowingBrowser(true)
+
+    try {
+      await showBuiltInBrowserWindow()
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t('threads.chat.handoffBanner.showFailed')
+      )
+    } finally {
+      setIsShowingBrowser(false)
+    }
+  }
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      data-testid="built-in-browser-handoff-banner"
+      className="mb-4 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-amber-400/45 bg-amber-400/10 px-4 py-3"
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <AlertCircle className="size-4 shrink-0 text-amber-700 dark:text-amber-300" />
+          <p className="text-sm font-medium">{t('threads.chat.handoffBanner.title')}</p>
+        </div>
+        <p className="text-muted-foreground mt-1 text-sm">
+          {t('threads.chat.handoffBanner.description')}
+        </p>
+        {activeHandoff.message ? (
+          <p className="text-muted-foreground mt-2 text-xs">
+            {t('threads.chat.handoffBanner.details', {
+              message: activeHandoff.message
+            })}
+          </p>
+        ) : null}
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="shrink-0"
+        disabled={isShowingBrowser}
+        onClick={() => void handleShowBrowser()}
+      >
+        {isShowingBrowser ? (
+          <LoaderIcon className="size-4 animate-spin" />
+        ) : (
+          <ExternalLink className="size-4" />
+        )}
+        {t('threads.chat.handoffBanner.showBrowser')}
+      </Button>
+    </div>
+  )
 }
 
 function ComposerClearer({
@@ -258,6 +429,8 @@ export function ThreadChatCard({
 
         <ThreadPrimitive.Root className="flex min-h-0 flex-1 flex-col">
           <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden py-5">
+            <BuiltInBrowserHandoffBanner />
+
             {!readiness.canChat && selectedAssistant ? (
               <p className="text-muted-foreground mb-4 rounded-md border border-amber-300/40 bg-amber-400/10 px-3 py-2 text-xs">
                 {t('threads.chat.setupIncomplete')}

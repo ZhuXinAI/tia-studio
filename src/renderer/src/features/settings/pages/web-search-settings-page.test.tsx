@@ -40,12 +40,14 @@ describe('web search settings page', () => {
       defaultEngine: 'bing',
       keepBrowserWindowOpen: true,
       showBrowser: false,
+      showBuiltInBrowser: false,
       availableEngines: ['google', 'bing', 'baidu']
     })
     vi.mocked(updateWebSearchSettings).mockResolvedValue({
       defaultEngine: 'google',
       keepBrowserWindowOpen: true,
       showBrowser: false,
+      showBuiltInBrowser: false,
       availableEngines: ['google', 'bing', 'baidu']
     })
   })
@@ -88,6 +90,7 @@ describe('web search settings page', () => {
       defaultEngine: 'bing',
       keepBrowserWindowOpen: false,
       showBrowser: false,
+      showBuiltInBrowser: false,
       availableEngines: ['google', 'bing', 'baidu']
     })
 
@@ -140,5 +143,37 @@ describe('web search settings page', () => {
     expect(window.tiaDesktop.openWebSearchSettings).toHaveBeenCalledWith(
       'https://www.bing.com/account/general'
     )
+  })
+
+  it('toggles the built-in browser visibility setting', async () => {
+    vi.mocked(updateWebSearchSettings).mockResolvedValue({
+      defaultEngine: 'bing',
+      keepBrowserWindowOpen: true,
+      showBrowser: false,
+      showBuiltInBrowser: true,
+      availableEngines: ['google', 'bing', 'baidu']
+    })
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <WebSearchSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const switches = Array.from(container.querySelectorAll('[role="switch"]'))
+    const builtInBrowserSwitch = switches[2] as HTMLButtonElement | undefined
+
+    expect(builtInBrowserSwitch).toBeDefined()
+    expect(builtInBrowserSwitch?.getAttribute('aria-checked')).toBe('false')
+
+    await act(async () => {
+      builtInBrowserSwitch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(updateWebSearchSettings).toHaveBeenCalledWith({ showBuiltInBrowser: true })
   })
 })

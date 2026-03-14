@@ -17,17 +17,38 @@ type RunThreadCommandInput = {
   assistantId: string
   threadId: string
   profileId: string
-  command: 'new'
+  text: string
 }
 
-export type ThreadCommandResult = {
-  ok: true
-  command: 'new'
-  archiveFileName: string
-  archiveFilePath: string
-  threadTitle: string
-  compactedAt: string
-}
+type HandledThreadCommandResult =
+  | {
+      ok: true
+      handled: true
+      command: 'stop'
+      stopped: boolean
+    }
+  | {
+      ok: true
+      handled: true
+      command: 'new'
+      archiveFileName: string
+      archiveFilePath: string
+      threadTitle: string
+      compactedAt: string
+    }
+
+export type ThreadCommandResult =
+  | {
+      ok: true
+      handled: false
+    }
+  | HandledThreadCommandResult
+
+export type ThreadCommandHandledResult = Extract<ThreadCommandResult, { handled: true }>
+
+export type ThreadCommandNewResult = Extract<ThreadCommandResult, { command: 'new' }>
+
+export type ThreadCommandStopResult = Extract<ThreadCommandResult, { command: 'stop' }>
 
 export type ThreadMessageEventType = 'thread-messages-updated'
 
@@ -126,7 +147,7 @@ export async function runThreadCommand(
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      command: input.command,
+      text: input.text,
       threadId: input.threadId,
       profileId: input.profileId
     })

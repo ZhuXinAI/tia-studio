@@ -61,6 +61,7 @@ type WhatsAppClientLike = {
   connect(): Promise<void>
   disconnect(reason?: string): Promise<void>
   sendMessage(chatId: string, text: string): Promise<void>
+  sendImage(chatId: string, filePath: string): Promise<void>
   resetAuthState(): Promise<void>
 }
 
@@ -293,6 +294,17 @@ async function createWhatsAppClient(authDirectoryPath: string): Promise<WhatsApp
 
       await socket.sendMessage(chatId, { text })
     },
+    async sendImage(chatId, filePath) {
+      if (!socket) {
+        throw new Error('WhatsApp channel is not connected')
+      }
+
+      await socket.sendMessage(chatId, {
+        image: {
+          url: filePath
+        }
+      })
+    },
     async resetAuthState() {
       socket?.end(new Error('whatsapp-auth-reset'))
       socket = null
@@ -366,6 +378,14 @@ export class WhatsAppChannel extends AbstractChannel {
     }
 
     await this.client.sendMessage(remoteChatId, message)
+  }
+
+  async sendImage(remoteChatId: string, filePath: string): Promise<void> {
+    if (!this.client) {
+      throw new Error('WhatsApp channel is not connected')
+    }
+
+    await this.client.sendImage(remoteChatId, filePath)
   }
 
   private async initializeClient(): Promise<void> {

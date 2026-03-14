@@ -17,4 +17,6 @@ export abstract class AbstractChannel implements ChannelAdapter {
   abstract start(): Promise<void>
   abstract stop(): Promise<void>
   abstract send(remoteChatId: string, message: string): Promise<void>
+  sendImage?(remoteChatId: string, filePath: string): Promise<void>
+  sendFile?(remoteChatId: string, filePath: string, fileName: string): Promise<void>
 }

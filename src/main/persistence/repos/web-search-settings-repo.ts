@@ -8,6 +8,7 @@ import {
 const defaultEngineKey = 'web_search.default_engine'
 const keepBrowserWindowOpenKey = 'web_search.keep_browser_window_open'
 const showBrowserKey = 'web_search.show_browser'
+const showBuiltInBrowserKey = 'built_in_browser.show_browser'
 
 function normalizeWebSearchEngine(value: unknown): WebSearchEngine {
   if (isWebSearchEngine(value)) {
@@ -110,6 +111,30 @@ export class WebSearchSettingsRepository {
       DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
       `,
       [showBrowserKey, show ? 'true' : 'false']
+    )
+
+    return show
+  }
+
+  async getShowBuiltInBrowser(): Promise<boolean> {
+    const result = await this.db.execute(
+      'SELECT value FROM app_preferences WHERE key = ? LIMIT 1',
+      [showBuiltInBrowserKey]
+    )
+
+    const row = result.rows.at(0) as Record<string, unknown> | undefined
+    return normalizeBooleanPreference(row?.value, false)
+  }
+
+  async setShowBuiltInBrowser(show: boolean): Promise<boolean> {
+    await this.db.execute(
+      `
+      INSERT INTO app_preferences (key, value, updated_at)
+      VALUES (?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(key)
+      DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+      `,
+      [showBuiltInBrowserKey, show ? 'true' : 'false']
     )
 
     return show

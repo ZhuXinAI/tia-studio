@@ -54,27 +54,6 @@ type PendingThreadMessage = {
   text: string
 }
 
-type ThreadSlashCommand = 'new' | 'stop'
-
-function parseThreadSlashCommand(messageText: string): ThreadSlashCommand | null {
-  const trimmed = messageText.trim()
-  if (!trimmed.startsWith('/')) {
-    return null
-  }
-
-  const [rawCommand] = trimmed.slice(1).split(/\s+/, 1)
-  if (!rawCommand) {
-    return null
-  }
-
-  const normalizedCommand = rawCommand.toLowerCase()
-  if (normalizedCommand === 'new' || normalizedCommand === 'stop') {
-    return normalizedCommand
-  }
-
-  return null
-}
-
 const BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__tiaBuiltInDefaultAgent'
 
 export type ThreadPageController = ReturnType<typeof useThreadPageController>
@@ -692,40 +671,24 @@ export function useThreadPageController() {
       return
     }
 
-    const slashCommand = parseThreadSlashCommand(nextMessage)
-    if (slashCommand === 'stop') {
-      if (isChatStreaming) {
-        await stop()
-      }
-      return
-    }
-
-    if (slashCommand === 'new') {
-      pendingThreadMessageRef.current = null
-      setHasPendingMessage(false)
-
-      if (isChatStreaming) {
-        await stop()
-        await Promise.resolve()
-      }
-
-      if (!selectedThread) {
-        await createNewThread({ notify: false })
-        return
-      }
-
+    if (nextMessage.startsWith('/') && selectedThread) {
       try {
-        await runThreadCommand({
+        const result = await runThreadCommand({
           assistantId: selectedAssistant.id,
           threadId: selectedThread.id,
           profileId,
-          command: 'new'
+          text: nextMessage
         })
-        await createNewThread({ notify: false })
+
+        if (result.handled) {
+          pendingThreadMessageRef.current = null
+          setHasPendingMessage(false)
+          return
+        }
       } catch (error) {
         toast.error(toErrorMessage(error))
+        return
       }
-      return
     }
 
     const queuePendingMessage = (threadId: string, text: string): void => {

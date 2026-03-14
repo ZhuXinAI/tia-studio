@@ -24,6 +24,7 @@ import type { ThreadMessageEventsStore } from './chat/thread-message-events-stor
 import type { TeamRunStatusStore } from './chat/team-run-status-store'
 import { registerAssistantHeartbeatRoute } from './routes/assistant-heartbeat-route'
 import { registerAssistantsRoute } from './routes/assistants-route'
+import { registerBuiltInBrowserRoute } from './routes/built-in-browser-route'
 import { registerChatRoute } from './routes/chat-route'
 import { registerClawsRoute } from './routes/claws-route'
 import { registerCronJobsRoute } from './routes/cron-jobs-route'
@@ -71,6 +72,8 @@ type CreateAppOptions = {
   heartbeatSchedulerService?: {
     reload(): Promise<void>
   }
+  onShowBuiltInBrowserChange?: (show: boolean) => Promise<void> | void
+  onShowBuiltInBrowserWindow?: () => Promise<void> | void
 }
 
 export function createApp(options: CreateAppOptions): Hono {
@@ -152,7 +155,11 @@ export function createApp(options: CreateAppOptions): Hono {
       providersRepo: options.repositories.providers
     })
     registerWebSearchSettingsRoute(app, {
-      webSearchSettingsRepo: options.repositories.webSearchSettings
+      webSearchSettingsRepo: options.repositories.webSearchSettings,
+      onShowBuiltInBrowserChange: options.onShowBuiltInBrowserChange
+    })
+    registerBuiltInBrowserRoute(app, {
+      onShowBuiltInBrowserWindow: options.onShowBuiltInBrowserWindow
     })
     if (options.repositories.securitySettings) {
       registerSecuritySettingsRoute(app, {

@@ -35,6 +35,7 @@ import { AssistantCronJobsService } from './cron/assistant-cron-jobs-service'
 import { NodeCronSchedulerService } from './cron/node-cron-scheduler-service'
 import { AssistantHeartbeatsService } from './heartbeat/assistant-heartbeats-service'
 import { HeartbeatSchedulerService } from './heartbeat/heartbeat-scheduler-service'
+import { BuiltInBrowserManager } from './built-in-browser-manager'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
 import { createMastraInstance } from './mastra/store'
 import { TeamRuntimeService } from './mastra/team-runtime'
@@ -104,6 +105,7 @@ let channelService: ChannelService | null = null
 let channelMessageRouter: ChannelMessageRouter | null = null
 let cronSchedulerService: NodeCronSchedulerService | null = null
 let heartbeatSchedulerService: HeartbeatSchedulerService | null = null
+let builtInBrowserManager: BuiltInBrowserManager | null = null
 const webFetchBrowserPartition = 'persist:tia-web-fetch'
 let uiConfigStore: UiConfigStore | null = null
 
@@ -162,6 +164,28 @@ function resolveManagedRuntimeService(): ManagedRuntimeService {
   }
 
   return managedRuntimeService
+}
+
+function resolveBuiltInBrowserManager(): BuiltInBrowserManager {
+  if (!builtInBrowserManager) {
+    builtInBrowserManager = new BuiltInBrowserManager({
+      executablePath: process.execPath,
+      entryPath: join(__dirname, 'built-in-browser.js'),
+      profileRootPath: join(app.getPath('userData'), 'built-in-browser-profiles')
+    })
+  }
+
+  return builtInBrowserManager
+}
+
+async function syncBuiltInBrowserVisibility(visible: boolean): Promise<void> {
+  const manager = resolveBuiltInBrowserManager()
+  if (visible) {
+    await manager.showWindow()
+    return
+  }
+
+  await manager.hideWindow()
 }
 
 function resolveWebSearchSettingsWindow(parentWindow: BrowserWindow | null): BrowserWindow {
@@ -279,7 +303,8 @@ async function startLocalApiServer(): Promise<void> {
     threadMessageEventsStore,
     threadUsageRepo,
     cronJobService: assistantCronJobsService,
-    managedRuntimeResolver: managedRuntimeService
+    managedRuntimeResolver: managedRuntimeService,
+    builtInBrowserManager: resolveBuiltInBrowserManager()
   })
   const teamRunStatusStore = new TeamRunStatusStore()
   const teamRuntime = new TeamRuntimeService({
@@ -288,7 +313,8 @@ async function startLocalApiServer(): Promise<void> {
     providersRepo,
     teamWorkspacesRepo,
     teamThreadsRepo,
-    statusStore: teamRunStatusStore
+    statusStore: teamRunStatusStore,
+    builtInBrowserManager: resolveBuiltInBrowserManager()
   })
   channelService = new ChannelService({
     channelsRepo,
@@ -465,7 +491,18 @@ async function startLocalApiServer(): Promise<void> {
     channelService,
     cronSchedulerService,
     heartbeatSchedulerService,
-    whatsAppAuthStateStore
+    whatsAppAuthStateStore,
+    onShowBuiltInBrowserChange: async (show) => {
+      await syncBuiltInBrowserVisibility(show)
+    },
+    onShowBuiltInBrowserWindow: async () => {
+      await resolveBuiltInBrowserManager().showWindow()
+    }
+  })
+
+  const initialBuiltInBrowserVisible = await webSearchSettingsRepo.getShowBuiltInBrowser()
+  void syncBuiltInBrowserVisibility(initialBuiltInBrowserVisible).catch((error) => {
+    logger.error('[BuiltInBrowser] failed to apply initial visibility preference:', error)
   })
 
   localApiServer = serve(
@@ -822,6 +859,7 @@ app.on('before-quit', () => {
     appTray.destroy()
     appTray = null
   }
+  builtInBrowserManager?.shutdown()
   stopLocalApiServer()
 })
 

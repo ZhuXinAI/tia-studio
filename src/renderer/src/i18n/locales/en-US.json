@@ -257,7 +257,10 @@
         "backgroundDisabled": "Creates and closes a BrowserWindow per search request.",
         "showBrowserTitle": "Show Browser",
         "showBrowserVisible": "Browser window is visible during search.",
-        "showBrowserHidden": "Browser window is hidden during search."
+        "showBrowserHidden": "Browser window is hidden during search.",
+        "showBuiltInBrowserTitle": "Show Built-in Browser",
+        "showBuiltInBrowserVisible": "Built-in browser window stays visible so you can observe automation.",
+        "showBuiltInBrowserHidden": "Built-in browser window stays hidden unless an agent explicitly brings it forward."
       },
       "engines": {
         "google": {
@@ -279,6 +282,7 @@
         "backgroundEnabled": "enabled",
         "backgroundDisabled": "disabled",
         "browserVisibility": "Browser window is now {{state}}.",
+        "builtInBrowserVisibility": "Built-in browser window is now {{state}}.",
         "browserVisible": "visible",
         "browserHidden": "hidden",
         "openSettingsError": "Failed to open {{engine}} settings: {{message}}",
@@ -844,6 +848,13 @@
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "New thread",
       "setupIncomplete": "Assistant setup is incomplete. Open Configure to set provider and model before sending messages.",
+      "handoffBanner": {
+        "title": "Human action needed in the built-in browser",
+        "description": "The assistant is waiting for you to finish a step in the built-in browser and click \"Done, continue\" there.",
+        "details": "Requested step: {{message}}",
+        "showBrowser": "Show browser again",
+        "showFailed": "Failed to bring the built-in browser window forward."
+      },
       "composer": {
         "placeholderSelectedThread": "Type a message for this thread...",
         "placeholderSelectedAssistant": "Type a message to create a new thread...",

@@ -15,7 +15,10 @@ import { toAISdkV5Messages } from '@mastra/ai-sdk/ui'
 import { Memory } from '@mastra/memory'
 import { MCPClient, type MastraMCPServerDefinition } from '@mastra/mcp'
 import { generateText, type LanguageModel, type UIMessage, type UIMessageChunk } from 'ai'
+import type { BuiltInBrowserController } from '../built-in-browser-manager'
+import { buildBuiltInBrowserGuidance } from '../built-in-browser-contract'
 import { ChannelEventBus } from '../channels/channel-event-bus'
+import { buildChannelImageSupportGuidance } from '../channels/channel-media-support'
 import type { ChannelTarget } from '../channels/types'
 import type { AssistantCronJobsService } from '../cron/assistant-cron-jobs-service'
 import { buildHeartbeatWorklogContext } from '../heartbeat/heartbeat-context'
@@ -37,6 +40,7 @@ import { ensureAssistantWorkspaceFiles } from './assistant-workspace'
 import { resolveModel } from './model-resolver'
 import { AttachmentUploader } from './processors/attachment-uploader'
 import { createCodingSubagent } from './coding-agent'
+import { createBuiltInBrowserTools } from './tools/built-in-browser-tools'
 import { createWebFetchTool } from './tools/web-fetch-tool'
 import { createChannelTools } from './tools/channel-tools'
 import { createCronTools } from './tools/cron-tools'
@@ -156,6 +160,7 @@ Keep it conversational and friendly. This is about co-creating your identity tog
 
 const WEB_FETCH_INSTRUCTIONS = `
 Web browsing guidance:
+- Please use built-in browser approach with agent-browser first unless the task is simply to fetch one specific page.
 - Use webFetch only when you already know the exact page URL you need.
 - Do not use webFetch to search the web, discover candidate pages, or crawl across multiple pages.
 - For long-running browser work or page interaction, prefer browser-oriented tools such as agent-browser or Playwright MCP.
@@ -208,6 +213,7 @@ type AssistantRuntimeServiceOptions = {
       env: NodeJS.ProcessEnv
     }>
   }
+  builtInBrowserManager?: BuiltInBrowserController
   threadUsageRepo?: {
     recordMessageUsage(input: {
       messageId: string
@@ -1550,6 +1556,7 @@ ${input.prompt}`
       : {}
 
     logger.debug('[AssistantRuntime] Agent tools registered:', {
+      hasBuiltInBrowserTools: Boolean(this.options.builtInBrowserManager),
       hasCronTools: Object.keys(cronTools).length > 0,
       hasChannelTools: Object.keys(channelTools).length > 0,
       channelToolNames: Object.keys(channelTools),
@@ -1559,8 +1566,14 @@ ${input.prompt}`
     })
 
     const memorySessionTools = createMemorySessionTools(memory)
+    const builtInBrowserTools = this.options.builtInBrowserManager
+      ? createBuiltInBrowserTools({
+          controller: this.options.builtInBrowserManager
+        })
+      : {}
     const tools: ToolsInput = {
       webFetch: webFetchTool,
+      ...builtInBrowserTools,
       ...soulMemoryTools,
       ...workLogTools,
       ...cronTools,
@@ -1588,12 +1601,18 @@ ${input.prompt}`
     const baseInstructions = assistant.instructions || 'You are a helpful assistant.'
     const onboardingInstructions = isFirstConversation ? `\n\n${ONBOARDING_INSTRUCTIONS}\n` : ''
     const webFetchInstructions = `\n${WEB_FETCH_INSTRUCTIONS}\n`
+    const builtInBrowserInstructions = `\n${buildBuiltInBrowserGuidance({
+      handoffToolAvailable: Boolean(this.options.builtInBrowserManager)
+    })}\n`
+    const channelImageGuidance = buildChannelImageSupportGuidance(options.channelType)
+      .map((line) => `${line}\n`)
+      .join('')
     const channelInstructions = options.channelDeliveryEnabled
       ? options.channelType === WECHAT_KF_CHANNEL_TYPE
-        ? '\nChannel delivery guidelines:\n- Reply in a single message.\n- Do not use [[BR]] in your reply.\n- Keep channel replies short and natural.\n'
-        : `\nChannel delivery guidelines:\n- ${CHANNEL_SPLITTER_INSTRUCTION}\n- Keep channel replies short and natural.\n- Do not mention [[BR]] to the user.\n`
+        ? `\nChannel delivery guidelines:\n- Reply in a single message.\n- Do not use [[BR]] in your reply.\n- Keep channel replies short and natural.\n${channelImageGuidance}`
+        : `\nChannel delivery guidelines:\n- ${CHANNEL_SPLITTER_INSTRUCTION}\n- Keep channel replies short and natural.\n- Do not mention [[BR]] to the user.\n${channelImageGuidance}`
       : ''
-    const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${webFetchInstructions}${channelInstructions}\n`
+    const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${webFetchInstructions}${builtInBrowserInstructions}${channelInstructions}\n`
     const workspace = await this.buildWorkspace(
       assistant.workspaceConfig ?? {},
       assistant.skillsConfig ?? {}

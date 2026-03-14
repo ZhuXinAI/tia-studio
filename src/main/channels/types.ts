@@ -17,6 +17,8 @@ export interface ChannelAdapter {
   start(): Promise<void>
   stop(): Promise<void>
   send(remoteChatId: string, message: string): Promise<void>
+  sendImage?(remoteChatId: string, filePath: string): Promise<void>
+  sendFile?(remoteChatId: string, filePath: string, fileName: string): Promise<void>
   acknowledgeMessage?(messageId: string): Promise<void>
   onMessage?: (message: ChannelMessage) => Promise<void> | void
 }

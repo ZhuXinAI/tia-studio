@@ -371,11 +371,12 @@ describe('TeamRuntimeService', () => {
     })
 
     const memberConfig = agentConfigs.find((config) => config.id === 'assistant-1') as
-      | { description?: string }
+      | { description?: string; instructions?: string }
       | undefined
     const supervisorConfig = agentConfigs.at(-1) as { instructions?: string } | undefined
 
     expect(memberConfig?.description).toBe('Investigates bugs, facts, and source material.')
+    expect(memberConfig?.instructions).toContain('remote debugging port 10531')
     expect(supervisorConfig?.instructions).toContain(
       '- Researcher: Investigates bugs, facts, and source material.'
     )
@@ -383,11 +384,18 @@ describe('TeamRuntimeService', () => {
       'delegate again instead of asking the user whether another round is needed'
     )
     expect(supervisorConfig?.instructions).toContain(
+      'You may revisit the same specialist multiple times in a single user turn'
+    )
+    expect(supervisorConfig?.instructions).toContain(
+      'Do not assume each specialist should be used only once'
+    )
+    expect(supervisorConfig?.instructions).toContain(
       'Never produce a raw assistant reply to the user'
     )
     expect(supervisorConfig?.instructions).toContain(
       'When the work is done, call complete instead of replying in natural language'
     )
+    expect(supervisorConfig?.instructions).toContain('TIA provides a built-in Electron browser')
   })
 
   it('requires supervisor tool usage on each team turn', async () => {
@@ -422,7 +430,45 @@ describe('TeamRuntimeService', () => {
       }),
       [],
       expect.objectContaining({
+        maxSteps: 100,
         toolChoice: 'required'
+      })
+    )
+  })
+
+  it('runs the supervisor with a 100-step default budget', async () => {
+    const runtime = new TeamRuntimeService({
+      mastra: { getStorage: () => null } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => buildAssistant())
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async (id: string) => buildProvider({ id }))
+      } as unknown as ProvidersRepository,
+      teamWorkspacesRepo: {
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [buildWorkspaceMember('assistant-1')])
+      } as unknown as TeamWorkspacesRepository,
+      teamThreadsRepo: {
+        getById: vi.fn(async () => buildTeamThread()),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as TeamThreadsRepository,
+      statusStore: new TeamRunStatusStore()
+    })
+
+    await runtime.streamTeamChat({
+      threadId: 'team-thread-1',
+      profileId: 'default-profile',
+      messages: []
+    })
+
+    expect(agentStreamMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'team-supervisor:team-thread-1'
+      }),
+      [],
+      expect.objectContaining({
+        maxSteps: 100
       })
     )
   })
@@ -789,6 +835,66 @@ describe('TeamRuntimeService', () => {
       mentions: ['assistant-2'],
       mentionNames: ['Planner']
     })
+  })
+
+  it('passes member max steps through delegated tool execution', async () => {
+    const runtime = new TeamRuntimeService({
+      mastra: { getStorage: () => null } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => buildAssistant({ maxSteps: 42 }))
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async (id: string) => buildProvider({ id }))
+      } as unknown as ProvidersRepository,
+      teamWorkspacesRepo: {
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [buildWorkspaceMember('assistant-1')])
+      } as unknown as TeamWorkspacesRepository,
+      teamThreadsRepo: {
+        getById: vi.fn(async () => buildTeamThread()),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as TeamThreadsRepository,
+      statusStore: new TeamRunStatusStore()
+    })
+
+    await runtime.streamTeamChat({
+      threadId: 'team-thread-1',
+      profileId: 'default-profile',
+      messages: []
+    })
+
+    const supervisorConfig = agentConfigs.at(-1) as
+      | {
+          tools?: Record<
+            string,
+            {
+              execute?: (
+                input: Record<string, unknown>,
+                context: Record<string, unknown>
+              ) => Promise<unknown>
+            }
+          >
+        }
+      | undefined
+
+    await supervisorConfig?.tools?.delegate_to_researcher_1?.execute?.(
+      {
+        task: 'double-check the implementation details'
+      },
+      {
+        requestContext: new Map<string, unknown>()
+      }
+    )
+
+    expect(agentStreamMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'assistant-1'
+      }),
+      [{ role: 'user', content: 'double-check the implementation details' }],
+      expect.objectContaining({
+        maxSteps: 42
+      })
+    )
   })
 
   it('pipes delegated member stream chunks into the tool writer', async () => {

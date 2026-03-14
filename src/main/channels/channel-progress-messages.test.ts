@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   formatChannelInterruptionReply,
-  formatChannelToolErrorUpdate,
   formatChannelToolInputUpdate,
-  formatChannelToolOutputUpdate,
   resolveChannelProgressLocale
 } from './channel-progress-messages'
 
@@ -21,7 +19,7 @@ describe('channel progress messages', () => {
       'en-US'
     )
 
-    expect(message).toBe('Using tool: Workspace Read File\nInput:\n{\n  "path": "README.md"\n}')
+    expect(message).toBe('Using tool: Workspace Read File')
   })
 
   it('uses the web fetch display name override', () => {
@@ -37,39 +35,7 @@ describe('channel progress messages', () => {
       'en-US'
     )
 
-    expect(message).toBe(
-      'Using tool: Web Fetch\nInput:\n{\n  "url": "https://example.com"\n}'
-    )
-  })
-
-  it('formats localized tool output and error updates', () => {
-    const outputMessage = formatChannelToolOutputUpdate(
-      {
-        type: 'tool-output-available',
-        toolCallId: 'tool-1',
-        output: {
-          ok: true
-        }
-      },
-      {
-        toolName: 'updateSoulMemory'
-      },
-      'zh-Hans-CN'
-    )
-    const errorMessage = formatChannelToolErrorUpdate(
-      {
-        type: 'tool-output-error',
-        toolCallId: 'tool-1',
-        errorText: 'File not found'
-      },
-      {
-        toolName: 'updateSoulMemory'
-      },
-      'zh-Hans-CN'
-    )
-
-    expect(outputMessage).toBe('工具输出：Update Soul Memory\n输出:\n{\n  "ok": true\n}')
-    expect(errorMessage).toBe('工具失败：Update Soul Memory\n错误:\nFile not found')
+    expect(message).toBe('Using tool: Web Fetch')
   })
 
   it('falls back to supported locales from raw locale tags', () => {

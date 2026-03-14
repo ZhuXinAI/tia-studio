@@ -117,6 +117,24 @@ export class ChannelService {
       return
     }
 
+    if (event.payload?.type === 'image') {
+      if (typeof adapter.sendImage !== 'function') {
+        throw new Error(`Channel type "${adapter.type}" does not support image messages.`)
+      }
+
+      await adapter.sendImage(event.remoteChatId, event.payload.filePath)
+      return
+    }
+
+    if (event.payload?.type === 'file') {
+      if (typeof adapter.sendFile !== 'function') {
+        throw new Error(`Channel type "${adapter.type}" does not support file messages.`)
+      }
+
+      await adapter.sendFile(event.remoteChatId, event.payload.filePath, event.payload.fileName)
+      return
+    }
+
     const content =
       typeof event.content === 'string'
         ? event.content

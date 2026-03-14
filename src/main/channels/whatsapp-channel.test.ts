@@ -146,6 +146,11 @@ class WhatsAppClientStub {
     void text
     return undefined
   })
+  readonly sendImage = vi.fn(async (chatId: string, filePath: string) => {
+    void chatId
+    void filePath
+    return undefined
+  })
   readonly resetAuthState = vi.fn(async () => undefined)
 
   private connectionHandler: ((update: ConnectionUpdate) => Promise<void> | void) | null = null
@@ -247,6 +252,26 @@ describe('WhatsAppChannel', () => {
       qrCodeValue: 'whatsapp-qr-value',
       qrCodeDataUrl: 'data:image/png;base64,qr'
     })
+  })
+
+  it('sends outbound images back to the same WhatsApp chat', async () => {
+    const client = new WhatsAppClientStub()
+    const channel = new WhatsAppChannel({
+      id: 'channel-whatsapp',
+      authDirectoryPath: '/tmp/channel-whatsapp',
+      clientFactory: async () => client,
+      authStateStore: new WhatsAppAuthStateStore(),
+      pairingsRepo: new PairingsRepoStub()
+    })
+
+    await channel.start()
+    await Promise.resolve()
+    await channel.sendImage('8613800138000@s.whatsapp.net', '/tmp/reply.png')
+
+    expect(client.sendImage).toHaveBeenCalledWith(
+      '8613800138000@s.whatsapp.net',
+      '/tmp/reply.png'
+    )
   })
 
   it('creates a pending pairing for an unknown dm and replies with its code', async () => {

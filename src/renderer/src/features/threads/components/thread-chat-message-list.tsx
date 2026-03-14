@@ -693,16 +693,14 @@ export function ThreadChatMessageList({
   const hasMessages = messageCount > 0
   const shouldRenderVirtualList = hasMessages || !isLoadingChatHistory
   const renderState = hasMessages ? 'data' : 'empty'
-  const initialTopMostItemIndex = useMemo<IndexLocationWithAlign | undefined>(() => {
-    if (!hasMessages) {
-      return undefined
-    }
-
-    return {
+  const initialTopMostItemIndex = useMemo<IndexLocationWithAlign>(
+    () => ({
       index: 'LAST',
       align: 'end'
-    }
-  }, [hasMessages])
+    }),
+    []
+  )
+  const initialTopMostItemProps = hasMessages ? { initialTopMostItemIndex } : {}
   const messageComponents = useMemo(
     () => ({
       UserMessage: UserMessageBubble,
@@ -759,7 +757,7 @@ export function ThreadChatMessageList({
         followOutput={(isAtBottom) => (isAtBottom ? 'auto' : false)}
         increaseViewportBy={{ top: 0, bottom: 240 }}
         minOverscanItemCount={{ top: 4, bottom: 8 }}
-        initialTopMostItemIndex={initialTopMostItemIndex}
+        {...initialTopMostItemProps}
         computeItemKey={(index, message) => message.id ?? `${threadId ?? 'thread'}:${index}`}
         components={{
           EmptyPlaceholder,

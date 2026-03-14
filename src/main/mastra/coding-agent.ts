@@ -1,5 +1,6 @@
 import { Agent } from '@mastra/core/agent'
 import { codexAppServer } from 'ai-sdk-provider-codex-cli'
+import { buildBuiltInBrowserGuidance } from '../built-in-browser-contract'
 import {
   normalizeAssistantCodingConfig,
   resolveAssistantCodingPath,
@@ -65,7 +66,10 @@ export function createCodingSubagent(input: CreateCodingSubagentInput): Agent | 
       'You are the dedicated coding specialist for this assistant.',
       'Focus on implementation, debugging, refactors, code review follow-ups, and tests.',
       'Prefer concrete code changes and verification over general discussion.',
-      'Keep responses concise and action-oriented.'
+      'Keep responses concise and action-oriented.',
+      buildBuiltInBrowserGuidance({
+        handoffToolAvailable: false
+      })
     ].join(' '),
     model: codexAppServer(DEFAULT_ASSISTANT_CODING_MODEL, {
       ...(cwd ? { cwd } : {}),

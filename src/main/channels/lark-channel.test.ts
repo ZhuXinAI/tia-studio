@@ -1,7 +1,13 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { LarkChannel } from './lark-channel'
 
 function createSdkStub() {
+  const imageCreate = vi.fn(async () => ({
+    image_key: 'img_uploaded_123'
+  }))
   const messageCreate = vi.fn(async () => undefined)
   const messageReactionCreate = vi.fn(async () => undefined)
   const request = vi.fn(async () => ({
@@ -13,6 +19,9 @@ function createSdkStub() {
   const clientInstance = {
     im: {
       v1: {
+        image: {
+          create: imageCreate
+        },
         message: {
           create: messageCreate
         },
@@ -61,6 +70,7 @@ function createSdkStub() {
     eventDispatcherInstance,
     wsStart,
     wsClose,
+    imageCreate,
     messageCreate,
     messageReactionCreate,
     request,
@@ -196,6 +206,45 @@ describe('LarkChannel', () => {
         })
       }
     })
+  })
+
+  it('uploads an image and sends the returned image key back to the same Lark chat', async () => {
+    const tempDir = await mkdtemp(path.join(tmpdir(), 'tia-lark-image-'))
+    const imagePath = path.join(tempDir, 'reply.png')
+    try {
+      await writeFile(imagePath, Buffer.from('fake-image'))
+
+      const sdkStub = createSdkStub()
+      const channel = new LarkChannel({
+        id: 'channel-lark',
+        appId: 'cli_xxx',
+        appSecret: 'secret',
+        sdk: sdkStub.sdk
+      })
+
+      await channel.sendImage?.('oc_123', imagePath)
+
+      expect(sdkStub.imageCreate).toHaveBeenCalledWith({
+        data: {
+          image_type: 'message',
+          image: expect.any(Buffer)
+        }
+      })
+      expect(sdkStub.messageCreate).toHaveBeenCalledWith({
+        params: {
+          receive_id_type: 'chat_id'
+        },
+        data: {
+          receive_id: 'oc_123',
+          msg_type: 'image',
+          content: JSON.stringify({
+            image_key: 'img_uploaded_123'
+          })
+        }
+      })
+    } finally {
+      await rm(tempDir, { recursive: true, force: true })
+    }
   })
 
   it('acknowledges a received message with a Lark reaction', async () => {

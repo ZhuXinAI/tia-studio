@@ -11,6 +11,8 @@ import { toAISdkV5Messages } from '@mastra/ai-sdk/ui'
 import { Memory } from '@mastra/memory'
 import type { UIMessage, UIMessageChunk } from 'ai'
 import { z } from 'zod'
+import type { BuiltInBrowserController } from '../built-in-browser-manager'
+import { buildBuiltInBrowserGuidance } from '../built-in-browser-contract'
 import type { AppAssistant, AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { AppProvider, ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { TeamThreadsRepository } from '../persistence/repos/team-threads-repo'
@@ -19,6 +21,7 @@ import { ChatRouteError } from '../server/chat/chat-errors'
 import { TeamRunStatusStore } from '../server/chat/team-run-status-store'
 import { createCodingSubagent } from './coding-agent'
 import { resolveModel } from './model-resolver'
+import { createBuiltInBrowserTools } from './tools/built-in-browser-tools'
 import { createContainedLocalFilesystemInstructions } from './workspace-filesystem-instructions'
 
 type StreamTeamChatParams = {
@@ -48,6 +51,7 @@ type TeamRuntimeServiceOptions = {
   teamWorkspacesRepo: TeamWorkspacesRepository
   teamThreadsRepo: TeamThreadsRepository
   statusStore: TeamRunStatusStore
+  builtInBrowserManager?: BuiltInBrowserController
 }
 
 type JsonObject = Record<string, unknown>
@@ -63,6 +67,8 @@ type TeamMemberIdentity = {
   assistantId: string
   name: string
 }
+
+const DEFAULT_TEAM_SUPERVISOR_MAX_STEPS = 100
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -195,6 +201,7 @@ export class TeamRuntimeService implements TeamRuntime {
 
     try {
       const stream = await runtimeSupervisor.stream(params.messages as never, {
+        maxSteps: DEFAULT_TEAM_SUPERVISOR_MAX_STEPS,
         providerOptions: this.buildProviderOptions(supervisorProvider.type),
         memory: {
           thread: thread.id,
@@ -309,6 +316,11 @@ export class TeamRuntimeService implements TeamRuntime {
           workspaceRootPath: input.teamWorkspaceRootPath,
           codingConfig: assistant.codingConfig
         })
+        const builtInBrowserTools = this.options.builtInBrowserManager
+          ? createBuiltInBrowserTools({
+              controller: this.options.builtInBrowserManager
+            })
+          : {}
 
         const agent = new Agent({
           id: assistant.id,
@@ -326,6 +338,7 @@ export class TeamRuntimeService implements TeamRuntime {
             selectedModel: provider.selectedModel
           }) as never,
           ...(codingAgent ? { agents: { codingAgent } } : {}),
+          ...(Object.keys(builtInBrowserTools).length > 0 ? { tools: builtInBrowserTools } : {}),
           memory: input.sharedMemory as never,
           workspace
         })
@@ -375,6 +388,8 @@ Call complete only when no further delegation is needed for the current user tur
 
 Routing rules:
 - Prefer the most relevant specialist tool instead of round-robin turns.
+- You may revisit the same specialist multiple times in a single user turn when follow-up, refinement, or verification is needed.
+- Do not assume each specialist should be used only once, and do not delegate to everyone unless it is actually useful.
 - Treat inline @Name mentions from the user, delegated members, and returned mentions as strong hints for who should go next.
 - If a member clearly points to the next teammate, delegate again instead of asking the user whether another round is needed.
 - Keep delegating only while it adds value.
@@ -382,6 +397,9 @@ Routing rules:
 - Unless the user explicitly asks to stop, do not call complete before at least one relevant delegation for the current request.
 - When the work is done, call complete instead of replying in natural language.
 - Keep internal routing concise unless the user explicitly asks about it.
+
+Shared browser capability:
+${buildBuiltInBrowserGuidance({ handoffToolAvailable: false })}
 
 Available team members:
 ${roster}
@@ -453,6 +471,11 @@ Working rules:
 - Only mention teammates from the roster below, and do not mention yourself.
 - If no handoff is needed, do not invent a mention.
 - Keep your update actionable and grounded in the work you performed.
+
+Browser capability:
+${buildBuiltInBrowserGuidance({
+  handoffToolAvailable: Boolean(this.options.builtInBrowserManager)
+})}
 
 Available teammates:
 ${roster.length > 0 ? roster : '- No other teammates are available.'}`
@@ -526,6 +549,7 @@ ${roster.length > 0 ? roster : '- No other teammates are available.'}`
 
             const stream = await member.agent.stream([{ role: 'user', content: task }] as never, {
               requestContext: context.requestContext,
+              maxSteps: member.assistant.maxSteps,
               providerOptions: this.buildProviderOptions(member.provider.type),
               memory: {
                 resource: subAgentResourceId,

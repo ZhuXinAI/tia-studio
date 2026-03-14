@@ -37,15 +37,7 @@ vi.mock('@renderer/components/assistant-ui/attachment', () => ({
 }))
 
 vi.mock('react-virtuoso', () => ({
-  Virtuoso: ({
-    className,
-    data = [],
-    itemContent,
-    components,
-    initialTopMostItemIndex,
-    alignToBottom,
-    followOutput
-  }: {
+  Virtuoso: (props: {
     className?: string
     data?: Array<unknown>
     itemContent?: (index: number, item: unknown) => React.ReactNode
@@ -57,7 +49,21 @@ vi.mock('react-virtuoso', () => ({
     alignToBottom?: boolean
     followOutput?: unknown
   }) => {
+    const {
+      className,
+      data = [],
+      itemContent,
+      components,
+      initialTopMostItemIndex,
+      alignToBottom,
+      followOutput
+    } = props
+
     virtuosoPropsMock({
+      hasInitialTopMostItemIndexProp: Object.prototype.hasOwnProperty.call(
+        props,
+        'initialTopMostItemIndex'
+      ),
       initialTopMostItemIndex,
       alignToBottom,
       followOutput,
@@ -429,12 +435,14 @@ describe('thread chat message list', () => {
 
     const virtuosoProps = virtuosoPropsMock.mock.lastCall?.[0] as
       | {
+          hasInitialTopMostItemIndexProp?: boolean
           initialTopMostItemIndex?: { index: 'LAST' | number; align: string }
           alignToBottom?: boolean
           followOutput?: (isAtBottom: boolean) => string | boolean
         }
       | undefined
 
+    expect(virtuosoProps?.hasInitialTopMostItemIndexProp).toBe(true)
     expect(virtuosoProps?.initialTopMostItemIndex).toEqual({ index: 'LAST', align: 'end' })
     expect(virtuosoProps?.alignToBottom).toBe(true)
     expect(virtuosoProps?.followOutput?.(true)).toBe('auto')
@@ -497,10 +505,12 @@ describe('thread chat message list', () => {
 
     const firstCall = virtuosoPropsMock.mock.lastCall?.[0] as
       | {
+          hasInitialTopMostItemIndexProp?: boolean
           initialTopMostItemIndex?: { index: 'LAST' | number; align: string }
         }
       | undefined
 
+    expect(firstCall?.hasInitialTopMostItemIndexProp).toBe(false)
     expect(firstCall?.initialTopMostItemIndex).toBeUndefined()
 
     messageState.thread.messages = [{}, {}]
@@ -520,10 +530,12 @@ describe('thread chat message list', () => {
 
     const secondCall = virtuosoPropsMock.mock.lastCall?.[0] as
       | {
+          hasInitialTopMostItemIndexProp?: boolean
           initialTopMostItemIndex?: { index: 'LAST' | number; align: string }
         }
       | undefined
 
+    expect(secondCall?.hasInitialTopMostItemIndexProp).toBe(true)
     expect(secondCall?.initialTopMostItemIndex).toEqual({ index: 'LAST', align: 'end' })
   })
 
@@ -543,10 +555,12 @@ describe('thread chat message list', () => {
 
     const firstCall = virtuosoPropsMock.mock.lastCall?.[0] as
       | {
+          hasInitialTopMostItemIndexProp?: boolean
           initialTopMostItemIndex?: { index: 'LAST' | number; align: string }
         }
       | undefined
 
+    expect(firstCall?.hasInitialTopMostItemIndexProp).toBe(true)
     expect(firstCall?.initialTopMostItemIndex).toEqual({ index: 'LAST', align: 'end' })
 
     messageState.thread.messages = []
@@ -566,10 +580,12 @@ describe('thread chat message list', () => {
 
     const secondCall = virtuosoPropsMock.mock.lastCall?.[0] as
       | {
+          hasInitialTopMostItemIndexProp?: boolean
           initialTopMostItemIndex?: { index: 'LAST' | number; align: string }
         }
       | undefined
 
+    expect(secondCall?.hasInitialTopMostItemIndexProp).toBe(false)
     expect(secondCall?.initialTopMostItemIndex).toBeUndefined()
     expect(container.querySelector('[data-testid="thread-viewport"]')).not.toBeNull()
   })
