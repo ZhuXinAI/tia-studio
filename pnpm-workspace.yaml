@@ -1,6 +1,9 @@
 packages:
   - .
 
+onlyBuiltDependencies:
+  - wechat-kf-relay
+
 supportedArchitectures:
   os:
     - current

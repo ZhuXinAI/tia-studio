@@ -111,6 +111,13 @@ export type SaveClawInput = {
         groupRequireMention?: boolean
       }
     | {
+        mode: 'create'
+        type: 'wechat-kf'
+        name: string
+        serverUrl: string
+        serverKey: string
+      }
+    | {
         mode: 'attach'
         channelId: string
       }
@@ -148,6 +155,12 @@ export type CreateClawChannelInput =
       secret: string
       groupRequireMention?: boolean
     }
+  | {
+      type: 'wechat-kf'
+      name: string
+      serverUrl: string
+      serverKey: string
+    }
 
 export type UpdateClawChannelInput =
   | {
@@ -174,6 +187,12 @@ export type UpdateClawChannelInput =
       botId?: string
       secret?: string
       groupRequireMention?: boolean
+    }
+  | {
+      type: 'wechat-kf'
+      name: string
+      serverUrl?: string
+      serverKey?: string
     }
 
 const apiClient = createApiClient()

@@ -252,6 +252,38 @@ describe('claws route', () => {
     })
   })
 
+  it('creates a claw with a new inline wechat-kf channel', async () => {
+    const response = await app.request('http://localhost/v1/claws', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assistant: {
+          name: 'Wechat Support Assistant',
+          providerId,
+          enabled: true
+        },
+        channel: {
+          mode: 'create',
+          type: 'wechat-kf',
+          name: 'Wechat Support',
+          serverUrl: 'ws://127.0.0.1:3000/ws',
+          serverKey: 'relay-key'
+        }
+      })
+    })
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({
+      name: 'Wechat Support Assistant',
+      channel: {
+        type: 'wechat-kf',
+        name: 'Wechat Support',
+        pairedCount: 0,
+        pendingPairingCount: 0
+      }
+    })
+  })
+
   it('creates an unbound configured channel', async () => {
     const response = await app.request('http://localhost/v1/claws/channels', {
       method: 'POST',
@@ -314,6 +346,29 @@ describe('claws route', () => {
     await expect(response.json()).resolves.toMatchObject({
       type: 'wecom',
       name: 'Configured Wecom',
+      assistantId: null,
+      assistantName: null,
+      status: 'disconnected',
+      errorMessage: null
+    })
+  })
+
+  it('creates an unbound configured wechat-kf channel', async () => {
+    const response = await app.request('http://localhost/v1/claws/channels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'wechat-kf',
+        name: 'Configured Wechat-KF',
+        serverUrl: 'ws://127.0.0.1:3000/ws',
+        serverKey: 'relay-key'
+      })
+    })
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({
+      type: 'wechat-kf',
+      name: 'Configured Wechat-KF',
       assistantId: null,
       assistantName: null,
       status: 'disconnected',
@@ -405,6 +460,49 @@ describe('claws route', () => {
       config: {
         botId: 'bot-updated',
         secret: 'secret-updated'
+      }
+    })
+  })
+
+  it('updates an existing configured wechat-kf channel', async () => {
+    const channel = await channelsRepo.create({
+      type: 'wechat-kf',
+      name: 'Configured Wechat-KF',
+      assistantId: null,
+      enabled: true,
+      config: {
+        serverUrl: 'ws://127.0.0.1:3000/ws',
+        serverKey: 'relay-key'
+      }
+    })
+
+    const response = await app.request(`http://localhost/v1/claws/channels/${channel.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'wechat-kf',
+        name: 'Updated Wechat-KF',
+        serverUrl: 'ws://127.0.0.1:3001/ws',
+        serverKey: 'updated-key'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      id: channel.id,
+      type: 'wechat-kf',
+      name: 'Updated Wechat-KF',
+      assistantId: null,
+      assistantName: null,
+      status: 'disconnected',
+      errorMessage: null
+    })
+    await expect(channelsRepo.getById(channel.id)).resolves.toMatchObject({
+      id: channel.id,
+      name: 'Updated Wechat-KF',
+      config: {
+        serverUrl: 'ws://127.0.0.1:3001/ws',
+        serverKey: 'updated-key'
       }
     })
   })

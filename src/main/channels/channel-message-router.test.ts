@@ -41,7 +41,8 @@ function createAssistantRuntimeStub(streamChat: AssistantRuntime['streamChat']):
     streamChat,
     listThreadMessages: vi.fn(async () => []),
     runCronJob: vi.fn(async () => ({ outputText: '' })),
-    runHeartbeat: vi.fn(async () => ({ outputText: '' }))
+    runHeartbeat: vi.fn(async () => ({ outputText: '' })),
+    runGroupTurn: vi.fn(async () => ({ outputText: '' }))
   }
 }
 
@@ -124,7 +125,7 @@ async function expectEventually(assertion: () => void, timeoutMs = 1000): Promis
 function createInboundEvent(input: {
   eventId: string
   channelId: string
-  channelType?: 'lark' | 'telegram'
+  channelType?: 'lark' | 'telegram' | 'wechat-kf'
   messageId: string
   remoteChatId?: string
   senderId?: string
@@ -601,6 +602,59 @@ describe('ChannelMessageRouter', () => {
       })
     ])
   })
+
+  it('suppresses tool progress updates for wechat-kf channels', async () => {
+    const publishedEvents: unknown[] = []
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
+      createStream([
+        { type: 'start' } as UIMessageChunk,
+        {
+          type: 'tool-input-available',
+          toolCallId: 'tool-call-1',
+          toolName: 'updateSoulMemory',
+          input: {
+            content: 'Remember this note.'
+          }
+        } as UIMessageChunk,
+        {
+          type: 'tool-output-available',
+          toolCallId: 'tool-call-1',
+          output: { ok: true }
+        } as UIMessageChunk,
+        { type: 'text-start', id: 'text-1' } as UIMessageChunk,
+        { type: 'text-delta', id: 'text-1', delta: 'All set.' } as UIMessageChunk,
+        { type: 'text-end', id: 'text-1' } as UIMessageChunk,
+        { type: 'finish' } as UIMessageChunk
+      ])
+    )
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat)
+    })
+
+    eventBus.subscribe('channel.message.send-requested', (event) => {
+      publishedEvents.push(event)
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-tool-wechat-kf',
+      channelId,
+      channelType: 'wechat-kf',
+      message: {
+        id: 'msg-tool-wechat-kf',
+        remoteChatId: 'oc_123',
+        senderId: 'ou_user',
+        content: 'hello',
+        timestamp: new Date('2026-03-08T00:00:00.000Z')
+      }
+    })
+
+    expect(publishedEvents).toEqual([])
+  })
+
   it('publishes a thread message updated event after processing inbound channel messages', async () => {
     const appendMessagesUpdated = vi.fn()
     const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>

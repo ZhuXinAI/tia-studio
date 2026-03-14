@@ -513,6 +513,90 @@ describe('ClawChannelSelectorDialog', () => {
     })
   })
 
+  it('creates a new wechat-kf channel with relay credentials', async () => {
+    const onCreateChannel = vi.fn(async () =>
+      buildChannel({
+        id: 'channel-wechat-kf',
+        type: 'wechat-kf',
+        name: 'Wechat Support',
+        status: 'disconnected'
+      })
+    )
+
+    await act(async () => {
+      root.render(
+        <ClawChannelSelectorDialog
+          isOpen
+          currentAssistantId={null}
+          selectedChannelId=""
+          channels={[]}
+          isMutating={false}
+          errorMessage={null}
+          onClose={() => undefined}
+          onApply={() => undefined}
+          onCreateChannel={onCreateChannel}
+          onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onDeleteChannel={vi.fn(async () => undefined)}
+        />
+      )
+    })
+    await flushAsyncWork()
+
+    const addButton = document.body.querySelector(
+      'button[id="claw-channel-selector-add"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const typeSelect = document.body.querySelector(
+      'select[id="claw-channel-create-type"]'
+    ) as HTMLSelectElement
+    const nameInput = document.body.querySelector(
+      'input[id="claw-channel-create-name"]'
+    ) as HTMLInputElement
+
+    await act(async () => {
+      setElementValue(typeSelect, 'wechat-kf')
+    })
+    await flushAsyncWork()
+
+    expect(document.body.textContent).toContain('wechat-kf-relay')
+    expect(
+      document.body.querySelector('button[id="claw-channel-group-require-mention"]')
+    ).toBeNull()
+
+    const serverUrlInput = document.body.querySelector(
+      'input[id="claw-channel-create-server-url"]'
+    ) as HTMLInputElement
+    const serverKeyInput = document.body.querySelector(
+      'input[id="claw-channel-create-server-key"]'
+    ) as HTMLInputElement
+    const createButton = document.body.querySelector(
+      'button[id="claw-channel-create-save"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      setElementValue(nameInput, 'Wechat Support')
+      setElementValue(serverUrlInput, 'ws://127.0.0.1:3000/ws')
+      setElementValue(serverKeyInput, 'relay-key')
+    })
+
+    await act(async () => {
+      createButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(onCreateChannel).toHaveBeenCalledWith({
+      type: 'wechat-kf',
+      name: 'Wechat Support',
+      serverUrl: 'ws://127.0.0.1:3000/ws',
+      serverKey: 'relay-key'
+    })
+  })
+
   it('allows removing only unbound channels', async () => {
     const onDeleteChannel = vi.fn(async () => undefined)
 

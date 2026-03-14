@@ -91,6 +91,7 @@ const SOFT_QUEUE_PATTERNS = [
   /\b(also|after that|when done|later|next|follow[- ]?up)\b/i,
   /\b(additionally|in addition|by the way)\b/i
 ]
+const TOOL_PROGRESS_CHANNEL_BLACKLIST = new Set(['wechat-kf'])
 
 function toFriendlyErrorMessage(raw: string): string {
   let statusCode: number | undefined
@@ -424,9 +425,11 @@ export class ChannelMessageRouter {
       const toolProgressLocale = this.options.resolveToolProgressLocale?.()
       const assistantReplyText = await drainStreamWithToolUpdates(
         stream,
-        async (toolMessage) => {
-          await this.publishReply(item.event, toolMessage)
-        },
+        TOOL_PROGRESS_CHANNEL_BLACKLIST.has(item.event.channelType)
+          ? undefined
+          : async (toolMessage) => {
+              await this.publishReply(item.event, toolMessage)
+            },
         toolProgressLocale
       )
 

@@ -361,6 +361,80 @@ describe('channels settings page', () => {
     expect(container.textContent).toContain('Wecom')
   })
 
+  it('creates a configured wechat-kf channel with relay credentials', async () => {
+    vi.mocked(createClawChannel).mockResolvedValueOnce(
+      buildChannel({
+        id: 'channel-wechat-kf',
+        type: 'wechat-kf',
+        name: 'Wechat Support'
+      })
+    )
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ChannelsSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const addButton = container.querySelector(
+      'button[id="settings-channels-add"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const typeSelect = document.body.querySelector(
+      'select[id="settings-channel-create-type"]'
+    ) as HTMLSelectElement
+    const nameInput = document.body.querySelector(
+      'input[id="settings-channel-create-name"]'
+    ) as HTMLInputElement
+
+    await act(async () => {
+      setElementValue(typeSelect, 'wechat-kf')
+    })
+    await flushAsyncWork()
+
+    expect(document.body.textContent).toContain('wechat-kf-relay')
+    expect(
+      document.body.querySelector('button[id="settings-channel-create-group-require-mention"]')
+    ).toBeNull()
+
+    const serverUrlInput = document.body.querySelector(
+      'input[id="settings-channel-create-server-url"]'
+    ) as HTMLInputElement
+    const serverKeyInput = document.body.querySelector(
+      'input[id="settings-channel-create-server-key"]'
+    ) as HTMLInputElement
+    const saveButton = document.body.querySelector(
+      'button[id="settings-channel-create-save"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      setElementValue(nameInput, 'Wechat Support')
+      setElementValue(serverUrlInput, 'ws://127.0.0.1:3000/ws')
+      setElementValue(serverKeyInput, 'relay-key')
+    })
+
+    await act(async () => {
+      saveButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(createClawChannel).toHaveBeenCalledWith({
+      type: 'wechat-kf',
+      name: 'Wechat Support',
+      serverUrl: 'ws://127.0.0.1:3000/ws',
+      serverKey: 'relay-key'
+    })
+    expect(container.textContent).toContain('Wechat Support')
+  })
+
   it('edits and removes an unbound configured channel', async () => {
     await act(async () => {
       root.render(

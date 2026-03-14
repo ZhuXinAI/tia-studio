@@ -26,6 +26,7 @@ import { createLlmInterruptionDecider } from './channels/llm-interruption-decide
 import { ChannelMessageRouter } from './channels/channel-message-router'
 import { ChannelService } from './channels/channel-service'
 import { TelegramChannel } from './channels/telegram-channel'
+import { WechatKfChannel } from './channels/wechat-kf-channel'
 import { WeComChannel } from './channels/wecom-channel'
 import { WhatsAppAuthStateStore } from './channels/whatsapp-auth-state-store'
 import { WhatsAppChannel } from './channels/whatsapp-channel'
@@ -340,6 +341,27 @@ async function startLocalApiServer(): Promise<void> {
           botId,
           secret,
           groupRequireMention: resolveGroupRequireMention(channel.config),
+          onFatalError: async (error) => {
+            const message = error instanceof Error ? error.message : 'Unknown error'
+            await channelsRepo.setLastError(channel.id, message)
+          }
+        })
+      },
+      'wechat-kf': async (channel) => {
+        const serverUrl = channel.config.serverUrl
+        if (typeof serverUrl !== 'string' || serverUrl.trim().length === 0) {
+          throw new Error(`Channel ${channel.id} is missing required config: serverUrl`)
+        }
+
+        const serverKey = channel.config.serverKey
+        if (typeof serverKey !== 'string' || serverKey.trim().length === 0) {
+          throw new Error(`Channel ${channel.id} is missing required config: serverKey`)
+        }
+
+        return new WechatKfChannel({
+          id: channel.id,
+          serverUrl,
+          serverKey,
           onFatalError: async (error) => {
             const message = error instanceof Error ? error.message : 'Unknown error'
             await channelsRepo.setLastError(channel.id, message)
