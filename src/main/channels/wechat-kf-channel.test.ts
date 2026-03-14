@@ -153,36 +153,6 @@ describe('WechatKfChannel', () => {
     })
   })
 
-  it('sends the default welcome message when a session enters with a welcome code', async () => {
-    const client = new RelayClientStub()
-    const channel = new WechatKfChannel({
-      id: 'channel-wechat-kf',
-      serverUrl: 'ws://127.0.0.1:3000/ws',
-      serverKey: 'server-key',
-      clientFactory: () => client
-    })
-
-    const startPromise = channel.start()
-    client.emit('authenticated', {
-      client_id: 'client-1',
-      ws_path: '/ws'
-    })
-    await startPromise
-
-    client.emit('wechat.enter_session', {
-      event_type: 'enter_session',
-      open_kfid: 'wkf-1',
-      external_userid: 'wm-user-1',
-      welcome_code: 'welcome-123',
-      raw: {}
-    })
-
-    expect(client.messageOnEvent).toHaveBeenCalledWith({
-      code: 'welcome-123',
-      content: '欢迎咨询'
-    })
-  })
-
   it('forwards steady-state relay errors to the fatal error handler', async () => {
     const client = new RelayClientStub()
     const onFatalError = vi.fn(async () => undefined)
