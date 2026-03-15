@@ -468,7 +468,10 @@ describe('TeamRuntimeService', () => {
       }),
       [],
       expect.objectContaining({
-        maxSteps: 100
+        maxSteps: 100,
+        modelSettings: {
+          maxRetries: 2
+        }
       })
     )
   })
@@ -892,7 +895,10 @@ describe('TeamRuntimeService', () => {
       }),
       [{ role: 'user', content: 'double-check the implementation details' }],
       expect.objectContaining({
-        maxSteps: 42
+        maxSteps: 42,
+        modelSettings: {
+          maxRetries: 2
+        }
       })
     )
   })

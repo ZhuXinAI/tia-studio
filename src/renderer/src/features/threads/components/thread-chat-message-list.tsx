@@ -33,6 +33,7 @@ type ThreadChatMessageListProps = {
 
 const AssistantNameContext = createContext('Assistant')
 const ESTIMATED_MESSAGE_HEIGHT = 160
+const TEAM_ERROR_MESSAGE_MAX_LENGTH = 50
 
 type TeamMemberToolResult = {
   kind: 'team-member-result'
@@ -69,6 +70,8 @@ type AssistantMessagePart =
       result?: unknown
       status?: {
         type?: string
+        reason?: string
+        error?: unknown
       }
     }
   | {
@@ -92,7 +95,7 @@ type TeamVisibleMessageBlock = {
   assistantName: string
   text: string
   mentions: string[]
-  status: 'running' | 'complete'
+  status: 'running' | 'complete' | 'error'
   nestedTools: TeamNestedToolCall[]
 }
 
@@ -228,19 +231,94 @@ function extractNestedTools(snapshot: ToolAgentStreamData | null): TeamNestedToo
     }))
 }
 
+function normalizeErrorMessage(value: string): string | null {
+  const normalized = value.replace(/\s+/g, ' ').trim()
+  return normalized.length > 0 ? normalized : null
+}
+
+function truncateErrorMessage(value: string): string {
+  if (value.length <= TEAM_ERROR_MESSAGE_MAX_LENGTH) {
+    return value
+  }
+
+  return `${value.slice(0, TEAM_ERROR_MESSAGE_MAX_LENGTH - 3)}...`
+}
+
+function extractTeamToolErrorMessage(
+  status: Extract<AssistantMessagePart, { type: 'tool-call' }>['status']
+): string | null {
+  if (status?.type !== 'incomplete') {
+    return null
+  }
+
+  if (typeof status.error === 'string') {
+    const normalized = normalizeErrorMessage(status.error)
+    return normalized ? truncateErrorMessage(normalized) : null
+  }
+
+  if (
+    status.error &&
+    typeof status.error === 'object' &&
+    'message' in status.error &&
+    typeof (status.error as { message?: unknown }).message === 'string'
+  ) {
+    const normalized = normalizeErrorMessage((status.error as { message: string }).message)
+    return normalized ? truncateErrorMessage(normalized) : null
+  }
+
+  return null
+}
+
 function buildTeamVisibleBlocks(parts: readonly AssistantMessagePart[]): TeamVisibleMessageBlock[] {
   const delegationTools = parts.filter(isDelegationToolPart)
   const agentDataParts = parts.filter(isToolAgentDataPart)
+  const blocks = delegationTools.map((toolPart) => ({
+    toolPart,
+    result: isTeamMemberToolResult(toolPart.result) ? toolPart.result : null,
+    snapshot: null as ToolAgentStreamData | null
+  }))
 
-  return delegationTools
-    .map((toolPart, index) => {
-      const snapshot = agentDataParts[index]?.data ?? null
-      const result = isTeamMemberToolResult(toolPart.result) ? toolPart.result : null
+  const unresolvedBlockIndices = blocks
+    .map((block, index) => ({ block, index }))
+    .filter(({ block }) => block.result === null && block.toolPart.status?.type !== 'complete')
+    .map(({ index }) => index)
+
+  const unresolvedSnapshotStart =
+    unresolvedBlockIndices.length > 0
+      ? Math.max(0, agentDataParts.length - unresolvedBlockIndices.length)
+      : agentDataParts.length
+
+  let unresolvedSnapshotIndex = unresolvedSnapshotStart
+  for (const blockIndex of unresolvedBlockIndices) {
+    blocks[blockIndex]!.snapshot = agentDataParts[unresolvedSnapshotIndex]?.data ?? null
+    unresolvedSnapshotIndex += 1
+  }
+
+  let leftoverSnapshotIndex = 0
+  for (const block of blocks) {
+    if (leftoverSnapshotIndex >= unresolvedSnapshotStart) {
+      break
+    }
+
+    if (block.snapshot) {
+      continue
+    }
+
+    block.snapshot = agentDataParts[leftoverSnapshotIndex]?.data ?? null
+    leftoverSnapshotIndex += 1
+  }
+
+  return blocks
+    .map(({ toolPart, result, snapshot }) => {
+      const errorMessage = extractTeamToolErrorMessage(toolPart.status)
       const text =
-        result?.text.trim() ?? (typeof snapshot?.text === 'string' ? snapshot.text.trim() : '')
+        errorMessage ??
+        result?.text.trim() ??
+        (typeof snapshot?.text === 'string' ? snapshot.text.trim() : '')
       const nestedTools = extractNestedTools(snapshot)
-      const status: 'running' | 'complete' =
-        result || snapshot?.status === 'finished' || toolPart.status?.type === 'complete'
+      const status: 'running' | 'complete' | 'error' = errorMessage
+        ? 'error'
+        : result || snapshot?.status === 'finished' || toolPart.status?.type === 'complete'
           ? 'complete'
           : 'running'
 
@@ -567,7 +645,15 @@ function TeamVisibleMessageCard({ block }: { block: TeamVisibleMessageBlock }): 
       </div>
 
       {block.text ? (
-        <div className="whitespace-pre-wrap text-sm leading-relaxed">{block.text}</div>
+        <div
+          className={
+            block.status === 'error'
+              ? 'text-destructive whitespace-pre-wrap text-sm leading-relaxed'
+              : 'whitespace-pre-wrap text-sm leading-relaxed'
+          }
+        >
+          {block.text}
+        </div>
       ) : (
         <p className="text-muted-foreground text-sm">Working...</p>
       )}

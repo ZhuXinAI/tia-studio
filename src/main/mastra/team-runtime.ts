@@ -20,6 +20,7 @@ import type { TeamWorkspacesRepository } from '../persistence/repos/team-workspa
 import { ChatRouteError } from '../server/chat/chat-errors'
 import { TeamRunStatusStore } from '../server/chat/team-run-status-store'
 import { createCodingSubagent } from './coding-agent'
+import { createDefaultModelSettings } from './model-retry-settings'
 import { resolveModel } from './model-resolver'
 import { createBuiltInBrowserTools } from './tools/built-in-browser-tools'
 import { createContainedLocalFilesystemInstructions } from './workspace-filesystem-instructions'
@@ -74,10 +75,7 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-function extractMentionedAssistantIds(
-  content: string,
-  members: TeamMemberIdentity[]
-): string[] {
+function extractMentionedAssistantIds(content: string, members: TeamMemberIdentity[]): string[] {
   const resolvedMentions: string[] = []
 
   for (const member of members) {
@@ -202,6 +200,7 @@ export class TeamRuntimeService implements TeamRuntime {
     try {
       const stream = await runtimeSupervisor.stream(params.messages as never, {
         maxSteps: DEFAULT_TEAM_SUPERVISOR_MAX_STEPS,
+        modelSettings: createDefaultModelSettings(),
         providerOptions: this.buildProviderOptions(supervisorProvider.type),
         memory: {
           thread: thread.id,
@@ -550,6 +549,7 @@ ${roster.length > 0 ? roster : '- No other teammates are available.'}`
             const stream = await member.agent.stream([{ role: 'user', content: task }] as never, {
               requestContext: context.requestContext,
               maxSteps: member.assistant.maxSteps,
+              modelSettings: createDefaultModelSettings(),
               providerOptions: this.buildProviderOptions(member.provider.type),
               memory: {
                 resource: subAgentResourceId,

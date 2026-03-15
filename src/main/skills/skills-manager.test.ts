@@ -156,11 +156,12 @@ description: Keeps workspace linting rules.
     )
   })
 
-  it('installs recommended skills with managed bunx', async () => {
+  it('installs recommended skills with managed bun x alias', async () => {
     const runCommand = vi.fn(async () => undefined)
 
     const installedSkillIds = await installRecommendedSkillsWithBunx({
-      bunxPath: '/managed/bun/bin/bunx',
+      bunxPath: '/managed/bun/bin/bun',
+      bunxArgs: ['x'],
       skillIds: ['agent-browser', 'find-skills'],
       env: { PATH: '/usr/bin' },
       runCommand
@@ -169,8 +170,9 @@ description: Keeps workspace linting rules.
     expect(installedSkillIds).toEqual(['agent-browser', 'find-skills'])
     expect(runCommand).toHaveBeenNthCalledWith(
       1,
-      '/managed/bun/bin/bunx',
+      '/managed/bun/bin/bun',
       [
+        'x',
         'skills',
         'add',
         'https://github.com/vercel-labs/agent-browser',
@@ -188,8 +190,9 @@ description: Keeps workspace linting rules.
     )
     expect(runCommand).toHaveBeenNthCalledWith(
       2,
-      '/managed/bun/bin/bunx',
+      '/managed/bun/bin/bun',
       [
+        'x',
         'skills',
         'add',
         'https://github.com/vercel-labs/skills',

@@ -410,6 +410,7 @@ function resolveRecommendedSkillDefinition(
 
 export async function installRecommendedSkillsWithBunx(input: {
   bunxPath: string
+  bunxArgs?: string[]
   skillIds: RecommendedSkillId[]
   cwd?: string
   env?: NodeJS.ProcessEnv
@@ -424,6 +425,7 @@ export async function installRecommendedSkillsWithBunx(input: {
   if (skillIds.length === 0) {
     return []
   }
+  const bunxArgs = Array.isArray(input.bunxArgs) ? [...input.bunxArgs] : []
 
   const runCommand =
     input.runCommand ??
@@ -441,6 +443,7 @@ export async function installRecommendedSkillsWithBunx(input: {
     await runCommand(
       bunxPath,
       [
+        ...bunxArgs,
         'skills',
         'add',
         definition.repositoryUrl,

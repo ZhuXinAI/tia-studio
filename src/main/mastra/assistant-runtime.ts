@@ -37,6 +37,7 @@ import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import { ChatRouteError } from '../server/chat/chat-errors'
 import { ensureAssistantWorkspaceFiles } from './assistant-workspace'
+import { createDefaultModelSettings, DEFAULT_MODEL_MAX_RETRIES } from './model-retry-settings'
 import { resolveModel } from './model-resolver'
 import { AttachmentUploader } from './processors/attachment-uploader'
 import { createCodingSubagent } from './coding-agent'
@@ -327,6 +328,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
         trigger: params.trigger,
         abortSignal: params.abortSignal,
         maxSteps: assistant.maxSteps,
+        modelSettings: createDefaultModelSettings(),
         providerOptions: this.buildProviderOptions(provider.type),
         requestContext,
         memory: {
@@ -428,6 +430,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       params: {
         messages,
         maxSteps: assistant.maxSteps,
+        modelSettings: createDefaultModelSettings(),
         providerOptions: this.buildProviderOptions(provider.type),
         requestContext
         // No memory for cron jobs - they should execute without conversation history
@@ -508,6 +511,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
           systemContext: worklogContext
         }),
         maxSteps: assistant.maxSteps,
+        modelSettings: createDefaultModelSettings(),
         providerOptions: this.buildProviderOptions(provider.type),
         requestContext
       },
@@ -853,7 +857,9 @@ ${input.prompt}`
 
     const aiSdkMessages = toAISdkV5Messages(messages)
     const usageByMessageId = this.options.threadUsageRepo?.listByMessageIds
-      ? await this.options.threadUsageRepo.listByMessageIds(aiSdkMessages.map((message) => message.id))
+      ? await this.options.threadUsageRepo.listByMessageIds(
+          aiSdkMessages.map((message) => message.id)
+        )
       : {}
 
     return aiSdkMessages
@@ -865,7 +871,9 @@ ${input.prompt}`
         }
 
         const existingMetadata =
-          message.metadata && typeof message.metadata === 'object' && !Array.isArray(message.metadata)
+          message.metadata &&
+          typeof message.metadata === 'object' &&
+          !Array.isArray(message.metadata)
             ? message.metadata
             : {}
 
@@ -1005,7 +1013,9 @@ ${input.prompt}`
   }): Promise<string> {
     const generatedTitle =
       typeof input.memoryStore.getThreadById === 'function'
-        ? this.toNonEmptyString((await input.memoryStore.getThreadById({ threadId: input.threadId }))?.title)
+        ? this.toNonEmptyString(
+            (await input.memoryStore.getThreadById({ threadId: input.threadId }))?.title
+          )
         : null
 
     if (generatedTitle && this.shouldReplaceThreadTitle(input.appThreadTitle)) {
@@ -1086,6 +1096,7 @@ ${input.prompt}`
         '## Durable Notes'
       ].join('\n'),
       temperature: 0,
+      maxRetries: DEFAULT_MODEL_MAX_RETRIES,
       providerOptions: this.buildProviderOptions(input.provider.type)
     })
 
@@ -1102,7 +1113,9 @@ ${input.prompt}`
     transcript: string
   }): string {
     const transcriptBody =
-      input.transcript.trim().length > 0 ? input.transcript : '(No persisted transcript was available.)'
+      input.transcript.trim().length > 0
+        ? input.transcript
+        : '(No persisted transcript was available.)'
 
     return [
       '# Thread History',

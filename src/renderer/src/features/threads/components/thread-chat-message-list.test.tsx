@@ -364,6 +364,104 @@ describe('thread chat message list', () => {
     expect(container.textContent).toContain('Web Search')
   })
 
+  it('keeps the live delegated stream attached to the unfinished member block', async () => {
+    messageState.message.parts = [
+      {
+        type: 'tool-call',
+        toolName: 'delegate_to_gmnt_1',
+        toolCallId: 'tool-1',
+        status: { type: 'complete' },
+        result: {
+          kind: 'team-member-result',
+          assistantId: 'assistant-1',
+          assistantName: 'GMNT',
+          task: 'Investigate the issue',
+          text: 'I traced the first half of the issue and handed off follow-up.',
+          mentions: ['assistant-2'],
+          mentionNames: ['Kimi'],
+          subAgentThreadId: 'sub-thread-1',
+          subAgentResourceId: 'sub-resource-1'
+        }
+      },
+      {
+        type: 'tool-call',
+        toolName: 'delegate_to_kimi_2',
+        toolCallId: 'tool-2',
+        status: { type: 'running' }
+      },
+      {
+        type: 'data',
+        name: 'tool-agent',
+        data: {
+          text: 'I am continuing the handoff by checking the rendering path.',
+          status: 'running',
+          toolCalls: [],
+          toolResults: []
+        }
+      }
+    ]
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Team Supervisor"
+          assistantMessageVariant="team"
+          isLoadingChatHistory={false}
+          isChatStreaming={true}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    expect(container.textContent).toContain(
+      'I traced the first half of the issue and handed off follow-up.'
+    )
+    expect(container.textContent).toContain('Kimi')
+    expect(container.textContent).toContain(
+      'I am continuing the handoff by checking the rendering path.'
+    )
+  })
+
+  it('shows truncated delegation errors in team mode instead of a hanging working state', async () => {
+    messageState.message.parts = [
+      {
+        type: 'tool-call',
+        toolName: 'delegate_to_planner_1',
+        toolCallId: 'tool-1',
+        status: {
+          type: 'incomplete',
+          error: {
+            message:
+              'Provider quota limit exceeded while fetching delegated model output for Planner.'
+          }
+        }
+      }
+    ]
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Team Supervisor"
+          assistantMessageVariant="team"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    expect(container.textContent).toContain('Planner')
+    expect(container.textContent).toContain('Provider quota limit exceeded while fetching de...')
+    expect(container.textContent).not.toContain('Working...')
+    expect(container.textContent).not.toContain(
+      'Provider quota limit exceeded while fetching delegated model output for Planner.'
+    )
+  })
+
   it('hides completion-only supervisor turns in team mode', async () => {
     messageState.message.parts = [
       {

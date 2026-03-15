@@ -994,7 +994,10 @@ describe('AssistantRuntimeService', () => {
     expect(handleChatStreamMock).toHaveBeenCalledWith(
       expect.objectContaining({
         params: expect.objectContaining({
-          maxSteps: 17
+          maxSteps: 17,
+          modelSettings: {
+            maxRetries: 2
+          }
         })
       })
     )
@@ -1230,10 +1233,16 @@ describe('AssistantRuntimeService', () => {
         requestContext: {
           get: (key: string) => unknown
         }
+        modelSettings: {
+          maxRetries: number
+        }
       } & Record<string, unknown>
     }
 
     expect(handleCall.params.requestContext.get(HEARTBEAT_RUN_CONTEXT_KEY)).toBeUndefined()
+    expect(handleCall.params.modelSettings).toEqual({
+      maxRetries: 2
+    })
     expect('memory' in handleCall.params).toBe(false)
   })
 
@@ -1321,6 +1330,9 @@ describe('AssistantRuntimeService', () => {
           requestContext: {
             get: (key: string) => unknown
           }
+          modelSettings: {
+            maxRetries: number
+          }
           messages: Array<Record<string, unknown>>
         } & Record<string, unknown>
       }
@@ -1328,6 +1340,9 @@ describe('AssistantRuntimeService', () => {
       expect(handleCall.params.requestContext.get(HEARTBEAT_RUN_CONTEXT_KEY)).toEqual(
         expect.any(String)
       )
+      expect(handleCall.params.modelSettings).toEqual({
+        maxRetries: 2
+      })
       expect('memory' in handleCall.params).toBe(false)
       expect(handleCall.params.messages).toEqual(
         expect.arrayContaining([
@@ -2601,6 +2616,7 @@ describe('AssistantRuntimeService', () => {
       })
       expect(generateTextMock).toHaveBeenCalledWith(
         expect.objectContaining({
+          maxRetries: 2,
           providerOptions: undefined,
           temperature: 0
         })
