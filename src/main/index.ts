@@ -778,6 +778,7 @@ if (hasSingleInstanceLock) {
       const bunxCommand = await resolveManagedRuntimeService().resolveManagedCommand('bunx', [])
       return installRecommendedSkillsWithBunx({
         bunxPath: bunxCommand.command,
+        bunxArgs: bunxCommand.args,
         env: bunxCommand.env,
         skillIds
       })

@@ -100,35 +100,23 @@ function runtimeBinaryName(kind: ManagedRuntimeKind, platform: NodeJS.Platform):
   return `${kind}${suffix}`
 }
 
-function resolveBunxCommand(
-  binaryPath: string,
-  platform: NodeJS.Platform
-): {
+function resolveBunxCommand(binaryPath: string): {
   command: string
   extraArgs: string[]
 } {
-  const suffix = platform === 'win32' ? '.exe' : ''
-  const siblingPath = join(dirname(binaryPath), `bunx${suffix}`)
-
   return {
-    command: siblingPath,
-    extraArgs: []
+    command: binaryPath,
+    extraArgs: ['x']
   }
 }
 
-function resolveUvxCommand(
-  binaryPath: string,
-  platform: NodeJS.Platform
-): {
+function resolveUvxCommand(binaryPath: string): {
   command: string
   extraArgs: string[]
 } {
-  const suffix = platform === 'win32' ? '.exe' : ''
-  const siblingPath = join(dirname(binaryPath), `uvx${suffix}`)
-
   return {
-    command: siblingPath,
-    extraArgs: []
+    command: binaryPath,
+    extraArgs: ['tool', 'run']
   }
 }
 
@@ -539,7 +527,7 @@ export class ManagedRuntimeService {
     }
 
     if ((command === 'bunx' || command === 'npx') && bunPath) {
-      const bunx = resolveBunxCommand(bunPath, this.platform)
+      const bunx = resolveBunxCommand(bunPath)
       return {
         command: bunx.command,
         args: [...bunx.extraArgs, ...args],
@@ -552,7 +540,7 @@ export class ManagedRuntimeService {
     }
 
     if (command === 'uvx' && uvPath) {
-      const uvx = resolveUvxCommand(uvPath, this.platform)
+      const uvx = resolveUvxCommand(uvPath)
       return {
         command: uvx.command,
         args: [...uvx.extraArgs, ...args],

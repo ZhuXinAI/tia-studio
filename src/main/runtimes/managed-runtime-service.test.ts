@@ -127,4 +127,90 @@ describe('ManagedRuntimeService', () => {
     expect(state.bun.status).toBe('validation-failed')
     expect(state.bun.errorMessage).toBe('validation crashed')
   })
+
+  it('resolves bunx through the managed bun binary', async () => {
+    const repository = new ManagedRuntimesRepository(path.join(tempDir, 'managed-runtimes.json'))
+    await repository.saveState({
+      bun: {
+        source: 'managed',
+        binaryPath: '/managed/bin/bun',
+        version: 'bun 1.2.0',
+        installedAt: '2026-03-15T00:00:00.000Z',
+        lastCheckedAt: '2026-03-15T00:00:00.000Z',
+        releaseUrl: 'https://example.test/bun',
+        checksum: null,
+        status: 'ready',
+        errorMessage: null
+      },
+      uv: {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
+      }
+    })
+    const service = new ManagedRuntimeService({
+      repository,
+      managedRootPath: path.join(tempDir, 'managed')
+    })
+
+    const resolved = await service.resolveManagedCommand('bunx', ['skills', '--help'], {
+      PATH: '/usr/bin'
+    })
+
+    expect(resolved).toEqual({
+      command: '/managed/bin/bun',
+      args: ['x', 'skills', '--help'],
+      env: {
+        PATH: `/managed/bin${process.platform === 'win32' ? ';' : ':'}/usr/bin`
+      }
+    })
+  })
+
+  it('resolves uvx through the managed uv binary', async () => {
+    const repository = new ManagedRuntimesRepository(path.join(tempDir, 'managed-runtimes.json'))
+    await repository.saveState({
+      bun: {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
+      },
+      uv: {
+        source: 'managed',
+        binaryPath: '/managed/bin/uv',
+        version: 'uv 0.7.2',
+        installedAt: '2026-03-15T00:00:00.000Z',
+        lastCheckedAt: '2026-03-15T00:00:00.000Z',
+        releaseUrl: 'https://example.test/uv',
+        checksum: null,
+        status: 'ready',
+        errorMessage: null
+      }
+    })
+    const service = new ManagedRuntimeService({
+      repository,
+      managedRootPath: path.join(tempDir, 'managed')
+    })
+
+    const resolved = await service.resolveManagedCommand('uvx', ['ruff'], {})
+
+    expect(resolved).toEqual({
+      command: '/managed/bin/uv',
+      args: ['tool', 'run', 'ruff'],
+      env: {
+        PATH: '/managed/bin'
+      }
+    })
+  })
 })
