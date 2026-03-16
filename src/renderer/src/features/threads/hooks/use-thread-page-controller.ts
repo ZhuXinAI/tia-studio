@@ -288,7 +288,6 @@ export function useThreadPageController() {
   const stopChatRef = useRef(stop)
   const isChatStreamingRef = useRef(false)
   const currentChatMessagesRef = useRef<readonly UIMessage[]>(chatMessages)
-  currentChatMessagesRef.current = chatMessages
 
   const isChatStreaming = chatStatus === 'submitted' || chatStatus === 'streaming'
   const canAbortGeneration = isChatStreaming
@@ -325,7 +324,8 @@ export function useThreadPageController() {
     setMessagesRef.current = setMessages
     stopChatRef.current = stop
     isChatStreamingRef.current = isChatStreaming
-  }, [isChatStreaming, setMessages, stop])
+    currentChatMessagesRef.current = chatMessages
+  }, [chatMessages, isChatStreaming, setMessages, stop])
 
   // Stop any ongoing chat operations when assistant or thread changes
   useEffect(() => {

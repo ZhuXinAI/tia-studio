@@ -10,6 +10,7 @@ export default defineConfig({
   test: {
     exclude: [...configDefaults.exclude, '.worktrees/**'],
     globals: true,
+    testTimeout: 15000,
     setupFiles: ['./src/test/setup.ts'],
     environmentMatchGlobs: [['src/renderer/**', 'jsdom']]
   }

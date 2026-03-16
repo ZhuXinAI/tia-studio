@@ -93,6 +93,11 @@ function CreateClawDialog({
   const [isSubmitArmed, setIsSubmitArmed] = useState(false)
   const nameInputRef = useRef<HTMLInputElement | null>(null)
   const hasFocusedNameStepRef = useRef(false)
+  const defaultAssistantNameRef = useRef(t('claws.dialog.defaultAssistantName'))
+
+  useEffect(() => {
+    defaultAssistantNameRef.current = t('claws.dialog.defaultAssistantName')
+  }, [t])
 
   useEffect(() => {
     if (!isOpen) {
@@ -101,7 +106,7 @@ function CreateClawDialog({
     }
 
     setCurrentStep(0)
-    setName(t('claws.dialog.defaultAssistantName'))
+    setName(defaultAssistantNameRef.current)
     setProviderId('')
     setEnabled(true)
     setSelectedChannelId('')
@@ -111,7 +116,7 @@ function CreateClawDialog({
     setIsChannelInlineFlowOpen(false)
     setIsSubmitArmed(false)
     hasFocusedNameStepRef.current = false
-  }, [isOpen, t])
+  }, [isOpen])
 
   useEffect(() => {
     if (!isOpen || currentStep !== 2) {

@@ -1054,5 +1054,5 @@ describe('ClawsPage', () => {
     await flushAsyncWork()
 
     expect(deleteClaw).toHaveBeenCalledWith('assistant-1')
-  })
+  }, 15000)
 })

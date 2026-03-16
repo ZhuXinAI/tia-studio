@@ -1,15 +1,56 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const electronHarness = vi.hoisted(() => {
-  const { EventEmitter } = require('node:events') as typeof import('node:events')
+  class TestEventEmitter {
+    private listeners = new Map<string, Set<(...args: unknown[]) => void>>()
+
+    on(event: string, listener: (...args: unknown[]) => void): this {
+      const eventListeners = this.listeners.get(event) ?? new Set<(...args: unknown[]) => void>()
+      eventListeners.add(listener)
+      this.listeners.set(event, eventListeners)
+      return this
+    }
+
+    once(event: string, listener: (...args: unknown[]) => void): this {
+      const wrappedListener = (...args: unknown[]) => {
+        this.off(event, wrappedListener)
+        listener(...args)
+      }
+
+      return this.on(event, wrappedListener)
+    }
+
+    off(event: string, listener: (...args: unknown[]) => void): this {
+      this.listeners.get(event)?.delete(listener)
+      return this
+    }
+
+    emit(event: string, ...args: unknown[]): boolean {
+      const eventListeners = this.listeners.get(event)
+      if (!eventListeners || eventListeners.size === 0) {
+        return false
+      }
+
+      for (const listener of [...eventListeners]) {
+        listener(...args)
+      }
+
+      return true
+    }
+  }
+
   const loadURLMock = vi.fn(async function (this: { webContents: MockWebContents }, url: string) {
     this.webContents.url = url
     this.webContents.emit('dom-ready')
   })
-  const sendCommandMock = vi.fn(async (_method: string, _params?: Record<string, unknown>) => ({}))
+  const sendCommandMock = vi.fn(async (method: string, params?: Record<string, unknown>) => {
+    void method
+    void params
+    return {}
+  })
   const constructorOptions: unknown[] = []
 
-  class MockDebugger extends EventEmitter {
+  class MockDebugger extends TestEventEmitter {
     private attached = false
 
     isAttached(): boolean {
@@ -25,7 +66,7 @@ const electronHarness = vi.hoisted(() => {
     }
   }
 
-  class MockWebContents extends EventEmitter {
+  class MockWebContents extends TestEventEmitter {
     url = ''
     debugger = new MockDebugger()
     private destroyed = false
@@ -67,7 +108,7 @@ const electronHarness = vi.hoisted(() => {
     }
   }
 
-  class MockBrowserWindow extends EventEmitter {
+  class MockBrowserWindow extends TestEventEmitter {
     webContents = new MockWebContents()
     private destroyed = false
 
