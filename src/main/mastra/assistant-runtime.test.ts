@@ -518,6 +518,219 @@ describe('AssistantRuntimeService', () => {
     })
   })
 
+  it('registers and streams through the tia browser tool delegation tool in tia-browser-tool mode', async () => {
+    const mastra = await createMastraInstance(':memory:')
+    const builtInBrowserManager = {
+      getRemoteDebuggingPort: vi.fn(() => 10531),
+      requestHumanHandoff: vi.fn(async () => ({
+        status: 'completed' as const,
+        currentUrl: 'https://example.test/login',
+        remoteDebuggingPort: 10531
+      }))
+    }
+    const tiaBrowserToolManager = {
+      runAutomationCommand: vi.fn(async () => ({
+        action: 'snapshot' as const,
+        currentUrl: 'https://example.test',
+        snapshot: '- button "Continue" [ref=e1]'
+      })),
+      requestHumanHandoff: vi.fn(async () => ({
+        status: 'completed' as const,
+        currentUrl: 'https://example.test/login'
+      }))
+    }
+    const runtime = new AssistantRuntimeService({
+      mastra,
+      assistantsRepo: {} as AssistantsRepository,
+      providersRepo: {} as ProvidersRepository,
+      threadsRepo: {
+        hasAnyThreads: vi.fn(async () => true)
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getBrowserAutomationMode: vi.fn(async () => 'tia-browser-tool')
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never,
+      builtInBrowserManager,
+      tiaBrowserToolManager
+    })
+
+    await (
+      runtime as unknown as {
+        ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+      }
+    ).ensureAgentRegistered(buildAssistant(), buildProvider({ type: 'openai-response' }))
+
+    const agent = mastra.getAgentById('assistant-1')
+    const browserAgent = mastra.getAgent('assistant-1:browser-agent')
+    const instructions = await getAgentInstructions(agent)
+    const tools = (await agent.listTools()) as Record<
+      string,
+      {
+        execute?: (
+          input: Record<string, unknown>,
+          context?: Record<string, unknown>
+        ) => Promise<unknown>
+      }
+    >
+
+    expect(Object.keys(tools)).toEqual(
+      expect.arrayContaining(['useTiaBrowserTool', 'requestBrowserHumanHandoff'])
+    )
+    expect(instructions).toContain('use-tia-browser-tool tool is available')
+    expect(instructions).toContain('Prefer use-tia-browser-tool for multi-step website tasks')
+    expect(browserAgent.hasOwnMemory()).toBe(true)
+    expect((await browserAgent.getMemory())?.getMergedThreadConfig().generateTitle).toBe(true)
+
+    const streamedChunks = [
+      {
+        type: 'text-delta',
+        payload: {
+          text: 'Partial '
+        }
+      },
+      {
+        type: 'text-delta',
+        payload: {
+          text: 'browser update'
+        }
+      }
+    ]
+    const fakeBrowserAgent = {
+      stream: vi.fn(async () => ({
+        fullStream: new ReadableStream({
+          start(controller) {
+            for (const chunk of streamedChunks) {
+              controller.enqueue(chunk)
+            }
+            controller.close()
+          }
+        }),
+        text: Promise.resolve('Partial browser update')
+      }))
+    }
+    const streamedOutput: unknown[] = []
+    const writer = new WritableStream<unknown>({
+      write(chunk) {
+        streamedOutput.push(chunk)
+      }
+    })
+
+    const result = await tools.useTiaBrowserTool.execute?.(
+      {
+        task: 'Inspect the sign-in form and summarize it.'
+      },
+      {
+        mastra: {
+          getAgent: vi.fn(() => fakeBrowserAgent)
+        },
+        writer,
+        requestContext: new RequestContext()
+      }
+    )
+
+    expect(streamedOutput).toEqual([])
+    expect(result).toMatchObject({
+      text: 'Partial browser update',
+      subAgentResourceId: 'assistant-1:browser-agent'
+    })
+    expect(fakeBrowserAgent.stream).toHaveBeenCalledTimes(1)
+    expect(fakeBrowserAgent.stream).toHaveBeenCalledWith(
+      [{ role: 'user', content: 'Inspect the sign-in form and summarize it.' }],
+      expect.objectContaining({
+        providerOptions: {
+          openai: {
+            store: false
+          }
+        }
+      })
+    )
+  })
+
+  it('times out stuck tia browser tool delegation runs', async () => {
+    const previousTimeout = process.env.TIA_BROWSER_TOOL_DELEGATE_TIMEOUT_MS
+    process.env.TIA_BROWSER_TOOL_DELEGATE_TIMEOUT_MS = '20'
+
+    try {
+      const mastra = await createMastraInstance(':memory:')
+      const tiaBrowserToolManager = {
+        runAutomationCommand: vi.fn(async () => ({
+          action: 'snapshot' as const,
+          currentUrl: 'https://example.test',
+          snapshot: '- button "Continue" [ref=e1]'
+        })),
+        requestHumanHandoff: vi.fn(async () => ({
+          status: 'completed' as const,
+          currentUrl: 'https://example.test/login'
+        }))
+      }
+      const runtime = new AssistantRuntimeService({
+        mastra,
+        assistantsRepo: {} as AssistantsRepository,
+        providersRepo: {} as ProvidersRepository,
+        threadsRepo: {
+          hasAnyThreads: vi.fn(async () => true)
+        } as unknown as ThreadsRepository,
+        webSearchSettingsRepo: {
+          getDefaultEngine: vi.fn(async () => 'bing'),
+          getBrowserAutomationMode: vi.fn(async () => 'tia-browser-tool')
+        } as unknown as WebSearchSettingsRepository,
+        mcpServersRepo: {
+          getSettings: vi.fn(async () => ({ mcpServers: {} }))
+        } as never,
+        tiaBrowserToolManager
+      })
+
+      await (
+        runtime as unknown as {
+          ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+        }
+      ).ensureAgentRegistered(buildAssistant(), buildProvider())
+
+      const agent = mastra.getAgentById('assistant-1')
+      const tools = (await agent.listTools()) as Record<
+        string,
+        {
+          execute?: (
+            input: Record<string, unknown>,
+            context?: Record<string, unknown>
+          ) => Promise<unknown>
+        }
+      >
+
+      const fakeBrowserAgent = {
+        stream: vi.fn(async () => ({
+          fullStream: new ReadableStream(),
+          text: new Promise<string>(() => undefined)
+        }))
+      }
+
+      await expect(
+        tools.useTiaBrowserTool.execute?.(
+          {
+            task: 'Inspect the sign-in form and summarize it.'
+          },
+          {
+            mastra: {
+              getAgent: vi.fn(() => fakeBrowserAgent)
+            },
+            requestContext: new RequestContext()
+          }
+        )
+      ).rejects.toThrow(
+        'use-tia-browser-tool timed out after 20ms. Set TIA_BROWSER_TOOL_DEBUG=true to capture detailed browser delegation logs.'
+      )
+    } finally {
+      if (previousTimeout === undefined) {
+        delete process.env.TIA_BROWSER_TOOL_DELEGATE_TIMEOUT_MS
+      } else {
+        process.env.TIA_BROWSER_TOOL_DELEGATE_TIMEOUT_MS = previousTimeout
+      }
+    }
+  })
+
   it('bootstraps assistant workspace files when registering an agent', async () => {
     const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-assistant-runtime-'))
 

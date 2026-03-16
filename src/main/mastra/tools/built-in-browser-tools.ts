@@ -10,7 +10,7 @@ export function createBuiltInBrowserTools(options: BuiltInBrowserToolsOptions) {
   const requestBrowserHumanHandoff = createTool({
     id: 'request-browser-human-handoff',
     description:
-      'After you have already told the user what action is needed, bring the built-in browser window to the front for manual user intervention, inject a "Done, continue" button, and wait until the user hands control back.',
+      'After you have already told the user what action is needed, bring the built-in browser window to the front for manual user intervention and wait until the user hands control back.',
     inputSchema: z.object({
       message: z.string().trim().min(1),
       buttonLabel: z.string().trim().min(1).optional(),

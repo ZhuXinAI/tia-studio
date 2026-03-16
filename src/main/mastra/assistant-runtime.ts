@@ -17,6 +17,8 @@ import { MCPClient, type MastraMCPServerDefinition } from '@mastra/mcp'
 import { generateText, type LanguageModel, type UIMessage, type UIMessageChunk } from 'ai'
 import type { BuiltInBrowserController } from '../built-in-browser-manager'
 import { buildBuiltInBrowserGuidance } from '../built-in-browser-contract'
+import type { TiaBrowserToolController } from '../tia-browser-tool-manager'
+import { buildTiaBrowserToolGuidance } from '../tia-browser-tool-contract'
 import { ChannelEventBus } from '../channels/channel-event-bus'
 import { buildChannelImageSupportGuidance } from '../channels/channel-media-support'
 import type { ChannelTarget } from '../channels/types'
@@ -34,14 +36,26 @@ import type { AppMcpServer, McpServersRepository } from '../persistence/repos/mc
 import type { AppProvider, ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { SecuritySettingsRepository } from '../persistence/repos/security-settings-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
-import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
+import type {
+  BrowserAutomationMode,
+  WebSearchSettingsRepository
+} from '../persistence/repos/web-search-settings-repo'
 import { ChatRouteError } from '../server/chat/chat-errors'
 import { ensureAssistantWorkspaceFiles } from './assistant-workspace'
+import { createTiaBrowserToolAgent } from './tia-browser-tool-agent'
 import { createDefaultModelSettings, DEFAULT_MODEL_MAX_RETRIES } from './model-retry-settings'
 import { resolveModel } from './model-resolver'
+import { buildOpenAIProviderOptions } from './openai-provider-options'
 import { AttachmentUploader } from './processors/attachment-uploader'
 import { createCodingSubagent } from './coding-agent'
-import { createBuiltInBrowserTools } from './tools/built-in-browser-tools'
+import {
+  createBuiltInBrowserTools
+} from './tools/built-in-browser-tools'
+import {
+  createTiaBrowserToolActionTools,
+  createTiaBrowserToolDelegateTool,
+  createTiaBrowserToolTools
+} from './tools/tia-browser-tool-tools'
 import { createWebFetchTool } from './tools/web-fetch-tool'
 import { createChannelTools } from './tools/channel-tools'
 import { createCronTools } from './tools/cron-tools'
@@ -159,15 +173,29 @@ This is your first conversation! Let's set up your identity and personality.
 Keep it conversational and friendly. This is about co-creating your identity together!
 `.trim()
 
-const WEB_FETCH_INSTRUCTIONS = `
+function buildWebFetchInstructions(browserAutomationMode: BrowserAutomationMode): string {
+  if (browserAutomationMode === 'tia-browser-tool') {
+    return `
 Web browsing guidance:
-- Please use built-in browser approach with agent-browser first unless the task is simply to fetch one specific page.
+- Use the tia-browser-tool path first unless the task is simply to fetch one specific page.
+- Use the use-tia-browser-tool tool for multi-step navigation, page interaction, form filling, snapshots, and extraction.
+- Use webFetch only when you already know the exact page URL you need.
+- Do not use webFetch to search the web, discover candidate pages, or crawl across multiple pages.
+- If the user explicitly prefers an external browser tool such as agent-browser or Playwright MCP, follow that preference.
+- Fall back to webFetch only when richer browser tooling is unnecessary or unavailable.
+`.trim()
+  }
+
+  return `
+Web browsing guidance:
+- Please use the built-in-browser approach with agent-browser or Playwright first unless the task is simply to fetch one specific page.
 - Use webFetch only when you already know the exact page URL you need.
 - Do not use webFetch to search the web, discover candidate pages, or crawl across multiple pages.
 - For long-running browser work or page interaction, prefer browser-oriented tools such as agent-browser or Playwright MCP.
-- If the user has not named a browser tool preference and browser work would help, first recommend choosing agent-browser, Playwright MCP, or installing a browser-related skill.
+- If the user has not named a browser tool preference and browser work would help, first recommend choosing Built-in Browser mode, agent-browser, Playwright MCP, or installing a browser-related skill.
 - Fall back to webFetch only when richer browser tooling is unavailable or the task is simply to fetch one specific page.
 `.trim()
+}
 
 export type AssistantRuntime = {
   streamChat: (params: StreamChatParams) => Promise<ReadableStream<UIMessageChunk>>
@@ -215,6 +243,7 @@ type AssistantRuntimeServiceOptions = {
     }>
   }
   builtInBrowserManager?: BuiltInBrowserController
+  tiaBrowserToolManager?: TiaBrowserToolController
   threadUsageRepo?: {
     recordMessageUsage(input: {
       messageId: string
@@ -329,7 +358,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
         abortSignal: params.abortSignal,
         maxSteps: assistant.maxSteps,
         modelSettings: createDefaultModelSettings(),
-        providerOptions: this.buildProviderOptions(provider.type),
+        providerOptions: this.buildProviderOptions(provider),
         requestContext,
         memory: {
           thread: params.threadId,
@@ -431,7 +460,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
         messages,
         maxSteps: assistant.maxSteps,
         modelSettings: createDefaultModelSettings(),
-        providerOptions: this.buildProviderOptions(provider.type),
+        providerOptions: this.buildProviderOptions(provider),
         requestContext
         // No memory for cron jobs - they should execute without conversation history
       },
@@ -512,7 +541,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
         }),
         maxSteps: assistant.maxSteps,
         modelSettings: createDefaultModelSettings(),
-        providerOptions: this.buildProviderOptions(provider.type),
+        providerOptions: this.buildProviderOptions(provider),
         requestContext
       },
       sendReasoning: true
@@ -1097,7 +1126,7 @@ ${input.prompt}`
       ].join('\n'),
       temperature: 0,
       maxRetries: DEFAULT_MODEL_MAX_RETRIES,
-      providerOptions: this.buildProviderOptions(input.provider.type)
+      providerOptions: this.buildProviderOptions(input.provider)
     })
 
     return this.toNonEmptyString(result.text) ?? EMPTY_THREAD_COMPACTION_SUMMARY
@@ -1476,6 +1505,8 @@ ${input.prompt}`
     const enabledMcpServers = await this.resolveEnabledMcpServers(assistant.mcpConfig ?? {})
     const mcpServersSignature = JSON.stringify(enabledMcpServers)
     const guardrailConfig = await this.resolveGuardrailConfig(provider)
+    const browserAutomationMode = await this.resolveBrowserAutomationMode()
+    const browserAgentName = `${assistant.id}:browser-agent`
     const nextSignature = [
       assistant.id,
       assistant.updatedAt,
@@ -1503,7 +1534,8 @@ ${input.prompt}`
       guardrailConfig.provider.apiHost ?? '',
       options.channelDeliveryEnabled ? 'channel-delivery:on' : 'channel-delivery:off',
       options.channelType ?? '',
-      options.cronToolsEnabled !== false ? 'cron-tools:on' : 'cron-tools:off'
+      options.cronToolsEnabled !== false ? 'cron-tools:on' : 'cron-tools:off',
+      `browser-mode:${browserAutomationMode}`
     ].join('|')
 
     if (this.registeredAgentSignatures.get(assistant.id) === nextSignature) {
@@ -1511,6 +1543,7 @@ ${input.prompt}`
     }
 
     this.options.mastra.removeAgent(assistant.id)
+    this.options.mastra.removeAgent(browserAgentName)
 
     const webFetchTool = createWebFetchTool({
       resolveKeepBrowserWindowOpen: async () =>
@@ -1570,6 +1603,8 @@ ${input.prompt}`
 
     logger.debug('[AssistantRuntime] Agent tools registered:', {
       hasBuiltInBrowserTools: Boolean(this.options.builtInBrowserManager),
+      hasTiaBrowserTool: Boolean(this.options.tiaBrowserToolManager),
+      browserAutomationMode,
       hasCronTools: Object.keys(cronTools).length > 0,
       hasChannelTools: Object.keys(channelTools).length > 0,
       channelToolNames: Object.keys(channelTools),
@@ -1579,14 +1614,31 @@ ${input.prompt}`
     })
 
     const memorySessionTools = createMemorySessionTools(memory)
-    const builtInBrowserTools = this.options.builtInBrowserManager
+    const builtInBrowserTools =
+      this.options.builtInBrowserManager && browserAutomationMode === 'built-in-browser'
       ? createBuiltInBrowserTools({
           controller: this.options.builtInBrowserManager
         })
       : {}
+    const tiaBrowserToolTools =
+      this.options.tiaBrowserToolManager && browserAutomationMode === 'tia-browser-tool'
+        ? createTiaBrowserToolTools({
+            controller: this.options.tiaBrowserToolManager
+          })
+        : {}
+    const browserDelegateTools =
+      this.options.tiaBrowserToolManager && browserAutomationMode === 'tia-browser-tool'
+        ? createTiaBrowserToolDelegateTool({
+            browserAgentName,
+            maxSteps: assistant.maxSteps,
+            providerOptions: this.buildProviderOptions(provider)
+          })
+        : {}
     const tools: ToolsInput = {
       webFetch: webFetchTool,
       ...builtInBrowserTools,
+      ...tiaBrowserToolTools,
+      ...browserDelegateTools,
       ...soulMemoryTools,
       ...workLogTools,
       ...cronTools,
@@ -1613,10 +1665,23 @@ ${input.prompt}`
     const isFirstConversation = !hasAnyThreads
     const baseInstructions = assistant.instructions || 'You are a helpful assistant.'
     const onboardingInstructions = isFirstConversation ? `\n\n${ONBOARDING_INSTRUCTIONS}\n` : ''
-    const webFetchInstructions = `\n${WEB_FETCH_INSTRUCTIONS}\n`
-    const builtInBrowserInstructions = `\n${buildBuiltInBrowserGuidance({
-      handoffToolAvailable: Boolean(this.options.builtInBrowserManager)
-    })}\n`
+    const webFetchInstructions = `\n${buildWebFetchInstructions(browserAutomationMode)}\n`
+    const builtInBrowserInstructions =
+      browserAutomationMode === 'built-in-browser'
+        ? `\n${buildBuiltInBrowserGuidance({
+            handoffToolAvailable: Boolean(this.options.builtInBrowserManager)
+          })}\n`
+        : ''
+    const tiaBrowserToolInstructions =
+      browserAutomationMode === 'tia-browser-tool'
+        ? `\n${buildTiaBrowserToolGuidance({
+            handoffToolAvailable: Boolean(this.options.tiaBrowserToolManager)
+          })}\n`
+        : ''
+    const builtInBrowserDelegateInstructions =
+      this.options.tiaBrowserToolManager && browserAutomationMode === 'tia-browser-tool'
+        ? '\nTIA browser tool mode:\n- A use-tia-browser-tool tool is available for common open, snapshot, click, fill, get, and wait workflows.\n- Prefer use-tia-browser-tool for multi-step website tasks instead of recommending external agent-browser unless the user explicitly wants the external tool.\n- The browser subagent already knows how to refresh snapshots after DOM changes and when to request a human handoff.\n'
+        : ''
     const channelImageGuidance = buildChannelImageSupportGuidance(options.channelType)
       .map((line) => `${line}\n`)
       .join('')
@@ -1625,7 +1690,7 @@ ${input.prompt}`
         ? `\nChannel delivery guidelines:\n- Reply in a single message.\n- Do not use [[BR]] in your reply.\n- Keep channel replies short and natural.\n${channelImageGuidance}`
         : `\nChannel delivery guidelines:\n- ${CHANNEL_SPLITTER_INSTRUCTION}\n- Keep channel replies short and natural.\n- Do not mention [[BR]] to the user.\n${channelImageGuidance}`
       : ''
-    const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${webFetchInstructions}${builtInBrowserInstructions}${channelInstructions}\n`
+    const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${webFetchInstructions}${builtInBrowserInstructions}${tiaBrowserToolInstructions}${builtInBrowserDelegateInstructions}${channelInstructions}\n`
     const workspace = await this.buildWorkspace(
       assistant.workspaceConfig ?? {},
       assistant.skillsConfig ?? {}
@@ -1636,6 +1701,29 @@ ${input.prompt}`
       workspaceRootPath,
       codingConfig: assistant.codingConfig
     })
+    if (this.options.tiaBrowserToolManager && browserAutomationMode === 'tia-browser-tool') {
+      const browserAgentMemory = new Memory({
+        ...(storage ? { storage } : {}),
+        options: {
+          generateTitle: true
+        }
+      })
+      const browserAgent = createTiaBrowserToolAgent({
+        assistantId: assistant.id,
+        assistantName: assistant.name,
+        memory: browserAgentMemory,
+        model,
+        tools: {
+          ...createTiaBrowserToolActionTools({
+            controller: this.options.tiaBrowserToolManager
+          }),
+          ...createTiaBrowserToolTools({
+            controller: this.options.tiaBrowserToolManager
+          })
+        }
+      })
+      this.options.mastra.addAgent(browserAgent, browserAgentName)
+    }
     const inputProcessors = [
       ...(workspaceRootPath
         ? [assistantWorkspaceContextInputProcessor({ workspaceRootPath })]
@@ -1998,16 +2086,23 @@ ${input.prompt}`
     }
   }
 
-  private buildProviderOptions(providerType: string): AgentExecutionOptions['providerOptions'] {
-    if (providerType !== 'openai-response') {
-      return undefined
+  private buildProviderOptions(provider: {
+    type: string
+    apiHost?: string | null
+  }): AgentExecutionOptions['providerOptions'] {
+    return buildOpenAIProviderOptions(provider)
+  }
+
+  private async resolveBrowserAutomationMode(): Promise<BrowserAutomationMode> {
+    const candidate = this.options.webSearchSettingsRepo as WebSearchSettingsRepository & {
+      getBrowserAutomationMode?: () => Promise<BrowserAutomationMode>
     }
 
-    return {
-      openai: {
-        store: false
-      }
+    if (typeof candidate.getBrowserAutomationMode !== 'function') {
+      return 'built-in-browser'
     }
+
+    return await candidate.getBrowserAutomationMode()
   }
 
   private toStringList(value: unknown): string[] {

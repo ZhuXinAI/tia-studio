@@ -1,20 +1,22 @@
 import { z } from 'zod'
-import { webSearchEngines } from '../../web-search/web-search-engine'
+import { browserAutomationModes } from '../../persistence/repos/web-search-settings-repo'
 
 export const updateWebSearchSettingsSchema = z
   .object({
-    defaultEngine: z.enum(webSearchEngines).optional(),
     keepBrowserWindowOpen: z.boolean().optional(),
     showBrowser: z.boolean().optional(),
-    showBuiltInBrowser: z.boolean().optional()
+    showBuiltInBrowser: z.boolean().optional(),
+    showTiaBrowserTool: z.boolean().optional(),
+    browserAutomationMode: z.enum(browserAutomationModes).optional()
   })
   .refine(
     (input) =>
-      input.defaultEngine !== undefined ||
       input.keepBrowserWindowOpen !== undefined ||
       input.showBrowser !== undefined ||
-      input.showBuiltInBrowser !== undefined,
+      input.showBuiltInBrowser !== undefined ||
+      input.showTiaBrowserTool !== undefined ||
+      input.browserAutomationMode !== undefined,
     {
-      message: 'At least one web search setting must be provided'
+      message: 'At least one browsing setting must be provided'
     }
   )

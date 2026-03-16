@@ -1,6 +1,83 @@
 export const BUILT_IN_BROWSER_REMOTE_DEBUGGING_PORT = 10531
 export const BUILT_IN_BROWSER_HANDOFF_DONE_MARKER = '__TIA_BUILT_IN_BROWSER_HANDOFF_DONE__'
 
+export type BuiltInBrowserSnapshotCommand = {
+  action: 'snapshot'
+  interactive?: boolean
+  compact?: boolean
+  depth?: number
+  selector?: string
+}
+
+export type BuiltInBrowserGetKind =
+  | 'text'
+  | 'html'
+  | 'value'
+  | 'attr'
+  | 'title'
+  | 'url'
+  | 'cdp-url'
+  | 'count'
+  | 'box'
+  | 'styles'
+
+export type BuiltInBrowserWaitLoadState = 'load' | 'domcontentloaded' | 'networkidle'
+
+export type BuiltInBrowserAutomationCommand =
+  | { action: 'open'; url: string }
+  | { action: 'close' }
+  | BuiltInBrowserSnapshotCommand
+  | { action: 'click'; ref: string; newTab?: boolean }
+  | { action: 'dblclick'; ref: string }
+  | { action: 'focus'; ref: string }
+  | { action: 'fill'; ref: string; text: string }
+  | { action: 'type'; ref: string; text: string }
+  | { action: 'press'; key: string }
+  | { action: 'keydown'; key: string }
+  | { action: 'keyup'; key: string }
+  | { action: 'hover'; ref: string }
+  | { action: 'check'; ref: string }
+  | { action: 'uncheck'; ref: string }
+  | { action: 'select'; ref: string; values: string[] }
+  | { action: 'scroll'; direction?: 'up' | 'down' | 'left' | 'right'; amount?: number }
+  | { action: 'scrollintoview'; ref: string }
+  | { action: 'drag'; sourceRef: string; targetRef: string }
+  | { action: 'upload'; ref: string; filePaths: string[] }
+  | { action: 'get'; kind: BuiltInBrowserGetKind; ref?: string; selector?: string; name?: string }
+  | {
+      action: 'wait'
+      ref?: string
+      milliseconds?: number
+      text?: string
+      urlPattern?: string
+      loadState?: BuiltInBrowserWaitLoadState
+      expression?: string
+      timeoutMs?: number
+    }
+
+export type BuiltInBrowserBox = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export type BuiltInBrowserAutomationResult = {
+  action: BuiltInBrowserAutomationCommand['action']
+  currentUrl: string | null
+  title?: string
+  snapshot?: string
+  text?: string
+  value?: string | null
+  attribute?: string | null
+  count?: number
+  cdpUrl?: string | null
+  box?: BuiltInBrowserBox | null
+  styles?: Record<string, string>
+  waitedFor?: string
+  message?: string
+}
+
 export type BuiltInBrowserControlMessage =
   | { type: 'show-window' }
   | { type: 'hide-window' }
@@ -13,6 +90,11 @@ export type BuiltInBrowserControlMessage =
   | {
       type: 'clear-human-handoff'
       requestId?: string
+    }
+  | {
+      type: 'automation-command'
+      requestId: string
+      input: BuiltInBrowserAutomationCommand
     }
   | { type: 'quit' }
 
@@ -39,15 +121,18 @@ export type BuiltInBrowserEventMessage =
       currentUrl: string
     }
   | {
+      type: 'automation-result'
+      requestId: string
+      result: BuiltInBrowserAutomationResult
+    }
+  | {
       type: 'error'
-      code: 'handoff-failed'
+      code: 'handoff-failed' | 'automation-failed'
       message: string
       requestId?: string
     }
 
-export function buildBuiltInBrowserGuidance(options?: {
-  handoffToolAvailable?: boolean
-}): string {
+export function buildBuiltInBrowserGuidance(options?: { handoffToolAvailable?: boolean }): string {
   const handoffGuidance = options?.handoffToolAvailable
     ? '- When a site needs manual login, MFA, CAPTCHA, consent, or other human-only interaction, after you have explained the task to the user, use the request-browser-human-handoff tool to bring the browser window forward and wait until the user clicks "Done, continue".'
     : '- When a site needs manual login, MFA, CAPTCHA, consent, or other human-only interaction, ask the user to temporarily take over in the visible built-in browser and continue once they are done.'

@@ -57,7 +57,7 @@
         "security": "Security & Privacy",
         "channels": "Каналы",
         "cronJobs": "Задания Cron",
-        "webSearch": "Веб-поиск",
+        "webSearch": "Browsing",
         "mcpServers": "MCP-серверы",
         "runtimeSetup": "Настройка среды",
         "display": "Отображение",
@@ -234,54 +234,45 @@
       }
     },
     "webSearch": {
-      "title": "Web Search",
-      "description": "Choose one default engine and every browser search tool call will use it.",
-      "defaultEngine": {
-        "title": "Default Search Engine",
-        "description": "Google, Bing, and Baidu are supported.",
-        "loading": "Loading search settings...",
-        "empty": "No engines available."
+      "title": "Browsing",
+      "description": "Choose how TIA opens pages and which browser runtime it uses for browsing tasks.",
+      "browserAutomation": {
+        "title": "Browser Automation",
+        "description": "Pick the browser runtime for interactive browsing and automation.",
+        "loading": "Loading browser automation settings...",
+        "modeTitle": "Browser Runtime",
+        "modeTiaBrowserToolLabel": "TIA Browser Tool",
+        "modeBuiltInBrowserLabel": "Built-in Browser",
+        "modeTiaBrowserToolDescription": "Uses the in-app TIA Browser Tool runtime for interactive browsing and automation tasks.",
+        "modeBuiltInBrowserDescription": "Uses the standalone built-in browser workflow with the external automation bridge.",
+        "showTiaBrowserToolTitle": "Show TIA Browser Tool Window",
+        "showTiaBrowserToolVisible": "The TIA Browser Tool window stays visible while browsing automation runs.",
+        "showTiaBrowserToolHidden": "The TIA Browser Tool window stays hidden unless a browsing task brings it forward.",
+        "showBuiltInBrowserTitle": "Show Built-in Browser Window",
+        "showBuiltInBrowserVisible": "The built-in browser window stays visible while browsing automation runs.",
+        "showBuiltInBrowserHidden": "The built-in browser window stays hidden unless a browsing task brings it forward."
       },
-      "buttons": {
-        "saving": "Saving...",
-        "default": "Default",
-        "setDefault": "Set Default",
-        "openSettings": "Open {{engine}} Settings"
-      },
-      "browserBehavior": {
-        "title": "Browser Window Behavior",
-        "description": "Keep an isolated browser window in the background for future search tasks.",
-        "loading": "Loading browser window behavior...",
-        "backgroundTitle": "Background Browser Window",
-        "backgroundEnabled": "Reuses one hidden BrowserWindow for web search.",
-        "backgroundDisabled": "Creates and closes a BrowserWindow per search request.",
-        "showBrowserTitle": "Show Browser",
-        "showBrowserVisible": "Browser window is visible during search.",
-        "showBrowserHidden": "Browser window is hidden during search."
-      },
-      "engines": {
-        "google": {
-          "label": "Google",
-          "description": "Wide global index with broad results coverage."
-        },
-        "bing": {
-          "label": "Bing",
-          "description": "More consistent for direct fetch-based search pages."
-        },
-        "baidu": {
-          "label": "Baidu",
-          "description": "Useful when you prefer Chinese-language search ranking."
-        }
+      "fetchWindow": {
+        "title": "Page Fetch Window",
+        "description": "These settings apply when TIA opens a lightweight browser window to read a specific page URL.",
+        "loading": "Loading fetch window settings...",
+        "keepOpenTitle": "Keep Fetch Window Open",
+        "keepOpenEnabled": "Reuse one fetch window across requests.",
+        "keepOpenDisabled": "Create and close a fetch window for each request.",
+        "showTitle": "Show Fetch Window",
+        "showVisible": "The fetch window stays visible while pages are being read.",
+        "showHidden": "The fetch window stays hidden while pages are being read."
       },
       "toasts": {
-        "defaultSet": "{{engine}} is now the default web search engine.",
-        "backgroundWindow": "Background browser window is now {{state}}.",
-        "backgroundEnabled": "enabled",
-        "backgroundDisabled": "disabled",
-        "browserVisibility": "Browser window is now {{state}}.",
-        "browserVisible": "visible",
-        "browserHidden": "hidden",
-        "openSettingsError": "Failed to open {{engine}} settings: {{message}}",
+        "keepFetchWindowOpen": "Fetch window reuse is now {{state}}.",
+        "keepFetchWindowOpenEnabled": "enabled",
+        "keepFetchWindowOpenDisabled": "disabled",
+        "browserAutomationModeUpdated": "Browser automation runtime is now {{mode}}.",
+        "fetchWindowVisibility": "Fetch window is now {{state}}.",
+        "builtInBrowserVisibility": "Built-in browser window is now {{state}}.",
+        "tiaBrowserToolVisibility": "TIA Browser Tool window is now {{state}}.",
+        "windowVisible": "visible",
+        "windowHidden": "hidden",
         "unexpectedError": "Unexpected request error"
       }
     },
@@ -844,6 +835,13 @@
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "Новый тред",
       "setupIncomplete": "Настройка ассистента не завершена. Откройте «Настроить», чтобы указать провайдера и модель перед отправкой сообщений.",
+      "handoffBanner": {
+        "title": "Human action needed in the built-in browser",
+        "description": "The assistant is waiting for you to finish a step in the built-in browser and click \"Done, continue\" there.",
+        "details": "Requested step: {{message}}",
+        "showBrowser": "Show browser again",
+        "showFailed": "Failed to bring the built-in browser window forward."
+      },
       "composer": {
         "placeholderSelectedThread": "Введите сообщение для этого треда...",
         "placeholderSelectedAssistant": "Введите сообщение, чтобы создать новый тред...",

@@ -73,6 +73,7 @@ type CreateAppOptions = {
     reload(): Promise<void>
   }
   onShowBuiltInBrowserChange?: (show: boolean) => Promise<void> | void
+  onShowTiaBrowserToolChange?: (show: boolean) => Promise<void> | void
   onShowBuiltInBrowserWindow?: () => Promise<void> | void
 }
 
@@ -156,7 +157,8 @@ export function createApp(options: CreateAppOptions): Hono {
     })
     registerWebSearchSettingsRoute(app, {
       webSearchSettingsRepo: options.repositories.webSearchSettings,
-      onShowBuiltInBrowserChange: options.onShowBuiltInBrowserChange
+      onShowBuiltInBrowserChange: options.onShowBuiltInBrowserChange,
+      onShowTiaBrowserToolChange: options.onShowTiaBrowserToolChange
     })
     registerBuiltInBrowserRoute(app, {
       onShowBuiltInBrowserWindow: options.onShowBuiltInBrowserWindow

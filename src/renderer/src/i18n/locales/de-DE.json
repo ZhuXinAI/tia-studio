@@ -57,7 +57,7 @@
         "security": "Security & Privacy",
         "channels": "Kanäle",
         "cronJobs": "Cron-Jobs",
-        "webSearch": "Websuche",
+        "webSearch": "Browsing",
         "mcpServers": "MCP-Server",
         "runtimeSetup": "Laufzeitumgebung",
         "display": "Anzeige",
@@ -234,55 +234,46 @@
       }
     },
     "webSearch": {
-      "title": "Websuche",
-      "description": "Wähle eine Standard-Engine; jeder Browser-Such-Toolaufruf nutzt sie.",
-      "defaultEngine": {
-        "title": "Standard-Suchmaschine",
-        "description": "Google, Bing und Baidu werden unterstützt.",
-        "loading": "Sucheinstellungen werden geladen...",
-        "empty": "Keine Suchmaschinen verfügbar."
+      "title": "Browsing",
+      "description": "Choose how TIA opens pages and which browser runtime it uses for browsing tasks.",
+      "browserAutomation": {
+        "title": "Browser Automation",
+        "description": "Pick the browser runtime for interactive browsing and automation.",
+        "loading": "Loading browser automation settings...",
+        "modeTitle": "Browser Runtime",
+        "modeTiaBrowserToolLabel": "TIA Browser Tool",
+        "modeBuiltInBrowserLabel": "Built-in Browser",
+        "modeTiaBrowserToolDescription": "Uses the in-app TIA Browser Tool runtime for interactive browsing and automation tasks.",
+        "modeBuiltInBrowserDescription": "Uses the standalone built-in browser workflow with the external automation bridge.",
+        "showTiaBrowserToolTitle": "Show TIA Browser Tool Window",
+        "showTiaBrowserToolVisible": "The TIA Browser Tool window stays visible while browsing automation runs.",
+        "showTiaBrowserToolHidden": "The TIA Browser Tool window stays hidden unless a browsing task brings it forward.",
+        "showBuiltInBrowserTitle": "Show Built-in Browser Window",
+        "showBuiltInBrowserVisible": "The built-in browser window stays visible while browsing automation runs.",
+        "showBuiltInBrowserHidden": "The built-in browser window stays hidden unless a browsing task brings it forward."
       },
-      "buttons": {
-        "saving": "Wird gespeichert...",
-        "default": "Standard",
-        "setDefault": "Als Standard",
-        "openSettings": "{{engine}}-Einstellungen öffnen"
-      },
-      "browserBehavior": {
-        "title": "Browserfenster-Verhalten",
-        "description": "Ein isoliertes Browserfenster im Hintergrund für künftige Suchen behalten.",
-        "loading": "Browserfenster-Verhalten wird geladen...",
-        "backgroundTitle": "Hintergrund-Browserfenster",
-        "backgroundEnabled": "Wiederverwendung eines versteckten BrowserWindow für die Websuche.",
-        "backgroundDisabled": "Pro Suchanfrage wird ein BrowserWindow erstellt und geschlossen.",
-        "showBrowserTitle": "Browser anzeigen",
-        "showBrowserVisible": "Browserfenster ist während der Suche sichtbar.",
-        "showBrowserHidden": "Browserfenster ist während der Suche ausgeblendet."
-      },
-      "engines": {
-        "google": {
-          "label": "Google",
-          "description": "Breiter globaler Index mit großer Ergebnisabdeckung."
-        },
-        "bing": {
-          "label": "Bing",
-          "description": "Stabiler für direkte fetch-basierte Suchseiten."
-        },
-        "baidu": {
-          "label": "Baidu",
-          "description": "Nützlich bei bevorzugter chinesischer Suchergebnis-Sortierung."
-        }
+      "fetchWindow": {
+        "title": "Page Fetch Window",
+        "description": "These settings apply when TIA opens a lightweight browser window to read a specific page URL.",
+        "loading": "Loading fetch window settings...",
+        "keepOpenTitle": "Keep Fetch Window Open",
+        "keepOpenEnabled": "Reuse one fetch window across requests.",
+        "keepOpenDisabled": "Create and close a fetch window for each request.",
+        "showTitle": "Show Fetch Window",
+        "showVisible": "The fetch window stays visible while pages are being read.",
+        "showHidden": "The fetch window stays hidden while pages are being read."
       },
       "toasts": {
-        "defaultSet": "{{engine}} ist jetzt die Standard-Websuchmaschine.",
-        "backgroundWindow": "Hintergrund-Browserfenster ist jetzt {{state}}.",
-        "backgroundEnabled": "aktiviert",
-        "backgroundDisabled": "deaktiviert",
-        "browserVisibility": "Browserfenster ist jetzt {{state}}.",
-        "browserVisible": "sichtbar",
-        "browserHidden": "ausgeblendet",
-        "openSettingsError": "{{engine}}-Einstellungen konnten nicht geöffnet werden: {{message}}",
-        "unexpectedError": "Unerwarteter Anfragefehler"
+        "keepFetchWindowOpen": "Fetch window reuse is now {{state}}.",
+        "keepFetchWindowOpenEnabled": "enabled",
+        "keepFetchWindowOpenDisabled": "disabled",
+        "browserAutomationModeUpdated": "Browser automation runtime is now {{mode}}.",
+        "fetchWindowVisibility": "Fetch window is now {{state}}.",
+        "builtInBrowserVisibility": "Built-in browser window is now {{state}}.",
+        "tiaBrowserToolVisibility": "TIA Browser Tool window is now {{state}}.",
+        "windowVisible": "visible",
+        "windowHidden": "hidden",
+        "unexpectedError": "Unexpected request error"
       }
     },
     "cronJobs": {
@@ -844,6 +835,13 @@
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "Neuer Thread",
       "setupIncomplete": "Die Assistenteneinrichtung ist unvollständig. Öffne „Konfigurieren“, um Provider und Modell festzulegen, bevor du Nachrichten sendest.",
+      "handoffBanner": {
+        "title": "Human action needed in the built-in browser",
+        "description": "The assistant is waiting for you to finish a step in the built-in browser and click \"Done, continue\" there.",
+        "details": "Requested step: {{message}}",
+        "showBrowser": "Show browser again",
+        "showFailed": "Failed to bring the built-in browser window forward."
+      },
       "composer": {
         "placeholderSelectedThread": "Nachricht für diesen Thread eingeben...",
         "placeholderSelectedAssistant": "Nachricht eingeben, um einen neuen Thread zu erstellen...",

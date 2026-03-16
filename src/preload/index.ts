@@ -122,9 +122,7 @@ const tiaDesktop = {
       'tia:remove-assistant-workspace-skill',
       workspaceRootPath,
       relativePath
-    ) as Promise<void>,
-  openWebSearchSettings: (url: string) =>
-    ipcRenderer.invoke('tia:open-web-search-settings', url) as Promise<boolean>
+    ) as Promise<void>
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

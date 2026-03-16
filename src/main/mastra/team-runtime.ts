@@ -22,6 +22,7 @@ import { TeamRunStatusStore } from '../server/chat/team-run-status-store'
 import { createCodingSubagent } from './coding-agent'
 import { createDefaultModelSettings } from './model-retry-settings'
 import { resolveModel } from './model-resolver'
+import { buildOpenAIProviderOptions } from './openai-provider-options'
 import { createBuiltInBrowserTools } from './tools/built-in-browser-tools'
 import { createContainedLocalFilesystemInstructions } from './workspace-filesystem-instructions'
 
@@ -201,7 +202,7 @@ export class TeamRuntimeService implements TeamRuntime {
       const stream = await runtimeSupervisor.stream(params.messages as never, {
         maxSteps: DEFAULT_TEAM_SUPERVISOR_MAX_STEPS,
         modelSettings: createDefaultModelSettings(),
-        providerOptions: this.buildProviderOptions(supervisorProvider.type),
+        providerOptions: this.buildProviderOptions(supervisorProvider),
         memory: {
           thread: thread.id,
           resource: params.profileId,
@@ -550,7 +551,7 @@ ${roster.length > 0 ? roster : '- No other teammates are available.'}`
               requestContext: context.requestContext,
               maxSteps: member.assistant.maxSteps,
               modelSettings: createDefaultModelSettings(),
-              providerOptions: this.buildProviderOptions(member.provider.type),
+              providerOptions: this.buildProviderOptions(member.provider),
               memory: {
                 resource: subAgentResourceId,
                 thread: subAgentThreadId,
@@ -858,16 +859,11 @@ ${roster.length > 0 ? roster : '- No other teammates are available.'}`
       .filter((item) => item.length > 0)
   }
 
-  private buildProviderOptions(providerType: string): AgentExecutionOptions['providerOptions'] {
-    if (providerType !== 'openai-response') {
-      return undefined
-    }
-
-    return {
-      openai: {
-        store: false
-      }
-    }
+  private buildProviderOptions(provider: {
+    type: string
+    apiHost?: string | null
+  }): AgentExecutionOptions['providerOptions'] {
+    return buildOpenAIProviderOptions(provider)
   }
 
   private toNonEmptyString(value: unknown): string | null {

@@ -1,6 +1,4 @@
-import { ExternalLink, Search } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from '../../../i18n/use-app-translation'
 import { toast } from 'sonner'
 import { Button } from '../../../components/ui/button'
 import {
@@ -11,64 +9,50 @@ import {
   CardTitle
 } from '../../../components/ui/card'
 import { Switch } from '../../../components/ui/switch'
-import { cn } from '../../../lib/utils'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import {
+  type BrowserAutomationMode,
   getWebSearchSettings,
   updateWebSearchSettings,
-  type WebSearchEngine,
   type WebSearchSettings
 } from '../web-search/web-search-query'
 
-type EnginePresentation = {
-  label: string
+type SettingsSwitchRowProps = {
+  title: string
   description: string
-  settingsUrl: string
+  checked: boolean
+  disabled: boolean
+  onCheckedChange: (checked: boolean) => void
 }
 
-const enginePresentation: Record<WebSearchEngine, EnginePresentation> = {
-  google: {
-    label: 'Google',
-    description: 'Wide global index with broad results coverage.',
-    settingsUrl: 'https://www.google.com/preferences'
-  },
-  bing: {
-    label: 'Bing',
-    description: 'More consistent for direct fetch-based search pages.',
-    settingsUrl: 'https://www.bing.com/account/general'
-  },
-  baidu: {
-    label: 'Baidu',
-    description: 'Useful when you prefer Chinese-language search ranking.',
-    settingsUrl: 'https://www.baidu.com'
-  }
+function SettingsSwitchRow({
+  title,
+  description,
+  checked,
+  disabled,
+  onCheckedChange
+}: SettingsSwitchRowProps): React.JSX.Element {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-card/60 px-4 py-3">
+      <div className="space-y-1 flex-1">
+        <h2 className="text-base font-medium">{title}</h2>
+        <p className="text-muted-foreground text-sm">{description}</p>
+      </div>
+      <Switch checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />
+    </div>
+  )
 }
 
 export function WebSearchSettingsPage(): React.JSX.Element {
   const { t } = useTranslation()
   const [settings, setSettings] = useState<WebSearchSettings | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [savingEngine, setSavingEngine] = useState<WebSearchEngine | null>(null)
-  const [isSavingWindowBehavior, setIsSavingWindowBehavior] = useState(false)
+  const [savingBrowserAutomationMode, setSavingBrowserAutomationMode] =
+    useState<BrowserAutomationMode | null>(null)
+  const [isSavingKeepBrowserWindowOpen, setIsSavingKeepBrowserWindowOpen] = useState(false)
   const [isSavingShowBrowser, setIsSavingShowBrowser] = useState(false)
   const [isSavingShowBuiltInBrowser, setIsSavingShowBuiltInBrowser] = useState(false)
-
-  const localizedEnginePresentation: Record<WebSearchEngine, EnginePresentation> = {
-    google: {
-      ...enginePresentation.google,
-      label: t('settings.webSearch.engines.google.label'),
-      description: t('settings.webSearch.engines.google.description')
-    },
-    bing: {
-      ...enginePresentation.bing,
-      label: t('settings.webSearch.engines.bing.label'),
-      description: t('settings.webSearch.engines.bing.description')
-    },
-    baidu: {
-      ...enginePresentation.baidu,
-      label: t('settings.webSearch.engines.baidu.label'),
-      description: t('settings.webSearch.engines.baidu.description')
-    }
-  }
+  const [isSavingShowTiaBrowserTool, setIsSavingShowTiaBrowserTool] = useState(false)
 
   const toErrorMessage = useCallback(
     (error: unknown): string => {
@@ -87,8 +71,7 @@ export function WebSearchSettingsPage(): React.JSX.Element {
   const loadSettings = useCallback(async () => {
     setIsLoading(true)
     try {
-      const nextSettings = await getWebSearchSettings()
-      setSettings(nextSettings)
+      setSettings(await getWebSearchSettings())
     } catch (error) {
       toast.error(toErrorMessage(error))
     } finally {
@@ -100,55 +83,35 @@ export function WebSearchSettingsPage(): React.JSX.Element {
     void loadSettings()
   }, [loadSettings])
 
-  const availableEngines = settings?.availableEngines ?? []
-
-  const setDefaultEngine = async (engine: WebSearchEngine): Promise<void> => {
-    if (settings?.defaultEngine === engine) {
-      return
-    }
-
-    setSavingEngine(engine)
-
-    try {
-      const nextSettings = await updateWebSearchSettings({
-        defaultEngine: engine
-      })
-      setSettings(nextSettings)
-      toast.success(
-        t('settings.webSearch.toasts.defaultSet', {
-          engine: localizedEnginePresentation[engine].label
-        })
-      )
-    } catch (error) {
-      toast.error(toErrorMessage(error))
-    } finally {
-      setSavingEngine(null)
-    }
-  }
+  const isSavingAnySetting =
+    Boolean(savingBrowserAutomationMode) ||
+    isSavingKeepBrowserWindowOpen ||
+    isSavingShowBrowser ||
+    isSavingShowBuiltInBrowser ||
+    isSavingShowTiaBrowserTool
 
   const setKeepBrowserWindowOpen = async (keepBrowserWindowOpen: boolean): Promise<void> => {
     if (!settings || settings.keepBrowserWindowOpen === keepBrowserWindowOpen) {
       return
     }
 
-    setIsSavingWindowBehavior(true)
-
+    setIsSavingKeepBrowserWindowOpen(true)
     try {
       const nextSettings = await updateWebSearchSettings({
         keepBrowserWindowOpen
       })
       setSettings(nextSettings)
       toast.success(
-        t('settings.webSearch.toasts.backgroundWindow', {
+        t('settings.webSearch.toasts.keepFetchWindowOpen', {
           state: keepBrowserWindowOpen
-            ? t('settings.webSearch.toasts.backgroundEnabled')
-            : t('settings.webSearch.toasts.backgroundDisabled')
+            ? t('settings.webSearch.toasts.keepFetchWindowOpenEnabled')
+            : t('settings.webSearch.toasts.keepFetchWindowOpenDisabled')
         })
       )
     } catch (error) {
       toast.error(toErrorMessage(error))
     } finally {
-      setIsSavingWindowBehavior(false)
+      setIsSavingKeepBrowserWindowOpen(false)
     }
   }
 
@@ -158,17 +121,16 @@ export function WebSearchSettingsPage(): React.JSX.Element {
     }
 
     setIsSavingShowBrowser(true)
-
     try {
       const nextSettings = await updateWebSearchSettings({
         showBrowser
       })
       setSettings(nextSettings)
       toast.success(
-        t('settings.webSearch.toasts.browserVisibility', {
+        t('settings.webSearch.toasts.fetchWindowVisibility', {
           state: showBrowser
-            ? t('settings.webSearch.toasts.browserVisible')
-            : t('settings.webSearch.toasts.browserHidden')
+            ? t('settings.webSearch.toasts.windowVisible')
+            : t('settings.webSearch.toasts.windowHidden')
         })
       )
     } catch (error) {
@@ -184,7 +146,6 @@ export function WebSearchSettingsPage(): React.JSX.Element {
     }
 
     setIsSavingShowBuiltInBrowser(true)
-
     try {
       const nextSettings = await updateWebSearchSettings({
         showBuiltInBrowser
@@ -193,8 +154,8 @@ export function WebSearchSettingsPage(): React.JSX.Element {
       toast.success(
         t('settings.webSearch.toasts.builtInBrowserVisibility', {
           state: showBuiltInBrowser
-            ? t('settings.webSearch.toasts.browserVisible')
-            : t('settings.webSearch.toasts.browserHidden')
+            ? t('settings.webSearch.toasts.windowVisible')
+            : t('settings.webSearch.toasts.windowHidden')
         })
       )
     } catch (error) {
@@ -204,26 +165,63 @@ export function WebSearchSettingsPage(): React.JSX.Element {
     }
   }
 
-  const openEngineSettings = async (engine: WebSearchEngine): Promise<void> => {
-    const details = localizedEnginePresentation[engine]
-    const openInSearchContext = window.tiaDesktop?.openWebSearchSettings
-
-    if (!openInSearchContext) {
-      window.open(details.settingsUrl, '_blank', 'noopener,noreferrer')
+  const setShowTiaBrowserTool = async (showTiaBrowserTool: boolean): Promise<void> => {
+    if (!settings || settings.showTiaBrowserTool === showTiaBrowserTool) {
       return
     }
 
+    setIsSavingShowTiaBrowserTool(true)
     try {
-      await openInSearchContext(details.settingsUrl)
-    } catch (error) {
-      toast.error(
-        t('settings.webSearch.toasts.openSettingsError', {
-          engine: details.label,
-          message: toErrorMessage(error)
+      const nextSettings = await updateWebSearchSettings({
+        showTiaBrowserTool
+      })
+      setSettings(nextSettings)
+      toast.success(
+        t('settings.webSearch.toasts.tiaBrowserToolVisibility', {
+          state: showTiaBrowserTool
+            ? t('settings.webSearch.toasts.windowVisible')
+            : t('settings.webSearch.toasts.windowHidden')
         })
       )
+    } catch (error) {
+      toast.error(toErrorMessage(error))
+    } finally {
+      setIsSavingShowTiaBrowserTool(false)
     }
   }
+
+  const setBrowserAutomationMode = async (
+    browserAutomationMode: BrowserAutomationMode
+  ): Promise<void> => {
+    if (!settings || settings.browserAutomationMode === browserAutomationMode) {
+      return
+    }
+
+    setSavingBrowserAutomationMode(browserAutomationMode)
+    try {
+      const nextSettings = await updateWebSearchSettings({
+        browserAutomationMode
+      })
+      setSettings(nextSettings)
+      toast.success(
+        t('settings.webSearch.toasts.browserAutomationModeUpdated', {
+          mode:
+            browserAutomationMode === 'tia-browser-tool'
+              ? t('settings.webSearch.browserAutomation.modeTiaBrowserToolLabel')
+              : t('settings.webSearch.browserAutomation.modeBuiltInBrowserLabel')
+        })
+      )
+    } catch (error) {
+      toast.error(toErrorMessage(error))
+    } finally {
+      setSavingBrowserAutomationMode(null)
+    }
+  }
+
+  const browserAutomationDescription =
+    settings?.browserAutomationMode === 'tia-browser-tool'
+      ? t('settings.webSearch.browserAutomation.modeTiaBrowserToolDescription')
+      : t('settings.webSearch.browserAutomation.modeBuiltInBrowserDescription')
 
   return (
     <div className="py-4 flex flex-col gap-4">
@@ -234,179 +232,129 @@ export function WebSearchSettingsPage(): React.JSX.Element {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>{t('settings.webSearch.defaultEngine.title')}</CardTitle>
-          <CardDescription>{t('settings.webSearch.defaultEngine.description')}</CardDescription>
+          <CardTitle>{t('settings.webSearch.browserAutomation.title')}</CardTitle>
+          <CardDescription>{t('settings.webSearch.browserAutomation.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {isLoading ? (
             <p className="text-muted-foreground text-sm">
-              {t('settings.webSearch.defaultEngine.loading')}
+              {t('settings.webSearch.browserAutomation.loading')}
             </p>
-          ) : null}
-
-          {!isLoading && availableEngines.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              {t('settings.webSearch.defaultEngine.empty')}
-            </p>
-          ) : null}
-
-          {availableEngines.map((engine) => {
-            const details = localizedEnginePresentation[engine]
-            const isDefault = settings?.defaultEngine === engine
-            const isSaving = savingEngine === engine
-
-            return (
-              <article
-                key={engine}
-                className={cn(
-                  'rounded-xl border px-4 py-3',
-                  isDefault ? 'border-primary/70 bg-primary/10' : 'border-border/70 bg-card/60'
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <h2 className="text-base font-medium">{details.label}</h2>
-                    <p className="text-muted-foreground text-sm">{details.description}</p>
-                  </div>
+          ) : (
+            <>
+              <div className="rounded-xl border border-border/70 bg-card/60 px-4 py-3">
+                <div className="space-y-1">
+                  <h2 className="text-base font-medium">
+                    {t('settings.webSearch.browserAutomation.modeTitle')}
+                  </h2>
+                  <p className="text-muted-foreground text-sm">{browserAutomationDescription}</p>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-3">
                   <Button
                     type="button"
-                    variant={isDefault ? 'secondary' : 'outline'}
                     size="sm"
-                    disabled={
-                      isDefault ||
-                      Boolean(savingEngine) ||
-                      isSavingWindowBehavior ||
-                      isSavingShowBrowser ||
-                      isSavingShowBuiltInBrowser
+                    variant={
+                      settings?.browserAutomationMode === 'tia-browser-tool'
+                        ? 'secondary'
+                        : 'outline'
                     }
+                    disabled={!settings || isSavingAnySetting}
                     onClick={() => {
-                      void setDefaultEngine(engine)
+                      void setBrowserAutomationMode('tia-browser-tool')
                     }}
                   >
-                    {isSaving
-                      ? t('settings.webSearch.buttons.saving')
-                      : isDefault
-                        ? t('settings.webSearch.buttons.default')
-                        : t('settings.webSearch.buttons.setDefault')}
+                    {t('settings.webSearch.browserAutomation.modeTiaBrowserToolLabel')}
                   </Button>
-                </div>
-
-                <div className="mt-3">
                   <Button
                     type="button"
-                    variant="ghost"
                     size="sm"
-                    disabled={
-                      isSaving ||
-                      Boolean(savingEngine) ||
-                      isSavingWindowBehavior ||
-                      isSavingShowBrowser ||
-                      isSavingShowBuiltInBrowser
+                    variant={
+                      settings?.browserAutomationMode === 'built-in-browser'
+                        ? 'secondary'
+                        : 'outline'
                     }
+                    disabled={!settings || isSavingAnySetting}
                     onClick={() => {
-                      void openEngineSettings(engine)
+                      void setBrowserAutomationMode('built-in-browser')
                     }}
                   >
-                    <Search className="size-4" />
-                    {t('settings.webSearch.buttons.openSettings', { engine: details.label })}
-                    <ExternalLink className="size-3.5" />
+                    {t('settings.webSearch.browserAutomation.modeBuiltInBrowserLabel')}
                   </Button>
                 </div>
-              </article>
-            )
-          })}
+              </div>
+
+              {settings?.browserAutomationMode === 'tia-browser-tool' ? (
+                <SettingsSwitchRow
+                  title={t('settings.webSearch.browserAutomation.showTiaBrowserToolTitle')}
+                  description={
+                    settings.showTiaBrowserTool
+                      ? t('settings.webSearch.browserAutomation.showTiaBrowserToolVisible')
+                      : t('settings.webSearch.browserAutomation.showTiaBrowserToolHidden')
+                  }
+                  checked={settings.showTiaBrowserTool}
+                  disabled={!settings || isSavingAnySetting}
+                  onCheckedChange={(checked) => {
+                    void setShowTiaBrowserTool(checked)
+                  }}
+                />
+              ) : (
+                <SettingsSwitchRow
+                  title={t('settings.webSearch.browserAutomation.showBuiltInBrowserTitle')}
+                  description={
+                    settings?.showBuiltInBrowser
+                      ? t('settings.webSearch.browserAutomation.showBuiltInBrowserVisible')
+                      : t('settings.webSearch.browserAutomation.showBuiltInBrowserHidden')
+                  }
+                  checked={settings?.showBuiltInBrowser ?? false}
+                  disabled={!settings || isSavingAnySetting}
+                  onCheckedChange={(checked) => {
+                    void setShowBuiltInBrowser(checked)
+                  }}
+                />
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>{t('settings.webSearch.browserBehavior.title')}</CardTitle>
-          <CardDescription>{t('settings.webSearch.browserBehavior.description')}</CardDescription>
+          <CardTitle>{t('settings.webSearch.fetchWindow.title')}</CardTitle>
+          <CardDescription>{t('settings.webSearch.fetchWindow.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {isLoading ? (
             <p className="text-muted-foreground text-sm">
-              {t('settings.webSearch.browserBehavior.loading')}
+              {t('settings.webSearch.fetchWindow.loading')}
             </p>
           ) : (
             <>
-              <div className="flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-card/60 px-4 py-3">
-                <div className="space-y-1 flex-1">
-                  <h2 className="text-base font-medium">
-                    {t('settings.webSearch.browserBehavior.backgroundTitle')}
-                  </h2>
-                  <p className="text-muted-foreground text-sm">
-                    {settings?.keepBrowserWindowOpen
-                      ? t('settings.webSearch.browserBehavior.backgroundEnabled')
-                      : t('settings.webSearch.browserBehavior.backgroundDisabled')}
-                  </p>
-                </div>
-                <Switch
-                  checked={settings?.keepBrowserWindowOpen ?? true}
-                  disabled={
-                    Boolean(savingEngine) ||
-                    isSavingWindowBehavior ||
-                    isSavingShowBrowser ||
-                    isSavingShowBuiltInBrowser ||
-                    !settings
-                  }
-                  onCheckedChange={(checked) => {
-                    void setKeepBrowserWindowOpen(checked)
-                  }}
-                />
-              </div>
-
-              <div className="flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-card/60 px-4 py-3">
-                <div className="space-y-1 flex-1">
-                  <h2 className="text-base font-medium">
-                    {t('settings.webSearch.browserBehavior.showBrowserTitle')}
-                  </h2>
-                  <p className="text-muted-foreground text-sm">
-                    {settings?.showBrowser
-                      ? t('settings.webSearch.browserBehavior.showBrowserVisible')
-                      : t('settings.webSearch.browserBehavior.showBrowserHidden')}
-                  </p>
-                </div>
-                <Switch
-                  checked={settings?.showBrowser ?? false}
-                  disabled={
-                    Boolean(savingEngine) ||
-                    isSavingWindowBehavior ||
-                    isSavingShowBrowser ||
-                    isSavingShowBuiltInBrowser ||
-                    !settings
-                  }
-                  onCheckedChange={(checked) => {
-                    void setShowBrowser(checked)
-                  }}
-                />
-              </div>
-
-              <div className="flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-card/60 px-4 py-3">
-                <div className="space-y-1 flex-1">
-                  <h2 className="text-base font-medium">
-                    {t('settings.webSearch.browserBehavior.showBuiltInBrowserTitle')}
-                  </h2>
-                  <p className="text-muted-foreground text-sm">
-                    {settings?.showBuiltInBrowser
-                      ? t('settings.webSearch.browserBehavior.showBuiltInBrowserVisible')
-                      : t('settings.webSearch.browserBehavior.showBuiltInBrowserHidden')}
-                  </p>
-                </div>
-                <Switch
-                  checked={settings?.showBuiltInBrowser ?? false}
-                  disabled={
-                    Boolean(savingEngine) ||
-                    isSavingWindowBehavior ||
-                    isSavingShowBrowser ||
-                    isSavingShowBuiltInBrowser ||
-                    !settings
-                  }
-                  onCheckedChange={(checked) => {
-                    void setShowBuiltInBrowser(checked)
-                  }}
-                />
-              </div>
+              <SettingsSwitchRow
+                title={t('settings.webSearch.fetchWindow.keepOpenTitle')}
+                description={
+                  settings?.keepBrowserWindowOpen
+                    ? t('settings.webSearch.fetchWindow.keepOpenEnabled')
+                    : t('settings.webSearch.fetchWindow.keepOpenDisabled')
+                }
+                checked={settings?.keepBrowserWindowOpen ?? true}
+                disabled={!settings || isSavingAnySetting}
+                onCheckedChange={(checked) => {
+                  void setKeepBrowserWindowOpen(checked)
+                }}
+              />
+              <SettingsSwitchRow
+                title={t('settings.webSearch.fetchWindow.showTitle')}
+                description={
+                  settings?.showBrowser
+                    ? t('settings.webSearch.fetchWindow.showVisible')
+                    : t('settings.webSearch.fetchWindow.showHidden')
+                }
+                checked={settings?.showBrowser ?? false}
+                disabled={!settings || isSavingAnySetting}
+                onCheckedChange={(checked) => {
+                  void setShowBrowser(checked)
+                }}
+              />
             </>
           )}
         </CardContent>

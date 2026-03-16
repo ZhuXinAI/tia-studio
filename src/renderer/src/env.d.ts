@@ -97,7 +97,6 @@ declare global {
         }) => void
       ) => () => void
       pickDirectory: () => Promise<string | null>
-      openWebSearchSettings?: (url: string) => Promise<boolean>
     }
   }
 }

@@ -36,6 +36,8 @@ import { NodeCronSchedulerService } from './cron/node-cron-scheduler-service'
 import { AssistantHeartbeatsService } from './heartbeat/assistant-heartbeats-service'
 import { HeartbeatSchedulerService } from './heartbeat/heartbeat-scheduler-service'
 import { BuiltInBrowserManager } from './built-in-browser-manager'
+import { BUILT_IN_BROWSER_REMOTE_DEBUGGING_PORT } from './built-in-browser-contract'
+import { TiaBrowserToolManager } from './tia-browser-tool-manager'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
 import { createMastraInstance } from './mastra/store'
 import { TeamRuntimeService } from './mastra/team-runtime'
@@ -99,14 +101,13 @@ let localApiServer: ServerType | null = null
 let persistenceDatabasePath: string | null = null
 let appTray: Tray | null = null
 let mainWindow: BrowserWindow | null = null
-let webSearchSettingsWindow: BrowserWindow | null = null
 let managedRuntimeService: ManagedRuntimeService | null = null
 let channelService: ChannelService | null = null
 let channelMessageRouter: ChannelMessageRouter | null = null
 let cronSchedulerService: NodeCronSchedulerService | null = null
 let heartbeatSchedulerService: HeartbeatSchedulerService | null = null
 let builtInBrowserManager: BuiltInBrowserManager | null = null
-const webFetchBrowserPartition = 'persist:tia-web-fetch'
+let tiaBrowserToolManager: TiaBrowserToolManager | null = null
 let uiConfigStore: UiConfigStore | null = null
 
 function resolveUiConfigStore(): UiConfigStore {
@@ -120,21 +121,6 @@ function resolveUiConfigStore(): UiConfigStore {
 }
 
 let isTransparentWindow = Boolean(resolveUiConfigStore().getConfig().transparent)
-
-function normalizeWebSearchSettingsUrl(rawUrl: string): string {
-  let parsed: URL
-  try {
-    parsed = new URL(rawUrl)
-  } catch {
-    throw new Error('Invalid web search settings URL')
-  }
-
-  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-    throw new Error('Web search settings URL must use HTTP or HTTPS')
-  }
-
-  return parsed.toString()
-}
 
 function assertManagedRuntimeKind(value: unknown): ManagedRuntimeKind {
   if (value === 'bun' || value === 'uv') {
@@ -171,11 +157,20 @@ function resolveBuiltInBrowserManager(): BuiltInBrowserManager {
     builtInBrowserManager = new BuiltInBrowserManager({
       executablePath: process.execPath,
       entryPath: join(__dirname, 'built-in-browser.js'),
-      profileRootPath: join(app.getPath('userData'), 'built-in-browser-profiles')
+      profileRootPath: join(app.getPath('userData'), 'built-in-browser-profiles'),
+      remoteDebuggingPort: BUILT_IN_BROWSER_REMOTE_DEBUGGING_PORT
     })
   }
 
   return builtInBrowserManager
+}
+
+function resolveTiaBrowserToolManager(): TiaBrowserToolManager {
+  if (!tiaBrowserToolManager) {
+    tiaBrowserToolManager = new TiaBrowserToolManager()
+  }
+
+  return tiaBrowserToolManager
 }
 
 async function syncBuiltInBrowserVisibility(visible: boolean): Promise<void> {
@@ -188,40 +183,21 @@ async function syncBuiltInBrowserVisibility(visible: boolean): Promise<void> {
   await manager.hideWindow()
 }
 
-function resolveWebSearchSettingsWindow(parentWindow: BrowserWindow | null): BrowserWindow {
-  if (webSearchSettingsWindow && !webSearchSettingsWindow.isDestroyed()) {
-    return webSearchSettingsWindow
+async function syncTiaBrowserToolVisibility(visible: boolean): Promise<void> {
+  const manager = resolveTiaBrowserToolManager()
+  manager.setRuntimeOptions({
+    show: visible
+  })
+  if (!manager.isLaunched()) {
+    return
   }
 
-  const browserWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    show: false,
-    autoHideMenuBar: true,
-    parent: parentWindow ?? undefined,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: true,
-      partition: webFetchBrowserPartition
-    }
-  })
+  if (visible) {
+    await manager.showWindow()
+    return
+  }
 
-  browserWindow.once('ready-to-show', () => {
-    browserWindow.show()
-  })
-  browserWindow.on('closed', () => {
-    if (webSearchSettingsWindow === browserWindow) {
-      webSearchSettingsWindow = null
-    }
-  })
-  browserWindow.webContents.setWindowOpenHandler((details) => {
-    void browserWindow.loadURL(details.url)
-    return { action: 'deny' }
-  })
-
-  webSearchSettingsWindow = browserWindow
-  return browserWindow
+  await manager.hideWindow()
 }
 
 async function startLocalApiServer(): Promise<void> {
@@ -248,6 +224,10 @@ async function startLocalApiServer(): Promise<void> {
   const securitySettingsRepo = new SecuritySettingsRepository(db)
   const threadUsageRepo = new ThreadUsageRepository(db)
   const mcpServersRepo = new McpServersRepository(join(app.getPath('userData'), 'mcp.json'))
+  const initialTiaBrowserToolVisible = await webSearchSettingsRepo.getShowTiaBrowserTool()
+  void syncTiaBrowserToolVisibility(initialTiaBrowserToolVisible).catch((error) => {
+    logger.error('[TiaBrowserTool] failed to apply initial visibility preference:', error)
+  })
   const managedRuntimesRepo = new ManagedRuntimesRepository(
     join(app.getPath('userData'), 'managed-runtimes.json')
   )
@@ -304,7 +284,8 @@ async function startLocalApiServer(): Promise<void> {
     threadUsageRepo,
     cronJobService: assistantCronJobsService,
     managedRuntimeResolver: managedRuntimeService,
-    builtInBrowserManager: resolveBuiltInBrowserManager()
+    builtInBrowserManager: resolveBuiltInBrowserManager(),
+    tiaBrowserToolManager: resolveTiaBrowserToolManager()
   })
   const teamRunStatusStore = new TeamRunStatusStore()
   const teamRuntime = new TeamRuntimeService({
@@ -494,6 +475,9 @@ async function startLocalApiServer(): Promise<void> {
     whatsAppAuthStateStore,
     onShowBuiltInBrowserChange: async (show) => {
       await syncBuiltInBrowserVisibility(show)
+    },
+    onShowTiaBrowserToolChange: async (show) => {
+      await syncTiaBrowserToolVisibility(show)
     },
     onShowBuiltInBrowserWindow: async () => {
       await resolveBuiltInBrowserManager().showWindow()
@@ -819,24 +803,6 @@ if (hasSingleInstanceLock) {
         await removeWorkspaceSkill(workspaceRootPath, relativePath)
       }
     )
-    ipcMain.handle('tia:open-web-search-settings', async (event, rawUrl) => {
-      if (typeof rawUrl !== 'string') {
-        throw new Error('Web search settings URL must be a string')
-      }
-
-      const url = normalizeWebSearchSettingsUrl(rawUrl)
-      const parentWindow = BrowserWindow.fromWebContents(event.sender)
-      const browserWindow = resolveWebSearchSettingsWindow(parentWindow)
-      await browserWindow.loadURL(url)
-
-      if (!browserWindow.isVisible()) {
-        browserWindow.show()
-      }
-      browserWindow.focus()
-
-      return true
-    })
-
     await startLocalApiServer()
     openMainWindow()
     createTray()
@@ -861,6 +827,7 @@ app.on('before-quit', () => {
     appTray = null
   }
   builtInBrowserManager?.shutdown()
+  tiaBrowserToolManager?.shutdown()
   stopLocalApiServer()
 })
 

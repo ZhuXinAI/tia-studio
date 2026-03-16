@@ -32,8 +32,7 @@ describe('security settings page', () => {
         baseUrl: 'http://127.0.0.1:3456',
         authToken: 'token'
       })),
-      pickDirectory: vi.fn(async () => null),
-      openWebSearchSettings: vi.fn(async () => true)
+      pickDirectory: vi.fn(async () => null)
     }
 
     vi.mocked(getSecuritySettings).mockResolvedValue({

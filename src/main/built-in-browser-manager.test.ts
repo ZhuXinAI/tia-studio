@@ -145,9 +145,9 @@ describe('BuiltInBrowserManager', () => {
 
     const spawnedArgs = spawnMock.mock.calls[0]?.[1] as string[]
     const userDataDirArg = spawnedArgs.find((arg) => arg.startsWith('--user-data-dir='))
-    expect(userDataDirArg?.startsWith(`--user-data-dir=${join(profileRootPath, 'recovery-')}`)).toBe(
-      true
-    )
+    expect(
+      userDataDirArg?.startsWith(`--user-data-dir=${join(profileRootPath, 'recovery-')}`)
+    ).toBe(true)
   })
 
   it('reuses the last active recovery profile after an app restart', async () => {

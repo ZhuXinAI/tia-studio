@@ -203,8 +203,6 @@ function killChildProcessTree(child: ChildProcess): void {
   }
 
   try {
-    // Detached POSIX children become their own process group leader, so a negative pid
-    // terminates Electron plus any helper processes holding the debugging port open.
     process.kill(-pid, 'SIGKILL')
     return
   } catch {
@@ -471,9 +469,7 @@ export class BuiltInBrowserManager implements BuiltInBrowserController {
           reject(new Error('Timed out waiting for the built-in browser to become ready.'))
         }, DEFAULT_READY_TIMEOUT_MS)
 
-        this.readyPromise
-          ?.catch(() => undefined)
-          .finally(() => clearTimeout(timeoutHandle))
+        this.readyPromise?.catch(() => undefined).finally(() => clearTimeout(timeoutHandle))
       })
     ])
   }

@@ -55,7 +55,7 @@ describe('app router', () => {
     expect(html).toContain('Search providers...')
     expect(html).toContain('Model Provider')
     expect(html).toContain('Security &amp; Privacy')
-    expect(html).toContain('Web Search')
+    expect(html).toContain('Browsing')
     expect(html).toContain('MCP Servers')
     expect(html).toContain('About &amp; Feedback')
   })
@@ -71,8 +71,8 @@ describe('app router', () => {
   it('renders web search settings route', () => {
     const html = renderRouter(['/settings/web-search'])
 
-    expect(html).toContain('Web Search')
-    expect(html).toContain('Default Search Engine')
+    expect(html).toContain('Browsing')
+    expect(html).toContain('Browser Automation')
   })
 
   it('renders mcp server settings route', () => {
@@ -103,7 +103,7 @@ describe('app router', () => {
 
     expect(html).toContain('Display Settings')
     expect(html).toContain('Model Provider')
-    expect(html).toContain('Web Search')
+    expect(html).toContain('Browsing')
     expect(html).toContain('MCP Servers')
     expect(html).toContain('About &amp; Feedback')
   })
@@ -131,7 +131,7 @@ describe('app router', () => {
     expect(html).toContain('Scheduled Jobs')
     expect(html).toContain('Loading cron jobs')
     expect(html).toContain('Channels')
-    expect(html).toContain('Web Search')
+    expect(html).toContain('Browsing')
   })
 
   it('renders chat route with assistant creation controls', () => {

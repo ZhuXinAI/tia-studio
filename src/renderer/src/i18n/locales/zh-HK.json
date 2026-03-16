@@ -57,7 +57,7 @@
         "security": "Security & Privacy",
         "channels": "頻道",
         "cronJobs": "定時工作",
-        "webSearch": "網頁搜尋",
+        "webSearch": "Browsing",
         "mcpServers": "MCP 伺服器",
         "runtimeSetup": "執行環境設定",
         "display": "顯示",
@@ -234,55 +234,46 @@
       }
     },
     "webSearch": {
-      "title": "網頁搜尋",
-      "description": "選擇一個預設搜尋引擎，所有瀏覽器搜尋工具呼叫都會使用它。",
-      "defaultEngine": {
-        "title": "預設搜尋引擎",
-        "description": "支援 Google、Bing 與 Baidu。",
-        "loading": "正在載入搜尋設定...",
-        "empty": "沒有可用的搜尋引擎。"
+      "title": "Browsing",
+      "description": "Choose how TIA opens pages and which browser runtime it uses for browsing tasks.",
+      "browserAutomation": {
+        "title": "Browser Automation",
+        "description": "Pick the browser runtime for interactive browsing and automation.",
+        "loading": "Loading browser automation settings...",
+        "modeTitle": "Browser Runtime",
+        "modeTiaBrowserToolLabel": "TIA Browser Tool",
+        "modeBuiltInBrowserLabel": "Built-in Browser",
+        "modeTiaBrowserToolDescription": "Uses the in-app TIA Browser Tool runtime for interactive browsing and automation tasks.",
+        "modeBuiltInBrowserDescription": "Uses the standalone built-in browser workflow with the external automation bridge.",
+        "showTiaBrowserToolTitle": "Show TIA Browser Tool Window",
+        "showTiaBrowserToolVisible": "The TIA Browser Tool window stays visible while browsing automation runs.",
+        "showTiaBrowserToolHidden": "The TIA Browser Tool window stays hidden unless a browsing task brings it forward.",
+        "showBuiltInBrowserTitle": "Show Built-in Browser Window",
+        "showBuiltInBrowserVisible": "The built-in browser window stays visible while browsing automation runs.",
+        "showBuiltInBrowserHidden": "The built-in browser window stays hidden unless a browsing task brings it forward."
       },
-      "buttons": {
-        "saving": "儲存中...",
-        "default": "預設",
-        "setDefault": "設為預設",
-        "openSettings": "開啟 {{engine}} 設定"
-      },
-      "browserBehavior": {
-        "title": "瀏覽器視窗行為",
-        "description": "在背景保留一個獨立的瀏覽器視窗，以供後續搜尋任務使用。",
-        "loading": "正在載入瀏覽器視窗行為...",
-        "backgroundTitle": "背景瀏覽器視窗",
-        "backgroundEnabled": "重用一個隱藏的 BrowserWindow 進行網頁搜尋。",
-        "backgroundDisabled": "每次搜尋請求都建立並關閉一個 BrowserWindow。",
-        "showBrowserTitle": "顯示瀏覽器",
-        "showBrowserVisible": "搜尋期間瀏覽器視窗可見。",
-        "showBrowserHidden": "搜尋期間瀏覽器視窗隱藏。"
-      },
-      "engines": {
-        "google": {
-          "label": "Google",
-          "description": "全球索引廣泛，搜尋結果覆蓋面大。"
-        },
-        "bing": {
-          "label": "Bing",
-          "description": "更適合直接抓取式搜尋頁面。"
-        },
-        "baidu": {
-          "label": "Baidu",
-          "description": "當你偏好中文搜尋排序時很有用。"
-        }
+      "fetchWindow": {
+        "title": "Page Fetch Window",
+        "description": "These settings apply when TIA opens a lightweight browser window to read a specific page URL.",
+        "loading": "Loading fetch window settings...",
+        "keepOpenTitle": "Keep Fetch Window Open",
+        "keepOpenEnabled": "Reuse one fetch window across requests.",
+        "keepOpenDisabled": "Create and close a fetch window for each request.",
+        "showTitle": "Show Fetch Window",
+        "showVisible": "The fetch window stays visible while pages are being read.",
+        "showHidden": "The fetch window stays hidden while pages are being read."
       },
       "toasts": {
-        "defaultSet": "{{engine}} 現已成為預設網頁搜尋引擎。",
-        "backgroundWindow": "背景瀏覽器視窗現已{{state}}。",
-        "backgroundEnabled": "啟用",
-        "backgroundDisabled": "停用",
-        "browserVisibility": "瀏覽器視窗現已{{state}}。",
-        "browserVisible": "顯示",
-        "browserHidden": "隱藏",
-        "openSettingsError": "無法開啟 {{engine}} 設定：{{message}}",
-        "unexpectedError": "要求發生未預期錯誤"
+        "keepFetchWindowOpen": "Fetch window reuse is now {{state}}.",
+        "keepFetchWindowOpenEnabled": "enabled",
+        "keepFetchWindowOpenDisabled": "disabled",
+        "browserAutomationModeUpdated": "Browser automation runtime is now {{mode}}.",
+        "fetchWindowVisibility": "Fetch window is now {{state}}.",
+        "builtInBrowserVisibility": "Built-in browser window is now {{state}}.",
+        "tiaBrowserToolVisibility": "TIA Browser Tool window is now {{state}}.",
+        "windowVisible": "visible",
+        "windowHidden": "hidden",
+        "unexpectedError": "Unexpected request error"
       }
     },
     "cronJobs": {
@@ -844,6 +835,13 @@
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "新增執行緒",
       "setupIncomplete": "助手設定尚未完成。請先打開「設定」配置供應商與模型，再傳送訊息。",
+      "handoffBanner": {
+        "title": "Human action needed in the built-in browser",
+        "description": "The assistant is waiting for you to finish a step in the built-in browser and click \"Done, continue\" there.",
+        "details": "Requested step: {{message}}",
+        "showBrowser": "Show browser again",
+        "showFailed": "Failed to bring the built-in browser window forward."
+      },
       "composer": {
         "placeholderSelectedThread": "為此執行緒輸入訊息...",
         "placeholderSelectedAssistant": "輸入訊息以建立新執行緒...",

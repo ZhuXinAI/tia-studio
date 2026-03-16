@@ -5,7 +5,11 @@ import { createRoot, type Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { WebSearchSettingsPage } from './web-search-settings-page'
-import { getWebSearchSettings, updateWebSearchSettings } from '../web-search/web-search-query'
+import {
+  getWebSearchSettings,
+  updateWebSearchSettings,
+  type WebSearchSettings
+} from '../web-search/web-search-query'
 
 vi.mock('../web-search/web-search-query', () => ({
   getWebSearchSettings: vi.fn(),
@@ -16,6 +20,23 @@ async function flushAsyncWork(): Promise<void> {
   await act(async () => {
     await Promise.resolve()
   })
+}
+
+function createSettings(overrides?: Partial<WebSearchSettings>): WebSearchSettings {
+  return {
+    keepBrowserWindowOpen: true,
+    showBrowser: false,
+    showBuiltInBrowser: false,
+    showTiaBrowserTool: false,
+    browserAutomationMode: 'built-in-browser',
+    ...overrides
+  }
+}
+
+function findButtonByText(container: HTMLDivElement, text: string): HTMLButtonElement | undefined {
+  return Array.from(container.querySelectorAll('button')).find((button) =>
+    button.textContent?.includes(text)
+  ) as HTMLButtonElement | undefined
 }
 
 describe('web search settings page', () => {
@@ -32,24 +53,11 @@ describe('web search settings page', () => {
         baseUrl: 'http://127.0.0.1:3456',
         authToken: 'token'
       })),
-      pickDirectory: vi.fn(async () => null),
-      openWebSearchSettings: vi.fn(async () => true)
+      pickDirectory: vi.fn(async () => null)
     }
 
-    vi.mocked(getWebSearchSettings).mockResolvedValue({
-      defaultEngine: 'bing',
-      keepBrowserWindowOpen: true,
-      showBrowser: false,
-      showBuiltInBrowser: false,
-      availableEngines: ['google', 'bing', 'baidu']
-    })
-    vi.mocked(updateWebSearchSettings).mockResolvedValue({
-      defaultEngine: 'google',
-      keepBrowserWindowOpen: true,
-      showBrowser: false,
-      showBuiltInBrowser: false,
-      availableEngines: ['google', 'bing', 'baidu']
-    })
+    vi.mocked(getWebSearchSettings).mockResolvedValue(createSettings())
+    vi.mocked(updateWebSearchSettings).mockResolvedValue(createSettings())
   })
 
   afterEach(() => {
@@ -61,7 +69,7 @@ describe('web search settings page', () => {
     vi.clearAllMocks()
   })
 
-  it('updates default engine from bing to google', async () => {
+  it('renders browsing settings with built-in browser controls by default', async () => {
     await act(async () => {
       root.render(
         <MemoryRouter>
@@ -71,28 +79,19 @@ describe('web search settings page', () => {
     })
     await flushAsyncWork()
 
-    const buttons = Array.from(container.querySelectorAll('button'))
-    const setGoogleButton = buttons.find((button) => button.textContent?.includes('Set Default'))
-
-    expect(setGoogleButton).toBeDefined()
-
-    await act(async () => {
-      setGoogleButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-    await flushAsyncWork()
-
-    expect(updateWebSearchSettings).toHaveBeenCalledWith({ defaultEngine: 'google' })
-    // Toast is rendered by Sonner in a portal, not in the component tree
+    expect(container.textContent).toContain('Browsing')
+    expect(container.textContent).toContain('Browser Automation')
+    expect(container.textContent).toContain('Show Built-in Browser Window')
+    expect(container.textContent).not.toContain('Default Search Engine')
+    expect(container.textContent).not.toContain('Show TIA Browser Tool Window')
   })
 
-  it('toggles keepBrowserWindowOpen in background mode', async () => {
-    vi.mocked(updateWebSearchSettings).mockResolvedValue({
-      defaultEngine: 'bing',
-      keepBrowserWindowOpen: false,
-      showBrowser: false,
-      showBuiltInBrowser: false,
-      availableEngines: ['google', 'bing', 'baidu']
-    })
+  it('toggles keepBrowserWindowOpen in the fetch window section', async () => {
+    vi.mocked(updateWebSearchSettings).mockResolvedValue(
+      createSettings({
+        keepBrowserWindowOpen: false
+      })
+    )
 
     await act(async () => {
       root.render(
@@ -104,55 +103,24 @@ describe('web search settings page', () => {
     await flushAsyncWork()
 
     const switches = Array.from(container.querySelectorAll('[role="switch"]'))
-    const backgroundSwitch = switches[0] as HTMLButtonElement | undefined
+    const keepFetchWindowOpenSwitch = switches[1] as HTMLButtonElement | undefined
 
-    expect(backgroundSwitch).toBeDefined()
-    expect(backgroundSwitch?.getAttribute('aria-checked')).toBe('true')
+    expect(keepFetchWindowOpenSwitch?.getAttribute('aria-checked')).toBe('true')
 
     await act(async () => {
-      backgroundSwitch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      keepFetchWindowOpenSwitch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
     await flushAsyncWork()
 
     expect(updateWebSearchSettings).toHaveBeenCalledWith({ keepBrowserWindowOpen: false })
-    // Toast is rendered by Sonner in a portal, not in the component tree
-  })
-
-  it('opens search engine settings in desktop BrowserWindow context', async () => {
-    await act(async () => {
-      root.render(
-        <MemoryRouter>
-          <WebSearchSettingsPage />
-        </MemoryRouter>
-      )
-    })
-    await flushAsyncWork()
-
-    const buttons = Array.from(container.querySelectorAll('button'))
-    const bingSettingsButton = buttons.find((button) =>
-      button.textContent?.includes('Open Bing Settings')
-    )
-
-    expect(bingSettingsButton).toBeDefined()
-
-    await act(async () => {
-      bingSettingsButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-    await flushAsyncWork()
-
-    expect(window.tiaDesktop.openWebSearchSettings).toHaveBeenCalledWith(
-      'https://www.bing.com/account/general'
-    )
   })
 
   it('toggles the built-in browser visibility setting', async () => {
-    vi.mocked(updateWebSearchSettings).mockResolvedValue({
-      defaultEngine: 'bing',
-      keepBrowserWindowOpen: true,
-      showBrowser: false,
-      showBuiltInBrowser: true,
-      availableEngines: ['google', 'bing', 'baidu']
-    })
+    vi.mocked(updateWebSearchSettings).mockResolvedValue(
+      createSettings({
+        showBuiltInBrowser: true
+      })
+    )
 
     await act(async () => {
       root.render(
@@ -164,9 +132,8 @@ describe('web search settings page', () => {
     await flushAsyncWork()
 
     const switches = Array.from(container.querySelectorAll('[role="switch"]'))
-    const builtInBrowserSwitch = switches[2] as HTMLButtonElement | undefined
+    const builtInBrowserSwitch = switches[0] as HTMLButtonElement | undefined
 
-    expect(builtInBrowserSwitch).toBeDefined()
     expect(builtInBrowserSwitch?.getAttribute('aria-checked')).toBe('false')
 
     await act(async () => {
@@ -175,5 +142,76 @@ describe('web search settings page', () => {
     await flushAsyncWork()
 
     expect(updateWebSearchSettings).toHaveBeenCalledWith({ showBuiltInBrowser: true })
+  })
+
+  it('switches browser automation mode to the tia browser tool', async () => {
+    vi.mocked(updateWebSearchSettings).mockResolvedValue(
+      createSettings({
+        browserAutomationMode: 'tia-browser-tool'
+      })
+    )
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <WebSearchSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const tiaBrowserToolButton = findButtonByText(container, 'TIA Browser Tool')
+
+    await act(async () => {
+      tiaBrowserToolButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(updateWebSearchSettings).toHaveBeenCalledWith({
+      browserAutomationMode: 'tia-browser-tool'
+    })
+  })
+
+  it('shows the tia browser tool visibility toggle after switching modes', async () => {
+    vi.mocked(updateWebSearchSettings)
+      .mockResolvedValueOnce(
+        createSettings({
+          browserAutomationMode: 'tia-browser-tool'
+        })
+      )
+      .mockResolvedValueOnce(
+        createSettings({
+          browserAutomationMode: 'tia-browser-tool',
+          showTiaBrowserTool: true
+        })
+      )
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <WebSearchSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    await act(async () => {
+      findButtonByText(container, 'TIA Browser Tool')?.dispatchEvent(
+        new MouseEvent('click', { bubbles: true })
+      )
+    })
+    await flushAsyncWork()
+
+    expect(container.textContent).toContain('Show TIA Browser Tool Window')
+
+    const switches = Array.from(container.querySelectorAll('[role="switch"]'))
+    const tiaBrowserToolSwitch = switches[0] as HTMLButtonElement | undefined
+
+    await act(async () => {
+      tiaBrowserToolSwitch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(updateWebSearchSettings).toHaveBeenLastCalledWith({ showTiaBrowserTool: true })
   })
 })

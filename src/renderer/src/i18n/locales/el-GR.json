@@ -57,7 +57,7 @@
         "security": "Security & Privacy",
         "channels": "Κανάλια",
         "cronJobs": "Εργασίες cron",
-        "webSearch": "Αναζήτηση ιστού",
+        "webSearch": "Browsing",
         "mcpServers": "Διακομιστές MCP",
         "runtimeSetup": "Ρύθμιση runtime",
         "display": "Εμφάνιση",
@@ -234,55 +234,46 @@
       }
     },
     "webSearch": {
-      "title": "Αναζήτηση ιστού",
-      "description": "Επιλέξτε μία προεπιλεγμένη μηχανή και κάθε κλήση εργαλείου αναζήτησης θα τη χρησιμοποιεί.",
-      "defaultEngine": {
-        "title": "Προεπιλεγμένη μηχανή αναζήτησης",
-        "description": "Υποστηρίζονται τα Google, Bing και Baidu.",
-        "loading": "Φόρτωση ρυθμίσεων αναζήτησης...",
-        "empty": "Δεν υπάρχουν διαθέσιμες μηχανές."
+      "title": "Browsing",
+      "description": "Choose how TIA opens pages and which browser runtime it uses for browsing tasks.",
+      "browserAutomation": {
+        "title": "Browser Automation",
+        "description": "Pick the browser runtime for interactive browsing and automation.",
+        "loading": "Loading browser automation settings...",
+        "modeTitle": "Browser Runtime",
+        "modeTiaBrowserToolLabel": "TIA Browser Tool",
+        "modeBuiltInBrowserLabel": "Built-in Browser",
+        "modeTiaBrowserToolDescription": "Uses the in-app TIA Browser Tool runtime for interactive browsing and automation tasks.",
+        "modeBuiltInBrowserDescription": "Uses the standalone built-in browser workflow with the external automation bridge.",
+        "showTiaBrowserToolTitle": "Show TIA Browser Tool Window",
+        "showTiaBrowserToolVisible": "The TIA Browser Tool window stays visible while browsing automation runs.",
+        "showTiaBrowserToolHidden": "The TIA Browser Tool window stays hidden unless a browsing task brings it forward.",
+        "showBuiltInBrowserTitle": "Show Built-in Browser Window",
+        "showBuiltInBrowserVisible": "The built-in browser window stays visible while browsing automation runs.",
+        "showBuiltInBrowserHidden": "The built-in browser window stays hidden unless a browsing task brings it forward."
       },
-      "buttons": {
-        "saving": "Αποθήκευση...",
-        "default": "Προεπιλογή",
-        "setDefault": "Ορισμός προεπιλογής",
-        "openSettings": "Άνοιγμα ρυθμίσεων {{engine}}"
-      },
-      "browserBehavior": {
-        "title": "Συμπεριφορά παραθύρου προγράμματος περιήγησης",
-        "description": "Διατηρήστε ένα απομονωμένο παράθυρο προγράμματος περιήγησης στο παρασκήνιο για μελλοντικές εργασίες αναζήτησης.",
-        "loading": "Φόρτωση συμπεριφοράς παραθύρου...",
-        "backgroundTitle": "Παράθυρο προγράμματος περιήγησης στο παρασκήνιο",
-        "backgroundEnabled": "Επανάληψη χρήσης ενός κρυφού BrowserWindow για αναζήτηση ιστού.",
-        "backgroundDisabled": "Δημιουργία και κλείσιμο BrowserWindow ανά αίτημα αναζήτησης.",
-        "showBrowserTitle": "Εμφάνιση προγράμματος περιήγησης",
-        "showBrowserVisible": "Το παράθυρο είναι ορατό κατά την αναζήτηση.",
-        "showBrowserHidden": "Το παράθυρο είναι κρυφό κατά την αναζήτηση."
-      },
-      "engines": {
-        "google": {
-          "label": "Google",
-          "description": "Ευρύ παγκόσμιο ευρετήριο με μεγάλη κάλυψη αποτελεσμάτων."
-        },
-        "bing": {
-          "label": "Bing",
-          "description": "Πιο σταθερό για σελίδες αναζήτησης βασισμένες σε fetch."
-        },
-        "baidu": {
-          "label": "Baidu",
-          "description": "Χρήσιμο όταν προτιμάτε την κινεζική κατάταξη αναζήτησης."
-        }
+      "fetchWindow": {
+        "title": "Page Fetch Window",
+        "description": "These settings apply when TIA opens a lightweight browser window to read a specific page URL.",
+        "loading": "Loading fetch window settings...",
+        "keepOpenTitle": "Keep Fetch Window Open",
+        "keepOpenEnabled": "Reuse one fetch window across requests.",
+        "keepOpenDisabled": "Create and close a fetch window for each request.",
+        "showTitle": "Show Fetch Window",
+        "showVisible": "The fetch window stays visible while pages are being read.",
+        "showHidden": "The fetch window stays hidden while pages are being read."
       },
       "toasts": {
-        "defaultSet": "Το {{engine}} είναι πλέον η προεπιλεγμένη μηχανή αναζήτησης.",
-        "backgroundWindow": "Το παράθυρο στο παρασκήνιο είναι πλέον {{state}}.",
-        "backgroundEnabled": "ενεργό",
-        "backgroundDisabled": "ανενεργό",
-        "browserVisibility": "Το παράθυρο προγράμματος περιήγησης είναι πλέον {{state}}.",
-        "browserVisible": "ορατό",
-        "browserHidden": "κρυφό",
-        "openSettingsError": "Αποτυχία ανοίγματος ρυθμίσεων {{engine}}: {{message}}",
-        "unexpectedError": "Απροσδόκητο σφάλμα αιτήματος"
+        "keepFetchWindowOpen": "Fetch window reuse is now {{state}}.",
+        "keepFetchWindowOpenEnabled": "enabled",
+        "keepFetchWindowOpenDisabled": "disabled",
+        "browserAutomationModeUpdated": "Browser automation runtime is now {{mode}}.",
+        "fetchWindowVisibility": "Fetch window is now {{state}}.",
+        "builtInBrowserVisibility": "Built-in browser window is now {{state}}.",
+        "tiaBrowserToolVisibility": "TIA Browser Tool window is now {{state}}.",
+        "windowVisible": "visible",
+        "windowHidden": "hidden",
+        "unexpectedError": "Unexpected request error"
       }
     },
     "cronJobs": {
@@ -844,6 +835,13 @@
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "Νέο νήμα",
       "setupIncomplete": "Η ρύθμιση του βοηθού δεν έχει ολοκληρωθεί. Ανοίξτε το «Ρύθμιση» για να ορίσετε πάροχο και μοντέλο πριν από την αποστολή μηνυμάτων.",
+      "handoffBanner": {
+        "title": "Human action needed in the built-in browser",
+        "description": "The assistant is waiting for you to finish a step in the built-in browser and click \"Done, continue\" there.",
+        "details": "Requested step: {{message}}",
+        "showBrowser": "Show browser again",
+        "showFailed": "Failed to bring the built-in browser window forward."
+      },
       "composer": {
         "placeholderSelectedThread": "Πληκτρολογήστε μήνυμα για αυτό το νήμα...",
         "placeholderSelectedAssistant": "Πληκτρολογήστε μήνυμα για να δημιουργήσετε νέο νήμα...",

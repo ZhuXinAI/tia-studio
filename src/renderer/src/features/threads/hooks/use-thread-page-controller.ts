@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useChat } from '@ai-sdk/react'
+import { useChat, type UIMessage } from '@ai-sdk/react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useTranslation } from '../../../i18n/use-app-translation'
@@ -51,10 +51,69 @@ import {
 
 type PendingThreadMessage = {
   threadId: string
-  text: string
+  message: UIMessage
 }
 
 const BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__tiaBuiltInDefaultAgent'
+
+function createPendingUserMessage(threadId: string, text: string): UIMessage {
+  const messageId =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+
+  return {
+    id: `pending-user:${threadId}:${messageId}`,
+    role: 'user',
+    parts: [
+      {
+        type: 'text',
+        text
+      }
+    ]
+  }
+}
+
+function mergeDisplayedThreadMessages(input: {
+  persistedMessages: UIMessage[]
+  currentMessages: readonly UIMessage[]
+  pendingUserMessage: UIMessage | null
+}): UIMessage[] {
+  const merged: UIMessage[] = []
+  const seenMessageIds = new Set<string>()
+
+  const appendIfNew = (message: UIMessage | null | undefined): void => {
+    if (!message) {
+      return
+    }
+
+    const messageId = typeof message.id === 'string' ? message.id : ''
+    if (messageId.length > 0 && seenMessageIds.has(messageId)) {
+      return
+    }
+
+    merged.push(message)
+    if (messageId.length > 0) {
+      seenMessageIds.add(messageId)
+    }
+  }
+
+  input.persistedMessages.forEach(appendIfNew)
+  appendIfNew(input.pendingUserMessage)
+
+  for (const message of input.currentMessages) {
+    if (message.role === 'assistant') {
+      appendIfNew(message)
+      continue
+    }
+
+    if (input.pendingUserMessage && message.id === input.pendingUserMessage.id) {
+      appendIfNew(message)
+    }
+  }
+
+  return merged
+}
 
 export type ThreadPageController = ReturnType<typeof useThreadPageController>
 
@@ -107,6 +166,7 @@ export function useThreadPageController() {
   const [isAssistantDialogOpen, setIsAssistantDialogOpen] = useState(false)
   const [assistantDialogError, setAssistantDialogError] = useState<string | null>(null)
   const pendingThreadMessageRef = useRef<PendingThreadMessage | null>(null)
+  const activePendingUserMessagesRef = useRef(new Map<string, UIMessage>())
   const [hasPendingMessage, setHasPendingMessage] = useState(false)
   const hasLoadedInitialMessagesRef = useRef(false)
   const profileId = useMemo(() => getActiveResourceId(), [])
@@ -182,16 +242,22 @@ export function useThreadPageController() {
     transport: chatTransport,
     resume: Boolean(selectedThread && chatTransport),
     experimental_throttle: 48,
-    onFinish: () => {
+    onFinish: ({ isDisconnect, isError }) => {
       const selectedAssistantId = selectedAssistant?.id
-      if (!selectedThread || !selectedAssistantId) {
+      const selectedThreadId = selectedThread?.id
+
+      if (selectedThreadId && isError && !isDisconnect) {
+        activePendingUserMessagesRef.current.delete(selectedThreadId)
+      }
+
+      if (!selectedThreadId || !selectedAssistantId) {
         return
       }
 
       const now = new Date().toISOString()
       setThreads((currentThreads) => {
         const nextThreads = currentThreads.map((thread) =>
-          thread.id === selectedThread.id
+          thread.id === selectedThreadId
             ? {
                 ...thread,
                 lastMessageAt: now,
@@ -210,13 +276,50 @@ export function useThreadPageController() {
     }
   })
 
-  const { sendMessage, setMessages, stop, status: chatStatus, error: chatError } = chat
+  const {
+    sendMessage,
+    setMessages,
+    stop,
+    status: chatStatus,
+    error: chatError,
+    messages: chatMessages
+  } = chat
   const setMessagesRef = useRef(setMessages)
   const stopChatRef = useRef(stop)
   const isChatStreamingRef = useRef(false)
+  const currentChatMessagesRef = useRef<readonly UIMessage[]>(chatMessages)
+  currentChatMessagesRef.current = chatMessages
 
   const isChatStreaming = chatStatus === 'submitted' || chatStatus === 'streaming'
   const canAbortGeneration = isChatStreaming
+
+  const getDisplayedPendingUserMessage = useCallback((threadId: string): UIMessage | null => {
+    const queuedPendingMessage = pendingThreadMessageRef.current
+    if (queuedPendingMessage?.threadId === threadId) {
+      return queuedPendingMessage.message
+    }
+
+    return activePendingUserMessagesRef.current.get(threadId) ?? null
+  }, [])
+
+  const mergeHydratedThreadMessages = useCallback(
+    (threadId: string, persistedMessages: UIMessage[]) => {
+      const activePendingUserMessage = activePendingUserMessagesRef.current.get(threadId)
+      if (
+        activePendingUserMessage &&
+        persistedMessages.some((message) => message.id === activePendingUserMessage.id)
+      ) {
+        activePendingUserMessagesRef.current.delete(threadId)
+      }
+
+      return mergeDisplayedThreadMessages({
+        persistedMessages,
+        currentMessages: currentChatMessagesRef.current,
+        pendingUserMessage: getDisplayedPendingUserMessage(threadId)
+      })
+    },
+    [getDisplayedPendingUserMessage]
+  )
 
   useEffect(() => {
     setMessagesRef.current = setMessages
@@ -424,7 +527,8 @@ export function useThreadPageController() {
     let active = true
     setIsLoadingChatHistory(true)
     hasLoadedInitialMessagesRef.current = false
-    setMessagesRef.current([])
+    const pendingUserMessage = getDisplayedPendingUserMessage(threadId)
+    setMessagesRef.current(pendingUserMessage ? [pendingUserMessage] : [])
 
     void listThreadChatMessages({
       assistantId,
@@ -435,14 +539,14 @@ export function useThreadPageController() {
         if (!active) {
           return
         }
-        setMessagesRef.current(messages)
+        setMessagesRef.current(mergeHydratedThreadMessages(threadId, messages))
         hasLoadedInitialMessagesRef.current = true
       })
       .catch((error) => {
         if (!active) {
           return
         }
-        setMessagesRef.current([])
+        setMessagesRef.current(mergeHydratedThreadMessages(threadId, []))
         hasLoadedInitialMessagesRef.current = true
         toast.error(toErrorMessage(error))
       })
@@ -455,7 +559,13 @@ export function useThreadPageController() {
     return () => {
       active = false
     }
-  }, [profileId, selectedAssistant?.id, selectedThread?.id])
+  }, [
+    getDisplayedPendingUserMessage,
+    mergeHydratedThreadMessages,
+    profileId,
+    selectedAssistant?.id,
+    selectedThread?.id
+  ])
 
   useEffect(() => {
     const assistantId = selectedAssistant?.id
@@ -483,7 +593,7 @@ export function useThreadPageController() {
             profileId
           })
             .then((messages) => {
-              setMessages(messages)
+              setMessages(mergeHydratedThreadMessages(selectedThread.id, messages))
             })
             .catch(() => undefined)
         }
@@ -499,7 +609,13 @@ export function useThreadPageController() {
     return () => {
       streamHandle.close()
     }
-  }, [profileId, selectedAssistant?.id, selectedThread?.id, setMessages])
+  }, [
+    mergeHydratedThreadMessages,
+    profileId,
+    selectedAssistant?.id,
+    selectedThread?.id,
+    setMessages
+  ])
 
   const createNewThread = useCallback(
     async (options?: { notify?: boolean }): Promise<ThreadRecord | null> => {
@@ -694,7 +810,7 @@ export function useThreadPageController() {
     const queuePendingMessage = (threadId: string, text: string): void => {
       pendingThreadMessageRef.current = {
         threadId,
-        text
+        message: createPendingUserMessage(threadId, text)
       }
       setHasPendingMessage(true)
     }
@@ -706,9 +822,9 @@ export function useThreadPageController() {
       }
 
       try {
-        await sendMessage({
-          text: nextMessage
-        })
+        const pendingUserMessage = createPendingUserMessage(selectedThread.id, nextMessage)
+        activePendingUserMessagesRef.current.set(selectedThread.id, pendingUserMessage)
+        await sendMessage(pendingUserMessage)
       } catch (error) {
         toast.error(toErrorMessage(error))
       }
@@ -760,13 +876,12 @@ export function useThreadPageController() {
     }
 
     // Clear pending message state immediately to prevent duplicate sends
-    const messageToSend = pendingMessage.text
+    const messageToSend = pendingMessage.message
     pendingThreadMessageRef.current = null
     setHasPendingMessage(false)
+    activePendingUserMessagesRef.current.set(pendingMessage.threadId, messageToSend)
 
-    void sendMessage({
-      text: messageToSend
-    }).catch((error) => {
+    void sendMessage(messageToSend).catch((error) => {
       toast.error(toErrorMessage(error))
     })
   }, [

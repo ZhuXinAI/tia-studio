@@ -129,7 +129,6 @@ interface TiaDesktopAPI {
   getRuntimeOnboardingSkillsStatus?: () => Promise<RecommendedSkillId[]>
   installRuntimeOnboardingSkills?: (skillIds: RecommendedSkillId[]) => Promise<RecommendedSkillId[]>
   pickDirectory: () => Promise<string | null>
-  openWebSearchSettings?: (url: string) => Promise<boolean>
 }
 
 declare global {

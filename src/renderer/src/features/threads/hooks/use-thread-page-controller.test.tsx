@@ -12,6 +12,7 @@ const mockState = vi.hoisted(() => {
     routeParams,
     sendResolvers,
     chatStatus: 'ready' as 'ready' | 'submitted' | 'streaming',
+    chatMessages: [] as Array<Record<string, unknown>>,
     assistantsData: [] as Array<Record<string, unknown>>,
     providersData: [] as Array<Record<string, unknown>>,
     threadsData: [] as Array<Record<string, unknown>>,
@@ -116,7 +117,7 @@ vi.mock('@ai-sdk/react', () => ({
       stop: mockState.stopMock,
       status: mockState.chatStatus,
       error: null,
-      messages: []
+      messages: mockState.chatMessages
     }
 }))
 
@@ -162,11 +163,38 @@ async function waitForCondition(condition: () => boolean, description: string): 
   throw new Error(`Timed out waiting for ${description}`)
 }
 
+function readMessageText(message: unknown): string | null {
+  if (!message || typeof message !== 'object') {
+    return null
+  }
+
+  const parts = Array.isArray((message as { parts?: unknown[] }).parts)
+    ? ((message as { parts: Array<Record<string, unknown>> }).parts ?? [])
+    : []
+  const textPart = parts.find(
+    (part) => part.type === 'text' && typeof part.text === 'string'
+  ) as { text?: string } | undefined
+
+  return typeof textPart?.text === 'string' ? textPart.text : null
+}
+
+function readMessageTexts(messages: unknown): string[] {
+  if (!Array.isArray(messages)) {
+    return []
+  }
+
+  return messages.flatMap((message) => {
+    const text = readMessageText(message)
+    return text ? [text] : []
+  })
+}
+
 describe('useThreadPageController', () => {
   beforeEach(() => {
     mockState.routeParams.assistantId = 'assistant-1'
     delete mockState.routeParams.threadId
     mockState.chatStatus = 'ready'
+    mockState.chatMessages = []
     mockState.sendResolvers.splice(0, mockState.sendResolvers.length)
 
     mockState.navigateMock.mockReset()
@@ -323,11 +351,14 @@ describe('useThreadPageController', () => {
       stop: mockState.stopMock,
       status: mockState.chatStatus,
       error: null,
-      messages: []
+      messages: mockState.chatMessages
     }))
 
     mockState.sendMessageMock.mockReset()
-    mockState.sendMessageMock.mockImplementation(() => {
+    mockState.sendMessageMock.mockImplementation((message: unknown) => {
+      if (message && typeof message === 'object') {
+        mockState.chatMessages = [...mockState.chatMessages, message as Record<string, unknown>]
+      }
       mockState.chatStatus = 'streaming'
       return new Promise<void>((resolve) => {
         mockState.sendResolvers.push(() => {
@@ -338,7 +369,11 @@ describe('useThreadPageController', () => {
     })
 
     mockState.setMessagesMock.mockReset()
-    mockState.setMessagesMock.mockImplementation(() => undefined)
+    mockState.setMessagesMock.mockImplementation((messages: unknown) => {
+      if (Array.isArray(messages)) {
+        mockState.chatMessages = [...messages] as Array<Record<string, unknown>>
+      }
+    })
 
     mockState.stopMock.mockReset()
     mockState.stopMock.mockImplementation(() => undefined)
@@ -563,6 +598,86 @@ describe('useThreadPageController', () => {
     expect(mockState.setMessagesMock).toHaveBeenLastCalledWith([])
   })
 
+  it('keeps an in-flight submitted user message visible when re-entering a thread', async () => {
+    mockState.routeParams.threadId = 'thread-1'
+    mockState.threadsData = [
+      {
+        id: 'thread-1',
+        assistantId: 'assistant-1',
+        resourceId: 'default-profile',
+        title: 'Recovered thread',
+        lastMessageAt: null,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z'
+      }
+    ]
+    mockState.listThreadChatMessagesMock
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'msg-existing',
+          role: 'assistant',
+          parts: [{ type: 'text', text: 'Earlier reply' }]
+        }
+      ])
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+          onForceRerenderReady={(value) => {
+            forceRerender = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(() => controller?.selectedThread?.id === 'thread-1', 'selected thread')
+    await waitForCondition(
+      () => mockState.listThreadChatMessagesMock.mock.calls.length === 1,
+      'initial thread history request'
+    )
+
+    await act(async () => {
+      void controller?.onSubmitMessage('Please keep this visible')
+      await Promise.resolve()
+    })
+
+    await waitForCondition(
+      () => mockState.sendMessageMock.mock.calls.length === 1,
+      'in-flight send invocation'
+    )
+
+    await act(async () => {
+      delete mockState.routeParams.threadId
+      forceRerender?.()
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      mockState.routeParams.threadId = 'thread-1'
+      forceRerender?.()
+      await Promise.resolve()
+    })
+
+    await waitForCondition(
+      () => mockState.listThreadChatMessagesMock.mock.calls.length === 2,
+      're-entered thread history request'
+    )
+
+    expect(readMessageTexts(mockState.setMessagesMock.mock.lastCall?.[0])).toContain(
+      'Please keep this visible'
+    )
+
+    await act(async () => {
+      const resolveSend = mockState.sendResolvers.shift()
+      resolveSend?.()
+      await Promise.resolve()
+    })
+  })
+
   it('queues the first message until a newly selected thread finishes loading history', async () => {
     mockState.routeParams.threadId = 'thread-1'
     mockState.threadsData = [
@@ -615,9 +730,9 @@ describe('useThreadPageController', () => {
       () => mockState.sendMessageMock.mock.calls.length === 1,
       'queued thread send'
     )
-    expect(mockState.sendMessageMock).toHaveBeenCalledWith({
-      text: 'Ship the first queued message'
-    })
+    expect(readMessageText(mockState.sendMessageMock.mock.calls[0]?.[0])).toBe(
+      'Ship the first queued message'
+    )
   })
 
   it('routes /stop through the main-thread command handler instead of sending chat', async () => {
@@ -758,9 +873,7 @@ describe('useThreadPageController', () => {
       profileId: 'default-profile',
       text: '/unknown'
     })
-    expect(mockState.sendMessageMock).toHaveBeenCalledWith({
-      text: '/unknown'
-    })
+    expect(readMessageText(mockState.sendMessageMock.mock.calls[0]?.[0])).toBe('/unknown')
   })
 
   it('uses persisted thread usage totals as the canonical token usage state', async () => {
