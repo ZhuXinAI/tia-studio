@@ -46,7 +46,11 @@ function buildCodingAgentDescription(input: {
 }
 
 function isManagedRuntimeReady(record: ManagedRuntimesState[keyof ManagedRuntimesState] | undefined): boolean {
-  return Boolean(record?.binaryPath) && (
+  if (!record?.binaryPath) {
+    return false
+  }
+
+  return (
     record.status === 'ready' ||
     record.status === 'custom-ready' ||
     record.status === 'update-available'

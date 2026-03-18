@@ -291,7 +291,11 @@ async function defaultInstallReleaseAsset(
 }
 
 function isRuntimeRecordActive(record: ManagedRuntimeRecord | undefined): record is ManagedRuntimeRecord {
-  return Boolean(record?.binaryPath) && (
+  if (!record?.binaryPath) {
+    return false
+  }
+
+  return (
     record.status === 'ready' ||
     record.status === 'custom-ready' ||
     record.status === 'update-available'
