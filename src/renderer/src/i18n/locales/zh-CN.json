@@ -5,6 +5,8 @@
       "home": "主页",
       "claws": "Claws",
       "team": "团队",
+      "update": "Update",
+      "updating": "Updating...",
       "openSettings": "打开设置"
     },
     "legacySidebar": {
@@ -202,7 +204,8 @@
       },
       "kindDescription": {
         "bun": "用于 bun、bunx 和基于 npx 的 MCP 服务启动。",
-        "uv": "用于 uv 和基于 uvx 的 MCP 服务启动。"
+        "uv": "用于 uv 和基于 uvx 的 MCP 服务启动。",
+        "agentBrowser": "Used for agent-browser-backed browser automation and MCP launches."
       },
       "labels": {
         "status": "状态：",
@@ -535,6 +538,7 @@
         "setupDescription": "Optionally install bun and a few recommended tools before creating this claw."
       },
       "channelTypes": {
+        "discord": "Discord",
         "lark": "Lark",
         "telegram": "Telegram",
         "whatsapp": "WhatsApp",
@@ -553,6 +557,7 @@
         "providerRequired": "提供商为必填项",
         "channelRequired": "请选择要绑定的频道",
         "channelCredentialsRequired": "Lark 频道名称、应用 ID 和应用密钥均为必填项",
+        "discordCredentialsRequired": "Discord channel name and bot token are required",
         "telegramCredentialsRequired": "Telegram 频道名称和 Bot Token 均为必填项",
         "pickFolderFailed": "选择文件夹失败"
       }
@@ -612,6 +617,7 @@
       },
       "errors": {
         "nameRequired": "频道名称为必填项",
+        "discordCredentialsRequired": "Bot token is required for Discord channels",
         "larkCredentialsRequired": "Lark 频道必须填写 App ID 和应用密钥",
         "telegramCredentialsRequired": "Telegram 频道必须填写 Bot Token",
         "wecomCredentialsRequired": "企业微信频道必须填写机器人 ID 和 Secret",

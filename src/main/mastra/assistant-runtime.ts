@@ -1695,11 +1695,15 @@ ${input.prompt}`
       assistant.workspaceConfig ?? {},
       assistant.skillsConfig ?? {}
     )
+    const managedRuntimeState = this.options.managedRuntimeResolver
+      ? await this.options.managedRuntimeResolver.getStatus().catch(() => null)
+      : null
     const codingAgent = createCodingSubagent({
       assistantId: assistant.id,
       assistantName: assistant.name,
       workspaceRootPath,
-      codingConfig: assistant.codingConfig
+      codingConfig: assistant.codingConfig,
+      managedRuntimeState
     })
     if (this.options.tiaBrowserToolManager && browserAutomationMode === 'tia-browser-tool') {
       const browserAgentMemory = new Memory({
@@ -2046,6 +2050,10 @@ ${input.prompt}`
 
     if (normalized === 'uv' || normalized === 'uvx') {
       return 'uv'
+    }
+
+    if (normalized === 'agent-browser') {
+      return 'agent-browser'
     }
 
     return null

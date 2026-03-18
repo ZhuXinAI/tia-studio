@@ -5,6 +5,8 @@
       "home": "Αρχική",
       "claws": "Claws",
       "team": "Ομάδα",
+      "update": "Update",
+      "updating": "Updating...",
       "openSettings": "Άνοιγμα ρυθμίσεων"
     },
     "legacySidebar": {
@@ -202,7 +204,8 @@
       },
       "kindDescription": {
         "bun": "Για εκκινήσεις διακομιστή MCP με bun, bunx και npx.",
-        "uv": "Για εκκινήσεις διακομιστή MCP με uv και uvx."
+        "uv": "Για εκκινήσεις διακομιστή MCP με uv και uvx.",
+        "agentBrowser": "Used for agent-browser-backed browser automation and MCP launches."
       },
       "labels": {
         "status": "Κατάσταση:",
@@ -535,6 +538,7 @@
         "setupDescription": "Optionally install bun and a few recommended tools before creating this claw."
       },
       "channelTypes": {
+        "discord": "Discord",
         "lark": "Lark",
         "telegram": "Telegram",
         "whatsapp": "WhatsApp",
@@ -553,6 +557,7 @@
         "providerRequired": "Ο πάροχος είναι υποχρεωτικός",
         "channelRequired": "Επιλέξτε κανάλι για σύνδεση",
         "channelCredentialsRequired": "Απαιτούνται όνομα καναλιού Lark, ID εφαρμογής και μυστικό εφαρμογής",
+        "discordCredentialsRequired": "Discord channel name and bot token are required",
         "telegramCredentialsRequired": "Απαιτούνται όνομα καναλιού Telegram και διακριτικό bot",
         "pickFolderFailed": "Failed to pick folder"
       }
@@ -612,6 +617,7 @@
       },
       "errors": {
         "nameRequired": "Απαιτείται όνομα καναλιού",
+        "discordCredentialsRequired": "Bot token is required for Discord channels",
         "larkCredentialsRequired": "Απαιτούνται App ID και app secret για κανάλια Lark",
         "telegramCredentialsRequired": "Απαιτείται διακριτικό bot για κανάλια Telegram",
         "wecomCredentialsRequired": "Bot ID and secret are required for Wecom channels",

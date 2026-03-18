@@ -58,6 +58,17 @@ describe('runtime setup page', () => {
         checksum: null,
         status: 'missing',
         errorMessage: null
+      },
+      'agent-browser': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
       }
     })
   })
@@ -71,7 +82,7 @@ describe('runtime setup page', () => {
     vi.clearAllMocks()
   })
 
-  it('renders bun and uv runtime cards with actions', async () => {
+  it('renders bun, uv, and agent-browser runtime cards with actions', async () => {
     await act(async () => {
       root.render(
         <MemoryRouter>
@@ -84,6 +95,7 @@ describe('runtime setup page', () => {
     expect(container.textContent).toContain('Runtime Setup')
     expect(container.textContent).toContain('bun')
     expect(container.textContent).toContain('uv')
+    expect(container.textContent).toContain('agent-browser')
     expect(container.textContent).toContain('ready')
     expect(container.textContent).toContain('missing')
     expect(container.textContent).toContain('Install latest')

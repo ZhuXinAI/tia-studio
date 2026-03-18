@@ -18,7 +18,7 @@ type AutoUpdateState = {
   lastCheckedAt: string | null
   message: string | null
 }
-type ManagedRuntimeKind = 'bun' | 'uv'
+type ManagedRuntimeKind = 'agent-browser' | 'bun' | 'uv'
 type ManagedRuntimeSource = 'managed' | 'custom' | 'none'
 type ManagedRuntimeStatus =
   | 'missing'

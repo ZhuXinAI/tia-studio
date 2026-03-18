@@ -5,6 +5,8 @@
       "home": "Inicio",
       "claws": "Claws",
       "team": "Equipo",
+      "update": "Update",
+      "updating": "Updating...",
       "openSettings": "Abrir ajustes"
     },
     "legacySidebar": {
@@ -202,7 +204,8 @@
       },
       "kindDescription": {
         "bun": "Para arranques de servidor MCP con bun, bunx y npx.",
-        "uv": "Para arranques de servidor MCP con uv y uvx."
+        "uv": "Para arranques de servidor MCP con uv y uvx.",
+        "agentBrowser": "Used for agent-browser-backed browser automation and MCP launches."
       },
       "labels": {
         "status": "Estado:",
@@ -535,6 +538,7 @@
         "setupDescription": "Optionally install bun and a few recommended tools before creating this claw."
       },
       "channelTypes": {
+        "discord": "Discord",
         "lark": "Lark",
         "telegram": "Telegram",
         "whatsapp": "WhatsApp",
@@ -553,6 +557,7 @@
         "providerRequired": "El proveedor es obligatorio",
         "channelRequired": "Elige un canal para vincular",
         "channelCredentialsRequired": "Se requieren el nombre del canal de Lark, el ID de la app y el secreto de la app",
+        "discordCredentialsRequired": "Discord channel name and bot token are required",
         "telegramCredentialsRequired": "Se requieren el nombre del canal de Telegram y el token del bot",
         "pickFolderFailed": "Failed to pick folder"
       }
@@ -612,6 +617,7 @@
       },
       "errors": {
         "nameRequired": "Channel name is required",
+        "discordCredentialsRequired": "Bot token is required for Discord channels",
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "wecomCredentialsRequired": "Bot ID and secret are required for Wecom channels",

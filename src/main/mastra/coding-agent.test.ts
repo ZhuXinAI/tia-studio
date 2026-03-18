@@ -40,6 +40,7 @@ describe('createCodingSubagent', () => {
     const cwd = path.resolve(workspaceRootPath, 'app')
     const sharedDir = path.resolve(cwd, '../shared')
     const toolsDir = path.resolve('/opt/tools')
+    const managedRuntimeDir = path.resolve('/managed/bun/bin')
     const agent = createCodingSubagent({
       assistantId: 'assistant-1',
       assistantName: 'TIA',
@@ -48,6 +49,41 @@ describe('createCodingSubagent', () => {
         enabled: true,
         cwd: 'app',
         addDirs: ['../shared', '/opt/tools']
+      },
+      managedRuntimeState: {
+        bun: {
+          source: 'managed',
+          binaryPath: path.join(managedRuntimeDir, 'bun'),
+          version: 'bun 1.2.0',
+          installedAt: '2026-03-18T00:00:00.000Z',
+          lastCheckedAt: '2026-03-18T00:00:00.000Z',
+          releaseUrl: 'https://example.test/bun',
+          checksum: null,
+          status: 'ready',
+          errorMessage: null
+        },
+        uv: {
+          source: 'none',
+          binaryPath: null,
+          version: null,
+          installedAt: null,
+          lastCheckedAt: null,
+          releaseUrl: null,
+          checksum: null,
+          status: 'missing',
+          errorMessage: null
+        },
+        'agent-browser': {
+          source: 'none',
+          binaryPath: null,
+          version: null,
+          installedAt: null,
+          lastCheckedAt: null,
+          releaseUrl: null,
+          checksum: null,
+          status: 'missing',
+          errorMessage: null
+        }
       }
     }) as
       | {
@@ -58,12 +94,19 @@ describe('createCodingSubagent', () => {
     expect(agent).toBeDefined()
     expect(agent?.description).toContain(`Primary working directory: ${cwd}.`)
     expect(agent?.description).toContain(`Assistant workspace root: ${workspaceRootPath}.`)
-    expect(agent?.description).toContain(`Can also access: ${sharedDir}, ${toolsDir}.`)
+    expect(agent?.description).toContain(
+      `Can also access: ${sharedDir}, ${toolsDir}, ${managedRuntimeDir}.`
+    )
     expect(agentConfigs.at(-1)?.instructions).toContain('remote debugging port 10531')
     expect(agentConfigs.at(-1)?.instructions).toContain('recommend installing agent-browser')
+    expect(agentConfigs.at(-1)?.instructions).toContain('infer that npx should use the managed bunx path')
     expect(codexAppServerMock).toHaveBeenCalledWith(DEFAULT_ASSISTANT_CODING_MODEL, {
       cwd,
-      addDirs: [sharedDir, toolsDir]
+      addDirs: [sharedDir, toolsDir, managedRuntimeDir],
+      sandboxPolicy: {
+        type: 'workspaceWrite',
+        writableRoots: [workspaceRootPath, cwd, sharedDir, toolsDir, managedRuntimeDir]
+      }
     })
   })
 
@@ -87,7 +130,11 @@ describe('createCodingSubagent', () => {
     expect(agent?.description).not.toContain('Assistant workspace root:')
     expect(agentConfigs.at(-1)?.instructions).toContain('TIA provides a built-in Electron browser')
     expect(codexAppServerMock).toHaveBeenCalledWith(DEFAULT_ASSISTANT_CODING_MODEL, {
-      cwd: workspaceRootPath
+      cwd: workspaceRootPath,
+      sandboxPolicy: {
+        type: 'workspaceWrite',
+        writableRoots: [workspaceRootPath]
+      }
     })
   })
 })

@@ -43,6 +43,17 @@ describe('ManagedRuntimesRepository', () => {
         checksum: null,
         status: 'missing',
         errorMessage: null
+      },
+      'agent-browser': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
       }
     })
   })
@@ -73,6 +84,17 @@ describe('ManagedRuntimesRepository', () => {
           checksum: {},
           status: 'unknown-status',
           errorMessage: ' broken '
+        },
+        'agent-browser': {
+          source: 'custom',
+          binaryPath: ' /Applications/agent-browser ',
+          version: ' agent-browser 0.21.0 ',
+          installedAt: ' 2026-03-08T02:00:00.000Z ',
+          lastCheckedAt: ' 2026-03-08T03:00:00.000Z ',
+          releaseUrl: ' https://example.test/agent-browser ',
+          checksum: ' def456 ',
+          status: 'custom-ready',
+          errorMessage: null
         }
       }),
       'utf-8'
@@ -103,6 +125,17 @@ describe('ManagedRuntimesRepository', () => {
       status: 'missing',
       errorMessage: 'broken'
     })
+    expect(state['agent-browser']).toEqual({
+      source: 'custom',
+      binaryPath: '/Applications/agent-browser',
+      version: 'agent-browser 0.21.0',
+      installedAt: '2026-03-08T02:00:00.000Z',
+      lastCheckedAt: '2026-03-08T03:00:00.000Z',
+      releaseUrl: 'https://example.test/agent-browser',
+      checksum: 'def456',
+      status: 'custom-ready',
+      errorMessage: null
+    })
   })
 
   it('persists normalized runtime fields', async () => {
@@ -131,6 +164,17 @@ describe('ManagedRuntimesRepository', () => {
         checksum: null,
         status: 'download-failed',
         errorMessage: ' failed download '
+      },
+      'agent-browser': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
       }
     })
 
@@ -156,6 +200,17 @@ describe('ManagedRuntimesRepository', () => {
         checksum: null,
         status: 'download-failed',
         errorMessage: 'failed download'
+      },
+      'agent-browser': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
       }
     })
 

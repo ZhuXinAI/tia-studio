@@ -5,6 +5,8 @@
       "home": "ホーム",
       "claws": "Claws",
       "team": "チーム",
+      "update": "Update",
+      "updating": "Updating...",
       "openSettings": "設定を開く"
     },
     "legacySidebar": {
@@ -202,7 +204,8 @@
       },
       "kindDescription": {
         "bun": "Used for bun, bunx, and npx-backed MCP server launches.",
-        "uv": "Used for uv and uvx-backed MCP server launches."
+        "uv": "Used for uv and uvx-backed MCP server launches.",
+        "agentBrowser": "Used for agent-browser-backed browser automation and MCP launches."
       },
       "labels": {
         "status": "Status:",
@@ -535,6 +538,7 @@
         "setupDescription": "Optionally install bun and a few recommended tools before creating this claw."
       },
       "channelTypes": {
+        "discord": "Discord",
         "lark": "Lark",
         "telegram": "Telegram",
         "whatsapp": "WhatsApp",
@@ -553,6 +557,7 @@
         "providerRequired": "プロバイダーは必須です",
         "channelRequired": "接続するチャンネルを選択してください",
         "channelCredentialsRequired": "Lark チャンネル名、App ID、App Secret が必要です",
+        "discordCredentialsRequired": "Discord channel name and bot token are required",
         "telegramCredentialsRequired": "Telegram チャンネル名と Bot トークンが必要です",
         "pickFolderFailed": "Failed to pick folder"
       }
@@ -612,6 +617,7 @@
       },
       "errors": {
         "nameRequired": "Channel name is required",
+        "discordCredentialsRequired": "Bot token is required for Discord channels",
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "wecomCredentialsRequired": "Bot ID and secret are required for Wecom channels",

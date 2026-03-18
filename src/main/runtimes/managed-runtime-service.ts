@@ -48,6 +48,7 @@ type ManagedRuntimeServiceOptions = {
 
 const execFileAsync = promisify(execFile)
 const githubReleaseUrls: Record<ManagedRuntimeKind, string> = {
+  'agent-browser': 'https://api.github.com/repos/vercel-labs/agent-browser/releases/latest',
   bun: 'https://api.github.com/repos/oven-sh/bun/releases/latest',
   uv: 'https://api.github.com/repos/astral-sh/uv/releases/latest'
 }
@@ -97,6 +98,11 @@ function normalizeVersionOutput(stdout: string): string | null {
 
 function runtimeBinaryName(kind: ManagedRuntimeKind, platform: NodeJS.Platform): string {
   const suffix = platform === 'win32' ? '.exe' : ''
+
+  if (kind === 'agent-browser') {
+    return `agent-browser${suffix}`
+  }
+
   return `${kind}${suffix}`
 }
 
@@ -215,6 +221,12 @@ async function extractArchive(
   await copyFile(archivePath, join(destinationDirectory, basename(archivePath)))
 }
 
+function isArchiveAsset(filePath: string): boolean {
+  return (
+    filePath.endsWith('.zip') || filePath.endsWith('.tar.gz') || filePath.endsWith('.tgz')
+  )
+}
+
 async function findBinaryPath(directory: string, binaryName: string): Promise<string | null> {
   const entries = await readdir(directory, { withFileTypes: true })
 
@@ -250,12 +262,22 @@ async function defaultInstallReleaseAsset(
 ): Promise<string> {
   await rm(installDirectory, { recursive: true, force: true })
   await mkdir(installDirectory, { recursive: true })
+  const binaryName = runtimeBinaryName(kind, options.platform)
+
+  if (!isArchiveAsset(archivePath)) {
+    const binaryPath = join(installDirectory, binaryName)
+    await copyFile(archivePath, binaryPath)
+
+    if (options.platform !== 'win32') {
+      await chmod(binaryPath, 0o755)
+    }
+
+    return binaryPath
+  }
+
   await extractArchive(archivePath, installDirectory, options.runCommand, options.platform)
 
-  const binaryPath = await findBinaryPath(
-    installDirectory,
-    runtimeBinaryName(kind, options.platform)
-  )
+  const binaryPath = await findBinaryPath(installDirectory, binaryName)
 
   if (!binaryPath) {
     throw new Error(`Unable to locate ${kind} binary in downloaded release`)
@@ -268,13 +290,21 @@ async function defaultInstallReleaseAsset(
   return binaryPath
 }
 
+function isRuntimeRecordActive(record: ManagedRuntimeRecord | undefined): record is ManagedRuntimeRecord {
+  return Boolean(record?.binaryPath) && (
+    record.status === 'ready' ||
+    record.status === 'custom-ready' ||
+    record.status === 'update-available'
+  )
+}
+
 function createManagedRuntimeEnv(
   state: ManagedRuntimesState,
   env: NodeJS.ProcessEnv
 ): NodeJS.ProcessEnv {
-  const runtimeDirs = [state.bun.binaryPath, state.uv.binaryPath]
-    .filter((binaryPath): binaryPath is string => typeof binaryPath === 'string')
-    .map((binaryPath) => dirname(binaryPath))
+  const runtimeDirs = [state.bun, state.uv, state['agent-browser']]
+    .filter((record): record is ManagedRuntimeRecord => isRuntimeRecordActive(record))
+    .map((record) => dirname(record.binaryPath as string))
 
   if (runtimeDirs.length === 0) {
     return { ...env }
@@ -515,12 +545,11 @@ export class ManagedRuntimeService {
   }> {
     const state = await this.repository.getState()
     const nextEnv = createManagedRuntimeEnv(state, env)
-    const bunPath =
-      state.bun.status === 'ready' || state.bun.status === 'custom-ready'
-        ? state.bun.binaryPath
-        : null
-    const uvPath =
-      state.uv.status === 'ready' || state.uv.status === 'custom-ready' ? state.uv.binaryPath : null
+    const bunPath = isRuntimeRecordActive(state.bun) ? state.bun.binaryPath : null
+    const uvPath = isRuntimeRecordActive(state.uv) ? state.uv.binaryPath : null
+    const agentBrowserPath = isRuntimeRecordActive(state['agent-browser'])
+      ? state['agent-browser'].binaryPath
+      : null
 
     if (command === 'bun' && bunPath) {
       return { command: bunPath, args, env: nextEnv }
@@ -544,6 +573,14 @@ export class ManagedRuntimeService {
       return {
         command: uvx.command,
         args: [...uvx.extraArgs, ...args],
+        env: nextEnv
+      }
+    }
+
+    if (command === 'agent-browser' && agentBrowserPath) {
+      return {
+        command: agentBrowserPath,
+        args,
         env: nextEnv
       }
     }
@@ -612,6 +649,25 @@ export class ManagedRuntimeService {
       }
       if (platform === 'win32' && arch === 'x64') {
         return ['bun-windows-x64']
+      }
+      return []
+    }
+
+    if (kind === 'agent-browser') {
+      if (platform === 'darwin' && arch === 'arm64') {
+        return ['agent-browser-darwin-arm64']
+      }
+      if (platform === 'darwin' && arch === 'x64') {
+        return ['agent-browser-darwin-x64']
+      }
+      if (platform === 'linux' && arch === 'arm64') {
+        return ['agent-browser-linux-arm64', 'agent-browser-linux-musl-arm64']
+      }
+      if (platform === 'linux' && arch === 'x64') {
+        return ['agent-browser-linux-x64', 'agent-browser-linux-musl-x64']
+      }
+      if (platform === 'win32' && arch === 'x64') {
+        return ['agent-browser-win32-x64']
       }
       return []
     }

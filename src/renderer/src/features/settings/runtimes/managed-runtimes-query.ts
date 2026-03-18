@@ -1,4 +1,4 @@
-export type ManagedRuntimeKind = 'bun' | 'uv'
+export type ManagedRuntimeKind = 'agent-browser' | 'bun' | 'uv'
 export type ManagedRuntimeSource = 'managed' | 'custom' | 'none'
 export type ManagedRuntimeStatus =
   | 'missing'
@@ -26,7 +26,7 @@ export type ManagedRuntimeRecord = {
 export type ManagedRuntimesState = Record<ManagedRuntimeKind, ManagedRuntimeRecord>
 export type RuntimeOnboardingSkillId = 'agent-browser' | 'find-skills'
 
-export const managedRuntimeKinds: ManagedRuntimeKind[] = ['bun', 'uv']
+export const managedRuntimeKinds: ManagedRuntimeKind[] = ['bun', 'uv', 'agent-browser']
 
 function createDefaultRecord(): ManagedRuntimeRecord {
   return {
@@ -45,7 +45,8 @@ function createDefaultRecord(): ManagedRuntimeRecord {
 export function createDefaultManagedRuntimesState(): ManagedRuntimesState {
   return {
     bun: createDefaultRecord(),
-    uv: createDefaultRecord()
+    uv: createDefaultRecord(),
+    'agent-browser': createDefaultRecord()
   }
 }
 
@@ -111,6 +112,10 @@ export function getRequiredManagedRuntimeKind(
 
   if (normalized === 'uv' || normalized === 'uvx') {
     return 'uv'
+  }
+
+  if (normalized === 'agent-browser') {
+    return 'agent-browser'
   }
 
   return null

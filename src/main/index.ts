@@ -123,11 +123,11 @@ function resolveUiConfigStore(): UiConfigStore {
 let isTransparentWindow = Boolean(resolveUiConfigStore().getConfig().transparent)
 
 function assertManagedRuntimeKind(value: unknown): ManagedRuntimeKind {
-  if (value === 'bun' || value === 'uv') {
+  if (value === 'bun' || value === 'uv' || value === 'agent-browser') {
     return value
   }
 
-  throw new Error('Managed runtime kind must be "bun" or "uv"')
+  throw new Error('Managed runtime kind must be "bun", "uv", or "agent-browser"')
 }
 
 function assertRecommendedSkillIds(value: unknown): RecommendedSkillId[] {
@@ -724,8 +724,10 @@ if (hasSingleInstanceLock) {
     ipcMain.handle('tia:pick-custom-runtime', async (event, rawKind) => {
       const kind = assertManagedRuntimeKind(rawKind)
       const currentWindow = BrowserWindow.fromWebContents(event.sender)
+      const runtimeDisplayName =
+        kind === 'bun' ? 'Bun' : kind === 'uv' ? 'UV' : 'Agent Browser'
       const openDialogOptions: OpenDialogOptions = {
-        title: `Select ${kind === 'bun' ? 'Bun' : 'UV'} Binary`,
+        title: `Select ${runtimeDisplayName} Binary`,
         properties: ['openFile']
       }
       const result = currentWindow

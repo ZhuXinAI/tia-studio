@@ -5,6 +5,8 @@
       "home": "主頁",
       "claws": "Claws",
       "team": "團隊",
+      "update": "Update",
+      "updating": "Updating...",
       "openSettings": "開啟設定"
     },
     "legacySidebar": {
@@ -202,7 +204,8 @@
       },
       "kindDescription": {
         "bun": "用於 bun、bunx 及基於 npx 的 MCP 伺服器啟動。",
-        "uv": "用於 uv 及基於 uvx 的 MCP 伺服器啟動。"
+        "uv": "用於 uv 及基於 uvx 的 MCP 伺服器啟動。",
+        "agentBrowser": "Used for agent-browser-backed browser automation and MCP launches."
       },
       "labels": {
         "status": "狀態：",
@@ -535,6 +538,7 @@
         "setupDescription": "Optionally install bun and a few recommended tools before creating this claw."
       },
       "channelTypes": {
+        "discord": "Discord",
         "lark": "Lark",
         "telegram": "Telegram",
         "whatsapp": "WhatsApp",
@@ -553,6 +557,7 @@
         "providerRequired": "供應商為必填項",
         "channelRequired": "請選擇要綁定的頻道",
         "channelCredentialsRequired": "Lark 頻道名稱、應用程式 ID 和應用程式密鑰皆為必填項",
+        "discordCredentialsRequired": "Discord channel name and bot token are required",
         "telegramCredentialsRequired": "Telegram 頻道名稱和 Bot Token 均為必填項",
         "pickFolderFailed": "Failed to pick folder"
       }
@@ -612,6 +617,7 @@
       },
       "errors": {
         "nameRequired": "頻道名稱為必填",
+        "discordCredentialsRequired": "Bot token is required for Discord channels",
         "larkCredentialsRequired": "Lark 頻道需要應用程式 ID 與應用程式密鑰",
         "telegramCredentialsRequired": "Telegram 頻道需要 Bot 令牌",
         "wecomCredentialsRequired": "企業微信頻道需要機器人 ID 與 Secret",
