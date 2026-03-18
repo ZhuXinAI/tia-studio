@@ -4,6 +4,8 @@ type Translate = (key: string) => string
 
 export function channelTypeLabel(type: string, translate: Translate): string {
   switch (type) {
+    case 'discord':
+      return translate('claws.dialog.channelTypes.discord')
     case 'lark':
       return translate('claws.dialog.channelTypes.lark')
     case 'telegram':

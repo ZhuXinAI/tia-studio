@@ -117,13 +117,6 @@ describe('assistants route', () => {
       workspaceConfig: {
         rootPath: '/tmp/workspace'
       },
-      codingConfig: {
-        enabled: true,
-        cwd: '.',
-        addDirs: ['src'],
-        approvalMode: 'on-failure',
-        sandboxMode: 'workspace-write'
-      },
       mcpConfig: {
         filesystem: true
       }
@@ -137,13 +130,6 @@ describe('assistants route', () => {
         workspaceConfig: {
           rootPath: '/tmp/workspace'
         },
-        codingConfig: {
-          enabled: true,
-          cwd: '.',
-          addDirs: ['src'],
-          approvalMode: 'on-failure',
-          sandboxMode: 'workspace-write'
-        },
         mcpConfig: {
           filesystem: true
         }
@@ -155,13 +141,6 @@ describe('assistants route', () => {
       name: 'Trip Planner Pro',
       workspaceConfig: {
         rootPath: '/tmp/workspace'
-      },
-      codingConfig: {
-        enabled: true,
-        cwd: '.',
-        addDirs: ['src'],
-        approvalMode: 'on-failure',
-        sandboxMode: 'workspace-write'
       },
       mcpConfig: {
         filesystem: true

@@ -6,6 +6,7 @@ import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { cn } from '../../../lib/utils'
 import { getDesktopAppInfo, type DesktopAppInfo } from '../../../lib/desktop-app-info'
+import { useAutoUpdate } from '../auto-update/use-auto-update'
 
 type AboutLinkItem = {
   title: string
@@ -15,34 +16,9 @@ type AboutLinkItem = {
   icon: ComponentType<{ className?: string }>
 }
 
-type AutoUpdateStatus =
-  | 'idle'
-  | 'checking'
-  | 'update-available'
-  | 'update-downloaded'
-  | 'up-to-date'
-  | 'unsupported'
-  | 'error'
-
-type AutoUpdateState = {
-  enabled: boolean
-  status: AutoUpdateStatus
-  availableVersion: string | null
-  lastCheckedAt: string | null
-  message: string | null
-}
-
 const fallbackAppInfo: DesktopAppInfo = {
   name: 'TIA Studio',
   version: '0.0.0'
-}
-
-const fallbackAutoUpdateState: AutoUpdateState = {
-  enabled: true,
-  status: 'idle',
-  availableVersion: null,
-  lastCheckedAt: null,
-  message: null
 }
 
 function AboutToggleRow({
@@ -130,10 +106,16 @@ function AboutLinkRow({
 export function AboutSettingsPage(): React.JSX.Element {
   const { t } = useTranslation()
   const [appInfo, setAppInfo] = useState<DesktopAppInfo>(fallbackAppInfo)
-  const [autoUpdateState, setAutoUpdateState] = useState<AutoUpdateState>(fallbackAutoUpdateState)
-  const [isSavingAutoUpdate, setIsSavingAutoUpdate] = useState(false)
-  const [isCheckingForUpdates, setIsCheckingForUpdates] = useState(false)
-  const [isRestartingToUpdate, setIsRestartingToUpdate] = useState(false)
+  const {
+    autoUpdateState,
+    hasDownloadedUpdate,
+    isSavingAutoUpdate,
+    isCheckingForUpdates,
+    isRestartingToUpdate,
+    toggleAutoUpdate,
+    checkForUpdates,
+    restartToUpdate
+  } = useAutoUpdate()
   const aboutLinks: AboutLinkItem[] = [
     {
       title: t('settings.about.links.docs.title'),
@@ -179,128 +161,11 @@ export function AboutSettingsPage(): React.JSX.Element {
     }
   }, [t])
 
-  useEffect(() => {
-    let cancelled = false
-    const getAutoUpdateState = window.tiaDesktop?.getAutoUpdateState
-
-    if (!getAutoUpdateState) {
-      return
-    }
-
-    void getAutoUpdateState()
-      .then((nextState) => {
-        if (!cancelled) {
-          setAutoUpdateState(nextState)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setAutoUpdateState((current) => ({
-            ...current,
-            status: 'error',
-            message: t('settings.about.autoUpdate.loadError')
-          }))
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [t])
-
-  useEffect(() => {
-    const unsubscribe = window.tiaDesktop?.onAutoUpdateStateChanged?.((nextState) => {
-      setAutoUpdateState(nextState)
-    })
-
-    return () => {
-      unsubscribe?.()
-    }
-  }, [])
-
   const versionLabel = useMemo(() => {
     return appInfo.version.startsWith('v') ? appInfo.version : `v${appInfo.version}`
   }, [appInfo.version])
 
   const statusRole = autoUpdateState.status === 'error' ? 'alert' : 'status'
-  const hasDownloadedUpdate = autoUpdateState.status === 'update-downloaded'
-
-  const toggleAutoUpdate = async (): Promise<void> => {
-    const setAutoUpdateEnabled = window.tiaDesktop?.setAutoUpdateEnabled
-    if (
-      !setAutoUpdateEnabled ||
-      isSavingAutoUpdate ||
-      isCheckingForUpdates ||
-      isRestartingToUpdate
-    ) {
-      return
-    }
-
-    setIsSavingAutoUpdate(true)
-    try {
-      const nextState = await setAutoUpdateEnabled(!autoUpdateState.enabled)
-      setAutoUpdateState(nextState)
-    } catch {
-      setAutoUpdateState((current) => ({
-        ...current,
-        status: 'error',
-        message: t('settings.about.autoUpdate.saveError')
-      }))
-    } finally {
-      setIsSavingAutoUpdate(false)
-    }
-  }
-
-  const checkForUpdates = async (): Promise<void> => {
-    const checkForUpdatesInDesktop = window.tiaDesktop?.checkForUpdates
-    if (
-      !checkForUpdatesInDesktop ||
-      isSavingAutoUpdate ||
-      isCheckingForUpdates ||
-      isRestartingToUpdate
-    ) {
-      return
-    }
-
-    setIsCheckingForUpdates(true)
-    try {
-      const nextState = await checkForUpdatesInDesktop()
-      setAutoUpdateState(nextState)
-    } catch {
-      setAutoUpdateState((current) => ({
-        ...current,
-        status: 'error',
-        message: t('settings.about.autoUpdate.checkError')
-      }))
-    } finally {
-      setIsCheckingForUpdates(false)
-    }
-  }
-
-  const restartToUpdate = async (): Promise<void> => {
-    const restartToUpdateInDesktop = window.tiaDesktop?.restartToUpdate
-    if (
-      !restartToUpdateInDesktop ||
-      !hasDownloadedUpdate ||
-      isSavingAutoUpdate ||
-      isCheckingForUpdates ||
-      isRestartingToUpdate
-    ) {
-      return
-    }
-
-    setIsRestartingToUpdate(true)
-    try {
-      await restartToUpdateInDesktop()
-    } catch {
-      setAutoUpdateState((current) => ({
-        ...current,
-        status: 'error',
-        message: t('settings.about.autoUpdate.restartError')
-      }))
-      setIsRestartingToUpdate(false)
-    }
-  }
 
   return (
     <div className="py-4 flex flex-col gap-4">

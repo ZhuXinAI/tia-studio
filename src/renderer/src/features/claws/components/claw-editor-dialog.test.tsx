@@ -110,6 +110,17 @@ describe('ClawEditorDialog', () => {
         checksum: null,
         status: 'missing',
         errorMessage: null
+      },
+      'agent-browser': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
       }
     })
     vi.mocked(getRuntimeOnboardingSkillsStatus).mockResolvedValue([])

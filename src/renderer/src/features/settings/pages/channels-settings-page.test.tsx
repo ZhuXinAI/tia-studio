@@ -175,6 +175,76 @@ describe('channels settings page', () => {
     expect(container.textContent).toContain('Ops Telegram')
   })
 
+  it('creates a configured discord channel with mention gating controls', async () => {
+    vi.mocked(createClawChannel).mockResolvedValueOnce(
+      buildChannel({
+        id: 'channel-discord',
+        type: 'discord',
+        name: 'Ops Discord',
+        groupRequireMention: false
+      })
+    )
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ChannelsSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const addButton = container.querySelector(
+      'button[id="settings-channels-add"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const typeSelect = document.body.querySelector(
+      'select[id="settings-channel-create-type"]'
+    ) as HTMLSelectElement
+    const nameInput = document.body.querySelector(
+      'input[id="settings-channel-create-name"]'
+    ) as HTMLInputElement
+    const saveButton = document.body.querySelector(
+      'button[id="settings-channel-create-save"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      setElementValue(typeSelect, 'discord')
+    })
+    await flushAsyncWork()
+
+    const tokenInput = document.body.querySelector(
+      'input[id="settings-channel-create-bot-token"]'
+    ) as HTMLInputElement
+    const mentionSwitch = document.body.querySelector(
+      'button[id="settings-channel-create-group-require-mention"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      setElementValue(nameInput, 'Ops Discord')
+      setElementValue(tokenInput, 'discord-test-token')
+      mentionSwitch.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    await act(async () => {
+      saveButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(createClawChannel).toHaveBeenCalledWith({
+      type: 'discord',
+      name: 'Ops Discord',
+      botToken: 'discord-test-token',
+      groupRequireMention: false
+    })
+    expect(container.textContent).toContain('Ops Discord')
+  })
+
   it('lets the user disable group mention gating for supported channels', async () => {
     await act(async () => {
       root.render(

@@ -117,7 +117,9 @@ export function RuntimeSetupPage(): React.JSX.Element {
                 <CardDescription>
                   {kind === 'bun'
                     ? t('settings.runtime.kindDescription.bun')
-                    : t('settings.runtime.kindDescription.uv')}
+                    : kind === 'uv'
+                      ? t('settings.runtime.kindDescription.uv')
+                      : t('settings.runtime.kindDescription.agentBrowser')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">

@@ -47,10 +47,7 @@ import { createDefaultModelSettings, DEFAULT_MODEL_MAX_RETRIES } from './model-r
 import { resolveModel } from './model-resolver'
 import { buildOpenAIProviderOptions } from './openai-provider-options'
 import { AttachmentUploader } from './processors/attachment-uploader'
-import { createCodingSubagent } from './coding-agent'
-import {
-  createBuiltInBrowserTools
-} from './tools/built-in-browser-tools'
+import { createBuiltInBrowserTools } from './tools/built-in-browser-tools'
 import {
   createTiaBrowserToolActionTools,
   createTiaBrowserToolDelegateTool,
@@ -1518,7 +1515,6 @@ ${input.prompt}`
       provider.apiHost ?? '',
       JSON.stringify(assistant.workspaceConfig ?? {}),
       JSON.stringify(assistant.skillsConfig ?? {}),
-      JSON.stringify(assistant.codingConfig ?? {}),
       JSON.stringify(assistant.mcpConfig ?? {}),
       assistant.maxSteps,
       JSON.stringify(assistant.memoryConfig ?? {}),
@@ -1616,10 +1612,10 @@ ${input.prompt}`
     const memorySessionTools = createMemorySessionTools(memory)
     const builtInBrowserTools =
       this.options.builtInBrowserManager && browserAutomationMode === 'built-in-browser'
-      ? createBuiltInBrowserTools({
-          controller: this.options.builtInBrowserManager
-        })
-      : {}
+        ? createBuiltInBrowserTools({
+            controller: this.options.builtInBrowserManager
+          })
+        : {}
     const tiaBrowserToolTools =
       this.options.tiaBrowserToolManager && browserAutomationMode === 'tia-browser-tool'
         ? createTiaBrowserToolTools({
@@ -1695,12 +1691,6 @@ ${input.prompt}`
       assistant.workspaceConfig ?? {},
       assistant.skillsConfig ?? {}
     )
-    const codingAgent = createCodingSubagent({
-      assistantId: assistant.id,
-      assistantName: assistant.name,
-      workspaceRootPath,
-      codingConfig: assistant.codingConfig
-    })
     if (this.options.tiaBrowserToolManager && browserAutomationMode === 'tia-browser-tool') {
       const browserAgentMemory = new Memory({
         ...(storage ? { storage } : {}),
@@ -1770,7 +1760,6 @@ ${input.prompt}`
       model: model as never,
       memory: memory as never,
       ...(workspace ? { workspace } : {}),
-      ...(codingAgent ? { agents: { codingAgent } } : {}),
       tools,
       inputProcessors,
       ...(outputProcessors.length > 0 ? { outputProcessors } : {})
@@ -2046,6 +2035,10 @@ ${input.prompt}`
 
     if (normalized === 'uv' || normalized === 'uvx') {
       return 'uv'
+    }
+
+    if (normalized === 'agent-browser') {
+      return 'agent-browser'
     }
 
     return null

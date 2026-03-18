@@ -5,6 +5,8 @@
       "home": "Home",
       "claws": "Claws",
       "team": "Team",
+      "update": "Update",
+      "updating": "Updating...",
       "openSettings": "Open settings"
     },
     "legacySidebar": {
@@ -163,7 +165,7 @@
     },
     "runtime": {
       "title": "Runtime Setup",
-      "description": "Install managed bun and uv runtimes for MCP servers and runtime-backed tools, or point TIA Studio at a binary you already downloaded.",
+      "description": "Install managed bun, uv, and agent-browser runtimes for MCP servers and runtime-backed tools, or point TIA Studio at a binary you already downloaded.",
       "onboarding": {
         "title": "Recommended onboarding",
         "description": "Set up bun first so later bunx and npx-backed tools work smoothly, then optionally install a couple of starter skills.",
@@ -202,7 +204,8 @@
       },
       "kindDescription": {
         "bun": "Used for bun, bunx, and npx-backed MCP server launches.",
-        "uv": "Used for uv and uvx-backed MCP server launches."
+        "uv": "Used for uv and uvx-backed MCP server launches.",
+        "agentBrowser": "Used for agent-browser-backed browser automation and MCP launches."
       },
       "labels": {
         "status": "Status:",
@@ -535,6 +538,7 @@
         "setupDescription": "Optionally install bun and a few recommended tools before creating this claw."
       },
       "channelTypes": {
+        "discord": "Discord",
         "lark": "Lark",
         "telegram": "Telegram",
         "whatsapp": "WhatsApp",
@@ -553,6 +557,7 @@
         "providerRequired": "Provider is required",
         "channelRequired": "Pick a channel to attach",
         "channelCredentialsRequired": "Lark channel name, app ID, and app secret are required",
+        "discordCredentialsRequired": "Discord channel name and bot token are required",
         "telegramCredentialsRequired": "Telegram channel name and bot token are required",
         "pickFolderFailed": "Failed to pick folder"
       }
@@ -582,7 +587,7 @@
       "selectedBadge": "Selected",
       "create": {
         "title": "Add Channel",
-        "description": "Create a new WhatsApp, Telegram, Lark, Wecom, or Wechat-KF channel configuration.",
+        "description": "Create a new Discord, WhatsApp, Telegram, Lark, Wecom, or Wechat-KF channel configuration.",
         "whatsappHint": "No token is required. After saving, open Manage Pairings to scan the WhatsApp QR code.",
         "wechatKfHintPrefix": "Wechat-KF requires a relay server set up with",
         "wechatKfHintSuffix": "Follow the README there before entering the server URL and server key.",
@@ -612,6 +617,7 @@
       },
       "errors": {
         "nameRequired": "Channel name is required",
+        "discordCredentialsRequired": "Bot token is required for Discord channels",
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "wecomCredentialsRequired": "Bot ID and secret are required for Wecom channels",
@@ -901,8 +907,7 @@
       "tabs": {
         "essential": "Essential Settings",
         "tools": "Tools",
-        "skills": "Skills",
-        "coding": "Coding"
+        "skills": "Skills"
       },
       "fields": {
         "name": "Name",
@@ -943,7 +948,7 @@
       "runtimeNoteTitle": "Some MCP tools use managed runtimes.",
       "runtimeNotePrefix": "Finish setup in",
       "runtimeNoteLinkLabel": "Runtime Setup",
-      "runtimeNoteSuffix": "Use it if this assistant depends on npx, bun, or uv-backed tools.",
+      "runtimeNoteSuffix": "Use it if this assistant depends on npx, bun, uv, or agent-browser-backed tools.",
       "noMcpServersPrefix": "No MCP servers configured yet. Add servers in",
       "noMcpServersLinkLabel": "MCP Server Settings",
       "mcpGloballyDisabled": "Disabled globally in MCP Server Settings.",
@@ -972,48 +977,6 @@
         "removingButton": "Removing...",
         "removeButton": "Remove",
         "readOnly": "Read-only"
-      },
-      "coding": {
-        "enableLabel": "Enable coding agent",
-        "description": "Add a Codex-powered subagent for code changes, debugging, and test runs.",
-        "statusChecking": "Checking Codex CLI availability...",
-        "toggleAriaLabel": "Enable coding agent",
-        "unavailableTitle": "Codex CLI is unavailable on this system.",
-        "unavailableDescription": "Install `codex` and make sure it is available on PATH to enable the coding agent.",
-        "fields": {
-          "cwd": "Working directory (cwd)",
-          "addDirs": "Additional directories (addDirs)",
-          "skipGitRepoCheck": "Skip git repo check",
-          "fullAuto": "Full auto mode",
-          "approvalMode": "Approval mode",
-          "sandboxMode": "Sandbox mode"
-        },
-        "cwdHelp": "Defaults to the workspace path. Use an absolute path or a path relative to the workspace.",
-        "addDirsHelp": "One path per line. These map to repeated --add-dir entries.",
-        "skipGitRepoCheckHelp": "Skip Git repository validation for this coding session.",
-        "fullAutoHelp": "Runs with --full-auto and bypasses approval/sandbox prompts.",
-        "approvalModeHelp": "Controls when Codex requests approval for commands.",
-        "sandboxModeHelp": "Controls the filesystem sandbox mode for Codex.",
-        "skipGitRepoCheckAriaLabel": "Toggle skip git repo check",
-        "fullAutoAriaLabel": "Toggle full auto mode",
-        "placeholders": {
-          "cwd": "/Users/name/repo",
-          "addDirs": "../shared\n/opt/tools"
-        },
-        "approvalModes": {
-          "untrusted": "Untrusted",
-          "on-failure": "On failure",
-          "on-request": "On request",
-          "never": "Never"
-        },
-        "sandboxModes": {
-          "read-only": "Read-only",
-          "workspace-write": "Workspace write",
-          "danger-full-access": "Danger full access"
-        },
-        "errors": {
-          "cwdRequired": "Set a workspace path or coding working directory to enable coding."
-        }
       }
     }
   },

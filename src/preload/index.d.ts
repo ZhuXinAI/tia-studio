@@ -1,6 +1,6 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 
-type ManagedRuntimeKind = 'bun' | 'uv'
+type ManagedRuntimeKind = 'agent-browser' | 'bun' | 'uv'
 type ManagedRuntimeSource = 'managed' | 'custom' | 'none'
 type ManagedRuntimeStatus =
   | 'missing'
@@ -24,11 +24,6 @@ type ManagedRuntimeRecord = {
   errorMessage: string | null
 }
 type ManagedRuntimesState = Record<ManagedRuntimeKind, ManagedRuntimeRecord>
-type CodexCliStatus = {
-  available: boolean
-  version: string | null
-  errorMessage: string | null
-}
 type RecommendedSkillId = 'agent-browser' | 'find-skills'
 type UiConfig = {
   transparent?: boolean
@@ -103,7 +98,6 @@ interface TiaDesktopAPI {
     lastCheckedAt: string | null
     message: string | null
   }>
-  getCodexCliStatus?: () => Promise<CodexCliStatus>
   restartToUpdate?: () => Promise<void>
   onAutoUpdateStateChanged?: (
     listener: (state: {

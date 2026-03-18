@@ -1,8 +1,21 @@
 import type { ChannelType } from './types'
 
-const KNOWN_CHANNEL_TYPES: ChannelType[] = ['lark', 'telegram', 'whatsapp', 'wecom', 'wechat-kf']
-const IMAGE_CAPABLE_CHANNEL_TYPES = new Set<ChannelType>(['lark', 'telegram', 'whatsapp'])
+const KNOWN_CHANNEL_TYPES: ChannelType[] = [
+  'discord',
+  'lark',
+  'telegram',
+  'whatsapp',
+  'wecom',
+  'wechat-kf'
+]
+const IMAGE_CAPABLE_CHANNEL_TYPES = new Set<ChannelType>([
+  'discord',
+  'lark',
+  'telegram',
+  'whatsapp'
+])
 const CHANNEL_LABELS: Record<ChannelType, string> = {
+  discord: 'Discord',
   lark: 'Lark',
   telegram: 'Telegram',
   whatsapp: 'WhatsApp',
@@ -32,11 +45,11 @@ export function formatChannelTypeLabel(channelType: string | null | undefined): 
   return channelType
 }
 
-export function buildChannelImageSupportGuidance(
-  channelType: string | null | undefined
-): string[] {
+export function buildChannelImageSupportGuidance(channelType: string | null | undefined): string[] {
   if (supportsChannelImageDelivery(channelType)) {
-    return ['- This channel supports sendImage when a screenshot or other image will help the user.']
+    return [
+      '- This channel supports sendImage when a screenshot or other image will help the user.'
+    ]
   }
 
   if (isKnownChannelType(channelType)) {
@@ -46,7 +59,7 @@ export function buildChannelImageSupportGuidance(
   }
 
   return [
-    '- sendImage is available on Lark, Telegram, and WhatsApp.',
+    '- sendImage is available on Discord, Lark, Telegram, and WhatsApp.',
     '- WeCom and Wechat-KF do not support sendImage right now.'
   ]
 }

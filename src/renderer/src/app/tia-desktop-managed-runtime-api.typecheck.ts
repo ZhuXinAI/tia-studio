@@ -1,12 +1,10 @@
 async function assertManagedRuntimeBridge(): Promise<void> {
-  const codexStatus = await window.tiaDesktop.getCodexCliStatus?.()
   const status = await window.tiaDesktop.getManagedRuntimeStatus?.()
   const latest = await window.tiaDesktop.checkManagedRuntimeLatest?.('bun')
   const installed = await window.tiaDesktop.installManagedRuntime?.('uv')
   const picked = await window.tiaDesktop.pickCustomRuntime?.('bun')
   const cleared = await window.tiaDesktop.clearManagedRuntime?.('uv')
 
-  void codexStatus?.available
   void status?.bun.status
   void latest?.uv.releaseUrl
   void installed?.uv.version

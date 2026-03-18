@@ -1,19 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createApiClient } from '../../lib/api-client'
 
-export type AssistantCodingApprovalMode = 'untrusted' | 'on-failure' | 'on-request' | 'never'
-export type AssistantCodingSandboxMode = 'read-only' | 'workspace-write' | 'danger-full-access'
-
-export type AssistantCodingConfig = {
-  enabled?: boolean
-  cwd?: string
-  addDirs?: string[]
-  skipGitRepoCheck?: boolean
-  fullAuto?: boolean
-  approvalMode?: AssistantCodingApprovalMode
-  sandboxMode?: AssistantCodingSandboxMode
-}
-
 export type AssistantRecord = {
   id: string
   name: string
@@ -23,7 +10,6 @@ export type AssistantRecord = {
   providerId: string
   workspaceConfig: Record<string, unknown>
   skillsConfig: Record<string, unknown>
-  codingConfig?: AssistantCodingConfig
   mcpConfig: Record<string, boolean>
   maxSteps: number
   memoryConfig: Record<string, unknown> | null
@@ -39,7 +25,6 @@ export type SaveAssistantInput = {
   providerId: string
   workspaceConfig?: Record<string, unknown>
   skillsConfig?: Record<string, unknown>
-  codingConfig?: AssistantCodingConfig
   mcpConfig?: Record<string, boolean>
   maxSteps?: number
   memoryConfig?: Record<string, unknown> | null

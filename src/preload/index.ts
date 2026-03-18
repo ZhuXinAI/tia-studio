@@ -18,7 +18,7 @@ type AutoUpdateState = {
   lastCheckedAt: string | null
   message: string | null
 }
-type ManagedRuntimeKind = 'bun' | 'uv'
+type ManagedRuntimeKind = 'agent-browser' | 'bun' | 'uv'
 type ManagedRuntimeSource = 'managed' | 'custom' | 'none'
 type ManagedRuntimeStatus =
   | 'missing'
@@ -42,11 +42,6 @@ type ManagedRuntimeRecord = {
   errorMessage: string | null
 }
 type ManagedRuntimesState = Record<ManagedRuntimeKind, ManagedRuntimeRecord>
-type CodexCliStatus = {
-  available: boolean
-  version: string | null
-  errorMessage: string | null
-}
 type RecommendedSkillId = 'agent-browser' | 'find-skills'
 type UiConfig = {
   transparent?: boolean
@@ -73,8 +68,6 @@ const tiaDesktop = {
   setAutoUpdateEnabled: (enabled: boolean) =>
     ipcRenderer.invoke('tia:set-auto-update-enabled', enabled) as Promise<AutoUpdateState>,
   checkForUpdates: () => ipcRenderer.invoke('tia:check-for-updates') as Promise<AutoUpdateState>,
-  getCodexCliStatus: () =>
-    ipcRenderer.invoke('tia:get-codex-cli-status') as Promise<CodexCliStatus>,
   restartToUpdate: () => ipcRenderer.invoke('tia:restart-to-update') as Promise<void>,
   onAutoUpdateStateChanged: (listener: (state: AutoUpdateState) => void) => {
     const handleStateChange = (_event: Electron.IpcRendererEvent, nextState: AutoUpdateState) => {

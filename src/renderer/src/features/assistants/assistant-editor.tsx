@@ -1,12 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronDown } from 'lucide-react'
-import type {
-  AssistantCodingApprovalMode,
-  AssistantCodingSandboxMode,
-  SaveAssistantInput,
-  AssistantRecord
-} from './assistants-query'
+import type { SaveAssistantInput, AssistantRecord } from './assistants-query'
 import {
   DEFAULT_ASSISTANT_HEARTBEAT_INTERVAL_MINUTES,
   DEFAULT_ASSISTANT_HEARTBEAT_PROMPT,
@@ -35,7 +30,6 @@ import {
   type AssistantSkillRecord,
   type AssistantSkillSource
 } from './assistant-skills-query'
-import { getCodexCliStatus, type CodexCliStatus } from './codex-cli-query'
 
 type AssistantEditorValues = {
   name: string
@@ -45,7 +39,6 @@ type AssistantEditorValues = {
   workspacePath: string
   maxSteps: string
   mcpConfig: Record<string, boolean>
-  coding: AssistantCodingValues
 }
 
 type AssistantHeartbeatValues = {
@@ -54,17 +47,7 @@ type AssistantHeartbeatValues = {
   prompt: string
 }
 
-type AssistantCodingValues = {
-  enabled: boolean
-  cwd: string
-  addDirs: string
-  skipGitRepoCheck: boolean
-  fullAuto: boolean
-  approvalMode: AssistantCodingApprovalMode
-  sandboxMode: AssistantCodingSandboxMode
-}
-
-type AssistantEditorTab = 'essential' | 'tools' | 'skills' | 'coding'
+type AssistantEditorTab = 'essential' | 'tools' | 'skills'
 
 type AssistantEditorProps = {
   providers: ProviderRecord[]
@@ -77,19 +60,6 @@ type AssistantEditorProps = {
     heartbeatInput?: SaveAssistantHeartbeatInput | null
   ) => Promise<void> | void
 }
-
-const codingApprovalModes: AssistantCodingApprovalMode[] = [
-  'untrusted',
-  'on-failure',
-  'on-request',
-  'never'
-]
-
-const codingSandboxModes: AssistantCodingSandboxMode[] = [
-  'read-only',
-  'workspace-write',
-  'danger-full-access'
-]
 
 function toBooleanMap(value: unknown): Record<string, boolean> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -151,21 +121,6 @@ function toInitialValues(
     }
   }
 
-  const codingConfig =
-    initialValue?.codingConfig && typeof initialValue.codingConfig === 'object'
-      ? initialValue.codingConfig
-      : undefined
-  const initialCodingApprovalMode = codingApprovalModes.includes(
-    codingConfig?.approvalMode ?? 'on-failure'
-  )
-    ? (codingConfig?.approvalMode ?? 'on-failure')
-    : 'on-failure'
-  const initialCodingSandboxMode = codingSandboxModes.includes(
-    codingConfig?.sandboxMode ?? 'workspace-write'
-  )
-    ? (codingConfig?.sandboxMode ?? 'workspace-write')
-    : 'workspace-write'
-
   return {
     name: initialValue?.name ?? '',
     description: initialValue?.description ?? '',
@@ -176,16 +131,7 @@ function toInitialValues(
         ? (initialValue.workspaceConfig.rootPath as string)
         : '',
     maxSteps: String(initialMaxSteps),
-    mcpConfig: allMcpServerConfig,
-    coding: {
-      enabled: codingConfig?.enabled === true,
-      cwd: typeof codingConfig?.cwd === 'string' ? codingConfig.cwd : '',
-      addDirs: Array.isArray(codingConfig?.addDirs) ? codingConfig.addDirs.join('\n') : '',
-      skipGitRepoCheck: codingConfig?.skipGitRepoCheck ?? true,
-      fullAuto: codingConfig?.fullAuto === true,
-      approvalMode: initialCodingApprovalMode,
-      sandboxMode: initialCodingSandboxMode
-    }
+    mcpConfig: allMcpServerConfig
   }
 }
 
@@ -229,41 +175,6 @@ function parseHeartbeatIntervalMinutes(rawValue: string): number | null {
   return parsed
 }
 
-function parseAddDirs(rawValue: string): string[] {
-  const uniquePaths = new Set<string>()
-
-  for (const segment of rawValue.split('\n')) {
-    const normalized = segment.trim()
-    if (normalized.length > 0) {
-      uniquePaths.add(normalized)
-    }
-  }
-
-  return [...uniquePaths]
-}
-
-function buildCodingConfig(
-  values: AssistantCodingValues,
-  codexCliAvailable: boolean | null
-): SaveAssistantInput['codingConfig'] {
-  if (!values.enabled) {
-    return {}
-  }
-
-  const cwd = values.cwd.trim()
-  const addDirs = parseAddDirs(values.addDirs)
-
-  return {
-    ...(codexCliAvailable !== false ? { enabled: true } : {}),
-    ...(cwd.length > 0 ? { cwd } : {}),
-    ...(addDirs.length > 0 ? { addDirs } : {}),
-    skipGitRepoCheck: values.skipGitRepoCheck,
-    fullAuto: values.fullAuto,
-    approvalMode: values.approvalMode,
-    sandboxMode: values.sandboxMode
-  }
-}
-
 function toErrorMessage(error: unknown, t: (key: string) => string): string {
   if (error instanceof Error) {
     const normalized = error.message.trim()
@@ -288,7 +199,6 @@ function getSkillSourceLabel(source: AssistantSkillSource, t: (key: string) => s
 function validate(
   values: AssistantEditorValues,
   heartbeatValues: AssistantHeartbeatValues | null,
-  codexCliAvailable: boolean | null,
   t: (key: string) => string
 ): string | null {
   if (values.name.trim().length === 0) {
@@ -301,14 +211,6 @@ function validate(
 
   if (!parseMaxSteps(values.maxSteps)) {
     return t('assistants.editor.errors.maxStepsInvalid')
-  }
-
-  if (values.coding.enabled && codexCliAvailable !== false) {
-    const codingCwd = values.coding.cwd.trim()
-    const workspacePath = values.workspacePath.trim()
-    if (codingCwd.length === 0 && workspacePath.length === 0) {
-      return t('assistants.editor.coding.errors.cwdRequired')
-    }
   }
 
   if (heartbeatValues) {
@@ -341,7 +243,6 @@ export function AssistantEditor({
   const [isSelectingWorkspacePath, setIsSelectingWorkspacePath] = useState(false)
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false)
   const [managedRuntimeState, setManagedRuntimeState] = useState<ManagedRuntimesState | null>(null)
-  const [codexCliStatus, setCodexCliStatus] = useState<CodexCliStatus | null>(null)
   const [skills, setSkills] = useState<AssistantSkillRecord[]>([])
   const [isSkillsLoading, setIsSkillsLoading] = useState(false)
   const [skillsError, setSkillsError] = useState<string | null>(null)
@@ -385,12 +286,6 @@ export function AssistantEditor({
       return requiredRuntime ? !isManagedRuntimeReady(managedRuntimeState[requiredRuntime]) : false
     })
   }, [managedRuntimeState, runtimeBackedServerEntries])
-
-  const codexCliAvailable = codexCliStatus?.available ?? null
-  const isCodexCliChecking = codexCliAvailable === null
-  const isCodexCliUnavailable = codexCliAvailable === false
-  const isCodingControlsDisabled = isSubmitting || codexCliAvailable !== true
-  const isCodingAgentEnabled = values.coding.enabled && codexCliAvailable !== false
 
   useEffect(() => {
     if (activeTab !== 'skills') {
@@ -447,30 +342,6 @@ export function AssistantEditor({
       isCancelled = true
     }
   }, [])
-
-  useEffect(() => {
-    let isCancelled = false
-
-    void getCodexCliStatus()
-      .then((nextStatus) => {
-        if (!isCancelled) {
-          setCodexCliStatus(nextStatus)
-        }
-      })
-      .catch((statusError) => {
-        if (!isCancelled) {
-          setCodexCliStatus({
-            available: false,
-            version: null,
-            errorMessage: toErrorMessage(statusError, t)
-          })
-        }
-      })
-
-    return () => {
-      isCancelled = true
-    }
-  }, [t])
 
   useEffect(() => {
     let isCancelled = false
@@ -556,27 +427,9 @@ export function AssistantEditor({
     }))
   }
 
-  const handleCodingInput = <K extends keyof AssistantCodingValues>(
-    key: K,
-    value: AssistantCodingValues[K]
-  ): void => {
-    setValues((current) => ({
-      ...current,
-      coding: {
-        ...current.coding,
-        [key]: value
-      }
-    }))
-  }
-
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault()
-    const validationError = validate(
-      values,
-      initialValue ? heartbeatValues : null,
-      codexCliAvailable,
-      t
-    )
+    const validationError = validate(values, initialValue ? heartbeatValues : null, t)
     setError(validationError)
     if (validationError) {
       return
@@ -626,7 +479,6 @@ export function AssistantEditor({
                 rootPath: workspacePath
               }
             : undefined,
-        codingConfig: buildCodingConfig(values.coding, codexCliAvailable),
         mcpConfig: nextMcpConfig,
         maxSteps
       },
@@ -725,18 +577,6 @@ export function AssistantEditor({
             onClick={() => setActiveTab('skills')}
           >
             {t('assistants.editor.tabs.skills')}
-          </button>
-          <button
-            type="button"
-            className={cn(
-              'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
-              activeTab === 'coding'
-                ? 'bg-secondary text-secondary-foreground'
-                : 'hover:bg-accent/40'
-            )}
-            onClick={() => setActiveTab('coding')}
-          >
-            {t('assistants.editor.tabs.coding')}
           </button>
         </aside>
 
@@ -1103,226 +943,6 @@ export function AssistantEditor({
                     )
                   })
                 : null}
-            </div>
-          ) : null}
-
-          {activeTab === 'coding' ? (
-            <div className="space-y-4">
-              {isCodexCliChecking ? (
-                <div className="rounded-md border border-border/70 bg-card/50 px-3 py-2">
-                  <p className="text-sm text-muted-foreground">
-                    {t('assistants.editor.coding.statusChecking')}
-                  </p>
-                </div>
-              ) : null}
-
-              {isCodexCliUnavailable ? (
-                <div className="rounded-md border border-amber-300/40 bg-amber-400/10 px-3 py-2">
-                  <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-                    {t('assistants.editor.coding.unavailableTitle')}
-                  </p>
-                  <p className="text-sm text-amber-900/80 dark:text-amber-200/80">
-                    {codexCliStatus?.errorMessage?.trim() ||
-                      t('assistants.editor.coding.unavailableDescription')}
-                  </p>
-                </div>
-              ) : null}
-
-              <fieldset
-                className={cn('space-y-4', isCodingControlsDisabled ? 'opacity-60' : '')}
-                disabled={isCodingControlsDisabled}
-              >
-                <div className="rounded-xl border border-border/70 bg-card/50 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <h4 className="text-base font-medium">
-                        {t('assistants.editor.coding.enableLabel')}
-                      </h4>
-                      <p className="text-muted-foreground text-sm">
-                        {t('assistants.editor.coding.description')}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-label={t('assistants.editor.coding.toggleAriaLabel')}
-                      aria-checked={isCodingAgentEnabled}
-                      className={cn(
-                        'relative inline-flex h-6 w-11 items-center rounded-full border transition-colors',
-                        isCodingAgentEnabled
-                          ? 'border-emerald-400/80 bg-emerald-500/30'
-                          : 'border-border/80 bg-background/80'
-                      )}
-                      onClick={() => handleCodingInput('enabled', !values.coding.enabled)}
-                      disabled={isCodingControlsDisabled}
-                    >
-                      <span
-                        className={cn(
-                          'inline-block size-4 rounded-full bg-foreground/90 transition-transform',
-                          isCodingAgentEnabled ? 'translate-x-6' : 'translate-x-1'
-                        )}
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                <Field>
-                  <FieldLabel htmlFor="assistant-coding-cwd">
-                    {t('assistants.editor.coding.fields.cwd')}
-                  </FieldLabel>
-                  <p className="text-muted-foreground text-xs mb-2">
-                    {t('assistants.editor.coding.cwdHelp')}
-                  </p>
-                  <Input
-                    id="assistant-coding-cwd"
-                    value={values.coding.cwd}
-                    onChange={(event) => handleCodingInput('cwd', event.target.value)}
-                    placeholder={t('assistants.editor.coding.placeholders.cwd')}
-                    disabled={isCodingControlsDisabled}
-                  />
-                </Field>
-
-                <Field>
-                  <FieldLabel htmlFor="assistant-coding-add-dirs">
-                    {t('assistants.editor.coding.fields.addDirs')}
-                  </FieldLabel>
-                  <p className="text-muted-foreground text-xs mb-2">
-                    {t('assistants.editor.coding.addDirsHelp')}
-                  </p>
-                  <Textarea
-                    id="assistant-coding-add-dirs"
-                    rows={4}
-                    value={values.coding.addDirs}
-                    onChange={(event) => handleCodingInput('addDirs', event.target.value)}
-                    placeholder={t('assistants.editor.coding.placeholders.addDirs')}
-                    disabled={isCodingControlsDisabled}
-                  />
-                </Field>
-
-                <article className="rounded-xl border border-border/70 bg-card/50 px-4 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <h4 className="text-base font-medium">
-                        {t('assistants.editor.coding.fields.skipGitRepoCheck')}
-                      </h4>
-                      <p className="text-muted-foreground text-sm">
-                        {t('assistants.editor.coding.skipGitRepoCheckHelp')}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-label={t('assistants.editor.coding.skipGitRepoCheckAriaLabel')}
-                      aria-checked={values.coding.skipGitRepoCheck}
-                      className={cn(
-                        'relative inline-flex h-6 w-11 items-center rounded-full border transition-colors',
-                        values.coding.skipGitRepoCheck
-                          ? 'border-emerald-400/80 bg-emerald-500/30'
-                          : 'border-border/80 bg-background/80'
-                      )}
-                      onClick={() =>
-                        handleCodingInput('skipGitRepoCheck', !values.coding.skipGitRepoCheck)
-                      }
-                      disabled={isCodingControlsDisabled}
-                    >
-                      <span
-                        className={cn(
-                          'inline-block size-4 rounded-full bg-foreground/90 transition-transform',
-                          values.coding.skipGitRepoCheck ? 'translate-x-6' : 'translate-x-1'
-                        )}
-                      />
-                    </button>
-                  </div>
-                </article>
-
-                <article className="rounded-xl border border-border/70 bg-card/50 px-4 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <h4 className="text-base font-medium">
-                        {t('assistants.editor.coding.fields.fullAuto')}
-                      </h4>
-                      <p className="text-muted-foreground text-sm">
-                        {t('assistants.editor.coding.fullAutoHelp')}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-label={t('assistants.editor.coding.fullAutoAriaLabel')}
-                      aria-checked={values.coding.fullAuto}
-                      className={cn(
-                        'relative inline-flex h-6 w-11 items-center rounded-full border transition-colors',
-                        values.coding.fullAuto
-                          ? 'border-emerald-400/80 bg-emerald-500/30'
-                          : 'border-border/80 bg-background/80'
-                      )}
-                      onClick={() => handleCodingInput('fullAuto', !values.coding.fullAuto)}
-                      disabled={isCodingControlsDisabled}
-                    >
-                      <span
-                        className={cn(
-                          'inline-block size-4 rounded-full bg-foreground/90 transition-transform',
-                          values.coding.fullAuto ? 'translate-x-6' : 'translate-x-1'
-                        )}
-                      />
-                    </button>
-                  </div>
-                </article>
-
-                <Field>
-                  <FieldLabel htmlFor="assistant-coding-approval-mode">
-                    {t('assistants.editor.coding.fields.approvalMode')}
-                  </FieldLabel>
-                  <p className="text-muted-foreground text-xs mb-2">
-                    {t('assistants.editor.coding.approvalModeHelp')}
-                  </p>
-                  <select
-                    id="assistant-coding-approval-mode"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={values.coding.approvalMode}
-                    onChange={(event) =>
-                      handleCodingInput(
-                        'approvalMode',
-                        event.target.value as AssistantCodingApprovalMode
-                      )
-                    }
-                    disabled={isCodingControlsDisabled || values.coding.fullAuto}
-                  >
-                    {codingApprovalModes.map((mode) => (
-                      <option key={mode} value={mode}>
-                        {t(`assistants.editor.coding.approvalModes.${mode}`)}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field>
-                  <FieldLabel htmlFor="assistant-coding-sandbox-mode">
-                    {t('assistants.editor.coding.fields.sandboxMode')}
-                  </FieldLabel>
-                  <p className="text-muted-foreground text-xs mb-2">
-                    {t('assistants.editor.coding.sandboxModeHelp')}
-                  </p>
-                  <select
-                    id="assistant-coding-sandbox-mode"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={values.coding.sandboxMode}
-                    onChange={(event) =>
-                      handleCodingInput(
-                        'sandboxMode',
-                        event.target.value as AssistantCodingSandboxMode
-                      )
-                    }
-                    disabled={isCodingControlsDisabled || values.coding.fullAuto}
-                  >
-                    {codingSandboxModes.map((mode) => (
-                      <option key={mode} value={mode}>
-                        {t(`assistants.editor.coding.sandboxModes.${mode}`)}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              </fieldset>
             </div>
           ) : null}
         </div>

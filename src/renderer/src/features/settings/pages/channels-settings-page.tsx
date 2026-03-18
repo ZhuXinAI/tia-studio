@@ -33,7 +33,7 @@ import {
   updateClawChannel
 } from '../../claws/claws-query'
 
-type ChannelType = 'lark' | 'telegram' | 'whatsapp' | 'wecom' | 'wechat-kf'
+type ChannelType = 'discord' | 'lark' | 'telegram' | 'whatsapp' | 'wecom' | 'wechat-kf'
 type ChannelFormMode = 'create' | 'edit'
 
 type ChannelFormState = {
@@ -50,7 +50,7 @@ type ChannelFormState = {
 }
 
 function supportsGroupMentionSetting(type: ChannelType): boolean {
-  return type === 'lark' || type === 'whatsapp' || type === 'wecom'
+  return type === 'discord' || type === 'lark' || type === 'whatsapp' || type === 'wecom'
 }
 
 function emptyResponse(): ClawsResponse {
@@ -77,15 +77,17 @@ function emptyFormState(): ChannelFormState {
 
 function toEditFormState(channel: ConfiguredClawChannelRecord): ChannelFormState {
   const type =
-    channel.type === 'telegram'
-      ? 'telegram'
-      : channel.type === 'whatsapp'
-        ? 'whatsapp'
-        : channel.type === 'wecom'
-          ? 'wecom'
-          : channel.type === 'wechat-kf'
-            ? 'wechat-kf'
-            : 'lark'
+    channel.type === 'discord'
+      ? 'discord'
+      : channel.type === 'telegram'
+        ? 'telegram'
+        : channel.type === 'whatsapp'
+          ? 'whatsapp'
+          : channel.type === 'wecom'
+            ? 'wecom'
+            : channel.type === 'wechat-kf'
+              ? 'wechat-kf'
+              : 'lark'
 
   return {
     type,
@@ -102,6 +104,15 @@ function toEditFormState(channel: ConfiguredClawChannelRecord): ChannelFormState
 }
 
 function buildCreateInput(formState: ChannelFormState): CreateClawChannelInput {
+  if (formState.type === 'discord') {
+    return {
+      type: 'discord',
+      name: formState.name.trim(),
+      botToken: formState.botToken.trim(),
+      groupRequireMention: formState.groupRequireMention
+    }
+  }
+
   if (formState.type === 'telegram') {
     return {
       type: 'telegram',
@@ -147,6 +158,15 @@ function buildCreateInput(formState: ChannelFormState): CreateClawChannelInput {
 }
 
 function buildUpdateInput(formState: ChannelFormState): UpdateClawChannelInput {
+  if (formState.type === 'discord') {
+    return {
+      type: 'discord',
+      name: formState.name.trim(),
+      ...(formState.botToken.trim().length > 0 ? { botToken: formState.botToken.trim() } : {}),
+      groupRequireMention: formState.groupRequireMention
+    }
+  }
+
   if (formState.type === 'telegram') {
     return {
       type: 'telegram',
@@ -258,7 +278,12 @@ export function ChannelsSettingsPage(): React.JSX.Element {
     }
 
     if (formMode === 'create') {
-      if (formState.type === 'telegram') {
+      if (formState.type === 'discord') {
+        if (formState.botToken.trim().length === 0) {
+          setFormError(t('claws.channelSelector.errors.discordCredentialsRequired'))
+          return
+        }
+      } else if (formState.type === 'telegram') {
         if (formState.botToken.trim().length === 0) {
           setFormError(t('claws.channelSelector.errors.telegramCredentialsRequired'))
           return
@@ -501,6 +526,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                   }))
                 }
               >
+                <option value="discord">{t('claws.dialog.channelTypes.discord')}</option>
                 <option value="lark">{t('claws.dialog.channelTypes.lark')}</option>
                 <option value="telegram">{t('claws.dialog.channelTypes.telegram')}</option>
                 <option value="whatsapp">{t('claws.dialog.channelTypes.whatsapp')}</option>
@@ -536,7 +562,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
               />
             </div>
 
-            {formState.type === 'telegram' ? (
+            {formState.type === 'discord' || formState.type === 'telegram' ? (
               <div className="grid gap-2">
                 <label
                   htmlFor={

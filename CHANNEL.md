@@ -18,12 +18,13 @@ The assistant still owns identity, tools, memory, prompts, workspace, cron, and 
 
 ## Current support
 
-| Channel | Direct Chat | Group Chat | Group Trigger | Notes |
-| ------- | ----------- | ---------- | ------------- | ----- |
-| Lark | ✅ | ✅ | Requires bot `@` mention by default | Group mention gating can be configured per channel |
-| Telegram | ✅ | 🚫 | Not available yet | Telegram is currently DM-only while group behavior is under review |
-| WhatsApp | ✅ | ✅ | Requires bot `@` mention by default | Group mention gating can be configured per channel |
-| Wecom | ✅ | ✅ | Requires bot `@` mention by default | Group mention gating can be configured per channel |
+| Channel  | Direct Chat | Group Chat | Group Trigger                       | Notes                                                              |
+| -------- | ----------- | ---------- | ----------------------------------- | ------------------------------------------------------------------ |
+| Discord  | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
+| Lark     | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
+| Telegram | ✅          | 🚫         | Not available yet                   | Telegram is currently DM-only while group behavior is under review |
+| WhatsApp | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
+| Wecom    | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
 
 ## Group behavior
 
@@ -43,6 +44,12 @@ Telegram is the current exception: even if the setting exists in stored channel 
 
 - Supports direct chats and group chats
 - Uses bot identity lookup to detect whether the current bot was actually mentioned in a group
+- Group replies are mention-gated by default
+
+### Discord
+
+- Supports direct messages and guild text channels
+- Uses the connected bot identity to detect explicit user mentions in guild channels
 - Group replies are mention-gated by default
 
 ### Telegram

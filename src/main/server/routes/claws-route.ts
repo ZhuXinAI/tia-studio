@@ -391,6 +391,7 @@ function buildChannelConfig(
   channel:
     | { type: 'lark'; appId: string; appSecret: string; groupRequireMention?: boolean }
     | { type: 'telegram'; botToken: string; groupRequireMention?: boolean }
+    | { type: 'discord'; botToken: string; groupRequireMention?: boolean }
     | { type: 'whatsapp'; groupRequireMention?: boolean }
     | { type: 'wecom'; botId: string; secret: string; groupRequireMention?: boolean }
     | { type: 'wechat-kf'; serverUrl: string; serverKey: string }
@@ -400,7 +401,7 @@ function buildChannelConfig(
       ? channel.groupRequireMention
       : true
 
-  if (channel.type === 'telegram') {
+  if (channel.type === 'telegram' || channel.type === 'discord') {
     return {
       botToken: channel.botToken,
       groupRequireMention
@@ -440,6 +441,7 @@ function mergeChannelConfig(
   channel:
     | { type: 'lark'; appId?: string; appSecret?: string; groupRequireMention?: boolean }
     | { type: 'telegram'; botToken?: string; groupRequireMention?: boolean }
+    | { type: 'discord'; botToken?: string; groupRequireMention?: boolean }
     | { type: 'whatsapp'; groupRequireMention?: boolean }
     | { type: 'wecom'; botId?: string; secret?: string; groupRequireMention?: boolean }
     | { type: 'wechat-kf'; serverUrl?: string; serverKey?: string }
@@ -449,7 +451,7 @@ function mergeChannelConfig(
       ? channel.groupRequireMention
       : resolveGroupRequireMention(existingChannel.config)
 
-  if (channel.type === 'telegram') {
+  if (channel.type === 'telegram' || channel.type === 'discord') {
     return {
       botToken:
         channel.botToken ??

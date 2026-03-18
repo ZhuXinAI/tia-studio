@@ -86,42 +86,4 @@ describe('AssistantsRepository', () => {
       }
     })
   })
-
-  it('persists assistant coding configuration', async () => {
-    const created = await repo.create({
-      name: 'Coding Assistant',
-      providerId,
-      codingConfig: {
-        enabled: true,
-        cwd: ' /tmp ',
-        addDirs: ['../shared', '  /opt/tools  ', ''],
-        skipGitRepoCheck: true,
-        fullAuto: false,
-        approvalMode: 'on-request',
-        sandboxMode: 'read-only'
-      }
-    })
-
-    expect(created.codingConfig).toEqual({
-      enabled: true,
-      cwd: '/tmp',
-      addDirs: ['../shared', '/opt/tools'],
-      skipGitRepoCheck: true,
-      fullAuto: false,
-      approvalMode: 'on-request',
-      sandboxMode: 'read-only'
-    })
-
-    await expect(repo.getById(created.id)).resolves.toMatchObject({
-      codingConfig: {
-        enabled: true,
-        cwd: '/tmp',
-        addDirs: ['../shared', '/opt/tools'],
-        skipGitRepoCheck: true,
-        fullAuto: false,
-        approvalMode: 'on-request',
-        sandboxMode: 'read-only'
-      }
-    })
-  })
 })

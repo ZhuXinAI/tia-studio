@@ -381,6 +381,8 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
         )
       }
 
+      console.error(error)
+
       return context.json(
         {
           ok: false,

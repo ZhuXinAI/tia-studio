@@ -74,11 +74,6 @@ declare global {
         lastCheckedAt: string | null
         message: string | null
       }>
-      getCodexCliStatus?: () => Promise<{
-        available: boolean
-        version: string | null
-        errorMessage: string | null
-      }>
       restartToUpdate?: () => Promise<void>
       onAutoUpdateStateChanged?: (
         listener: (state: {

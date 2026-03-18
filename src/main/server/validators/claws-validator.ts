@@ -30,6 +30,14 @@ const createTelegramChannelSchema = z.object({
   groupRequireMention: z.boolean().optional()
 })
 
+const createDiscordChannelSchema = z.object({
+  mode: z.literal('create'),
+  type: z.literal('discord'),
+  name: z.string().min(1),
+  botToken: z.string().min(1),
+  groupRequireMention: z.boolean().optional()
+})
+
 const createWhatsAppChannelSchema = z.object({
   mode: z.literal('create'),
   type: z.literal('whatsapp'),
@@ -82,6 +90,13 @@ export const createConfiguredTelegramChannelSchema = z.object({
   groupRequireMention: z.boolean().optional()
 })
 
+export const createConfiguredDiscordChannelSchema = z.object({
+  type: z.literal('discord'),
+  name: z.string().min(1),
+  botToken: z.string().min(1),
+  groupRequireMention: z.boolean().optional()
+})
+
 export const createConfiguredWhatsAppChannelSchema = z.object({
   type: z.literal('whatsapp'),
   name: z.string().min(1),
@@ -106,6 +121,7 @@ export const createConfiguredWechatKfChannelSchema = z.object({
 export const createConfiguredChannelSchema = z.union([
   createConfiguredLarkChannelSchema,
   createConfiguredTelegramChannelSchema,
+  createConfiguredDiscordChannelSchema,
   createConfiguredWhatsAppChannelSchema,
   createConfiguredWeComChannelSchema,
   createConfiguredWechatKfChannelSchema
@@ -121,6 +137,13 @@ export const updateConfiguredLarkChannelSchema = z.object({
 
 export const updateConfiguredTelegramChannelSchema = z.object({
   type: z.literal('telegram'),
+  name: z.string().min(1),
+  botToken: z.string().min(1).optional(),
+  groupRequireMention: z.boolean().optional()
+})
+
+export const updateConfiguredDiscordChannelSchema = z.object({
+  type: z.literal('discord'),
   name: z.string().min(1),
   botToken: z.string().min(1).optional(),
   groupRequireMention: z.boolean().optional()
@@ -150,6 +173,7 @@ export const updateConfiguredWechatKfChannelSchema = z.object({
 export const updateConfiguredChannelSchema = z.union([
   updateConfiguredLarkChannelSchema,
   updateConfiguredTelegramChannelSchema,
+  updateConfiguredDiscordChannelSchema,
   updateConfiguredWhatsAppChannelSchema,
   updateConfiguredWeComChannelSchema,
   updateConfiguredWechatKfChannelSchema
@@ -161,6 +185,7 @@ export const createClawSchema = z.object({
     .union([
       createLarkChannelSchema,
       createTelegramChannelSchema,
+      createDiscordChannelSchema,
       createWhatsAppChannelSchema,
       createWeComChannelSchema,
       createWechatKfChannelSchema,
@@ -175,6 +200,7 @@ export const updateClawSchema = z.object({
     .union([
       createLarkChannelSchema,
       createTelegramChannelSchema,
+      createDiscordChannelSchema,
       createWhatsAppChannelSchema,
       createWeComChannelSchema,
       createWechatKfChannelSchema,

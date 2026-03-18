@@ -98,6 +98,13 @@ export type SaveClawInput = {
       }
     | {
         mode: 'create'
+        type: 'discord'
+        name: string
+        botToken: string
+        groupRequireMention?: boolean
+      }
+    | {
+        mode: 'create'
         type: 'whatsapp'
         name: string
         groupRequireMention?: boolean
@@ -144,6 +151,12 @@ export type CreateClawChannelInput =
       groupRequireMention?: boolean
     }
   | {
+      type: 'discord'
+      name: string
+      botToken: string
+      groupRequireMention?: boolean
+    }
+  | {
       type: 'whatsapp'
       name: string
       groupRequireMention?: boolean
@@ -172,6 +185,12 @@ export type UpdateClawChannelInput =
     }
   | {
       type: 'telegram'
+      name: string
+      botToken?: string
+      groupRequireMention?: boolean
+    }
+  | {
+      type: 'discord'
       name: string
       botToken?: string
       groupRequireMention?: boolean

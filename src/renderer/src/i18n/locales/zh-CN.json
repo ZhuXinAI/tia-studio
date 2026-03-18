@@ -5,6 +5,8 @@
       "home": "主页",
       "claws": "Claws",
       "team": "团队",
+      "update": "Update",
+      "updating": "Updating...",
       "openSettings": "打开设置"
     },
     "legacySidebar": {
@@ -202,7 +204,8 @@
       },
       "kindDescription": {
         "bun": "用于 bun、bunx 和基于 npx 的 MCP 服务启动。",
-        "uv": "用于 uv 和基于 uvx 的 MCP 服务启动。"
+        "uv": "用于 uv 和基于 uvx 的 MCP 服务启动。",
+        "agentBrowser": "Used for agent-browser-backed browser automation and MCP launches."
       },
       "labels": {
         "status": "状态：",
@@ -535,6 +538,7 @@
         "setupDescription": "Optionally install bun and a few recommended tools before creating this claw."
       },
       "channelTypes": {
+        "discord": "Discord",
         "lark": "Lark",
         "telegram": "Telegram",
         "whatsapp": "WhatsApp",
@@ -553,6 +557,7 @@
         "providerRequired": "提供商为必填项",
         "channelRequired": "请选择要绑定的频道",
         "channelCredentialsRequired": "Lark 频道名称、应用 ID 和应用密钥均为必填项",
+        "discordCredentialsRequired": "Discord channel name and bot token are required",
         "telegramCredentialsRequired": "Telegram 频道名称和 Bot Token 均为必填项",
         "pickFolderFailed": "选择文件夹失败"
       }
@@ -612,6 +617,7 @@
       },
       "errors": {
         "nameRequired": "频道名称为必填项",
+        "discordCredentialsRequired": "Bot token is required for Discord channels",
         "larkCredentialsRequired": "Lark 频道必须填写 App ID 和应用密钥",
         "telegramCredentialsRequired": "Telegram 频道必须填写 Bot Token",
         "wecomCredentialsRequired": "企业微信频道必须填写机器人 ID 和 Secret",
@@ -901,8 +907,7 @@
       "tabs": {
         "essential": "基本设置",
         "tools": "工具",
-        "skills": "Skills",
-        "coding": "Coding"
+        "skills": "Skills"
       },
       "fields": {
         "name": "名称",
@@ -972,48 +977,6 @@
         "removingButton": "正在移除...",
         "removeButton": "移除",
         "readOnly": "只读"
-      },
-      "coding": {
-        "enableLabel": "Enable coding agent",
-        "description": "Add a Codex-powered subagent for code changes, debugging, and test runs.",
-        "statusChecking": "Checking Codex CLI availability...",
-        "toggleAriaLabel": "Enable coding agent",
-        "unavailableTitle": "Codex CLI is unavailable on this system.",
-        "unavailableDescription": "Install `codex` and make sure it is available on PATH to enable the coding agent.",
-        "fields": {
-          "cwd": "Working directory (cwd)",
-          "addDirs": "Additional directories (addDirs)",
-          "skipGitRepoCheck": "Skip git repo check",
-          "fullAuto": "Full auto mode",
-          "approvalMode": "Approval mode",
-          "sandboxMode": "Sandbox mode"
-        },
-        "cwdHelp": "Defaults to the workspace path. Use an absolute path or a path relative to the workspace.",
-        "addDirsHelp": "One path per line. These map to repeated --add-dir entries.",
-        "skipGitRepoCheckHelp": "Skip Git repository validation for this coding session.",
-        "fullAutoHelp": "Runs with --full-auto and bypasses approval/sandbox prompts.",
-        "approvalModeHelp": "Controls when Codex requests approval for commands.",
-        "sandboxModeHelp": "Controls the filesystem sandbox mode for Codex.",
-        "skipGitRepoCheckAriaLabel": "Toggle skip git repo check",
-        "fullAutoAriaLabel": "Toggle full auto mode",
-        "placeholders": {
-          "cwd": "/Users/name/repo",
-          "addDirs": "../shared\n/opt/tools"
-        },
-        "approvalModes": {
-          "untrusted": "Untrusted",
-          "on-failure": "On failure",
-          "on-request": "On request",
-          "never": "Never"
-        },
-        "sandboxModes": {
-          "read-only": "Read-only",
-          "workspace-write": "Workspace write",
-          "danger-full-access": "Danger full access"
-        },
-        "errors": {
-          "cwdRequired": "Set a workspace path or coding working directory to enable coding."
-        }
       }
     }
   },

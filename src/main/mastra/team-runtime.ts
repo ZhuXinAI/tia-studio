@@ -19,7 +19,6 @@ import type { TeamThreadsRepository } from '../persistence/repos/team-threads-re
 import type { TeamWorkspacesRepository } from '../persistence/repos/team-workspaces-repo'
 import { ChatRouteError } from '../server/chat/chat-errors'
 import { TeamRunStatusStore } from '../server/chat/team-run-status-store'
-import { createCodingSubagent } from './coding-agent'
 import { createDefaultModelSettings } from './model-retry-settings'
 import { resolveModel } from './model-resolver'
 import { buildOpenAIProviderOptions } from './openai-provider-options'
@@ -310,12 +309,6 @@ export class TeamRuntimeService implements TeamRuntime {
           input.teamWorkspaceRootPath,
           assistant.skillsConfig ?? {}
         )
-        const codingAgent = createCodingSubagent({
-          assistantId: assistant.id,
-          assistantName: assistant.name,
-          workspaceRootPath: input.teamWorkspaceRootPath,
-          codingConfig: assistant.codingConfig
-        })
         const builtInBrowserTools = this.options.builtInBrowserManager
           ? createBuiltInBrowserTools({
               controller: this.options.builtInBrowserManager
@@ -337,7 +330,6 @@ export class TeamRuntimeService implements TeamRuntime {
             apiHost: provider.apiHost,
             selectedModel: provider.selectedModel
           }) as never,
-          ...(codingAgent ? { agents: { codingAgent } } : {}),
           ...(Object.keys(builtInBrowserTools).length > 0 ? { tools: builtInBrowserTools } : {}),
           memory: input.sharedMemory as never,
           workspace

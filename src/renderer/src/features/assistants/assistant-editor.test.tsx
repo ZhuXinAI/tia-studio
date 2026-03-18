@@ -61,11 +61,6 @@ describe('assistant editor', () => {
         baseUrl: 'http://127.0.0.1:3456',
         authToken: 'token'
       })),
-      getCodexCliStatus: vi.fn(async () => ({
-        available: true,
-        version: 'codex 0.105.0',
-        errorMessage: null
-      })),
       getManagedRuntimeStatus: vi.fn(async () => missingManagedRuntimes),
       pickDirectory: vi.fn(async () => null)
     }
@@ -133,6 +128,17 @@ describe('assistant editor', () => {
       errorMessage: null
     },
     uv: {
+      source: 'none',
+      binaryPath: null,
+      version: null,
+      installedAt: null,
+      lastCheckedAt: null,
+      releaseUrl: null,
+      checksum: null,
+      status: 'missing',
+      errorMessage: null
+    },
+    'agent-browser': {
       source: 'none',
       binaryPath: null,
       version: null,
@@ -347,11 +353,6 @@ describe('assistant editor', () => {
         baseUrl: 'http://127.0.0.1:3456',
         authToken: 'token'
       })),
-      getCodexCliStatus: vi.fn(async () => ({
-        available: true,
-        version: 'codex 0.105.0',
-        errorMessage: null
-      })),
       getManagedRuntimeStatus: vi.fn(async () => missingManagedRuntimes),
       pickDirectory: vi.fn(async () => null)
     }
@@ -448,209 +449,6 @@ describe('assistant editor', () => {
           docs: true,
           github: false
         }
-      }),
-      null
-    )
-  })
-
-  it('includes coding config in the submit payload', async () => {
-    const onSubmit = vi.fn(async () => undefined)
-
-    await act(async () => {
-      root.render(
-        <MemoryRouter>
-          <AssistantEditor
-            providers={[provider]}
-            mcpServers={{}}
-            initialValue={{
-              id: 'assistant-1',
-              name: 'Planner',
-              description: '',
-              instructions: '',
-              enabled: true,
-              providerId: 'provider-1',
-              workspaceConfig: { rootPath: '/Users/windht/Dev/tia-studio' },
-              skillsConfig: {},
-              mcpConfig: {},
-              maxSteps: 100,
-              memoryConfig: null,
-              createdAt: '2026-03-02T00:00:00.000Z',
-              updatedAt: '2026-03-02T00:00:00.000Z'
-            }}
-            onSubmit={onSubmit}
-          />
-        </MemoryRouter>
-      )
-    })
-    await flushAsyncWork()
-
-    const codingButton = findButtonByText(container, 'Coding')
-    await act(async () => {
-      codingButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    const enableToggle = container.querySelector(
-      '[aria-label="Enable coding agent"]'
-    ) as HTMLButtonElement | null
-    const cwdInput = container.querySelector('#assistant-coding-cwd') as HTMLInputElement | null
-    const addDirsInput = container.querySelector(
-      '#assistant-coding-add-dirs'
-    ) as HTMLTextAreaElement | null
-    const approvalSelect = container.querySelector(
-      '#assistant-coding-approval-mode'
-    ) as HTMLSelectElement | null
-    const sandboxSelect = container.querySelector(
-      '#assistant-coding-sandbox-mode'
-    ) as HTMLSelectElement | null
-
-    await act(async () => {
-      enableToggle?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    await act(async () => {
-      if (cwdInput) {
-        setInputValue(cwdInput, '/Users/windht/Dev/tia-studio')
-      }
-      if (addDirsInput) {
-        setInputValue(addDirsInput, '../shared\n/opt/tools')
-      }
-      if (approvalSelect) {
-        approvalSelect.value = 'on-request'
-        approvalSelect.dispatchEvent(new Event('change', { bubbles: true }))
-      }
-      if (sandboxSelect) {
-        sandboxSelect.value = 'read-only'
-        sandboxSelect.dispatchEvent(new Event('change', { bubbles: true }))
-      }
-    })
-
-    const submitButton = findButtonByText(container, 'Update Assistant')
-    await act(async () => {
-      submitButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        codingConfig: {
-          enabled: true,
-          cwd: '/Users/windht/Dev/tia-studio',
-          addDirs: ['../shared', '/opt/tools'],
-          skipGitRepoCheck: true,
-          fullAuto: false,
-          approvalMode: 'on-request',
-          sandboxMode: 'read-only'
-        }
-      }),
-      null
-    )
-  })
-
-  it('disables coding controls when Codex CLI is unavailable', async () => {
-    window.tiaDesktop = {
-      getConfig: vi.fn(async () => ({
-        baseUrl: 'http://127.0.0.1:3456',
-        authToken: 'token'
-      })),
-      getCodexCliStatus: vi.fn(async () => ({
-        available: false,
-        version: null,
-        errorMessage: 'Codex CLI is not installed or not available on PATH.'
-      })),
-      getManagedRuntimeStatus: vi.fn(async () => missingManagedRuntimes),
-      pickDirectory: vi.fn(async () => null)
-    }
-
-    const onSubmit = vi.fn(async () => undefined)
-
-    await act(async () => {
-      root.render(
-        <MemoryRouter>
-          <AssistantEditor
-            providers={[provider]}
-            mcpServers={{}}
-            initialValue={{
-              id: 'assistant-1',
-              name: 'Planner',
-              description: '',
-              instructions: '',
-              enabled: true,
-              providerId: 'provider-1',
-              workspaceConfig: { rootPath: '/Users/windht/Dev/tia-studio' },
-              skillsConfig: {},
-              codingConfig: {
-                enabled: true,
-                cwd: '/Users/windht/Dev/tia-studio',
-                addDirs: ['../shared'],
-                skipGitRepoCheck: true,
-                fullAuto: false,
-                approvalMode: 'on-request',
-                sandboxMode: 'read-only'
-              },
-              mcpConfig: {},
-              maxSteps: 100,
-              memoryConfig: null,
-              createdAt: '2026-03-02T00:00:00.000Z',
-              updatedAt: '2026-03-02T00:00:00.000Z'
-            }}
-            onSubmit={onSubmit}
-          />
-        </MemoryRouter>
-      )
-    })
-    await flushAsyncWork()
-
-    const codingButton = findButtonByText(container, 'Coding')
-    await act(async () => {
-      codingButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    expect(container.textContent).toContain('Codex CLI is unavailable on this system.')
-    expect(container.textContent).toContain('Codex CLI is not installed or not available on PATH.')
-
-    const enableToggle = container.querySelector(
-      '[aria-label="Enable coding agent"]'
-    ) as HTMLButtonElement | null
-    const cwdInput = container.querySelector('#assistant-coding-cwd') as HTMLInputElement | null
-    const addDirsInput = container.querySelector(
-      '#assistant-coding-add-dirs'
-    ) as HTMLTextAreaElement | null
-    const approvalSelect = container.querySelector(
-      '#assistant-coding-approval-mode'
-    ) as HTMLSelectElement | null
-    const sandboxSelect = container.querySelector(
-      '#assistant-coding-sandbox-mode'
-    ) as HTMLSelectElement | null
-
-    expect(enableToggle?.disabled).toBe(true)
-    expect(enableToggle?.getAttribute('aria-checked')).toBe('false')
-    expect(cwdInput?.disabled).toBe(true)
-    expect(addDirsInput?.disabled).toBe(true)
-    expect(approvalSelect?.disabled).toBe(true)
-    expect(sandboxSelect?.disabled).toBe(true)
-
-    const submitButton = findButtonByText(container, 'Update Assistant')
-    await act(async () => {
-      submitButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        codingConfig: {
-          cwd: '/Users/windht/Dev/tia-studio',
-          addDirs: ['../shared'],
-          skipGitRepoCheck: true,
-          fullAuto: false,
-          approvalMode: 'on-request',
-          sandboxMode: 'read-only'
-        }
-      }),
-      null
-    )
-    expect(onSubmit).not.toHaveBeenCalledWith(
-      expect.objectContaining({
-        codingConfig: expect.objectContaining({
-          enabled: true
-        })
       }),
       null
     )

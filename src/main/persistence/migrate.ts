@@ -58,19 +58,6 @@ async function ensureAssistantEnabledColumn(db: AppDatabase): Promise<void> {
   await db.execute('ALTER TABLE app_assistants ADD COLUMN enabled INTEGER NOT NULL DEFAULT 0')
 }
 
-async function ensureAssistantCodingColumn(db: AppDatabase): Promise<void> {
-  const tableInfo = await db.execute("PRAGMA table_info('app_assistants')")
-  const hasCodingColumn = tableInfo.rows.some((row) => {
-    return String((row as Record<string, unknown>).name) === 'coding_config'
-  })
-
-  if (hasCodingColumn) {
-    return
-  }
-
-  await db.execute("ALTER TABLE app_assistants ADD COLUMN coding_config TEXT NOT NULL DEFAULT '{}'")
-}
-
 async function ensureProviderSupportsVisionColumn(db: AppDatabase): Promise<void> {
   const tableInfo = await db.execute("PRAGMA table_info('app_providers')")
   const hasSupportsVisionColumn = tableInfo.rows.some((row) => {
@@ -635,7 +622,6 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
 
   await ensureAssistantDescriptionColumn(db)
   await ensureAssistantEnabledColumn(db)
-  await ensureAssistantCodingColumn(db)
   await ensureAssistantMaxStepsColumn(db)
   await ensureProviderSupportsVisionColumn(db)
   await ensureBuiltInProviderColumns(db)

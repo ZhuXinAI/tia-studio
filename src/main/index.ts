@@ -15,14 +15,14 @@ import { serve, type ServerType } from '@hono/node-server'
 import { autoUpdater } from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
 import { AutoUpdateService } from './auto-updater'
-import { resolveServerConfig } from './config/server-config'
-import { getCodexCliStatus } from './codex/codex-cli'
+import { resolveAvailableServerPort, resolveServerConfig } from './config/server-config'
 import { ensureBuiltInDefaultAgent } from './default-agent/default-agent-bootstrap'
 import { ensureBuiltInProviders } from './default-agent/built-in-providers-bootstrap'
 import { ensureBuiltInDefaultTeamWorkspace } from './default-team/default-team-bootstrap'
 import { logger } from './utils/logger'
 import { ChannelEventBus } from './channels/channel-event-bus'
 import { resolveGroupRequireMention } from './channels/channel-config'
+import { DiscordChannel } from './channels/discord-channel'
 import { createLlmInterruptionDecider } from './channels/llm-interruption-decider'
 import { ChannelMessageRouter } from './channels/channel-message-router'
 import { ChannelService } from './channels/channel-service'
@@ -85,7 +85,7 @@ const hasSingleInstanceLock = registerSingleInstanceApp({
   }
 })
 
-const serverConfig = resolveServerConfig({})
+let serverConfig = resolveServerConfig({})
 const autoUpdateService = new AutoUpdateService({
   app,
   updater: autoUpdater,
@@ -123,11 +123,11 @@ function resolveUiConfigStore(): UiConfigStore {
 let isTransparentWindow = Boolean(resolveUiConfigStore().getConfig().transparent)
 
 function assertManagedRuntimeKind(value: unknown): ManagedRuntimeKind {
-  if (value === 'bun' || value === 'uv') {
+  if (value === 'bun' || value === 'uv' || value === 'agent-browser') {
     return value
   }
 
-  throw new Error('Managed runtime kind must be "bun" or "uv"')
+  throw new Error('Managed runtime kind must be "bun", "uv", or "agent-browser"')
 }
 
 function assertRecommendedSkillIds(value: unknown): RecommendedSkillId[] {
@@ -206,6 +206,19 @@ async function startLocalApiServer(): Promise<void> {
   }
 
   logger.setFileOutput(join(app.getPath('userData'), 'logs', 'tia-studio.log'))
+  const resolvedPort = await resolveAvailableServerPort({
+    host: serverConfig.host,
+    preferredPort: serverConfig.port
+  })
+  if (resolvedPort !== serverConfig.port) {
+    logger.warn(
+      `TIA local API default port ${serverConfig.port} was already in use, falling back to ${resolvedPort}`
+    )
+    serverConfig = {
+      ...serverConfig,
+      port: resolvedPort
+    }
+  }
   persistenceDatabasePath = join(app.getPath('userData'), 'tia-studio.db')
   const db = await migrateAppSchema(persistenceDatabasePath)
   const providersRepo = new ProvidersRepository(db)
@@ -301,6 +314,22 @@ async function startLocalApiServer(): Promise<void> {
     channelsRepo,
     eventBus: channelEventBus,
     adapterFactories: {
+      discord: async (channel) => {
+        const botToken = channel.config.botToken
+        if (typeof botToken !== 'string' || botToken.trim().length === 0) {
+          throw new Error(`Channel ${channel.id} is missing required config: botToken`)
+        }
+
+        return new DiscordChannel({
+          id: channel.id,
+          botToken,
+          groupRequireMention: resolveGroupRequireMention(channel.config),
+          onFatalError: async (error) => {
+            const message = error instanceof Error ? error.message : 'Unknown error'
+            await channelsRepo.setLastError(channel.id, message)
+          }
+        })
+      },
       telegram: async (channel) => {
         const botToken = channel.config.botToken
         if (typeof botToken !== 'string' || botToken.trim().length === 0) {
@@ -704,9 +733,6 @@ if (hasSingleInstanceLock) {
     ipcMain.handle('tia:check-for-updates', () => {
       return autoUpdateService.checkForUpdates()
     })
-    ipcMain.handle('tia:get-codex-cli-status', () => {
-      return getCodexCliStatus()
-    })
     ipcMain.handle('tia:restart-to-update', () => {
       autoUpdateService.restartToUpdate()
     })
@@ -724,8 +750,9 @@ if (hasSingleInstanceLock) {
     ipcMain.handle('tia:pick-custom-runtime', async (event, rawKind) => {
       const kind = assertManagedRuntimeKind(rawKind)
       const currentWindow = BrowserWindow.fromWebContents(event.sender)
+      const runtimeDisplayName = kind === 'bun' ? 'Bun' : kind === 'uv' ? 'UV' : 'Agent Browser'
       const openDialogOptions: OpenDialogOptions = {
-        title: `Select ${kind === 'bun' ? 'Bun' : 'UV'} Binary`,
+        title: `Select ${runtimeDisplayName} Binary`,
         properties: ['openFile']
       }
       const result = currentWindow

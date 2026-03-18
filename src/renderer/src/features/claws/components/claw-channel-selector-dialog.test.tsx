@@ -288,6 +288,86 @@ describe('ClawChannelSelectorDialog', () => {
     expect(createdButton.getAttribute('data-selected')).toBe('true')
   })
 
+  it('creates a new discord channel with mention gating controls', async () => {
+    const onCreateChannel = vi.fn(async () =>
+      buildChannel({
+        id: 'channel-discord',
+        type: 'discord',
+        name: 'Discord Bot',
+        status: 'disconnected',
+        groupRequireMention: false
+      })
+    )
+
+    await act(async () => {
+      root.render(
+        <ClawChannelSelectorDialog
+          isOpen
+          currentAssistantId={null}
+          selectedChannelId=""
+          channels={[]}
+          isMutating={false}
+          errorMessage={null}
+          onClose={() => undefined}
+          onApply={() => undefined}
+          onCreateChannel={onCreateChannel}
+          onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onDeleteChannel={vi.fn(async () => undefined)}
+        />
+      )
+    })
+    await flushAsyncWork()
+
+    const addButton = document.body.querySelector(
+      'button[id="claw-channel-selector-add"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const typeSelect = document.body.querySelector(
+      'select[id="claw-channel-create-type"]'
+    ) as HTMLSelectElement
+    const nameInput = document.body.querySelector(
+      'input[id="claw-channel-create-name"]'
+    ) as HTMLInputElement
+    const createButton = document.body.querySelector(
+      'button[id="claw-channel-create-save"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      setElementValue(typeSelect, 'discord')
+    })
+    await flushAsyncWork()
+
+    const botTokenInput = document.body.querySelector(
+      'input[id="claw-channel-create-bot-token"]'
+    ) as HTMLInputElement
+    const mentionSwitch = document.body.querySelector(
+      'button[id="claw-channel-group-require-mention"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      setElementValue(nameInput, 'Discord Bot')
+      setElementValue(botTokenInput, 'discord-test-token')
+      mentionSwitch.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    await act(async () => {
+      createButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(onCreateChannel).toHaveBeenCalledWith({
+      type: 'discord',
+      name: 'Discord Bot',
+      botToken: 'discord-test-token',
+      groupRequireMention: false
+    })
+  })
+
   it('edits the selected channel from the nested form dialog', async () => {
     const onUpdateChannel = vi.fn(async (channelId: string) =>
       buildChannel({

@@ -220,6 +220,38 @@ describe('claws route', () => {
     })
   })
 
+  it('creates a claw with a new inline discord channel', async () => {
+    const response = await app.request('http://localhost/v1/claws', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assistant: {
+          name: 'Discord Assistant',
+          providerId,
+          enabled: true
+        },
+        channel: {
+          mode: 'create',
+          type: 'discord',
+          name: 'Discord Bot',
+          botToken: 'discord-test-token',
+          groupRequireMention: false
+        }
+      })
+    })
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({
+      name: 'Discord Assistant',
+      channel: {
+        type: 'discord',
+        name: 'Discord Bot',
+        pairedCount: 0,
+        pendingPairingCount: 0
+      }
+    })
+  })
+
   it('creates a claw with a new inline wecom channel', async () => {
     const response = await app.request('http://localhost/v1/claws', {
       method: 'POST',
@@ -307,6 +339,30 @@ describe('claws route', () => {
     })
     expect(channelReloadMock).not.toHaveBeenCalled()
     expect(cronReloadMock).not.toHaveBeenCalled()
+  })
+
+  it('creates an unbound configured discord channel', async () => {
+    const response = await app.request('http://localhost/v1/claws/channels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'discord',
+        name: 'Configured Discord',
+        botToken: 'discord-configured-token',
+        groupRequireMention: false
+      })
+    })
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({
+      type: 'discord',
+      name: 'Configured Discord',
+      assistantId: null,
+      assistantName: null,
+      status: 'disconnected',
+      errorMessage: null,
+      groupRequireMention: false
+    })
   })
 
   it('creates an unbound configured whatsapp channel', async () => {

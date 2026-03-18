@@ -39,6 +39,17 @@ function createManagedRuntimeState(readyKinds: ManagedRuntimeKind[] = []): Manag
       checksum: null,
       status: isReady('uv') ? 'ready' : 'missing',
       errorMessage: null
+    },
+    'agent-browser': {
+      source: isReady('agent-browser') ? 'managed' : 'none',
+      binaryPath: isReady('agent-browser') ? '/managed/bin/agent-browser' : null,
+      version: isReady('agent-browser') ? 'agent-browser 0.21.0' : null,
+      installedAt: null,
+      lastCheckedAt: null,
+      releaseUrl: null,
+      checksum: null,
+      status: isReady('agent-browser') ? 'ready' : 'missing',
+      errorMessage: null
     }
   }
 }
@@ -186,6 +197,40 @@ describe('AssistantRuntimeService runtime resolution', () => {
     expect(definitions.runner).toEqual({
       command: '/managed/bin/bun',
       args: ['run', './index.ts']
+    })
+  })
+
+  it('resolves agent-browser commands through the managed runtime', async () => {
+    const runtime = createRuntime({
+      getStatus: async () => createManagedRuntimeState(['agent-browser']),
+      resolveManagedCommand: vi.fn(async (_command, args, env = {}) => ({
+        command: '/managed/bin/agent-browser',
+        args,
+        env
+      }))
+    })
+
+    const definitions = await (
+      runtime as unknown as {
+        toMcpServerDefinitions: (
+          servers: Record<string, AppMcpServer>
+        ) => Promise<Record<string, MastraMCPServerDefinition>>
+      }
+    ).toMcpServerDefinitions({
+      browser: {
+        isActive: true,
+        name: 'Agent Browser',
+        type: 'stdio',
+        command: 'agent-browser',
+        args: ['mcp'],
+        env: {},
+        installSource: 'manual'
+      }
+    })
+
+    expect(definitions.browser).toEqual({
+      command: '/managed/bin/agent-browser',
+      args: ['mcp']
     })
   })
 

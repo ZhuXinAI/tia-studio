@@ -5,6 +5,8 @@
       "home": "Αρχική",
       "claws": "Claws",
       "team": "Ομάδα",
+      "update": "Update",
+      "updating": "Updating...",
       "openSettings": "Άνοιγμα ρυθμίσεων"
     },
     "legacySidebar": {
@@ -202,7 +204,8 @@
       },
       "kindDescription": {
         "bun": "Για εκκινήσεις διακομιστή MCP με bun, bunx και npx.",
-        "uv": "Για εκκινήσεις διακομιστή MCP με uv και uvx."
+        "uv": "Για εκκινήσεις διακομιστή MCP με uv και uvx.",
+        "agentBrowser": "Used for agent-browser-backed browser automation and MCP launches."
       },
       "labels": {
         "status": "Κατάσταση:",
@@ -535,6 +538,7 @@
         "setupDescription": "Optionally install bun and a few recommended tools before creating this claw."
       },
       "channelTypes": {
+        "discord": "Discord",
         "lark": "Lark",
         "telegram": "Telegram",
         "whatsapp": "WhatsApp",
@@ -553,6 +557,7 @@
         "providerRequired": "Ο πάροχος είναι υποχρεωτικός",
         "channelRequired": "Επιλέξτε κανάλι για σύνδεση",
         "channelCredentialsRequired": "Απαιτούνται όνομα καναλιού Lark, ID εφαρμογής και μυστικό εφαρμογής",
+        "discordCredentialsRequired": "Discord channel name and bot token are required",
         "telegramCredentialsRequired": "Απαιτούνται όνομα καναλιού Telegram και διακριτικό bot",
         "pickFolderFailed": "Failed to pick folder"
       }
@@ -612,6 +617,7 @@
       },
       "errors": {
         "nameRequired": "Απαιτείται όνομα καναλιού",
+        "discordCredentialsRequired": "Bot token is required for Discord channels",
         "larkCredentialsRequired": "Απαιτούνται App ID και app secret για κανάλια Lark",
         "telegramCredentialsRequired": "Απαιτείται διακριτικό bot για κανάλια Telegram",
         "wecomCredentialsRequired": "Bot ID and secret are required for Wecom channels",
@@ -901,8 +907,7 @@
       "tabs": {
         "essential": "Βασικές ρυθμίσεις",
         "tools": "Εργαλεία",
-        "skills": "Skills",
-        "coding": "Coding"
+        "skills": "Skills"
       },
       "fields": {
         "name": "Όνομα",
@@ -972,48 +977,6 @@
         "removingButton": "Removing...",
         "removeButton": "Remove",
         "readOnly": "Read-only"
-      },
-      "coding": {
-        "enableLabel": "Enable coding agent",
-        "description": "Add a Codex-powered subagent for code changes, debugging, and test runs.",
-        "statusChecking": "Checking Codex CLI availability...",
-        "toggleAriaLabel": "Enable coding agent",
-        "unavailableTitle": "Codex CLI is unavailable on this system.",
-        "unavailableDescription": "Install `codex` and make sure it is available on PATH to enable the coding agent.",
-        "fields": {
-          "cwd": "Working directory (cwd)",
-          "addDirs": "Additional directories (addDirs)",
-          "skipGitRepoCheck": "Skip git repo check",
-          "fullAuto": "Full auto mode",
-          "approvalMode": "Approval mode",
-          "sandboxMode": "Sandbox mode"
-        },
-        "cwdHelp": "Defaults to the workspace path. Use an absolute path or a path relative to the workspace.",
-        "addDirsHelp": "One path per line. These map to repeated --add-dir entries.",
-        "skipGitRepoCheckHelp": "Skip Git repository validation for this coding session.",
-        "fullAutoHelp": "Runs with --full-auto and bypasses approval/sandbox prompts.",
-        "approvalModeHelp": "Controls when Codex requests approval for commands.",
-        "sandboxModeHelp": "Controls the filesystem sandbox mode for Codex.",
-        "skipGitRepoCheckAriaLabel": "Toggle skip git repo check",
-        "fullAutoAriaLabel": "Toggle full auto mode",
-        "placeholders": {
-          "cwd": "/Users/name/repo",
-          "addDirs": "../shared\n/opt/tools"
-        },
-        "approvalModes": {
-          "untrusted": "Untrusted",
-          "on-failure": "On failure",
-          "on-request": "On request",
-          "never": "Never"
-        },
-        "sandboxModes": {
-          "read-only": "Read-only",
-          "workspace-write": "Workspace write",
-          "danger-full-access": "Danger full access"
-        },
-        "errors": {
-          "cwdRequired": "Set a workspace path or coding working directory to enable coding."
-        }
       }
     }
   },
