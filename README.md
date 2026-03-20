@@ -26,16 +26,18 @@ TIA (short for "This Is AI") Studio is an Electron-based desktop app built to ma
 
 At the same time, TIA Studio is a full-featured assistant app. You can chat with a single assistant, coordinate a team of assistants, organize threaded work, and manage channels from one local-first desktop workspace.
 
-Today, TIA Studio supports Lark, Telegram, WhatsApp, and Wecom channels, with more channels planned next.
+Today, TIA Studio supports Discord, Lark, Telegram, WhatsApp, Wecom, and Wechat-KF channels, with more channels planned next.
 
 ### Channel Support
 
 | Channel | Direct Chat | Group Chat | Group Trigger |
 | ------- | ----------- | ---------- | ------------- |
+| Discord | ✅ | ✅ | Replies only when the bot is `@` mentioned by default |
 | Lark | ✅ | ✅ | Replies only when the bot is `@` mentioned by default |
 | Telegram | ✅ | 🚫 | Group support is currently disabled |
 | WhatsApp | ✅ | ✅ | Replies only when the bot is `@` mentioned by default |
 | Wecom | ✅ | ✅ | Replies only when the bot is `@` mentioned by default |
+| Wechat-KF | ✅ | 🚫 | Not applicable for relay-backed 1:1 customer sessions |
 
 For more, check [CHANNEL.md](./CHANNEL.md).
 
@@ -112,7 +114,7 @@ That means adapting an assistant into a claw does **not** fork its identity:
 - 🤖 Full-featured AI assistant workspace with multiple assistants
 - 👥 Teams for coordinating assistants in one workspace
 - 📡 Channels that connect assistants to real conversations
-- ✅ Lark, Telegram, WhatsApp, and Wecom support available today
+- ✅ Discord, Lark, Telegram, WhatsApp, Wecom, and Wechat-KF support available today
 - 🚧 More channels coming soon
 - 💬 Thread-based conversation management
 - 🎨 Clean, dark-themed interface

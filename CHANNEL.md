@@ -25,6 +25,7 @@ The assistant still owns identity, tools, memory, prompts, workspace, cron, and 
 | Telegram | ✅          | 🚫         | Not available yet                   | Telegram is currently DM-only while group behavior is under review |
 | WhatsApp | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
 | Wecom    | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
+| Wechat-KF | ✅         | 🚫         | Not applicable                      | Relay-backed one-to-one customer-service sessions only             |
 
 ## Group behavior
 
@@ -69,6 +70,12 @@ Telegram is the current exception: even if the setting exists in stored channel 
 - Supports direct chats and group chats
 - Detects bot mentions from the text payload used by the current Wecom adapter
 - Group replies are mention-gated by default
+
+### Wechat-KF
+
+- Supports relay-backed one-to-one customer-service sessions
+- Uses the relay server configured for the channel to exchange inbound and outbound text messages
+- Group chat behavior is not supported
 
 ## Why channels matter
 
