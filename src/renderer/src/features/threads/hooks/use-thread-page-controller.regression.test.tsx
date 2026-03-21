@@ -57,6 +57,15 @@ const mockState = vi.hoisted(() => {
     idleMutation,
     navigateMock: vi.fn(),
     getMcpServersSettingsMock: vi.fn(),
+    updateAssistantHeartbeatMock: vi.fn(),
+    clawsData: {
+      claws: [],
+      configuredChannels: []
+    },
+    updateClawMock: vi.fn(),
+    createClawChannelMock: vi.fn(),
+    updateClawChannelMock: vi.fn(),
+    deleteClawChannelMock: vi.fn(),
     useChatMock: vi.fn()
   }
 })
@@ -77,6 +86,10 @@ vi.mock('../../assistants/assistants-query', () => ({
   useDeleteAssistant: () => mockState.idleMutation
 }))
 
+vi.mock('../../assistants/assistant-heartbeat-query', () => ({
+  updateAssistantHeartbeat: () => mockState.updateAssistantHeartbeatMock()
+}))
+
 vi.mock('../../settings/providers/providers-query', () => ({
   useProviders: () => ({
     data: mockState.providersData,
@@ -87,6 +100,21 @@ vi.mock('../../settings/providers/providers-query', () => ({
 
 vi.mock('../../settings/mcp-servers/mcp-servers-query', () => ({
   getMcpServersSettings: () => mockState.getMcpServersSettingsMock()
+}))
+
+vi.mock('../../claws/claws-query', () => ({
+  clawKeys: {
+    list: () => ['claws', 'list']
+  },
+  useClaws: () => ({
+    data: mockState.clawsData,
+    isLoading: false,
+    error: null
+  }),
+  updateClaw: (...args: unknown[]) => mockState.updateClawMock(...args),
+  createClawChannel: (...args: unknown[]) => mockState.createClawChannelMock(...args),
+  updateClawChannel: (...args: unknown[]) => mockState.updateClawChannelMock(...args),
+  deleteClawChannel: (...args: unknown[]) => mockState.deleteClawChannelMock(...args)
 }))
 
 vi.mock('../threads-query', () => ({
@@ -152,6 +180,15 @@ describe('useThreadPageController regression coverage', () => {
     mockState.getMcpServersSettingsMock.mockImplementation(
       () => new Promise<Record<string, unknown>>(() => undefined)
     )
+    mockState.updateAssistantHeartbeatMock.mockReset()
+    mockState.clawsData = {
+      claws: [],
+      configuredChannels: []
+    }
+    mockState.updateClawMock.mockReset()
+    mockState.createClawChannelMock.mockReset()
+    mockState.updateClawChannelMock.mockReset()
+    mockState.deleteClawChannelMock.mockReset()
 
     mockState.useChatMock.mockReset()
     mockState.useChatMock.mockImplementation(() => {

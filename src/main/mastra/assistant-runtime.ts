@@ -49,9 +49,7 @@ import { resolveModel } from './model-resolver'
 import { buildOpenAIProviderOptions } from './openai-provider-options'
 import { AttachmentUploader } from './processors/attachment-uploader'
 import { createBuiltInBrowserTools } from './tools/built-in-browser-tools'
-import {
-  createCodingAgentDelegateTool
-} from './tools/coding-agent-tools'
+import { createCodingAgentDelegateTool } from './tools/coding-agent-tools'
 import {
   createTiaBrowserToolActionTools,
   createTiaBrowserToolDelegateTool,
@@ -1525,6 +1523,7 @@ ${input.prompt}`
     const enabledMcpServers = await this.resolveEnabledMcpServers(assistant.mcpConfig ?? {})
     const mcpServersSignature = JSON.stringify(enabledMcpServers)
     const guardrailConfig = await this.resolveGuardrailConfig(provider)
+    await this.assertAcpProviderReady(guardrailConfig.provider)
     const browserAutomationMode = await this.resolveBrowserAutomationMode()
     const browserAgentName = `${assistant.id}:browser-agent`
     const codingAgentName = `${assistant.id}:coding-agent`
@@ -1578,22 +1577,30 @@ ${input.prompt}`
       resolveShowBrowser: async () => this.options.webSearchSettingsRepo.getShowBrowser()
     })
 
-    const model = resolveModel({
-      type: provider.type,
-      apiKey: provider.apiKey,
-      apiHost: provider.apiHost,
-      selectedModel: provider.selectedModel
-    }, {}, {
-      acpWorkingDirectory: workspaceRootPath
-    })
-    const guardrailModel = resolveModel({
-      type: guardrailConfig.provider.type,
-      apiKey: guardrailConfig.provider.apiKey,
-      apiHost: guardrailConfig.provider.apiHost,
-      selectedModel: guardrailConfig.provider.selectedModel
-    }, {}, {
-      acpWorkingDirectory: workspaceRootPath
-    })
+    const model = resolveModel(
+      {
+        type: provider.type,
+        apiKey: provider.apiKey,
+        apiHost: provider.apiHost,
+        selectedModel: provider.selectedModel
+      },
+      {},
+      {
+        acpWorkingDirectory: workspaceRootPath
+      }
+    )
+    const guardrailModel = resolveModel(
+      {
+        type: guardrailConfig.provider.type,
+        apiKey: guardrailConfig.provider.apiKey,
+        apiHost: guardrailConfig.provider.apiHost,
+        selectedModel: guardrailConfig.provider.selectedModel
+      },
+      {},
+      {
+        acpWorkingDirectory: workspaceRootPath
+      }
+    )
 
     const storage = this.options.mastra.getStorage()
     const memory = new Memory({
@@ -1972,10 +1979,7 @@ ${input.prompt}`
     return this.isManagedRuntimeReady(status[runtimeKind])
   }
 
-  private async assertAcpProviderReady(provider: {
-    name: string
-    type: string
-  }): Promise<void> {
+  private async assertAcpProviderReady(provider: { name: string; type: string }): Promise<void> {
     const runtimeKind = this.getAcpManagedRuntimeKind(provider.type)
     if (!runtimeKind) {
       return
@@ -2011,7 +2015,9 @@ ${input.prompt}`
     }
 
     if (!this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})) {
-      logger.warn('[AssistantRuntime] Coding agent is enabled but the assistant workspace is missing')
+      logger.warn(
+        '[AssistantRuntime] Coding agent is enabled but the assistant workspace is missing'
+      )
       return null
     }
 

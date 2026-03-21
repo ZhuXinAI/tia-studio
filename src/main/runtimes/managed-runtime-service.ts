@@ -52,8 +52,7 @@ const githubReleaseUrls: Record<ManagedRuntimeKind, string> = {
   bun: 'https://api.github.com/repos/oven-sh/bun/releases/latest',
   uv: 'https://api.github.com/repos/astral-sh/uv/releases/latest',
   'codex-acp': 'https://api.github.com/repos/zed-industries/codex-acp/releases/latest',
-  'claude-agent-acp':
-    'https://api.github.com/repos/zed-industries/claude-agent-acp/releases/latest'
+  'claude-agent-acp': 'https://api.github.com/repos/zed-industries/claude-agent-acp/releases/latest'
 }
 
 function createDefaultRecord(): ManagedRuntimeRecord {
@@ -115,6 +114,18 @@ function runtimeBinaryName(kind: ManagedRuntimeKind, platform: NodeJS.Platform):
   }
 
   return `${kind}${suffix}`
+}
+
+function getRuntimeValidationArgs(kind: ManagedRuntimeKind): string[] {
+  if (kind === 'codex-acp' || kind === 'claude-agent-acp') {
+    return ['--help']
+  }
+
+  return ['--version']
+}
+
+function getValidatedRuntimeLabel(kind: ManagedRuntimeKind): string {
+  return `${kind} (validated)`
 }
 
 function resolveBunxCommand(binaryPath: string): {
@@ -487,7 +498,10 @@ export class ManagedRuntimeService {
       }
 
       try {
-        const version = await this.validateRuntimePath(binaryPath)
+        const version =
+          (await this.validateRuntimePath(kind, binaryPath)) ??
+          toNonEmptyString(release.tag_name) ??
+          getValidatedRuntimeLabel(kind)
 
         const state = await this.repository.getState()
         state[kind] = {
@@ -525,7 +539,8 @@ export class ManagedRuntimeService {
     const state = await this.repository.getState()
 
     try {
-      const version = await this.validateRuntimePath(selectedPath)
+      const version =
+        (await this.validateRuntimePath(kind, selectedPath)) ?? getValidatedRuntimeLabel(kind)
       state[kind] = {
         source: 'custom',
         binaryPath: selectedPath,
@@ -700,22 +715,22 @@ export class ManagedRuntimeService {
 
     if (kind === 'codex-acp') {
       if (platform === 'darwin' && arch === 'arm64') {
-        return ['codex-acp-aarch64-apple-darwin']
+        return ['aarch64-apple-darwin']
       }
       if (platform === 'darwin' && arch === 'x64') {
-        return ['codex-acp-x86_64-apple-darwin']
+        return ['x86_64-apple-darwin']
       }
       if (platform === 'linux' && arch === 'arm64') {
-        return ['codex-acp-aarch64-unknown-linux-gnu', 'codex-acp-aarch64-unknown-linux-musl']
+        return ['aarch64-unknown-linux-gnu', 'aarch64-unknown-linux-musl']
       }
       if (platform === 'linux' && arch === 'x64') {
-        return ['codex-acp-x86_64-unknown-linux-gnu', 'codex-acp-x86_64-unknown-linux-musl']
+        return ['x86_64-unknown-linux-gnu', 'x86_64-unknown-linux-musl']
       }
       if (platform === 'win32' && arch === 'arm64') {
-        return ['codex-acp-aarch64-pc-windows-msvc']
+        return ['aarch64-pc-windows-msvc']
       }
       if (platform === 'win32' && arch === 'x64') {
-        return ['codex-acp-x86_64-pc-windows-msvc']
+        return ['x86_64-pc-windows-msvc']
       }
       return []
     }
@@ -775,15 +790,29 @@ export class ManagedRuntimeService {
     return kind === 'bun' && candidate.name.includes('-profile')
   }
 
-  private async validateRuntimePath(binaryPath: string): Promise<string> {
-    const { stdout } = await this.runCommand(binaryPath, ['--version'])
-    const version = normalizeVersionOutput(stdout)
+  private async validateRuntimePath(
+    kind: ManagedRuntimeKind,
+    binaryPath: string
+  ): Promise<string | null> {
+    const validationArgs = getRuntimeValidationArgs(kind)
+    const { stdout, stderr } = await this.runCommand(binaryPath, validationArgs)
 
-    if (!version) {
-      throw new Error('Runtime version output was empty')
+    if (validationArgs.includes('--version')) {
+      const version = normalizeVersionOutput(stdout) ?? normalizeVersionOutput(stderr)
+
+      if (!version) {
+        throw new Error('Runtime version output was empty')
+      }
+
+      return version
     }
 
-    return version
+    const helpOutput = normalizeVersionOutput(stdout) ?? normalizeVersionOutput(stderr)
+    if (!helpOutput) {
+      throw new Error('Runtime help output was empty')
+    }
+
+    return null
   }
 
   private async saveFailureState(

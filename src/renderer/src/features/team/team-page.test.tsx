@@ -11,7 +11,7 @@ describe('TeamPage', () => {
       </MemoryRouter>
     )
 
-    expect(html).toContain('Team Workspaces')
+    expect(html).toContain('Team Threads')
     expect(html).toContain('Team Chat')
     expect(html).toContain('data-team-page-shell="true"')
     expect(html).toContain('h-[calc(100vh-3.5rem)]')

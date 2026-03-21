@@ -140,4 +140,18 @@ describe('TeamContextSwitcher', () => {
 
     expect(container.textContent).toContain('No team workspaces yet')
   })
+
+  it('shows the create team action in the dropdown footer', async () => {
+    await renderSwitcher('/team/workspace-1')
+
+    const trigger = container.querySelector(
+      '[aria-label="Switch active team workspace"]'
+    ) as HTMLButtonElement | null
+
+    act(() => {
+      trigger?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(container.textContent).toContain('Create new team')
+  })
 })

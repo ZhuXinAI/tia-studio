@@ -156,4 +156,26 @@ describe('ChatContextSwitcher', () => {
 
     expect(container.querySelector('[data-testid="location-display"]')?.textContent).toBe('/claws')
   })
+
+  it('opens the create assistant flow from the dropdown action', async () => {
+    await renderSwitcher('/chat/assistant-1')
+
+    const trigger = container.querySelector(
+      '[aria-label="Switch active assistant"]'
+    ) as HTMLButtonElement | null
+
+    act(() => {
+      trigger?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    const createButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Create new assistant')
+    )
+
+    act(() => {
+      createButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(container.querySelector('[data-testid="location-display"]')?.textContent).toBe('/claws')
+  })
 })

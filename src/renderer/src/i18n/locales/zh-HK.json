@@ -27,6 +27,7 @@
       "searchPlaceholder": "Search assistants...",
       "searchAriaLabel": "Search assistants",
       "empty": "No assistants yet",
+      "createAction": "Create new assistant",
       "manageAction": "Manage assistants & channels"
     },
     "teamSwitcher": {
@@ -34,7 +35,8 @@
       "ariaLabel": "Switch active team workspace",
       "loading": "Loading team...",
       "fallback": "Team workspace",
-      "empty": "No team workspaces yet"
+      "empty": "No team workspaces yet",
+      "createAction": "Create new team"
     },
     "context": {
       "assistantsChannels": "Assistants & Channels"
@@ -81,6 +83,7 @@
         "cronJobs": "定時工作",
         "webSearch": "Browsing",
         "mcpServers": "MCP 伺服器",
+        "coding": "Coding",
         "runtimeSetup": "執行環境設定",
         "display": "顯示",
         "aboutFeedback": "關於與回饋"
@@ -256,6 +259,44 @@
         "unexpectedError": "執行環境要求發生未預期錯誤"
       }
     },
+    "coding": {
+      "title": "Coding",
+      "description": "Install the ACP adapters that power Codex and Claude Agent inside TIA Studio, or point TIA Studio at a binary you already downloaded.",
+      "kindLabels": {
+        "codex-acp": "Codex ACP",
+        "claude-agent-acp": "Claude Agent ACP"
+      },
+      "kindDescription": {
+        "codexAcp": "Used for Codex-backed coding providers and assistant coding subagents.",
+        "claudeAgentAcp": "Used for Claude Agent-backed coding providers and assistant coding subagents."
+      },
+      "labels": {
+        "status": "Status:",
+        "source": "Source:",
+        "version": "Version:",
+        "binary": "Binary:"
+      },
+      "values": {
+        "notInstalled": "Not installed",
+        "noBinary": "No active binary selected",
+        "loading": "Loading coding runtime status..."
+      },
+      "buttons": {
+        "installLatest": "Install latest",
+        "installing": "Installing...",
+        "useDownloadedBinary": "Use downloaded binary",
+        "checkAgain": "Check again",
+        "checking": "Checking...",
+        "clearCustom": "Clear custom"
+      },
+      "toasts": {
+        "installSuccess": "Installed latest {{kind}} runtime.",
+        "pickSuccess": "Activated custom {{kind}} runtime.",
+        "checkSuccess": "Checked {{kind}} runtime status.",
+        "clearSuccess": "Cleared {{kind}} runtime selection.",
+        "unexpectedError": "Unexpected managed runtime error"
+      }
+    },
     "webSearch": {
       "title": "Browsing",
       "description": "Choose how TIA opens pages and which browser runtime it uses for browsing tasks.",
@@ -364,7 +405,9 @@
         "openrouter": "OpenRouter",
         "gemini": "Gemini",
         "anthropic": "Anthropic",
-        "ollama": "Ollama"
+        "ollama": "Ollama",
+        "codex-acp": "Codex ACP",
+        "claude-agent-acp": "Claude Agent ACP"
       },
       "typeDescriptions": {
         "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
@@ -372,7 +415,9 @@
         "openrouter": "For OpenRouter's native AI SDK provider integration. This type is intended for built-in OpenRouter templates.",
         "gemini": "For Google Gemini models. Requires Google AI API key from ai.google.dev.",
         "anthropic": "For Claude models from Anthropic. Requires Anthropic API key from console.anthropic.com.",
-        "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint."
+        "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint.",
+        "codex-acp": "Runs the Codex ACP adapter as a local AI SDK provider. Configure the binary in Coding settings.",
+        "claude-agent-acp": "Runs the Claude Agent ACP adapter as a local AI SDK provider. Configure the binary in Coding settings."
       },
       "form": {
         "errors": {
@@ -389,6 +434,18 @@
         "apiKey": "API 金鑰",
         "apiHost": "API 主機",
         "selectedModel": "已選模型",
+        "acpBinaryStatus": "ACP Binary Status",
+        "acpBinaryDescription": "This provider uses a local ACP executable instead of a remote HTTP endpoint.",
+        "acpStatus": "Status:",
+        "acpStatusLoading": "Loading...",
+        "acpBinary": "Binary:",
+        "acpBinaryMissing": "No ACP binary is currently ready",
+        "acpVersion": "Version:",
+        "acpVersionMissing": "No version detected",
+        "acpReady": "Binary is ready. You can save this provider and use it in assistants.",
+        "acpNotReadyPrefix": "Binary is not ready yet.",
+        "acpNotReadySuffix": "Install or select the executable there before relying on this provider.",
+        "acpOpenCoding": "Open Coding",
         "includeModelPresets": "包含可選的供應商模型預設",
         "providerModels": "供應商模型（可選）",
         "providerModelsDescription": "輸入模型名稱，以逗號或換行分隔",
@@ -741,17 +798,24 @@
     "sidebar": {
       "eyebrow": "Team",
       "title": "Team 工作區",
+      "emptyTitle": "Team Threads",
+      "currentTeam": "Current Team",
       "defaultWorkspaceName": "Team 工作區",
       "createWorkspaceAriaLabel": "建立 Team 工作區",
       "creatingWorkspace": "正在建立工作區...",
       "newWorkspace": "新增工作區",
       "workspaces": "工作區",
       "createThreadAriaLabel": "建立 Team 執行緒",
+      "creatingThread": "Creating thread...",
       "newThread": "新增執行緒",
+      "threadsLabel": "Threads",
+      "searchThreadsPlaceholder": "Search team threads",
+      "searchThreadsAriaLabel": "Search team threads",
       "loadingWorkspaces": "正在載入 Team 工作區...",
       "emptyWorkspaces": "還沒有工作區。先建立一個，再開始 Team 執行緒。",
       "loadingThreads": "正在載入 Team 執行緒...",
       "emptyThreads": "還沒有 Team 執行緒。",
+      "emptyThreadSearch": "No Team threads match that search.",
       "untitledThread": "未命名 Team 執行緒",
       "deleteThreadAriaLabel": "刪除 Team 執行緒 {{title}}",
       "deleteThreadPrompt": "刪除執行緒？",
@@ -860,6 +924,8 @@
       "remoteBadge": "Remote channel",
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "新增執行緒",
+      "heartbeatButton": "Heartbeat",
+      "cronButton": "Cron",
       "setupIncomplete": "助手設定尚未完成。請先打開「設定」配置供應商與模型，再傳送訊息。",
       "handoffBanner": {
         "title": "Human action needed in the built-in browser",
@@ -927,7 +993,9 @@
       "tabs": {
         "essential": "基本設定",
         "tools": "工具",
-        "skills": "Skills"
+        "skills": "Skills",
+        "channels": "Channels",
+        "activity": "Activity"
       },
       "fields": {
         "name": "名稱",
@@ -954,6 +1022,27 @@
           "promptRequired": "Heartbeat prompt is required"
         }
       },
+      "activity": {
+        "description": "Review assistant heartbeat health and recent cron executions.",
+        "workspaceRequired": "Save a workspace path to review heartbeat and cron activity for this assistant.",
+        "loading": "Loading assistant activity...",
+        "heartbeatTitle": "Heartbeat Activity",
+        "heartbeatDescription": "Track schedule health, the latest runs, and any recent failures.",
+        "cronTitle": "Cron Activity",
+        "cronDescription": "Review recent cron executions owned by this assistant.",
+        "statusLabel": "Status",
+        "intervalLabel": "Interval",
+        "lastRunLabel": "Last run",
+        "nextRunLabel": "Next run",
+        "scheduledLabel": "Scheduled",
+        "durationLabel": "Duration",
+        "outputLabel": "Output",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "never": "Never",
+        "noHeartbeatRuns": "No heartbeat runs yet.",
+        "noCronRuns": "No cron runs yet."
+      },
       "placeholders": {
         "name": "研究副駕",
         "description": "負責檢索事實、尋找來源並驗證結論。",
@@ -965,6 +1054,19 @@
       "descriptionHelp": "幫助 Team 主管為合適的任務挑選這位助手。",
       "workspacePathHelp": "若要讓助手執行更複雜的任務，請選擇一個工作區。",
       "openingButton": "正在開啟...",
+      "codingAgent": {
+        "title": "Coding Agent",
+        "description": "Delegate coding-heavy tasks to a dedicated Codex or Claude Agent ACP subagent.",
+        "toggleAriaLabel": "Enable coding agent",
+        "providerLabel": "Coding provider",
+        "selectProvider": "Select coding provider",
+        "workspaceRequired": "Set a workspace path before enabling the coding agent.",
+        "runtimeMissingPrefix": "The selected coding provider needs its ACP binary. Finish setup in",
+        "codingLinkLabel": "Coding",
+        "noProvidersPrefix": "No enabled Codex or Claude Agent ACP providers are available yet. Add one in",
+        "providersLinkLabel": "Model Provider",
+        "noProvidersSuffix": "and make sure its ACP binary is ready in Coding."
+      },
       "runtimeNoteTitle": "部分 MCP 工具會使用受管理執行環境。",
       "runtimeNotePrefix": "請先到",
       "runtimeNoteLinkLabel": "執行環境設定",
@@ -980,6 +1082,8 @@
         "nameRequired": "助手名稱為必填項",
         "providerRequired": "供應商為必填項",
         "maxStepsInvalid": "最大步數必須是正整數",
+        "codingProviderRequired": "Select a coding provider before enabling the coding agent",
+        "codingWorkspaceRequired": "A workspace path is required when the coding agent is enabled",
         "workspacePickerFailed": "無法選擇工作區資料夾"
       },
       "skillSources": {

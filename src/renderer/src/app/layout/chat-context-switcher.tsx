@@ -99,13 +99,10 @@ export function ChatContextSwitcher(): React.JSX.Element {
 
   return (
     <div ref={containerRef} className="relative min-w-0 max-w-md flex-1">
-      <p className="text-muted-foreground px-1 text-[10px] tracking-[0.18em] uppercase">
-        {t('appShell.chatSwitcher.label')}
-      </p>
       <button
         type="button"
         className={cn(
-          'no-drag group hover:bg-accent/40 focus-visible:ring-ring/50 mt-1 flex w-full items-center gap-2 rounded-lg px-1 py-1 text-left outline-none transition-colors focus-visible:ring-[3px]'
+          'no-drag group hover:bg-accent/40 focus-visible:ring-ring/50 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left outline-none transition-colors focus-visible:ring-[3px]'
         )}
         aria-label={t('appShell.chatSwitcher.ariaLabel')}
         aria-expanded={isOpen}
@@ -115,6 +112,10 @@ export function ChatContextSwitcher(): React.JSX.Element {
         }}
       >
         <Bot className="size-4 shrink-0" />
+        <span className="text-muted-foreground shrink-0 text-[10px] tracking-[0.18em] uppercase">
+          {t('appShell.chatSwitcher.label')}
+        </span>
+        <span className="text-muted-foreground shrink-0 text-xs">/</span>
         <span className="truncate text-sm font-semibold">
           {selectedAssistantLabel && selectedAssistantLabel.length > 0
             ? selectedAssistantLabel
@@ -173,18 +174,35 @@ export function ChatContextSwitcher(): React.JSX.Element {
               )}
             </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full justify-start"
-              onClick={() => {
-                setIsOpen(false)
-                navigate('/claws')
-              }}
-            >
-              {t('appShell.chatSwitcher.manageAction')}
-            </Button>
+            <div className="flex flex-col gap-2 border-t border-border/60 pt-3">
+              <Button
+                type="button"
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => {
+                  setIsOpen(false)
+                  navigate('/claws', {
+                    state: {
+                      assistantDialog: 'create'
+                    }
+                  })
+                }}
+              >
+                {t('appShell.chatSwitcher.createAction')}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => {
+                  setIsOpen(false)
+                  navigate('/claws')
+                }}
+              >
+                {t('appShell.chatSwitcher.manageAction')}
+              </Button>
+            </div>
           </div>
         </div>
       ) : null}

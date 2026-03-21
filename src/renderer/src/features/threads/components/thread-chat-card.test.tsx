@@ -116,6 +116,8 @@ describe('ThreadChatCard', () => {
         onSubmitMessage={async () => undefined}
         onAbortGeneration={() => undefined}
         onOpenAssistantConfig={() => undefined}
+        onOpenHeartbeatMonitor={() => undefined}
+        onOpenCronMonitor={() => undefined}
         onCreateThread={() => undefined}
       />
     )
@@ -167,6 +169,8 @@ describe('ThreadChatCard', () => {
         onSubmitMessage={async () => undefined}
         onAbortGeneration={() => undefined}
         onOpenAssistantConfig={() => undefined}
+        onOpenHeartbeatMonitor={() => undefined}
+        onOpenCronMonitor={() => undefined}
         onCreateThread={() => undefined}
       />
     )
@@ -178,6 +182,9 @@ describe('ThreadChatCard', () => {
     expect(html).toContain('Planner assistant chat')
     expect(html).not.toContain('Default assistant chat')
     expect(html).not.toContain('Using Planner.')
+    expect(html).toContain('Heartbeat')
+    expect(html).toContain('Cron')
+    expect(html).toContain('Configure')
   })
 
   it('shows a remote channel badge when the thread is bound to a channel chat', () => {
@@ -225,6 +232,8 @@ describe('ThreadChatCard', () => {
         onSubmitMessage={async () => undefined}
         onAbortGeneration={() => undefined}
         onOpenAssistantConfig={() => undefined}
+        onOpenHeartbeatMonitor={() => undefined}
+        onOpenCronMonitor={() => undefined}
         onCreateThread={() => undefined}
       />
     )
@@ -287,6 +296,8 @@ describe('ThreadChatCard', () => {
         onSubmitMessage={async () => undefined}
         onAbortGeneration={() => undefined}
         onOpenAssistantConfig={() => undefined}
+        onOpenHeartbeatMonitor={() => undefined}
+        onOpenCronMonitor={() => undefined}
         onCreateThread={() => undefined}
       />
     )
@@ -339,6 +350,8 @@ describe('ThreadChatCard', () => {
         onSubmitMessage={async () => undefined}
         onAbortGeneration={() => undefined}
         onOpenAssistantConfig={() => undefined}
+        onOpenHeartbeatMonitor={() => undefined}
+        onOpenCronMonitor={() => undefined}
         onCreateThread={() => undefined}
       />
     )

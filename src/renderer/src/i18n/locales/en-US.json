@@ -1,10 +1,10 @@
 {
   "appShell": {
     "nav": {
-      "chats": "Chats",
+      "chats": "Assistants",
       "home": "Home",
       "claws": "Claws",
-      "team": "Team",
+      "team": "Teams",
       "update": "Update",
       "updating": "Updating...",
       "openSettings": "Open settings"
@@ -20,21 +20,23 @@
       "notes": "TIA Studio Notes"
     },
     "chatSwitcher": {
-      "label": "Current assistant",
+      "label": "Assistant",
       "ariaLabel": "Switch active assistant",
       "loading": "Loading assistant...",
       "fallback": "Assistant",
       "searchPlaceholder": "Search assistants...",
       "searchAriaLabel": "Search assistants",
       "empty": "No assistants yet",
+      "createAction": "Create new assistant",
       "manageAction": "Manage assistants & channels"
     },
     "teamSwitcher": {
-      "label": "Current team",
+      "label": "Team",
       "ariaLabel": "Switch active team workspace",
       "loading": "Loading team...",
       "fallback": "Team workspace",
-      "empty": "No team workspaces yet"
+      "empty": "No team workspaces yet",
+      "createAction": "Create new team"
     },
     "context": {
       "assistantsChannels": "Assistants & Channels"
@@ -796,17 +798,24 @@
     "sidebar": {
       "eyebrow": "Team",
       "title": "Team Workspaces",
+      "emptyTitle": "Team Threads",
+      "currentTeam": "Current Team",
       "defaultWorkspaceName": "Team Workspace",
       "createWorkspaceAriaLabel": "Create team workspace",
       "creatingWorkspace": "Creating workspace...",
       "newWorkspace": "New Workspace",
       "workspaces": "Workspaces",
       "createThreadAriaLabel": "Create team thread",
+      "creatingThread": "Creating thread...",
       "newThread": "New Thread",
+      "threadsLabel": "Threads",
+      "searchThreadsPlaceholder": "Search team threads",
+      "searchThreadsAriaLabel": "Search team threads",
       "loadingWorkspaces": "Loading team workspaces...",
       "emptyWorkspaces": "No workspaces yet. Create one to start a Team thread.",
       "loadingThreads": "Loading team threads...",
       "emptyThreads": "No Team threads yet.",
+      "emptyThreadSearch": "No Team threads match that search.",
       "untitledThread": "Untitled Team Thread",
       "deleteThreadAriaLabel": "Delete team thread {{title}}",
       "deleteThreadPrompt": "Delete thread?",
@@ -915,6 +924,8 @@
       "remoteBadge": "Remote channel",
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "New thread",
+      "heartbeatButton": "Heartbeat",
+      "cronButton": "Cron",
       "setupIncomplete": "Assistant setup is incomplete. Open Configure to set provider and model before sending messages.",
       "handoffBanner": {
         "title": "Human action needed in the built-in browser",
@@ -982,7 +993,9 @@
       "tabs": {
         "essential": "Essential Settings",
         "tools": "Tools",
-        "skills": "Skills"
+        "skills": "Skills",
+        "channels": "Channels",
+        "activity": "Activity"
       },
       "fields": {
         "name": "Name",
@@ -1008,6 +1021,27 @@
           "intervalInvalid": "Heartbeat interval must be a positive whole number",
           "promptRequired": "Heartbeat prompt is required"
         }
+      },
+      "activity": {
+        "description": "Review assistant heartbeat health and recent cron executions.",
+        "workspaceRequired": "Save a workspace path to review heartbeat and cron activity for this assistant.",
+        "loading": "Loading assistant activity...",
+        "heartbeatTitle": "Heartbeat Activity",
+        "heartbeatDescription": "Track schedule health, the latest runs, and any recent failures.",
+        "cronTitle": "Cron Activity",
+        "cronDescription": "Review recent cron executions owned by this assistant.",
+        "statusLabel": "Status",
+        "intervalLabel": "Interval",
+        "lastRunLabel": "Last run",
+        "nextRunLabel": "Next run",
+        "scheduledLabel": "Scheduled",
+        "durationLabel": "Duration",
+        "outputLabel": "Output",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "never": "Never",
+        "noHeartbeatRuns": "No heartbeat runs yet.",
+        "noCronRuns": "No cron runs yet."
       },
       "placeholders": {
         "name": "Research Copilot",

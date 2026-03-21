@@ -8,13 +8,26 @@ import {
   useCreateAssistant,
   useUpdateAssistant,
   useDeleteAssistant,
+  type AssistantRecord,
   type SaveAssistantInput
 } from '../../assistants/assistants-query'
 import {
   updateAssistantHeartbeat,
   type SaveAssistantHeartbeatInput
 } from '../../assistants/assistant-heartbeat-query'
-import type { AssistantDialogMode } from '../components/assistant-config-dialog'
+import type { AssistantManagementDialogMode } from '../../claws/components/assistant-management-dialog'
+import {
+  clawKeys,
+  createClawChannel,
+  deleteClawChannel,
+  updateClaw,
+  updateClawChannel,
+  useClaws,
+  type ClawsResponse,
+  type ConfiguredClawChannelRecord,
+  type CreateClawChannelInput,
+  type UpdateClawChannelInput
+} from '../../claws/claws-query'
 import {
   getMcpServersSettings,
   type McpServerRecord
@@ -48,6 +61,7 @@ import {
   storeChatSelection,
   toErrorMessage
 } from '../thread-page-routing'
+import { queryClient } from '../../../lib/query-client'
 
 type PendingThreadMessage = {
   threadId: string
@@ -55,6 +69,42 @@ type PendingThreadMessage = {
 }
 
 const BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__tiaBuiltInDefaultAgent'
+
+function emptyClawsResponse(): ClawsResponse {
+  return {
+    claws: [],
+    configuredChannels: []
+  }
+}
+
+function buildChannelPayload(
+  currentChannelId: string,
+  selectedChannelId: string
+):
+  | {
+      mode: 'attach'
+      channelId: string
+    }
+  | {
+      mode: 'detach'
+    }
+  | {
+      mode: 'keep'
+    }
+  | undefined {
+  if (selectedChannelId.length === 0) {
+    return currentChannelId.length > 0 ? { mode: 'detach' } : undefined
+  }
+
+  if (currentChannelId === selectedChannelId) {
+    return currentChannelId.length > 0 ? { mode: 'keep' } : undefined
+  }
+
+  return {
+    mode: 'attach',
+    channelId: selectedChannelId
+  }
+}
 
 function createPendingUserMessage(threadId: string, text: string): UIMessage {
   const messageId =
@@ -133,6 +183,7 @@ export function useThreadPageController() {
     isLoading: isLoadingProviders,
     error: providersError
   } = useProviders()
+  const { data: clawsData = emptyClawsResponse(), isLoading: isLoadingClaws } = useClaws()
   const createAssistantMutation = useCreateAssistant()
   const updateAssistantMutation = useUpdateAssistant()
   const deleteAssistantMutation = useDeleteAssistant()
@@ -161,10 +212,18 @@ export function useThreadPageController() {
 
   // UI state
   const [isLoadingChatHistory, setIsLoadingChatHistory] = useState(false)
-  const [assistantDialogMode, setAssistantDialogMode] = useState<AssistantDialogMode>('edit')
+  const [assistantDialogMode, setAssistantDialogMode] =
+    useState<AssistantManagementDialogMode>('edit')
   const [assistantDialogAssistantId, setAssistantDialogAssistantId] = useState<string | null>(null)
+  const [assistantDialogChannelIdOverride, setAssistantDialogChannelIdOverride] = useState<
+    string | null
+  >(null)
   const [isAssistantDialogOpen, setIsAssistantDialogOpen] = useState(false)
   const [assistantDialogError, setAssistantDialogError] = useState<string | null>(null)
+  const [isAssistantChannelMutating, setIsAssistantChannelMutating] = useState(false)
+  const [heartbeatMonitorAssistant, setHeartbeatMonitorAssistant] =
+    useState<AssistantRecord | null>(null)
+  const [cronMonitorAssistant, setCronMonitorAssistant] = useState<AssistantRecord | null>(null)
   const pendingThreadMessageRef = useRef<PendingThreadMessage | null>(null)
   const activePendingUserMessagesRef = useRef(new Map<string, UIMessage>())
   const [hasPendingMessage, setHasPendingMessage] = useState(false)
@@ -191,6 +250,29 @@ export function useThreadPageController() {
 
     return selectedAssistant
   }, [assistantDialogAssistantId, assistantDialogMode, assistants, selectedAssistant])
+
+  const assistantDialogCurrentClaw = useMemo(() => {
+    if (assistantDialogMode !== 'edit' || !assistantDialogAssistant) {
+      return null
+    }
+
+    return clawsData.claws.find((claw) => claw.id === assistantDialogAssistant.id) ?? null
+  }, [assistantDialogAssistant, assistantDialogMode, clawsData.claws])
+
+  const canManageAssistantChannels = useMemo(() => {
+    if (assistantDialogMode === 'create') {
+      return true
+    }
+
+    if (!assistantDialogAssistant) {
+      return false
+    }
+
+    return assistantDialogAssistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] !== true
+  }, [assistantDialogAssistant, assistantDialogMode])
+
+  const assistantDialogSelectedChannelId =
+    assistantDialogChannelIdOverride ?? assistantDialogCurrentClaw?.channel?.id ?? ''
 
   const selectedThread = useMemo(() => {
     if (!params.threadId) {
@@ -240,7 +322,7 @@ export function useThreadPageController() {
   const chat = useChat({
     id: selectedThread ? `${selectedAssistant?.id}:${selectedThread.id}` : 'default-chat',
     transport: chatTransport,
-    resume: Boolean(selectedThread && chatTransport),
+    resume: false,
     experimental_throttle: 48,
     onFinish: ({ isDisconnect, isError }) => {
       const selectedAssistantId = selectedAssistant?.id
@@ -280,6 +362,7 @@ export function useThreadPageController() {
     sendMessage,
     setMessages,
     stop,
+    resumeStream,
     status: chatStatus,
     error: chatError,
     messages: chatMessages
@@ -343,9 +426,12 @@ export function useThreadPageController() {
       if (
         event.key === 'Escape' &&
         !createAssistantMutation.isPending &&
-        !updateAssistantMutation.isPending
+        !updateAssistantMutation.isPending &&
+        !isAssistantChannelMutating
       ) {
         setIsAssistantDialogOpen(false)
+        setAssistantDialogAssistantId(null)
+        setAssistantDialogChannelIdOverride(null)
         setAssistantDialogError(null)
       }
     }
@@ -354,7 +440,12 @@ export function useThreadPageController() {
     return () => {
       window.removeEventListener('keydown', handleEscape)
     }
-  }, [isAssistantDialogOpen, createAssistantMutation.isPending, updateAssistantMutation.isPending])
+  }, [
+    createAssistantMutation.isPending,
+    isAssistantChannelMutating,
+    isAssistantDialogOpen,
+    updateAssistantMutation.isPending
+  ])
 
   useEffect(() => {
     if (!isAssistantDialogOpen || assistantDialogMode !== 'edit') {
@@ -364,6 +455,7 @@ export function useThreadPageController() {
     if (!assistantDialogAssistant) {
       setIsAssistantDialogOpen(false)
       setAssistantDialogAssistantId(null)
+      setAssistantDialogChannelIdOverride(null)
       setAssistantDialogError(null)
     }
   }, [assistantDialogAssistant, assistantDialogMode, isAssistantDialogOpen])
@@ -381,7 +473,10 @@ export function useThreadPageController() {
     }
 
     const selectedAssistantId = params.assistantId ?? null
-    if (selectedAssistantId && assistants.some((assistant) => assistant.id === selectedAssistantId)) {
+    if (
+      selectedAssistantId &&
+      assistants.some((assistant) => assistant.id === selectedAssistantId)
+    ) {
       return
     }
 
@@ -533,6 +628,7 @@ export function useThreadPageController() {
         }
         setMessagesRef.current(mergeHydratedThreadMessages(threadId, messages))
         hasLoadedInitialMessagesRef.current = true
+        void resumeStream().catch(() => undefined)
       })
       .catch((error) => {
         if (!active) {
@@ -540,6 +636,7 @@ export function useThreadPageController() {
         }
         setMessagesRef.current(mergeHydratedThreadMessages(threadId, []))
         hasLoadedInitialMessagesRef.current = true
+        void resumeStream().catch(() => undefined)
         toast.error(toErrorMessage(error))
       })
       .finally(() => {
@@ -555,6 +652,7 @@ export function useThreadPageController() {
     getDisplayedPendingUserMessage,
     mergeHydratedThreadMessages,
     profileId,
+    resumeStream,
     selectedAssistant?.id,
     selectedThread?.id
   ])
@@ -663,6 +761,75 @@ export function useThreadPageController() {
     return picker()
   }, [])
 
+  const invalidateClawsCache = useCallback(async (): Promise<void> => {
+    await queryClient.invalidateQueries({ queryKey: clawKeys.list() })
+  }, [])
+
+  const handleCreateChannel = useCallback(
+    async (input: CreateClawChannelInput): Promise<ConfiguredClawChannelRecord> => {
+      setIsAssistantChannelMutating(true)
+      setAssistantDialogError(null)
+
+      try {
+        const createdChannel = await createClawChannel(input)
+        await invalidateClawsCache()
+        return createdChannel
+      } catch (error) {
+        const resolvedError =
+          error instanceof Error ? error : new Error(t('claws.errors.saveFailed'))
+        setAssistantDialogError(resolvedError.message)
+        throw resolvedError
+      } finally {
+        setIsAssistantChannelMutating(false)
+      }
+    },
+    [invalidateClawsCache, t]
+  )
+
+  const handleUpdateChannel = useCallback(
+    async (
+      channelId: string,
+      input: UpdateClawChannelInput
+    ): Promise<ConfiguredClawChannelRecord> => {
+      setIsAssistantChannelMutating(true)
+      setAssistantDialogError(null)
+
+      try {
+        const updatedChannel = await updateClawChannel(channelId, input)
+        await invalidateClawsCache()
+        return updatedChannel
+      } catch (error) {
+        const resolvedError =
+          error instanceof Error ? error : new Error(t('claws.errors.updateFailed'))
+        setAssistantDialogError(resolvedError.message)
+        throw resolvedError
+      } finally {
+        setIsAssistantChannelMutating(false)
+      }
+    },
+    [invalidateClawsCache, t]
+  )
+
+  const handleDeleteChannel = useCallback(
+    async (channelId: string): Promise<void> => {
+      setIsAssistantChannelMutating(true)
+      setAssistantDialogError(null)
+
+      try {
+        await deleteClawChannel(channelId)
+        await invalidateClawsCache()
+      } catch (error) {
+        const resolvedError =
+          error instanceof Error ? error : new Error(t('claws.errors.deleteFailed'))
+        setAssistantDialogError(resolvedError.message)
+        throw resolvedError
+      } finally {
+        setIsAssistantChannelMutating(false)
+      }
+    },
+    [invalidateClawsCache, t]
+  )
+
   const handleSubmitAssistantDialog = async (
     input: SaveAssistantInput,
     heartbeatInput?: SaveAssistantHeartbeatInput | null
@@ -670,12 +837,38 @@ export function useThreadPageController() {
     setAssistantDialogError(null)
 
     try {
+      const currentChannelId = assistantDialogCurrentClaw?.channel?.id ?? ''
+      const nextSelectedChannelId = canManageAssistantChannels
+        ? assistantDialogSelectedChannelId.trim()
+        : ''
+      const nextWorkspacePath =
+        typeof input.workspaceConfig?.rootPath === 'string'
+          ? input.workspaceConfig.rootPath.trim()
+          : ''
+      const channelPayload = canManageAssistantChannels
+        ? buildChannelPayload(currentChannelId, nextSelectedChannelId)
+        : undefined
+
       if (assistantDialogMode === 'create') {
         const createdAssistant = await createAssistantMutation.mutateAsync(input)
+        if (heartbeatInput) {
+          await updateAssistantHeartbeat(createdAssistant.id, heartbeatInput)
+        }
+        if (nextSelectedChannelId.length > 0 || channelPayload) {
+          await updateClaw(createdAssistant.id, {
+            assistant: {
+              enabled: nextSelectedChannelId.length > 0,
+              ...(nextWorkspacePath.length > 0 ? { workspacePath: nextWorkspacePath } : {})
+            },
+            ...(channelPayload ? { channel: channelPayload } : {})
+          })
+          await invalidateClawsCache()
+        }
         setThreads([])
         toast.success(t('threads.toasts.assistantCreated'))
         setIsAssistantDialogOpen(false)
         setAssistantDialogAssistantId(null)
+        setAssistantDialogChannelIdOverride(null)
         navigate(routeToAssistantThreads(createdAssistant.id))
         return
       }
@@ -692,9 +885,23 @@ export function useThreadPageController() {
       if (heartbeatInput) {
         await updateAssistantHeartbeat(assistantDialogAssistant.id, heartbeatInput)
       }
+      if (assistantDialogCurrentClaw || nextSelectedChannelId.length > 0 || channelPayload) {
+        await updateClaw(assistantDialogAssistant.id, {
+          assistant: {
+            enabled:
+              nextSelectedChannelId.length > 0
+                ? (assistantDialogCurrentClaw?.enabled ?? true)
+                : false,
+            ...(nextWorkspacePath.length > 0 ? { workspacePath: nextWorkspacePath } : {})
+          },
+          ...(channelPayload ? { channel: channelPayload } : {})
+        })
+        await invalidateClawsCache()
+      }
       toast.success(t('threads.toasts.assistantUpdated'))
       setIsAssistantDialogOpen(false)
       setAssistantDialogAssistantId(null)
+      setAssistantDialogChannelIdOverride(null)
     } catch (error) {
       setAssistantDialogError(toErrorMessage(error))
     }
@@ -731,6 +938,7 @@ export function useThreadPageController() {
 
       try {
         await deleteAssistantMutation.mutateAsync(assistantId)
+        await invalidateClawsCache()
 
         setThreads((currentThreads) =>
           currentThreads.filter((thread) => thread.assistantId !== assistantId)
@@ -749,6 +957,7 @@ export function useThreadPageController() {
         if (assistantDialogMode === 'edit' && assistantDialogAssistantId === assistantId) {
           setIsAssistantDialogOpen(false)
           setAssistantDialogAssistantId(null)
+          setAssistantDialogChannelIdOverride(null)
           setAssistantDialogError(null)
         }
 
@@ -762,6 +971,7 @@ export function useThreadPageController() {
       assistantDialogMode,
       assistants,
       deleteAssistantMutation,
+      invalidateClawsCache,
       navigate,
       params.assistantId,
       setMessages,
@@ -898,18 +1108,28 @@ export function useThreadPageController() {
   ])
 
   const closeAssistantDialog = useCallback(() => {
-    if (createAssistantMutation.isPending || updateAssistantMutation.isPending) {
+    if (
+      createAssistantMutation.isPending ||
+      updateAssistantMutation.isPending ||
+      isAssistantChannelMutating
+    ) {
       return
     }
 
     setIsAssistantDialogOpen(false)
     setAssistantDialogAssistantId(null)
+    setAssistantDialogChannelIdOverride(null)
     setAssistantDialogError(null)
-  }, [createAssistantMutation.isPending, updateAssistantMutation.isPending])
+  }, [
+    createAssistantMutation.isPending,
+    isAssistantChannelMutating,
+    updateAssistantMutation.isPending
+  ])
 
   const openCreateAssistantDialog = useCallback(() => {
     setAssistantDialogMode('create')
     setAssistantDialogAssistantId(null)
+    setAssistantDialogChannelIdOverride('')
     setAssistantDialogError(null)
     setIsAssistantDialogOpen(true)
   }, [])
@@ -917,6 +1137,7 @@ export function useThreadPageController() {
   const openEditAssistantDialog = useCallback((assistantId: string) => {
     setAssistantDialogMode('edit')
     setAssistantDialogAssistantId(assistantId)
+    setAssistantDialogChannelIdOverride(null)
     setAssistantDialogError(null)
     setIsAssistantDialogOpen(true)
   }, [])
@@ -943,6 +1164,38 @@ export function useThreadPageController() {
     [navigate]
   )
 
+  const openHeartbeatMonitor = useCallback(() => {
+    if (!selectedAssistant) {
+      return
+    }
+
+    setHeartbeatMonitorAssistant(selectedAssistant)
+  }, [selectedAssistant])
+
+  const openCronMonitor = useCallback(() => {
+    if (!selectedAssistant) {
+      return
+    }
+
+    setCronMonitorAssistant(selectedAssistant)
+  }, [selectedAssistant])
+
+  const assistantDialogChannels =
+    canManageAssistantChannels && !isLoadingClaws
+      ? {
+          currentAssistantId:
+            assistantDialogMode === 'edit' ? (assistantDialogAssistant?.id ?? null) : null,
+          channels: clawsData.configuredChannels,
+          selectedChannelId: assistantDialogSelectedChannelId,
+          isMutating: isAssistantChannelMutating,
+          errorMessage: assistantDialogError,
+          onSelectedChannelChange: setAssistantDialogChannelIdOverride,
+          onCreateChannel: handleCreateChannel,
+          onUpdateChannel: handleUpdateChannel,
+          onDeleteChannel: handleDeleteChannel
+        }
+      : undefined
+
   return {
     assistantsCount: assistants.length,
     sidebarBranches,
@@ -967,11 +1220,16 @@ export function useThreadPageController() {
     mcpServers,
     assistantDialogMode,
     assistantDialogAssistant,
+    assistantDialogChannels,
     isAssistantDialogOpen,
     isSubmittingAssistantDialog:
-      createAssistantMutation.isPending || updateAssistantMutation.isPending,
+      createAssistantMutation.isPending ||
+      updateAssistantMutation.isPending ||
+      isAssistantChannelMutating,
     assistantDialogError,
     tokenUsage,
+    heartbeatMonitorAssistant,
+    cronMonitorAssistant,
     onCreateThread: () => {
       void createNewThread()
     },
@@ -991,6 +1249,14 @@ export function useThreadPageController() {
     onSubmitMessage: handleSubmitMessage,
     onAbortGeneration: handleAbortGeneration,
     onOpenAssistantConfig: openAssistantConfigDialog,
+    onOpenHeartbeatMonitor: openHeartbeatMonitor,
+    onCloseHeartbeatMonitor: () => {
+      setHeartbeatMonitorAssistant(null)
+    },
+    onOpenCronMonitor: openCronMonitor,
+    onCloseCronMonitor: () => {
+      setCronMonitorAssistant(null)
+    },
     onCloseAssistantDialog: closeAssistantDialog,
     onSelectWorkspacePath: selectWorkspacePath,
     onSubmitAssistantDialog: handleSubmitAssistantDialog

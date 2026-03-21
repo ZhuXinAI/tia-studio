@@ -179,9 +179,9 @@ describe('app router', () => {
     const html = renderRouter(['/chat'])
 
     expect(html).toContain('aria-label="Open settings"')
-    expect(html).toContain('Chats')
-    expect(html).toContain('Team')
-    expect(html).toContain('Current assistant')
+    expect(html).toContain('Assistants')
+    expect(html).toContain('Teams')
+    expect(html).toContain('Assistant')
     expect(html).toContain('aria-label="Switch active assistant"')
     expect(html).not.toContain('Control Center')
   })
@@ -189,9 +189,9 @@ describe('app router', () => {
   it('renders the team route from the top nav', () => {
     const html = renderRouter(['/team'])
 
-    expect(html).toContain('Chats')
-    expect(html).toContain('Team')
-    expect(html).toContain('Team Workspaces')
+    expect(html).toContain('Assistants')
+    expect(html).toContain('Teams')
+    expect(html).toContain('Team Threads')
     expect(html).toContain('Team Chat')
     expect(html).toContain('Team Status')
   })
@@ -221,7 +221,7 @@ describe('app router', () => {
     )
 
     expect(router.state.location.pathname).toBe('/team/workspace-1/thread-1')
-    expect(html).toContain('Team Workspaces')
+    expect(html).toContain('Team Threads')
     expect(html).not.toContain('Something went wrong')
     expect(html).not.toContain('Not Found')
   })

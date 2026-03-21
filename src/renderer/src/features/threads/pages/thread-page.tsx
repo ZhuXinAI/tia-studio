@@ -1,5 +1,7 @@
 import { SidebarInset } from '../../../components/ui/sidebar'
-import { AssistantConfigDialog } from '../components/assistant-config-dialog'
+import { AssistantManagementDialog } from '../../claws/components/assistant-management-dialog'
+import { ClawCronMonitorDialog } from '../../claws/components/claw-cron-monitor-dialog'
+import { ClawHeartbeatMonitorDialog } from '../../claws/components/claw-heartbeat-monitor-dialog'
 import { ThreadChatCard } from '../components/thread-chat-card'
 import { ThreadSidebar } from '../components/thread-sidebar'
 import { useThreadPageController } from '../hooks/use-thread-page-controller'
@@ -39,22 +41,39 @@ export function ThreadPage(): React.JSX.Element {
             onSubmitMessage={controller.onSubmitMessage}
             onAbortGeneration={controller.onAbortGeneration}
             onOpenAssistantConfig={controller.onOpenAssistantConfig}
+            onOpenHeartbeatMonitor={controller.onOpenHeartbeatMonitor}
+            onOpenCronMonitor={controller.onOpenCronMonitor}
             onCreateThread={controller.onCreateThread}
           />
         </SidebarInset>
       </section>
 
-      <AssistantConfigDialog
+      <AssistantManagementDialog
         mode={controller.assistantDialogMode}
         isOpen={controller.isAssistantDialogOpen}
         assistant={controller.assistantDialogAssistant}
         providers={controller.providers}
         mcpServers={controller.mcpServers}
+        channels={controller.assistantDialogChannels}
         isSaving={controller.isSubmittingAssistantDialog}
         errorMessage={controller.assistantDialogError}
         onClose={controller.onCloseAssistantDialog}
         onSelectWorkspacePath={controller.onSelectWorkspacePath}
         onSubmit={controller.onSubmitAssistantDialog}
+      />
+
+      <ClawHeartbeatMonitorDialog
+        isOpen={controller.heartbeatMonitorAssistant !== null}
+        assistantId={controller.heartbeatMonitorAssistant?.id ?? null}
+        assistantName={controller.heartbeatMonitorAssistant?.name ?? ''}
+        onClose={controller.onCloseHeartbeatMonitor}
+      />
+
+      <ClawCronMonitorDialog
+        isOpen={controller.cronMonitorAssistant !== null}
+        assistantId={controller.cronMonitorAssistant?.id ?? null}
+        assistantName={controller.cronMonitorAssistant?.name ?? ''}
+        onClose={controller.onCloseCronMonitor}
       />
     </>
   )

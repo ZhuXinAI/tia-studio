@@ -4,11 +4,17 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  createAssistant,
+  listAssistants,
+  updateAssistant as updateAssistantRecord
+} from '../../assistants/assistants-query'
+import { updateAssistantHeartbeat } from '../../assistants/assistant-heartbeat-query'
 import { listProviders } from '../../settings/providers/providers-query'
+import { getMcpServersSettings } from '../../settings/mcp-servers/mcp-servers-query'
 import { ClawsPage } from './claws-page'
 import {
   approveClawPairing,
-  createClaw,
   createClawChannel,
   deleteClaw,
   deleteClawChannel,
@@ -24,9 +30,29 @@ vi.mock('../../settings/providers/providers-query', () => ({
   listProviders: vi.fn()
 }))
 
+vi.mock('../../settings/mcp-servers/mcp-servers-query', () => ({
+  getMcpServersSettings: vi.fn()
+}))
+
+vi.mock('../../assistants/assistants-query', () => ({
+  assistantKeys: {
+    lists: () => ['assistants', 'list']
+  },
+  listAssistants: vi.fn(),
+  createAssistant: vi.fn(),
+  updateAssistant: vi.fn()
+}))
+
+vi.mock('../../assistants/assistant-heartbeat-query', () => ({
+  DEFAULT_ASSISTANT_HEARTBEAT_INTERVAL_MINUTES: 30,
+  DEFAULT_ASSISTANT_HEARTBEAT_PROMPT:
+    'Review recent work logs and recent conversations. Follow up only if needed.',
+  getAssistantHeartbeat: vi.fn(),
+  updateAssistantHeartbeat: vi.fn()
+}))
+
 vi.mock('../claws-query', () => ({
   listClaws: vi.fn(),
-  createClaw: vi.fn(),
   createClawChannel: vi.fn(),
   updateClaw: vi.fn(),
   deleteClaw: vi.fn(),
@@ -41,12 +67,6 @@ vi.mock('../claws-query', () => ({
 async function flushAsyncWork(): Promise<void> {
   await act(async () => {
     await Promise.resolve()
-  })
-}
-
-async function flushTimerWork(): Promise<void> {
-  await act(async () => {
-    await new Promise((resolve) => window.setTimeout(resolve, 0))
   })
 }
 
@@ -111,44 +131,19 @@ function findMenuItemByText(text: string): HTMLElement | undefined {
   ) as HTMLElement | undefined
 }
 
-async function selectProvider(providerId: string): Promise<void> {
-  const inlineProviderButton = document.body.querySelector(
-    `button[data-provider-id="${providerId}"]`
-  ) as HTMLButtonElement | null
-
-  if (inlineProviderButton) {
-    await clickElement(inlineProviderButton)
-    await flushAsyncWork()
-    return
-  }
-
-  const openSelectorButton = document.body.querySelector(
-    'button[id="claw-select-provider-button"]'
-  ) as HTMLButtonElement | null
+async function chooseProvider(providerName: string): Promise<void> {
+  const openSelectorButton = Array.from(document.body.querySelectorAll('button')).find((button) =>
+    button.textContent?.includes('Select provider')
+  ) as HTMLButtonElement | undefined
 
   await clickElement(openSelectorButton)
   await flushAsyncWork()
 
-  const providerButton = document.body.querySelector(
-    `button[data-provider-id="${providerId}"]`
-  ) as HTMLButtonElement | null
-  const applyButton = document.body.querySelector(
-    'button[id="claw-provider-selector-apply"]'
-  ) as HTMLButtonElement | null
+  const providerButton = Array.from(document.body.querySelectorAll('button')).find((button) =>
+    button.textContent?.includes(providerName)
+  ) as HTMLButtonElement | undefined
 
   await clickElement(providerButton)
-  await flushAsyncWork()
-
-  await clickElement(applyButton)
-  await flushAsyncWork()
-}
-
-async function advanceCreateStep(): Promise<void> {
-  const nextButton = document.body.querySelector(
-    'button[id="claw-create-next"]'
-  ) as HTMLButtonElement | null
-
-  await clickElement(nextButton)
   await flushAsyncWork()
 }
 
@@ -181,22 +176,40 @@ describe('ClawsPage', () => {
         updatedAt: '2026-03-08T00:00:00.000Z'
       }
     ])
-    vi.mocked(createClaw).mockResolvedValue({
+    vi.mocked(getMcpServersSettings).mockResolvedValue({
+      mcpServers: {}
+    })
+    vi.mocked(listAssistants).mockResolvedValue([
+      {
+        id: 'assistant-1',
+        name: 'Ops Assistant',
+        description: '',
+        instructions: '',
+        enabled: true,
+        providerId: 'provider-1',
+        workspaceConfig: {},
+        skillsConfig: {},
+        mcpConfig: {},
+        maxSteps: 100,
+        memoryConfig: null,
+        createdAt: '2026-03-08T00:00:00.000Z',
+        updatedAt: '2026-03-08T00:00:00.000Z'
+      }
+    ])
+    vi.mocked(createAssistant).mockResolvedValue({
       id: 'assistant-1',
       name: 'Ops Assistant',
       description: '',
-      providerId: 'provider-1',
-      workspacePath: null,
+      instructions: '',
       enabled: true,
-      channel: {
-        id: 'channel-1',
-        type: 'lark',
-        name: 'Ops Lark',
-        status: 'connected',
-        errorMessage: null,
-        pairedCount: 0,
-        pendingPairingCount: 0
-      }
+      providerId: 'provider-1',
+      workspaceConfig: {},
+      skillsConfig: {},
+      mcpConfig: {},
+      maxSteps: 100,
+      memoryConfig: null,
+      createdAt: '2026-03-08T00:00:00.000Z',
+      updatedAt: '2026-03-08T00:00:00.000Z'
     })
     vi.mocked(createClawChannel).mockResolvedValue({
       id: 'channel-created',
@@ -208,6 +221,35 @@ describe('ClawsPage', () => {
       errorMessage: null,
       pairedCount: 0,
       pendingPairingCount: 0
+    })
+    vi.mocked(updateAssistantRecord).mockResolvedValue({
+      id: 'assistant-1',
+      name: 'Ops Assistant',
+      description: '',
+      instructions: '',
+      enabled: true,
+      providerId: 'provider-1',
+      workspaceConfig: {},
+      skillsConfig: {},
+      mcpConfig: {},
+      maxSteps: 100,
+      memoryConfig: null,
+      createdAt: '2026-03-08T00:00:00.000Z',
+      updatedAt: '2026-03-08T00:00:00.000Z'
+    })
+    vi.mocked(updateAssistantHeartbeat).mockResolvedValue({
+      id: 'heartbeat-1',
+      assistantId: 'assistant-1',
+      enabled: false,
+      intervalMinutes: 30,
+      prompt: 'Review recent work logs and recent conversations. Follow up only if needed.',
+      threadId: null,
+      lastRunAt: null,
+      nextRunAt: null,
+      lastRunStatus: null,
+      lastError: null,
+      createdAt: '2026-03-08T00:00:00.000Z',
+      updatedAt: '2026-03-08T00:00:00.000Z'
     })
     vi.mocked(updateClaw).mockResolvedValue({
       id: 'assistant-1',
@@ -441,6 +483,7 @@ describe('ClawsPage', () => {
       claws: [],
       configuredChannels: []
     })
+    vi.mocked(listAssistants).mockResolvedValue([])
 
     await act(async () => {
       root.render(
@@ -455,15 +498,20 @@ describe('ClawsPage', () => {
 
     await clickElement(createButton)
     await flushAsyncWork()
-    await flushAsyncWork()
 
     const body = document.body
-    await selectProvider('provider-1')
-    await advanceCreateStep()
+    const nameInput = body.querySelector('input[id="assistant-name"]') as HTMLInputElement
+    await act(async () => {
+      setElementValue(nameInput, 'Ops Assistant')
+    })
+    await chooseProvider('OpenAI')
 
-    const addChannelButton = body.querySelector(
-      'button[id="claw-channel-selector-add"]'
-    ) as HTMLButtonElement
+    await clickElement(findButtonByText(body, 'Channels'))
+    await flushAsyncWork()
+
+    const addChannelButton = body.querySelector('button[id="claw-channel-selector-add"]') as
+      | HTMLButtonElement
+      | null
 
     await clickElement(addChannelButton)
     await flushAsyncWork()
@@ -501,16 +549,8 @@ describe('ClawsPage', () => {
 
     await clickElement(createChannelButton)
     await flushAsyncWork()
-    await advanceCreateStep()
-
-    const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-
-    await act(async () => {
-      setElementValue(nameInput, 'Ops Assistant')
-    })
+    await clickElement(findButtonByText(body, 'Essential Settings'))
     await flushAsyncWork()
-    await advanceCreateStep()
-    await flushTimerWork()
 
     const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
 
@@ -524,10 +564,14 @@ describe('ClawsPage', () => {
       appSecret: 'secret-ops',
       groupRequireMention: true
     })
-    expect(createClaw).toHaveBeenCalledWith({
-      assistant: {
+    expect(createAssistant).toHaveBeenCalledWith(
+      expect.objectContaining({
         name: 'Ops Assistant',
-        providerId: 'provider-1',
+        providerId: 'provider-1'
+      })
+    )
+    expect(updateClaw).toHaveBeenCalledWith('assistant-1', {
+      assistant: {
         enabled: true
       },
       channel: {
@@ -542,6 +586,7 @@ describe('ClawsPage', () => {
       claws: [],
       configuredChannels: []
     })
+    vi.mocked(listAssistants).mockResolvedValue([])
 
     await act(async () => {
       root.render(
@@ -558,8 +603,13 @@ describe('ClawsPage', () => {
     await flushAsyncWork()
 
     const body = document.body
-    await selectProvider('provider-1')
-    await advanceCreateStep()
+    const nameInput = body.querySelector('input[id="assistant-name"]') as HTMLInputElement
+    await act(async () => {
+      setElementValue(nameInput, 'Telegram Assistant')
+    })
+    await chooseProvider('OpenAI')
+    await clickElement(findButtonByText(body, 'Channels'))
+    await flushAsyncWork()
 
     const addChannelButton = body.querySelector(
       'button[id="claw-channel-selector-add"]'
@@ -607,16 +657,8 @@ describe('ClawsPage', () => {
 
     await clickElement(createChannelButton)
     await flushAsyncWork()
-    await advanceCreateStep()
-
-    const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-
-    await act(async () => {
-      setElementValue(nameInput, 'Telegram Assistant')
-    })
+    await clickElement(findButtonByText(body, 'Essential Settings'))
     await flushAsyncWork()
-    await advanceCreateStep()
-    await flushTimerWork()
 
     const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
 
@@ -628,10 +670,14 @@ describe('ClawsPage', () => {
       name: 'Telegram Bot',
       botToken: '123456:test-token'
     })
-    expect(createClaw).toHaveBeenCalledWith({
-      assistant: {
+    expect(createAssistant).toHaveBeenCalledWith(
+      expect.objectContaining({
         name: 'Telegram Assistant',
-        providerId: 'provider-1',
+        providerId: 'provider-1'
+      })
+    )
+    expect(updateClaw).toHaveBeenCalledWith('assistant-1', {
+      assistant: {
         enabled: true
       },
       channel: {
@@ -642,31 +688,49 @@ describe('ClawsPage', () => {
   })
 
   it('closes the editor and opens pairings immediately after saving a telegram claw', async () => {
-    const pendingRefresh = new Promise<never>(() => undefined)
-
     vi.mocked(listClaws)
       .mockResolvedValueOnce({
         claws: [],
         configuredChannels: []
       })
-      .mockImplementationOnce(async () => pendingRefresh)
-    vi.mocked(createClaw).mockResolvedValue({
+      .mockResolvedValueOnce({
+        claws: [
+          {
+            id: 'assistant-telegram',
+            name: 'Telegram Assistant',
+            description: '',
+            providerId: 'provider-1',
+            workspacePath: null,
+            enabled: true,
+            channel: {
+              id: 'channel-telegram',
+              type: 'telegram',
+              name: 'Telegram Bot',
+              status: 'connected',
+              errorMessage: null,
+              pairedCount: 0,
+              pendingPairingCount: 1
+            }
+          }
+        ],
+        configuredChannels: []
+      })
+    vi.mocked(createAssistant).mockResolvedValue({
       id: 'assistant-telegram',
       name: 'Telegram Assistant',
       description: '',
-      providerId: 'provider-1',
-      workspacePath: null,
+      instructions: '',
       enabled: true,
-      channel: {
-        id: 'channel-telegram',
-        type: 'telegram',
-        name: 'Telegram Bot',
-        status: 'connected',
-        errorMessage: null,
-        pairedCount: 0,
-        pendingPairingCount: 1
-      }
+      providerId: 'provider-1',
+      workspaceConfig: {},
+      skillsConfig: {},
+      mcpConfig: {},
+      maxSteps: 100,
+      memoryConfig: null,
+      createdAt: '2026-03-08T00:00:00.000Z',
+      updatedAt: '2026-03-08T00:00:00.000Z'
     })
+    vi.mocked(listAssistants).mockResolvedValue([])
 
     await act(async () => {
       root.render(
@@ -683,8 +747,13 @@ describe('ClawsPage', () => {
     await flushAsyncWork()
 
     const body = document.body
-    await selectProvider('provider-1')
-    await advanceCreateStep()
+    const nameInput = body.querySelector('input[id="assistant-name"]') as HTMLInputElement
+    await act(async () => {
+      setElementValue(nameInput, 'Telegram Assistant')
+    })
+    await chooseProvider('OpenAI')
+    await clickElement(findButtonByText(body, 'Channels'))
+    await flushAsyncWork()
 
     const addChannelButton = body.querySelector(
       'button[id="claw-channel-selector-add"]'
@@ -732,16 +801,8 @@ describe('ClawsPage', () => {
 
     await clickElement(createChannelButton)
     await flushAsyncWork()
-    await advanceCreateStep()
-
-    const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-
-    await act(async () => {
-      setElementValue(nameInput, 'Telegram Assistant')
-    })
+    await clickElement(findButtonByText(body, 'Essential Settings'))
     await flushAsyncWork()
-    await advanceCreateStep()
-    await flushTimerWork()
 
     const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
 
@@ -750,35 +811,53 @@ describe('ClawsPage', () => {
 
     expect(listClawPairings).toHaveBeenCalledWith('assistant-telegram')
     expect(document.body.textContent).toContain('Manage Pairings')
-    expect(document.body.querySelector('input[id="claw-name"]')).toBeNull()
+    expect(document.body.querySelector('input[id="assistant-name"]')).toBeNull()
   })
 
   it('opens whatsapp auth state and pairings immediately after saving a whatsapp claw', async () => {
-    const pendingRefresh = new Promise<never>(() => undefined)
-
     vi.mocked(listClaws)
       .mockResolvedValueOnce({
         claws: [],
         configuredChannels: []
       })
-      .mockImplementationOnce(async () => pendingRefresh)
-    vi.mocked(createClaw).mockResolvedValue({
+      .mockResolvedValueOnce({
+        claws: [
+          {
+            id: 'assistant-whatsapp',
+            name: 'WhatsApp Assistant',
+            description: '',
+            providerId: 'provider-1',
+            workspacePath: null,
+            enabled: true,
+            channel: {
+              id: 'channel-whatsapp',
+              type: 'whatsapp',
+              name: 'WhatsApp Device',
+              status: 'disconnected',
+              errorMessage: null,
+              pairedCount: 0,
+              pendingPairingCount: 0
+            }
+          }
+        ],
+        configuredChannels: []
+      })
+    vi.mocked(createAssistant).mockResolvedValue({
       id: 'assistant-whatsapp',
       name: 'WhatsApp Assistant',
       description: '',
-      providerId: 'provider-1',
-      workspacePath: null,
+      instructions: '',
       enabled: true,
-      channel: {
-        id: 'channel-whatsapp',
-        type: 'whatsapp',
-        name: 'WhatsApp Device',
-        status: 'disconnected',
-        errorMessage: null,
-        pairedCount: 0,
-        pendingPairingCount: 0
-      }
+      providerId: 'provider-1',
+      workspaceConfig: {},
+      skillsConfig: {},
+      mcpConfig: {},
+      maxSteps: 100,
+      memoryConfig: null,
+      createdAt: '2026-03-08T00:00:00.000Z',
+      updatedAt: '2026-03-08T00:00:00.000Z'
     })
+    vi.mocked(listAssistants).mockResolvedValue([])
 
     await act(async () => {
       root.render(
@@ -795,8 +874,13 @@ describe('ClawsPage', () => {
     await flushAsyncWork()
 
     const body = document.body
-    await selectProvider('provider-1')
-    await advanceCreateStep()
+    const nameInput = body.querySelector('input[id="assistant-name"]') as HTMLInputElement
+    await act(async () => {
+      setElementValue(nameInput, 'WhatsApp Assistant')
+    })
+    await chooseProvider('OpenAI')
+    await clickElement(findButtonByText(body, 'Channels'))
+    await flushAsyncWork()
 
     const addChannelButton = body.querySelector(
       'button[id="claw-channel-selector-add"]'
@@ -840,16 +924,8 @@ describe('ClawsPage', () => {
 
     await clickElement(createChannelButton)
     await flushAsyncWork()
-    await advanceCreateStep()
-
-    const nameInput = body.querySelector('input[id="claw-name"]') as HTMLInputElement
-
-    await act(async () => {
-      setElementValue(nameInput, 'WhatsApp Assistant')
-    })
+    await clickElement(findButtonByText(body, 'Essential Settings'))
     await flushAsyncWork()
-    await advanceCreateStep()
-    await flushTimerWork()
 
     const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
 
@@ -859,7 +935,7 @@ describe('ClawsPage', () => {
     expect(listClawPairings).toHaveBeenCalledWith('assistant-whatsapp')
     expect(getClawChannelAuthState).toHaveBeenCalledWith('assistant-whatsapp')
     expect(document.body.querySelector('img')).not.toBeNull()
-    expect(document.body.querySelector('input[id="claw-name"]')).toBeNull()
+    expect(document.body.querySelector('input[id="assistant-name"]')).toBeNull()
   })
 
   it('opens telegram pairings and approves a pending request', async () => {

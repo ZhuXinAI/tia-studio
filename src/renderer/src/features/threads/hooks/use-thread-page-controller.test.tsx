@@ -20,8 +20,20 @@ const mockState = vi.hoisted(() => {
     createAssistantMock: vi.fn(),
     updateAssistantMock: vi.fn(),
     deleteAssistantMock: vi.fn(),
+    updateAssistantHeartbeatMock: vi.fn(),
     listProvidersMock: vi.fn(),
     getMcpServersSettingsMock: vi.fn(),
+    clawsData: {
+      claws: [],
+      configuredChannels: []
+    } as {
+      claws: Array<Record<string, unknown>>
+      configuredChannels: Array<Record<string, unknown>>
+    },
+    updateClawMock: vi.fn(),
+    createClawChannelMock: vi.fn(),
+    updateClawChannelMock: vi.fn(),
+    deleteClawChannelMock: vi.fn(),
     listThreadsMock: vi.fn(),
     createThreadMock: vi.fn(),
     deleteThreadMock: vi.fn(),
@@ -31,6 +43,7 @@ const mockState = vi.hoisted(() => {
     openAssistantMessageEventsStreamMock: vi.fn(),
     useChatMock: vi.fn(),
     sendMessageMock: vi.fn(),
+    resumeStreamMock: vi.fn(),
     setMessagesMock: vi.fn(),
     stopMock: vi.fn(),
     navigateMock: vi.fn()
@@ -67,6 +80,10 @@ vi.mock('../../assistants/assistants-query', () => ({
   deleteAssistant: (...args: unknown[]) => mockState.deleteAssistantMock(...args)
 }))
 
+vi.mock('../../assistants/assistant-heartbeat-query', () => ({
+  updateAssistantHeartbeat: (...args: unknown[]) => mockState.updateAssistantHeartbeatMock(...args)
+}))
+
 vi.mock('../../settings/providers/providers-query', () => ({
   useProviders: () => ({
     data: mockState.providersData,
@@ -78,6 +95,21 @@ vi.mock('../../settings/providers/providers-query', () => ({
 
 vi.mock('../../settings/mcp-servers/mcp-servers-query', () => ({
   getMcpServersSettings: (...args: unknown[]) => mockState.getMcpServersSettingsMock(...args)
+}))
+
+vi.mock('../../claws/claws-query', () => ({
+  clawKeys: {
+    list: () => ['claws', 'list']
+  },
+  useClaws: () => ({
+    data: mockState.clawsData,
+    isLoading: false,
+    error: null
+  }),
+  updateClaw: (...args: unknown[]) => mockState.updateClawMock(...args),
+  createClawChannel: (...args: unknown[]) => mockState.createClawChannelMock(...args),
+  updateClawChannel: (...args: unknown[]) => mockState.updateClawChannelMock(...args),
+  deleteClawChannel: (...args: unknown[]) => mockState.deleteClawChannelMock(...args)
 }))
 
 vi.mock('../threads-query', () => ({
@@ -113,6 +145,7 @@ vi.mock('@ai-sdk/react', () => ({
   useChat: (options: unknown) =>
     mockState.useChatMock(options) ?? {
       sendMessage: mockState.sendMessageMock,
+      resumeStream: mockState.resumeStreamMock,
       setMessages: mockState.setMessagesMock,
       stop: mockState.stopMock,
       status: mockState.chatStatus,
@@ -171,9 +204,9 @@ function readMessageText(message: unknown): string | null {
   const parts = Array.isArray((message as { parts?: unknown[] }).parts)
     ? ((message as { parts: Array<Record<string, unknown>> }).parts ?? [])
     : []
-  const textPart = parts.find(
-    (part) => part.type === 'text' && typeof part.text === 'string'
-  ) as { text?: string } | undefined
+  const textPart = parts.find((part) => part.type === 'text' && typeof part.text === 'string') as
+    | { text?: string }
+    | undefined
 
   return typeof textPart?.text === 'string' ? textPart.text : null
 }
@@ -266,6 +299,21 @@ describe('useThreadPageController', () => {
     })
     mockState.deleteAssistantMock.mockReset()
     mockState.deleteAssistantMock.mockResolvedValue(undefined)
+    mockState.updateAssistantHeartbeatMock.mockReset()
+    mockState.updateAssistantHeartbeatMock.mockResolvedValue({
+      id: 'heartbeat-1',
+      assistantId: 'assistant-1',
+      enabled: false,
+      intervalMinutes: 30,
+      prompt: 'Review recent work logs and recent conversations. Follow up only if needed.',
+      threadId: null,
+      lastRunAt: null,
+      nextRunAt: null,
+      lastRunStatus: null,
+      lastError: null,
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-01T00:00:00.000Z'
+    })
 
     mockState.listProvidersMock.mockReset()
     mockState.listProvidersMock.mockResolvedValue([
@@ -303,6 +351,31 @@ describe('useThreadPageController', () => {
 
     mockState.getMcpServersSettingsMock.mockReset()
     mockState.getMcpServersSettingsMock.mockResolvedValue({ mcpServers: {} })
+    mockState.clawsData = {
+      claws: [],
+      configuredChannels: []
+    }
+    mockState.updateClawMock.mockReset()
+    mockState.updateClawMock.mockResolvedValue({
+      id: 'assistant-1',
+      name: 'Planner',
+      description: '',
+      providerId: 'provider-1',
+      enabled: true,
+      workspacePath: '/workspace/demo',
+      channel: {
+        id: 'channel-1',
+        type: 'telegram',
+        name: 'Ops Chat',
+        status: 'connected',
+        errorMessage: null,
+        pairedCount: 0,
+        pendingPairingCount: 0
+      }
+    })
+    mockState.createClawChannelMock.mockReset()
+    mockState.updateClawChannelMock.mockReset()
+    mockState.deleteClawChannelMock.mockReset()
 
     mockState.listThreadsMock.mockReset()
     mockState.listThreadsMock.mockResolvedValue([])
@@ -348,6 +421,7 @@ describe('useThreadPageController', () => {
     mockState.useChatMock.mockReset()
     mockState.useChatMock.mockImplementation(() => ({
       sendMessage: mockState.sendMessageMock,
+      resumeStream: mockState.resumeStreamMock,
       setMessages: mockState.setMessagesMock,
       stop: mockState.stopMock,
       status: mockState.chatStatus,
@@ -378,6 +452,9 @@ describe('useThreadPageController', () => {
 
     mockState.stopMock.mockReset()
     mockState.stopMock.mockImplementation(() => undefined)
+
+    mockState.resumeStreamMock.mockReset()
+    mockState.resumeStreamMock.mockResolvedValue(undefined)
 
     controller = null
     forceRerender = null
@@ -693,7 +770,7 @@ describe('useThreadPageController', () => {
     confirmSpy.mockRestore()
   })
 
-  it('enables stream resumption when a thread is selected', async () => {
+  it('resumes an active stream after selected thread history loads', async () => {
     mockState.routeParams.threadId = 'thread-1'
     mockState.listThreadsMock.mockResolvedValue([
       {
@@ -717,6 +794,13 @@ describe('useThreadPageController', () => {
         updatedAt: '2026-03-01T00:00:00.000Z'
       }
     ]
+    mockState.listThreadChatMessagesMock.mockResolvedValue([
+      {
+        id: 'msg-assistant',
+        role: 'assistant',
+        parts: [{ type: 'text', text: 'Persisted content' }]
+      }
+    ])
 
     await act(async () => {
       root.render(
@@ -732,12 +816,8 @@ describe('useThreadPageController', () => {
     })
 
     await waitForCondition(
-      () =>
-        mockState.useChatMock.mock.calls.some((call) => {
-          const options = call[0] as { resume?: boolean } | undefined
-          return options?.resume === true
-        }),
-      'useChat resume mode'
+      () => mockState.resumeStreamMock.mock.calls.length > 0,
+      'manual resume call'
     )
   })
 
@@ -804,15 +884,13 @@ describe('useThreadPageController', () => {
         updatedAt: '2026-03-01T00:00:00.000Z'
       }
     ]
-    mockState.listThreadChatMessagesMock
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          id: 'msg-existing',
-          role: 'assistant',
-          parts: [{ type: 'text', text: 'Earlier reply' }]
-        }
-      ])
+    mockState.listThreadChatMessagesMock.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        id: 'msg-existing',
+        role: 'assistant',
+        parts: [{ type: 'text', text: 'Earlier reply' }]
+      }
+    ])
 
     await act(async () => {
       root.render(
@@ -1251,5 +1329,158 @@ describe('useThreadPageController', () => {
       reasoningTokens: 10,
       cachedInputTokens: 25
     })
+  })
+
+  it('attaches a selected channel when saving the shared assistant dialog in edit mode', async () => {
+    mockState.clawsData = {
+      claws: [],
+      configuredChannels: [
+        {
+          id: 'channel-1',
+          type: 'telegram',
+          name: 'Ops Chat',
+          assistantId: null,
+          assistantName: null,
+          status: 'connected',
+          errorMessage: null,
+          pairedCount: 0,
+          pendingPairingCount: 0
+        }
+      ]
+    }
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+          onForceRerenderReady={(value) => {
+            forceRerender = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(() => controller?.selectedAssistant?.id === 'assistant-1', 'assistant')
+
+    act(() => {
+      controller?.onOpenAssistantConfig()
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    act(() => {
+      controller?.assistantDialogChannels?.onSelectedChannelChange('channel-1')
+    })
+
+    await act(async () => {
+      await controller?.onSubmitAssistantDialog({
+        name: 'Planner',
+        providerId: 'provider-1',
+        workspaceConfig: {
+          rootPath: '/workspace/demo'
+        }
+      })
+    })
+
+    expect(mockState.updateAssistantMock).toHaveBeenCalledWith({
+      id: 'assistant-1',
+      input: expect.objectContaining({
+        name: 'Planner',
+        providerId: 'provider-1'
+      })
+    })
+    expect(mockState.updateClawMock).toHaveBeenCalledWith(
+      'assistant-1',
+      expect.objectContaining({
+        assistant: expect.objectContaining({
+          enabled: true,
+          workspacePath: '/workspace/demo'
+        }),
+        channel: {
+          mode: 'attach',
+          channelId: 'channel-1'
+        }
+      })
+    )
+  })
+
+  it('attaches a selected channel when creating a new assistant from chat', async () => {
+    mockState.clawsData = {
+      claws: [],
+      configuredChannels: [
+        {
+          id: 'channel-1',
+          type: 'telegram',
+          name: 'Ops Chat',
+          assistantId: null,
+          assistantName: null,
+          status: 'connected',
+          errorMessage: null,
+          pairedCount: 0,
+          pendingPairingCount: 0
+        }
+      ]
+    }
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+          onForceRerenderReady={(value) => {
+            forceRerender = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(() => controller?.selectedAssistant?.id === 'assistant-1', 'assistant')
+
+    act(() => {
+      controller?.onCreateAssistant()
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    act(() => {
+      controller?.assistantDialogChannels?.onSelectedChannelChange('channel-1')
+    })
+
+    await act(async () => {
+      await controller?.onSubmitAssistantDialog({
+        name: 'Reviewer',
+        providerId: 'provider-1',
+        workspaceConfig: {
+          rootPath: '/workspace/reviewer'
+        }
+      })
+    })
+
+    expect(mockState.createAssistantMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Reviewer',
+        providerId: 'provider-1'
+      })
+    )
+    expect(mockState.updateClawMock).toHaveBeenCalledWith(
+      'assistant-2',
+      expect.objectContaining({
+        assistant: expect.objectContaining({
+          enabled: true,
+          workspacePath: '/workspace/reviewer'
+        }),
+        channel: {
+          mode: 'attach',
+          channelId: 'channel-1'
+        }
+      })
+    )
   })
 })

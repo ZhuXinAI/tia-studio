@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { SidebarInset } from '../../../components/ui/sidebar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { useTranslation } from '../../../i18n/use-app-translation'
@@ -10,8 +11,32 @@ import { useTeamPageController } from '../hooks/use-team-page-controller'
 
 export function TeamPage(): React.JSX.Element {
   const { t } = useTranslation()
+  const location = useLocation()
+  const navigate = useNavigate()
   const controller = useTeamPageController()
+  const handleCreateWorkspace = controller.handleCreateWorkspace
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
+  const hasHandledCreateWorkspaceRef = useRef(false)
+
+  const shouldCreateWorkspace = Boolean(
+    (location.state as { createWorkspace?: boolean } | null)?.createWorkspace
+  )
+
+  useEffect(() => {
+    if (!shouldCreateWorkspace) {
+      hasHandledCreateWorkspaceRef.current = false
+      return
+    }
+
+    if (hasHandledCreateWorkspaceRef.current) {
+      return
+    }
+
+    hasHandledCreateWorkspaceRef.current = true
+    void handleCreateWorkspace().finally(() => {
+      navigate(location.pathname, { replace: true, state: null })
+    })
+  }, [handleCreateWorkspace, location.pathname, navigate, shouldCreateWorkspace])
 
   return (
     <>
@@ -20,18 +45,14 @@ export function TeamPage(): React.JSX.Element {
         className="flex h-[calc(100vh-3.5rem)] min-h-[650px] min-w-[720px] flex-row overflow-hidden rounded-none border border-border/80 bg-background/50"
       >
         <TeamSidebar
-          workspaces={controller.workspaces}
+          selectedWorkspace={controller.selectedWorkspace}
           threads={controller.threads}
-          selectedWorkspaceId={controller.selectedWorkspace?.id ?? null}
           selectedThreadId={controller.selectedThread?.id ?? null}
           isLoadingData={controller.isLoadingData}
           isLoadingThreads={controller.isLoadingThreads}
-          isCreatingWorkspace={controller.isCreatingWorkspace}
           isCreatingThread={controller.isCreatingThread}
           deletingThreadId={controller.deletingThreadId}
-          onCreateWorkspace={controller.handleCreateWorkspace}
           onCreateThread={controller.handleCreateThread}
-          onSelectWorkspace={controller.handleSelectWorkspace}
           onSelectThread={controller.handleSelectThread}
           onDeleteThread={controller.handleDeleteThread}
         />

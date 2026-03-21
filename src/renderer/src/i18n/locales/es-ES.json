@@ -27,6 +27,7 @@
       "searchPlaceholder": "Search assistants...",
       "searchAriaLabel": "Search assistants",
       "empty": "No assistants yet",
+      "createAction": "Create new assistant",
       "manageAction": "Manage assistants & channels"
     },
     "teamSwitcher": {
@@ -34,7 +35,8 @@
       "ariaLabel": "Switch active team workspace",
       "loading": "Loading team...",
       "fallback": "Team workspace",
-      "empty": "No team workspaces yet"
+      "empty": "No team workspaces yet",
+      "createAction": "Create new team"
     },
     "context": {
       "assistantsChannels": "Assistants & Channels"
@@ -81,6 +83,7 @@
         "cronJobs": "Tareas programadas",
         "webSearch": "Browsing",
         "mcpServers": "Servidores MCP",
+        "coding": "Coding",
         "runtimeSetup": "Configuración del runtime",
         "display": "Pantalla",
         "aboutFeedback": "Acerca de y comentarios"
@@ -256,6 +259,44 @@
         "unexpectedError": "Error inesperado del runtime"
       }
     },
+    "coding": {
+      "title": "Coding",
+      "description": "Install the ACP adapters that power Codex and Claude Agent inside TIA Studio, or point TIA Studio at a binary you already downloaded.",
+      "kindLabels": {
+        "codex-acp": "Codex ACP",
+        "claude-agent-acp": "Claude Agent ACP"
+      },
+      "kindDescription": {
+        "codexAcp": "Used for Codex-backed coding providers and assistant coding subagents.",
+        "claudeAgentAcp": "Used for Claude Agent-backed coding providers and assistant coding subagents."
+      },
+      "labels": {
+        "status": "Status:",
+        "source": "Source:",
+        "version": "Version:",
+        "binary": "Binary:"
+      },
+      "values": {
+        "notInstalled": "Not installed",
+        "noBinary": "No active binary selected",
+        "loading": "Loading coding runtime status..."
+      },
+      "buttons": {
+        "installLatest": "Install latest",
+        "installing": "Installing...",
+        "useDownloadedBinary": "Use downloaded binary",
+        "checkAgain": "Check again",
+        "checking": "Checking...",
+        "clearCustom": "Clear custom"
+      },
+      "toasts": {
+        "installSuccess": "Installed latest {{kind}} runtime.",
+        "pickSuccess": "Activated custom {{kind}} runtime.",
+        "checkSuccess": "Checked {{kind}} runtime status.",
+        "clearSuccess": "Cleared {{kind}} runtime selection.",
+        "unexpectedError": "Unexpected managed runtime error"
+      }
+    },
     "webSearch": {
       "title": "Browsing",
       "description": "Choose how TIA opens pages and which browser runtime it uses for browsing tasks.",
@@ -364,7 +405,9 @@
         "openrouter": "OpenRouter",
         "gemini": "Gemini",
         "anthropic": "Anthropic",
-        "ollama": "Ollama"
+        "ollama": "Ollama",
+        "codex-acp": "Codex ACP",
+        "claude-agent-acp": "Claude Agent ACP"
       },
       "typeDescriptions": {
         "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
@@ -372,7 +415,9 @@
         "openrouter": "For OpenRouter's native AI SDK provider integration. This type is intended for built-in OpenRouter templates.",
         "gemini": "For Google Gemini models. Requires Google AI API key from ai.google.dev.",
         "anthropic": "For Claude models from Anthropic. Requires Anthropic API key from console.anthropic.com.",
-        "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint."
+        "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint.",
+        "codex-acp": "Runs the Codex ACP adapter as a local AI SDK provider. Configure the binary in Coding settings.",
+        "claude-agent-acp": "Runs the Claude Agent ACP adapter as a local AI SDK provider. Configure the binary in Coding settings."
       },
       "form": {
         "errors": {
@@ -389,6 +434,18 @@
         "apiKey": "Clave API",
         "apiHost": "Host API",
         "selectedModel": "Modelo seleccionado",
+        "acpBinaryStatus": "ACP Binary Status",
+        "acpBinaryDescription": "This provider uses a local ACP executable instead of a remote HTTP endpoint.",
+        "acpStatus": "Status:",
+        "acpStatusLoading": "Loading...",
+        "acpBinary": "Binary:",
+        "acpBinaryMissing": "No ACP binary is currently ready",
+        "acpVersion": "Version:",
+        "acpVersionMissing": "No version detected",
+        "acpReady": "Binary is ready. You can save this provider and use it in assistants.",
+        "acpNotReadyPrefix": "Binary is not ready yet.",
+        "acpNotReadySuffix": "Install or select the executable there before relying on this provider.",
+        "acpOpenCoding": "Open Coding",
         "includeModelPresets": "Incluir presets opcionales de modelos del proveedor",
         "providerModels": "Modelos del proveedor (opcional)",
         "providerModelsDescription": "Introduce nombres de modelos separados por comas o saltos de línea",
@@ -741,17 +798,24 @@
     "sidebar": {
       "eyebrow": "Team",
       "title": "Espacios de trabajo Team",
+      "emptyTitle": "Team Threads",
+      "currentTeam": "Current Team",
       "defaultWorkspaceName": "Espacio de trabajo Team",
       "createWorkspaceAriaLabel": "Create team workspace",
       "creatingWorkspace": "Creando espacio de trabajo...",
       "newWorkspace": "Nuevo espacio de trabajo",
       "workspaces": "Espacios de trabajo",
       "createThreadAriaLabel": "Create team thread",
+      "creatingThread": "Creating thread...",
       "newThread": "Nuevo hilo",
+      "threadsLabel": "Threads",
+      "searchThreadsPlaceholder": "Search team threads",
+      "searchThreadsAriaLabel": "Search team threads",
       "loadingWorkspaces": "Cargando espacios de trabajo Team...",
       "emptyWorkspaces": "Aún no hay espacios de trabajo. Crea uno para iniciar un hilo Team.",
       "loadingThreads": "Cargando hilos Team...",
       "emptyThreads": "Aún no hay hilos Team.",
+      "emptyThreadSearch": "No Team threads match that search.",
       "untitledThread": "Hilo Team sin título",
       "deleteThreadAriaLabel": "Delete team thread {{title}}",
       "deleteThreadPrompt": "¿Eliminar hilo?",
@@ -860,6 +924,8 @@
       "remoteBadge": "Remote channel",
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "Nuevo hilo",
+      "heartbeatButton": "Heartbeat",
+      "cronButton": "Cron",
       "setupIncomplete": "La configuración del asistente está incompleta. Abre “Configurar” para establecer proveedor y modelo antes de enviar mensajes.",
       "handoffBanner": {
         "title": "Human action needed in the built-in browser",
@@ -927,7 +993,9 @@
       "tabs": {
         "essential": "Configuración esencial",
         "tools": "Herramientas",
-        "skills": "Skills"
+        "skills": "Skills",
+        "channels": "Channels",
+        "activity": "Activity"
       },
       "fields": {
         "name": "Nombre",
@@ -954,6 +1022,27 @@
           "promptRequired": "Heartbeat prompt is required"
         }
       },
+      "activity": {
+        "description": "Review assistant heartbeat health and recent cron executions.",
+        "workspaceRequired": "Save a workspace path to review heartbeat and cron activity for this assistant.",
+        "loading": "Loading assistant activity...",
+        "heartbeatTitle": "Heartbeat Activity",
+        "heartbeatDescription": "Track schedule health, the latest runs, and any recent failures.",
+        "cronTitle": "Cron Activity",
+        "cronDescription": "Review recent cron executions owned by this assistant.",
+        "statusLabel": "Status",
+        "intervalLabel": "Interval",
+        "lastRunLabel": "Last run",
+        "nextRunLabel": "Next run",
+        "scheduledLabel": "Scheduled",
+        "durationLabel": "Duration",
+        "outputLabel": "Output",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "never": "Never",
+        "noHeartbeatRuns": "No heartbeat runs yet.",
+        "noCronRuns": "No cron runs yet."
+      },
       "placeholders": {
         "name": "Research Copilot",
         "description": "Investiga hechos, encuentra fuentes y valida afirmaciones.",
@@ -965,6 +1054,19 @@
       "descriptionHelp": "Ayuda al supervisor Team a elegir este asistente para la tarea adecuada.",
       "workspacePathHelp": "Para que el agente pueda realizar tareas más complejas, selecciona un espacio de trabajo.",
       "openingButton": "Abriendo...",
+      "codingAgent": {
+        "title": "Coding Agent",
+        "description": "Delegate coding-heavy tasks to a dedicated Codex or Claude Agent ACP subagent.",
+        "toggleAriaLabel": "Enable coding agent",
+        "providerLabel": "Coding provider",
+        "selectProvider": "Select coding provider",
+        "workspaceRequired": "Set a workspace path before enabling the coding agent.",
+        "runtimeMissingPrefix": "The selected coding provider needs its ACP binary. Finish setup in",
+        "codingLinkLabel": "Coding",
+        "noProvidersPrefix": "No enabled Codex or Claude Agent ACP providers are available yet. Add one in",
+        "providersLinkLabel": "Model Provider",
+        "noProvidersSuffix": "and make sure its ACP binary is ready in Coding."
+      },
       "runtimeNoteTitle": "Algunas herramientas MCP usan runtimes gestionados.",
       "runtimeNotePrefix": "Completa la configuración en",
       "runtimeNoteLinkLabel": "Runtime Setup",
@@ -980,6 +1082,8 @@
         "nameRequired": "El nombre del asistente es obligatorio",
         "providerRequired": "El proveedor es obligatorio",
         "maxStepsInvalid": "Los pasos máximos deben ser un número entero positivo",
+        "codingProviderRequired": "Select a coding provider before enabling the coding agent",
+        "codingWorkspaceRequired": "A workspace path is required when the coding agent is enabled",
         "workspacePickerFailed": "No se pudo elegir la carpeta del espacio de trabajo"
       },
       "skillSources": {

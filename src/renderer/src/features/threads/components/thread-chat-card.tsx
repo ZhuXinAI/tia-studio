@@ -1,5 +1,7 @@
 import {
+  Activity,
   AlertCircle,
+  Clock3,
   ExternalLink,
   Link2,
   LoaderIcon,
@@ -47,6 +49,8 @@ type ThreadChatCardProps = {
   onSubmitMessage: (messageText: string) => Promise<void>
   onAbortGeneration: () => void
   onOpenAssistantConfig: () => void
+  onOpenHeartbeatMonitor: () => void
+  onOpenCronMonitor: () => void
   onCreateThread: () => void
 }
 
@@ -318,6 +322,8 @@ export function ThreadChatCard({
   onSubmitMessage,
   onAbortGeneration,
   onOpenAssistantConfig,
+  onOpenHeartbeatMonitor,
+  onOpenCronMonitor,
   onCreateThread
 }: ThreadChatCardProps): React.JSX.Element {
   const { t, i18n } = useTranslation()
@@ -393,6 +399,26 @@ export function ThreadChatCard({
               >
                 <Plus className="size-4" />
                 {t('threads.chat.newThread')}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!selectedAssistant}
+                onClick={onOpenHeartbeatMonitor}
+              >
+                <Activity className="size-4" />
+                {t('threads.chat.heartbeatButton')}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!selectedAssistant}
+                onClick={onOpenCronMonitor}
+              >
+                <Clock3 className="size-4" />
+                {t('threads.chat.cronButton')}
               </Button>
               <Button
                 type="button"

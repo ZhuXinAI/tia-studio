@@ -65,17 +65,12 @@ describe('ManagedRuntimeService', () => {
   })
 
   it('selects a claude-agent-acp release asset for darwin arm64', () => {
-    const asset = ManagedRuntimeService.selectReleaseAsset(
-      'claude-agent-acp',
-      'darwin',
-      'arm64',
-      [
-        {
-          name: 'claude-agent-acp-darwin-arm64.zip',
-          browser_download_url: 'https://example.test/claude-agent-acp.zip'
-        }
-      ]
-    )
+    const asset = ManagedRuntimeService.selectReleaseAsset('claude-agent-acp', 'darwin', 'arm64', [
+      {
+        name: 'claude-agent-acp-darwin-arm64.zip',
+        browser_download_url: 'https://example.test/claude-agent-acp.zip'
+      }
+    ])
 
     expect(asset?.browser_download_url).toBe('https://example.test/claude-agent-acp.zip')
   })
@@ -99,6 +94,34 @@ describe('ManagedRuntimeService', () => {
       source: 'custom',
       binaryPath: '/custom/tools/uv',
       version: 'uv 0.7.2',
+      installedAt: expect.any(String),
+      lastCheckedAt: null,
+      releaseUrl: null,
+      checksum: null,
+      status: 'custom-ready',
+      errorMessage: null
+    })
+  })
+
+  it('validates a codex-acp custom runtime path by running --help', async () => {
+    const repository = new ManagedRuntimesRepository(path.join(tempDir, 'managed-runtimes.json'))
+    const runCommand = vi.fn(async () => ({
+      stdout: 'Usage: codex-acp [OPTIONS]\n',
+      stderr: ''
+    }))
+    const service = new ManagedRuntimeService({
+      repository,
+      managedRootPath: path.join(tempDir, 'managed'),
+      runCommand
+    })
+
+    const state = await service.setCustomRuntime('codex-acp', '/custom/tools/codex-acp')
+
+    expect(runCommand).toHaveBeenCalledWith('/custom/tools/codex-acp', ['--help'])
+    expect(state['codex-acp']).toEqual({
+      source: 'custom',
+      binaryPath: '/custom/tools/codex-acp',
+      version: 'codex-acp (validated)',
       installedAt: expect.any(String),
       lastCheckedAt: null,
       releaseUrl: null,
@@ -209,6 +232,52 @@ describe('ManagedRuntimeService', () => {
       errorMessage: null
     })
     await expect(access(installedBinaryPath)).resolves.toBeUndefined()
+  })
+
+  it('uses the release tag when installing codex-acp binaries', async () => {
+    const repository = new ManagedRuntimesRepository(path.join(tempDir, 'managed-runtimes.json'))
+    const downloadedArchivePath = path.join(tempDir, 'downloads', 'codex-acp.tar.gz')
+    await mkdir(path.dirname(downloadedArchivePath), { recursive: true })
+    await writeFile(downloadedArchivePath, 'codex-acp', 'utf8')
+
+    const service = new ManagedRuntimeService({
+      repository,
+      managedRootPath: path.join(tempDir, 'managed'),
+      platform: 'darwin',
+      arch: 'arm64',
+      fetchLatestRelease: vi.fn(async () => ({
+        tag_name: 'v0.10.0',
+        html_url: 'https://example.test/releases/codex-acp-v0.10.0',
+        assets: [
+          {
+            name: 'codex-acp-0.10.0-aarch64-apple-darwin.tar.gz',
+            browser_download_url: 'https://example.test/codex-acp.tar.gz'
+          }
+        ]
+      })),
+      downloadReleaseAsset: vi.fn(async () => downloadedArchivePath),
+      installReleaseAsset: vi.fn(async () =>
+        path.join(tempDir, 'managed', 'codex-acp', 'codex-acp')
+      ),
+      runCommand: vi.fn(async () => ({
+        stdout: 'Usage: codex-acp [OPTIONS]\n',
+        stderr: ''
+      }))
+    })
+
+    const state = await service.installManagedRuntime('codex-acp')
+
+    expect(state['codex-acp']).toEqual({
+      source: 'managed',
+      binaryPath: path.join(tempDir, 'managed', 'codex-acp', 'codex-acp'),
+      version: 'v0.10.0',
+      installedAt: expect.any(String),
+      lastCheckedAt: expect.any(String),
+      releaseUrl: 'https://example.test/releases/codex-acp-v0.10.0',
+      checksum: null,
+      status: 'ready',
+      errorMessage: null
+    })
   })
 
   it('resolves bunx through the managed bun binary', async () => {

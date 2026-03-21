@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronDown } from 'lucide-react'
 import type { SaveAssistantInput, AssistantRecord } from './assistants-query'
+import { AssistantActivityPanel } from './assistant-activity-panel'
 import {
   DEFAULT_ASSISTANT_HEARTBEAT_INTERVAL_MINUTES,
   DEFAULT_ASSISTANT_HEARTBEAT_PROMPT,
@@ -9,6 +10,12 @@ import {
   type AssistantHeartbeatRecord,
   type SaveAssistantHeartbeatInput
 } from './assistant-heartbeat-query'
+import type {
+  ConfiguredClawChannelRecord,
+  CreateClawChannelInput,
+  UpdateClawChannelInput
+} from '../claws/claws-query'
+import { ClawChannelSelectorDialog } from '../claws/components/claw-channel-selector-dialog'
 import type { ProviderRecord } from '../settings/providers/providers-query'
 import type { McpServerRecord } from '../settings/mcp-servers/mcp-servers-query'
 import { Button } from '../../components/ui/button'
@@ -49,13 +56,33 @@ type AssistantHeartbeatValues = {
   prompt: string
 }
 
-type AssistantEditorTab = 'essential' | 'tools' | 'skills'
+export type AssistantEditorChannelsProps = {
+  currentAssistantId: string | null
+  channels: ConfiguredClawChannelRecord[]
+  selectedChannelId: string
+  isMutating: boolean
+  errorMessage: string | null
+  onSelectedChannelChange: (channelId: string) => void
+  onCreateChannel: (
+    input: CreateClawChannelInput
+  ) => Promise<ConfiguredClawChannelRecord> | ConfiguredClawChannelRecord
+  onUpdateChannel: (
+    channelId: string,
+    input: UpdateClawChannelInput
+  ) => Promise<ConfiguredClawChannelRecord> | ConfiguredClawChannelRecord
+  onDeleteChannel: (channelId: string) => Promise<void> | void
+}
+
+type AssistantEditorTab = 'essential' | 'tools' | 'skills' | 'channels' | 'activity'
 
 type AssistantEditorProps = {
   providers: ProviderRecord[]
   mcpServers: Record<string, McpServerRecord>
   initialValue?: AssistantRecord | null
   isSubmitting?: boolean
+  channels?: AssistantEditorChannelsProps
+  showActivityTab?: boolean
+  submitButtonId?: string
   onSelectWorkspacePath?: () => Promise<string | null> | string | null
   onSubmit: (
     input: SaveAssistantInput,
@@ -259,6 +286,9 @@ export function AssistantEditor({
   mcpServers,
   initialValue,
   isSubmitting,
+  channels,
+  showActivityTab = false,
+  submitButtonId,
   onSelectWorkspacePath,
   onSubmit
 }: AssistantEditorProps): React.JSX.Element {
@@ -283,6 +313,17 @@ export function AssistantEditor({
   )
   const [isHeartbeatLoading, setIsHeartbeatLoading] = useState(false)
   const [heartbeatError, setHeartbeatError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (activeTab === 'channels' && !channels) {
+      setActiveTab('essential')
+      return
+    }
+
+    if (activeTab === 'activity' && (!showActivityTab || !initialValue)) {
+      setActiveTab('essential')
+    }
+  }, [activeTab, channels, initialValue, showActivityTab])
 
   const title = useMemo(() => {
     return initialValue ? t('assistants.editor.editTitle') : t('assistants.editor.createTitle')
@@ -641,6 +682,34 @@ export function AssistantEditor({
           >
             {t('assistants.editor.tabs.skills')}
           </button>
+          {channels ? (
+            <button
+              type="button"
+              className={cn(
+                'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
+                activeTab === 'channels'
+                  ? 'bg-secondary text-secondary-foreground'
+                  : 'hover:bg-accent/40'
+              )}
+              onClick={() => setActiveTab('channels')}
+            >
+              {t('assistants.editor.tabs.channels')}
+            </button>
+          ) : null}
+          {showActivityTab && initialValue ? (
+            <button
+              type="button"
+              className={cn(
+                'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
+                activeTab === 'activity'
+                  ? 'bg-secondary text-secondary-foreground'
+                  : 'hover:bg-accent/40'
+              )}
+              onClick={() => setActiveTab('activity')}
+            >
+              {t('assistants.editor.tabs.activity')}
+            </button>
+          ) : null}
         </aside>
 
         <div data-testid="assistant-editor-panel" className="h-[32rem] overflow-y-auto py-4 px-1">
@@ -1107,6 +1176,30 @@ export function AssistantEditor({
                 : null}
             </div>
           ) : null}
+
+          {activeTab === 'channels' && channels ? (
+            <ClawChannelSelectorDialog
+              isOpen
+              layout="inline"
+              currentAssistantId={channels.currentAssistantId}
+              selectedChannelId={channels.selectedChannelId}
+              channels={channels.channels}
+              isMutating={channels.isMutating}
+              errorMessage={channels.errorMessage}
+              onClose={() => undefined}
+              onApply={channels.onSelectedChannelChange}
+              onCreateChannel={channels.onCreateChannel}
+              onUpdateChannel={channels.onUpdateChannel}
+              onDeleteChannel={channels.onDeleteChannel}
+            />
+          ) : null}
+
+          {activeTab === 'activity' && showActivityTab && initialValue ? (
+            <AssistantActivityPanel
+              assistantId={initialValue.id}
+              workspacePath={values.workspacePath}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -1117,7 +1210,7 @@ export function AssistantEditor({
       ) : null}
 
       <div className="mt-3 flex justify-end">
-        <Button type="submit" disabled={isSubmitting}>
+        <Button id={submitButtonId} type="submit" disabled={isSubmitting}>
           {isSubmitting
             ? t('assistants.editor.savingButton')
             : initialValue

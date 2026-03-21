@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Bot, Plus } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/ui/button'
 import {
   Card,
@@ -18,16 +19,25 @@ import {
 } from '../../../components/ui/dialog'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { queryClient } from '../../../lib/query-client'
-import type { ProviderRecord, SaveProviderInput } from '../../settings/providers/providers-query'
+import type { AssistantRecord, SaveAssistantInput } from '../../assistants/assistants-query'
 import {
-  listProviders,
-  createProvider,
-  updateProvider
-} from '../../settings/providers/providers-query'
-import { assistantKeys } from '../../assistants/assistants-query'
+  assistantKeys,
+  createAssistant,
+  listAssistants,
+  updateAssistant as updateAssistantRecord
+} from '../../assistants/assistants-query'
+import {
+  updateAssistantHeartbeat,
+  type SaveAssistantHeartbeatInput
+} from '../../assistants/assistant-heartbeat-query'
+import type { ProviderRecord } from '../../settings/providers/providers-query'
+import { listProviders } from '../../settings/providers/providers-query'
+import {
+  getMcpServersSettings,
+  type McpServerRecord
+} from '../../settings/mcp-servers/mcp-servers-query'
 import {
   approveClawPairing,
-  createClaw,
   createClawChannel,
   deleteClaw,
   deleteClawChannel,
@@ -44,11 +54,10 @@ import {
   type ClawsResponse,
   type CreateClawChannelInput,
   type ConfiguredClawChannelRecord,
-  type UpdateClawChannelInput,
-  type SaveClawInput
+  type UpdateClawChannelInput
 } from '../claws-query'
+import { AssistantManagementDialog } from '../components/assistant-management-dialog'
 import { ClawCard } from '../components/claw-card'
-import { ClawEditorDialog } from '../components/claw-editor-dialog'
 import { ClawPairingsDialog } from '../components/claw-pairings-dialog'
 import { ClawHeartbeatMonitorDialog } from '../components/claw-heartbeat-monitor-dialog'
 import { ClawCronMonitorDialog } from '../components/claw-cron-monitor-dialog'
@@ -60,28 +69,52 @@ function emptyClawsResponse(): ClawsResponse {
   }
 }
 
-function upsertClaw(claws: ClawRecord[], savedClaw: ClawRecord): ClawRecord[] {
-  const existingIndex = claws.findIndex((claw) => claw.id === savedClaw.id)
-
-  if (existingIndex === -1) {
-    return [...claws, savedClaw]
-  }
-
-  return claws.map((claw) => (claw.id === savedClaw.id ? savedClaw : claw))
-}
-
 function invalidateAssistantsCache(): void {
   void queryClient.invalidateQueries({ queryKey: assistantKeys.lists() })
 }
 
+function buildChannelPayload(
+  currentChannelId: string,
+  selectedChannelId: string
+):
+  | {
+      mode: 'attach'
+      channelId: string
+    }
+  | {
+      mode: 'detach'
+    }
+  | {
+      mode: 'keep'
+    }
+  | undefined {
+  if (selectedChannelId.length === 0) {
+    return currentChannelId.length > 0 ? { mode: 'detach' } : undefined
+  }
+
+  if (currentChannelId === selectedChannelId) {
+    return currentChannelId.length > 0 ? { mode: 'keep' } : undefined
+  }
+
+  return {
+    mode: 'attach',
+    channelId: selectedChannelId
+  }
+}
+
 export function ClawsPage(): React.JSX.Element {
   const { t } = useTranslation()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [data, setData] = useState<ClawsResponse>(emptyClawsResponse)
+  const [assistants, setAssistants] = useState<AssistantRecord[]>([])
   const [providers, setProviders] = useState<ProviderRecord[]>([])
+  const [mcpServers, setMcpServers] = useState<Record<string, McpServerRecord>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingClaw, setEditingClaw] = useState<ClawRecord | null>(null)
+  const [selectedChannelId, setSelectedChannelId] = useState('')
   const [pairingsClaw, setPairingsClaw] = useState<ClawRecord | null>(null)
   const [pairings, setPairings] = useState<ClawPairingRecord[]>([])
   const [isPairingsLoading, setIsPairingsLoading] = useState(false)
@@ -93,10 +126,18 @@ export function ClawsPage(): React.JSX.Element {
   const [heartbeatMonitorClaw, setHeartbeatMonitorClaw] = useState<ClawRecord | null>(null)
   const [cronMonitorClaw, setCronMonitorClaw] = useState<ClawRecord | null>(null)
 
-  async function refreshPage(): Promise<void> {
-    const [nextClaws, nextProviders] = await Promise.all([listClaws(), listProviders()])
+  async function refreshPage(): Promise<ClawsResponse> {
+    const [nextClaws, nextProviders, nextAssistants, nextMcpServers] = await Promise.all([
+      listClaws(),
+      listProviders(),
+      listAssistants(),
+      getMcpServersSettings()
+    ])
     setData(nextClaws)
     setProviders(nextProviders)
+    setAssistants(nextAssistants)
+    setMcpServers(nextMcpServers.mcpServers)
+    return nextClaws
   }
 
   useEffect(() => {
@@ -105,9 +146,25 @@ export function ClawsPage(): React.JSX.Element {
     })
   }, [t])
 
+  useEffect(() => {
+    const nextState = location.state as { assistantDialog?: string } | null
+    if (nextState?.assistantDialog !== 'create') {
+      return
+    }
+
+    setEditingClaw(null)
+    setSelectedChannelId('')
+    setErrorMessage(null)
+    setIsDialogOpen(true)
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.pathname, location.state, navigate])
+
   const hasAnyClaw = useMemo(() => {
     return data.claws.length > 0
   }, [data.claws])
+
+  const editingAssistant =
+    editingClaw ? assistants.find((assistant) => assistant.id === editingClaw.id) ?? null : null
 
   function providerLabel(providerId: string | null): string {
     if (!providerId) {
@@ -119,33 +176,52 @@ export function ClawsPage(): React.JSX.Element {
     )
   }
 
-  async function handleDialogSubmit(input: SaveClawInput): Promise<void> {
+  async function handleDialogSubmit(
+    input: SaveAssistantInput,
+    heartbeatInput?: SaveAssistantHeartbeatInput | null
+  ): Promise<void> {
     setIsSubmitting(true)
     setErrorMessage(null)
 
     try {
-      const savedClaw = editingClaw
-        ? await updateClaw(editingClaw.id, input)
-        : await createClaw(input)
+      const savedAssistant = editingClaw
+        ? await updateAssistantRecord(editingClaw.id, input)
+        : await createAssistant(input)
 
-      setData((current) => ({
-        ...current,
-        claws: upsertClaw(current.claws, savedClaw)
-      }))
+      if (heartbeatInput) {
+        await updateAssistantHeartbeat(savedAssistant.id, heartbeatInput)
+      }
+
+      const currentChannelId = editingClaw?.channel?.id ?? ''
+      const nextSelectedChannelId = selectedChannelId.trim()
+      const nextWorkspacePath =
+        typeof input.workspaceConfig?.rootPath === 'string' ? input.workspaceConfig.rootPath.trim() : ''
+      const channelPayload = buildChannelPayload(currentChannelId, nextSelectedChannelId)
+
+      if (editingClaw || nextSelectedChannelId.length > 0 || channelPayload) {
+        await updateClaw(savedAssistant.id, {
+          assistant: {
+            enabled: nextSelectedChannelId.length > 0 ? editingClaw?.enabled ?? true : false,
+            ...(nextWorkspacePath.length > 0 ? { workspacePath: nextWorkspacePath } : {})
+          },
+          ...(channelPayload ? { channel: channelPayload } : {})
+        })
+      }
+
       invalidateAssistantsCache()
       setIsDialogOpen(false)
       setEditingClaw(null)
+      setSelectedChannelId('')
 
+      const nextClaws = await refreshPage()
+      const savedClaw = nextClaws.claws.find((claw) => claw.id === savedAssistant.id) ?? null
       if (
         !editingClaw &&
+        savedClaw &&
         (savedClaw.channel?.type === 'telegram' || savedClaw.channel?.type === 'whatsapp')
       ) {
         await handleOpenPairings(savedClaw)
       }
-
-      void refreshPage().catch((error) => {
-        setErrorMessage(error instanceof Error ? error.message : t('claws.errors.loadFailed'))
-      })
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : t('claws.errors.saveFailed'))
     } finally {
@@ -211,46 +287,6 @@ export function ClawsPage(): React.JSX.Element {
         )
       }))
       return updatedChannel
-    } catch (error) {
-      const resolvedError =
-        error instanceof Error ? error : new Error(t('claws.errors.updateFailed'))
-      setErrorMessage(resolvedError.message)
-      throw resolvedError
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  async function handleCreateProvider(input: SaveProviderInput): Promise<ProviderRecord> {
-    setIsSubmitting(true)
-    setErrorMessage(null)
-
-    try {
-      const createdProvider = await createProvider(input)
-      setProviders((current) => [...current, createdProvider])
-      return createdProvider
-    } catch (error) {
-      const resolvedError = error instanceof Error ? error : new Error(t('claws.errors.saveFailed'))
-      setErrorMessage(resolvedError.message)
-      throw resolvedError
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  async function handleUpdateProvider(
-    providerId: string,
-    input: Partial<SaveProviderInput>
-  ): Promise<ProviderRecord> {
-    setIsSubmitting(true)
-    setErrorMessage(null)
-
-    try {
-      const updatedProvider = await updateProvider(providerId, input)
-      setProviders((current) =>
-        current.map((provider) => (provider.id === updatedProvider.id ? updatedProvider : provider))
-      )
-      return updatedProvider
     } catch (error) {
       const resolvedError =
         error instanceof Error ? error : new Error(t('claws.errors.updateFailed'))
@@ -397,6 +433,20 @@ export function ClawsPage(): React.JSX.Element {
     }
   }, [channelAuthState?.status, pairingsClaw, t])
 
+  function openCreateDialog(): void {
+    setEditingClaw(null)
+    setSelectedChannelId('')
+    setErrorMessage(null)
+    setIsDialogOpen(true)
+  }
+
+  function openEditDialog(claw: ClawRecord): void {
+    setEditingClaw(claw)
+    setSelectedChannelId(claw.channel?.id ?? '')
+    setErrorMessage(null)
+    setIsDialogOpen(true)
+  }
+
   return (
     <section className="min-h-full bg-muted/20 px-6 py-6">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
@@ -411,10 +461,7 @@ export function ClawsPage(): React.JSX.Element {
 
           <Button
             type="button"
-            onClick={() => {
-              setEditingClaw(null)
-              setIsDialogOpen(true)
-            }}
+            onClick={openCreateDialog}
           >
             <Plus className="size-4" />
             <span>{t('claws.newButton')}</span>
@@ -432,13 +479,7 @@ export function ClawsPage(): React.JSX.Element {
                 <Bot className="size-4" />
                 <span>{t('claws.empty.note')}</span>
               </div>
-              <Button
-                type="button"
-                onClick={() => {
-                  setEditingClaw(null)
-                  setIsDialogOpen(true)
-                }}
-              >
+              <Button type="button" onClick={openCreateDialog}>
                 {t('claws.empty.createButton')}
               </Button>
             </CardContent>
@@ -455,10 +496,7 @@ export function ClawsPage(): React.JSX.Element {
               providerLabel={providerLabel(claw.providerId)}
               isSubmitting={isSubmitting || isPairingsSubmitting}
               onToggleEnabled={() => void handleToggleEnabled(claw)}
-              onEdit={() => {
-                setEditingClaw(claw)
-                setIsDialogOpen(true)
-              }}
+              onEdit={() => openEditDialog(claw)}
               onDelete={() => setClawPendingDelete(claw)}
               onManagePairings={() => void handleOpenPairings(claw)}
               onViewHeartbeat={() => setHeartbeatMonitorClaw(claw)}
@@ -467,12 +505,25 @@ export function ClawsPage(): React.JSX.Element {
           ))}
         </div>
 
-        <ClawEditorDialog
+        <AssistantManagementDialog
           isOpen={isDialogOpen}
-          claw={editingClaw}
+          mode={editingClaw ? 'edit' : 'create'}
+          assistant={editingAssistant}
           providers={providers}
-          configuredChannels={data.configuredChannels}
-          isSubmitting={isSubmitting}
+          mcpServers={mcpServers}
+          channels={{
+            currentAssistantId: editingClaw?.id ?? null,
+            channels: data.configuredChannels,
+            selectedChannelId,
+            isMutating: isSubmitting,
+            errorMessage,
+            onSelectedChannelChange: setSelectedChannelId,
+            onCreateChannel: handleCreateChannel,
+            onUpdateChannel: handleUpdateChannel,
+            onDeleteChannel: handleDeleteChannel
+          }}
+          isSaving={isSubmitting}
+          errorMessage={errorMessage}
           onClose={() => {
             if (isSubmitting) {
               return
@@ -480,13 +531,10 @@ export function ClawsPage(): React.JSX.Element {
 
             setIsDialogOpen(false)
             setEditingClaw(null)
+            setSelectedChannelId('')
           }}
           onSubmit={handleDialogSubmit}
-          onCreateChannel={handleCreateChannel}
-          onUpdateChannel={handleUpdateChannel}
-          onDeleteChannel={handleDeleteChannel}
-          onCreateProvider={handleCreateProvider}
-          onUpdateProvider={handleUpdateProvider}
+          onSelectWorkspacePath={() => window.tiaDesktop.pickDirectory()}
         />
 
         <ClawPairingsDialog

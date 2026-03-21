@@ -1,6 +1,9 @@
 import { Bot, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { AssistantEditor } from '../../assistants/assistant-editor'
+import {
+  AssistantEditor,
+  type AssistantEditorChannelsProps
+} from '../../assistants/assistant-editor'
 import type { SaveAssistantHeartbeatInput } from '../../assistants/assistant-heartbeat-query'
 import type { AssistantRecord, SaveAssistantInput } from '../../assistants/assistants-query'
 import type { McpServerRecord } from '../../settings/mcp-servers/mcp-servers-query'
@@ -9,14 +12,15 @@ import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { useTranslation } from '../../../i18n/use-app-translation'
 
-export type AssistantDialogMode = 'create' | 'edit'
+export type AssistantManagementDialogMode = 'create' | 'edit'
 
-type AssistantConfigDialogProps = {
-  mode: AssistantDialogMode
+type AssistantManagementDialogProps = {
+  mode: AssistantManagementDialogMode
   isOpen: boolean
   assistant: AssistantRecord | null
   providers: ProviderRecord[]
   mcpServers: Record<string, McpServerRecord>
+  channels?: AssistantEditorChannelsProps
   isSaving: boolean
   errorMessage: string | null
   onClose: () => void
@@ -27,19 +31,21 @@ type AssistantConfigDialogProps = {
   ) => Promise<void>
 }
 
-export function AssistantConfigDialog({
+export function AssistantManagementDialog({
   mode,
   isOpen,
   assistant,
   providers,
   mcpServers,
+  channels,
   isSaving,
   errorMessage,
   onClose,
   onSelectWorkspacePath,
   onSubmit
-}: AssistantConfigDialogProps): React.JSX.Element | null {
+}: AssistantManagementDialogProps): React.JSX.Element | null {
   const { t } = useTranslation()
+
   if (!isOpen) {
     return null
   }
@@ -49,7 +55,14 @@ export function AssistantConfigDialog({
   }
 
   const isCreateMode = mode === 'create'
-  const titleId = isCreateMode ? 'create-assistant-title' : 'assistant-config-dialog-title'
+  const titleId = isCreateMode ? 'claws-assistant-create-title' : 'claws-assistant-edit-title'
+  const description = channels
+    ? isCreateMode
+      ? t('claws.empty.description')
+      : t('claws.description')
+    : isCreateMode
+      ? t('threads.assistantDialog.createDescription')
+      : t('threads.assistantDialog.editDescription')
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -68,7 +81,7 @@ export function AssistantConfigDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative z-10 w-full max-w-4xl gap-4 py-5"
+        className="relative z-10 w-full max-w-5xl gap-4 py-5"
       >
         <CardHeader className="pb-0">
           <div className="flex items-start justify-between gap-2">
@@ -80,11 +93,7 @@ export function AssistantConfigDialog({
                       name: assistant?.name ?? t('threads.chat.defaultAssistantName')
                     })}
               </CardTitle>
-              <p className="text-muted-foreground text-sm">
-                {isCreateMode
-                  ? t('threads.assistantDialog.createDescription')
-                  : t('threads.assistantDialog.editDescription')}
-              </p>
+              <p className="text-sm text-muted-foreground">{description}</p>
             </div>
             <Button
               type="button"
@@ -98,10 +107,11 @@ export function AssistantConfigDialog({
             </Button>
           </div>
         </CardHeader>
+
         <CardContent>
           <div className="space-y-3">
             {providers.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-muted-foreground">
                 <Bot className="mr-1 inline size-4" />
                 {t('threads.assistantDialog.addProviderPrefix')}{' '}
                 <Link to="/settings/providers">
@@ -110,21 +120,26 @@ export function AssistantConfigDialog({
                 .
               </p>
             ) : null}
+
             {errorMessage ? (
-              <p role="alert" className="text-destructive text-sm">
+              <p role="alert" className="text-sm text-destructive">
                 {errorMessage}
               </p>
             ) : null}
+
             <AssistantEditor
               key={
                 isCreateMode
-                  ? 'assistant-config-create'
-                  : `assistant-config-${assistant?.id ?? 'unknown'}`
+                  ? 'claws-assistant-config-create'
+                  : `claws-assistant-config-${assistant?.id ?? 'unknown'}`
               }
               providers={providers}
               mcpServers={mcpServers}
               initialValue={isCreateMode ? null : assistant}
               isSubmitting={isSaving}
+              channels={channels}
+              showActivityTab={!isCreateMode}
+              submitButtonId={isCreateMode ? 'claw-create-submit' : 'claw-edit-submit'}
               onSelectWorkspacePath={onSelectWorkspacePath}
               onSubmit={onSubmit}
             />

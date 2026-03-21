@@ -1,12 +1,14 @@
 import { ChevronDown, Folder } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Button } from '../../components/ui/button'
 import { useTranslation } from '../../i18n/use-app-translation'
 import { cn } from '../../lib/utils'
 import { listTeamWorkspaces, type TeamWorkspaceRecord } from '../../features/team/team-workspaces-query'
 
 export function TeamContextSwitcher(): React.JSX.Element {
   const { t } = useTranslation()
+  const location = useLocation()
   const navigate = useNavigate()
   const params = useParams()
   const [workspaces, setWorkspaces] = useState<TeamWorkspaceRecord[]>([])
@@ -77,12 +79,9 @@ export function TeamContextSwitcher(): React.JSX.Element {
 
   return (
     <div ref={containerRef} className="relative min-w-0 max-w-md flex-1">
-      <p className="text-muted-foreground px-1 text-[10px] tracking-[0.18em] uppercase">
-        {t('appShell.teamSwitcher.label')}
-      </p>
       <button
         type="button"
-        className="no-drag group hover:bg-accent/40 focus-visible:ring-ring/50 mt-1 flex w-full items-center gap-2 rounded-lg px-1 py-1 text-left outline-none transition-colors focus-visible:ring-[3px]"
+        className="no-drag group hover:bg-accent/40 focus-visible:ring-ring/50 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left outline-none transition-colors focus-visible:ring-[3px]"
         aria-label={t('appShell.teamSwitcher.ariaLabel')}
         aria-expanded={isOpen}
         aria-haspopup="dialog"
@@ -91,6 +90,10 @@ export function TeamContextSwitcher(): React.JSX.Element {
         }}
       >
         <Folder className="size-4 shrink-0" />
+        <span className="text-muted-foreground shrink-0 text-[10px] tracking-[0.18em] uppercase">
+          {t('appShell.teamSwitcher.label')}
+        </span>
+        <span className="text-muted-foreground shrink-0 text-xs">/</span>
         <span className="truncate text-sm font-semibold">
           {selectedWorkspaceLabel && selectedWorkspaceLabel.length > 0
             ? selectedWorkspaceLabel
@@ -108,7 +111,7 @@ export function TeamContextSwitcher(): React.JSX.Element {
 
       {isOpen ? (
         <div className="bg-card text-card-foreground border-border absolute left-0 top-full z-20 mt-2 w-full min-w-[280px] rounded-xl border p-3 shadow-xl">
-          <div className="space-y-1">
+          <div className="space-y-3">
             {workspaces.length === 0 ? (
               <p className="text-muted-foreground px-2 py-3 text-xs">
                 {t('appShell.teamSwitcher.empty')}
@@ -136,6 +139,24 @@ export function TeamContextSwitcher(): React.JSX.Element {
                 )
               })
             )}
+
+            <div className="border-t border-border/60 pt-3">
+              <Button
+                type="button"
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => {
+                  setIsOpen(false)
+                  navigate(location.pathname, {
+                    state: {
+                      createWorkspace: true
+                    }
+                  })
+                }}
+              >
+                {t('appShell.teamSwitcher.createAction')}
+              </Button>
+            </div>
           </div>
         </div>
       ) : null}
