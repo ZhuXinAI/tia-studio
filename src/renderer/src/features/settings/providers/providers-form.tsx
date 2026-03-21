@@ -87,7 +87,9 @@ function toProviderPayload(
     type: values.type,
     apiKey: values.apiKey.trim(),
     apiHost: values.apiHost.trim() || undefined,
-    selectedModel: isAcpProvider ? values.selectedModel.trim() || 'default' : values.selectedModel.trim(),
+    selectedModel: isAcpProvider
+      ? values.selectedModel.trim() || 'default'
+      : values.selectedModel.trim(),
     providerModels: showProviderModels
       ? parseProviderModelsInput(values.providerModelsText)
       : undefined,
@@ -133,7 +135,8 @@ export function ProvidersForm({
   )
   const acpRuntimeKind = useMemo(() => getAcpManagedRuntimeKind(values.type), [values.type])
   const isAcpProvider = acpRuntimeKind !== null
-  const acpRuntimeRecord = acpRuntimeKind && managedRuntimeState ? managedRuntimeState[acpRuntimeKind] : null
+  const acpRuntimeRecord =
+    acpRuntimeKind && managedRuntimeState ? managedRuntimeState[acpRuntimeKind] : null
   const isAcpRuntimeReady = acpRuntimeRecord ? isManagedRuntimeReady(acpRuntimeRecord) : false
 
   useEffect(() => {
@@ -288,16 +291,16 @@ export function ProvidersForm({
               <Link className="underline underline-offset-2" to="/settings/coding">
                 {t('settings.providers.form.acpOpenCoding')}
               </Link>
-              {!isAcpRuntimeReady
-                ? ` ${t('settings.providers.form.acpNotReadySuffix')}`
-                : null}
+              {!isAcpRuntimeReady ? ` ${t('settings.providers.form.acpNotReadySuffix')}` : null}
             </p>
           </div>
         </Field>
       ) : (
         <>
           <Field>
-            <FieldLabel htmlFor="provider-api-key">{t('settings.providers.form.apiKey')}</FieldLabel>
+            <FieldLabel htmlFor="provider-api-key">
+              {t('settings.providers.form.apiKey')}
+            </FieldLabel>
             <Input
               id="provider-api-key"
               value={values.apiKey}
@@ -307,7 +310,9 @@ export function ProvidersForm({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="provider-api-host">{t('settings.providers.form.apiHost')}</FieldLabel>
+            <FieldLabel htmlFor="provider-api-host">
+              {t('settings.providers.form.apiHost')}
+            </FieldLabel>
             <Input
               id="provider-api-host"
               value={values.apiHost}

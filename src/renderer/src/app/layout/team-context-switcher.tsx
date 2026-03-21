@@ -4,7 +4,10 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { useTranslation } from '../../i18n/use-app-translation'
 import { cn } from '../../lib/utils'
-import { listTeamWorkspaces, type TeamWorkspaceRecord } from '../../features/team/team-workspaces-query'
+import {
+  listTeamWorkspaces,
+  type TeamWorkspaceRecord
+} from '../../features/team/team-workspaces-query'
 
 export function TeamContextSwitcher(): React.JSX.Element {
   const { t } = useTranslation()
@@ -74,7 +77,8 @@ export function TeamContextSwitcher(): React.JSX.Element {
     }
   }, [isOpen])
 
-  const selectedWorkspace = workspaces.find((workspace) => workspace.id === params.workspaceId) ?? null
+  const selectedWorkspace =
+    workspaces.find((workspace) => workspace.id === params.workspaceId) ?? null
   const selectedWorkspaceLabel = selectedWorkspace?.name?.trim()
 
   return (

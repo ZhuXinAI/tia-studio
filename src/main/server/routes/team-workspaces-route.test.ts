@@ -184,9 +184,12 @@ describe('team workspaces route', () => {
       })
     ])
 
-    const deleteResponse = await app.request(`http://localhost/v1/team/workspaces/${workspace.id}`, {
-      method: 'DELETE'
-    })
+    const deleteResponse = await app.request(
+      `http://localhost/v1/team/workspaces/${workspace.id}`,
+      {
+        method: 'DELETE'
+      }
+    )
 
     expect(deleteResponse.status).toBe(409)
     await expect(deleteResponse.json()).resolves.toEqual({

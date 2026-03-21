@@ -185,14 +185,18 @@ export class TeamRuntimeService implements TeamRuntime {
       id: `team-supervisor:${thread.id}`,
       name: 'Team Supervisor',
       instructions: this.buildSupervisorInstructions(workspace.teamDescription, runnableMembers),
-      model: resolveModel({
-        type: supervisorProvider.type,
-        apiKey: supervisorProvider.apiKey,
-        apiHost: supervisorProvider.apiHost,
-        selectedModel: supervisorModel
-      }, {}, {
-        acpWorkingDirectory: workspace.rootPath
-      }) as never,
+      model: resolveModel(
+        {
+          type: supervisorProvider.type,
+          apiKey: supervisorProvider.apiKey,
+          apiHost: supervisorProvider.apiHost,
+          selectedModel: supervisorModel
+        },
+        {},
+        {
+          acpWorkingDirectory: workspace.rootPath
+        }
+      ) as never,
       tools: supervisorTools,
       memory: sharedMemory as never,
       workspace: supervisorWorkspace
@@ -326,14 +330,18 @@ export class TeamRuntimeService implements TeamRuntime {
             teamDescription: input.teamDescription,
             teamMembers: input.assistants
           }),
-          model: resolveModel({
-            type: provider.type,
-            apiKey: provider.apiKey,
-            apiHost: provider.apiHost,
-            selectedModel: provider.selectedModel
-          }, {}, {
-            acpWorkingDirectory: input.teamWorkspaceRootPath
-          }) as never,
+          model: resolveModel(
+            {
+              type: provider.type,
+              apiKey: provider.apiKey,
+              apiHost: provider.apiHost,
+              selectedModel: provider.selectedModel
+            },
+            {},
+            {
+              acpWorkingDirectory: input.teamWorkspaceRootPath
+            }
+          ) as never,
           ...(Object.keys(builtInBrowserTools).length > 0 ? { tools: builtInBrowserTools } : {}),
           memory: input.sharedMemory as never,
           workspace

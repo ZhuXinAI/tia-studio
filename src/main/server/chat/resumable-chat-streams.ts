@@ -7,7 +7,9 @@ class InMemoryResumableStreamBus {
   private readonly expiry = new Map<string, ReturnType<typeof setTimeout>>()
   private readonly channels = new Map<string, Set<SubscriberCallback>>()
 
-  async connect(): Promise<void> {}
+  connect(): Promise<void> {
+    return Promise.resolve()
+  }
 
   async publish(channel: string, message: string): Promise<number> {
     const listeners = [...(this.channels.get(channel) ?? [])]

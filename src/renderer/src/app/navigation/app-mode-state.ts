@@ -34,4 +34,3 @@ export function storeAppMode(mode: AppMode): void {
 
   window.localStorage.setItem(appModeStorageKey, JSON.stringify({ mode }))
 }
-

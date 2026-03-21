@@ -36,9 +36,7 @@ export type ModelResolverFactories = {
   }) => (modelId: string) => unknown
   googleFactory: (options?: { apiKey?: string; baseURL?: string }) => (modelId: string) => unknown
   ollamaFactory: (options?: { baseURL?: string }) => (modelId: string) => unknown
-  acpProviderFactory: (
-    options: ACPProviderSettings
-  ) => {
+  acpProviderFactory: (options: ACPProviderSettings) => {
     languageModel: (modelId?: string, modeId?: string) => unknown
   }
 }

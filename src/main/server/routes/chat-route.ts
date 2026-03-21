@@ -78,10 +78,7 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
     }
   }
 
-  const withRunCleanup = <T>(
-    stream: ReadableStream<T>,
-    cleanup: () => void
-  ): ReadableStream<T> => {
+  const withRunCleanup = <T>(stream: ReadableStream<T>, cleanup: () => void): ReadableStream<T> => {
     let reader: ReadableStreamDefaultReader<T> | null = null
     let didCleanup = false
 

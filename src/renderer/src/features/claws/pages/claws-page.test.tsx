@@ -509,9 +509,9 @@ describe('ClawsPage', () => {
     await clickElement(findButtonByText(body, 'Channels'))
     await flushAsyncWork()
 
-    const addChannelButton = body.querySelector('button[id="claw-channel-selector-add"]') as
-      | HTMLButtonElement
-      | null
+    const addChannelButton = body.querySelector(
+      'button[id="claw-channel-selector-add"]'
+    ) as HTMLButtonElement | null
 
     await clickElement(addChannelButton)
     await flushAsyncWork()

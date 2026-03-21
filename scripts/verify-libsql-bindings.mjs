@@ -13,11 +13,7 @@ const argToBindings = {
   '--win-x64': ['@libsql/win32-x64-msvc']
 }
 
-const requestedBindings = new Set(
-  process.argv
-    .slice(2)
-    .flatMap((arg) => argToBindings[arg] ?? [])
-)
+const requestedBindings = new Set(process.argv.slice(2).flatMap((arg) => argToBindings[arg] ?? []))
 
 if (requestedBindings.size === 0) {
   requestedBindings.add('@libsql/darwin-x64')

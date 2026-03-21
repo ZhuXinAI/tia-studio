@@ -1,12 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
-export type ManagedRuntimeKind =
-  | 'agent-browser'
-  | 'bun'
-  | 'uv'
-  | 'codex-acp'
-  | 'claude-agent-acp'
+export type ManagedRuntimeKind = 'agent-browser' | 'bun' | 'uv' | 'codex-acp' | 'claude-agent-acp'
 export type ManagedRuntimeSource = 'managed' | 'custom' | 'none'
 export type ManagedRuntimeStatus =
   | 'missing'

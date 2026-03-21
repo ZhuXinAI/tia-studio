@@ -87,7 +87,8 @@ export function ChatContextSwitcher(): React.JSX.Element {
     }
   }, [isOpen])
 
-  const selectedAssistant = assistants.find((assistant) => assistant.id === params.assistantId) ?? null
+  const selectedAssistant =
+    assistants.find((assistant) => assistant.id === params.assistantId) ?? null
   const selectedAssistantLabel = selectedAssistant?.name?.trim()
 
   const filteredAssistants =

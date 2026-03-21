@@ -99,7 +99,11 @@ async function hasCompletedBackfill(appDb: AppDatabase): Promise<boolean> {
   ])
   const row = result.rows.at(0) as Record<string, unknown> | undefined
 
-  return String(row?.value ?? '').trim().toLowerCase() === 'true'
+  return (
+    String(row?.value ?? '')
+      .trim()
+      .toLowerCase() === 'true'
+  )
 }
 
 async function markBackfillComplete(appDb: AppDatabase): Promise<void> {
@@ -146,9 +150,7 @@ async function loadThreadContexts(appDb: AppDatabase): Promise<Map<string, Threa
   return contexts
 }
 
-export async function runThreadUsageBackfill(
-  input: RunThreadUsageBackfillInput
-): Promise<void> {
+export async function runThreadUsageBackfill(input: RunThreadUsageBackfillInput): Promise<void> {
   if (await hasCompletedBackfill(input.appDb)) {
     return
   }

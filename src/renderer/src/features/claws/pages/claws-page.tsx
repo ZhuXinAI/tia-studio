@@ -163,8 +163,9 @@ export function ClawsPage(): React.JSX.Element {
     return data.claws.length > 0
   }, [data.claws])
 
-  const editingAssistant =
-    editingClaw ? assistants.find((assistant) => assistant.id === editingClaw.id) ?? null : null
+  const editingAssistant = editingClaw
+    ? (assistants.find((assistant) => assistant.id === editingClaw.id) ?? null)
+    : null
 
   function providerLabel(providerId: string | null): string {
     if (!providerId) {
@@ -195,13 +196,15 @@ export function ClawsPage(): React.JSX.Element {
       const currentChannelId = editingClaw?.channel?.id ?? ''
       const nextSelectedChannelId = selectedChannelId.trim()
       const nextWorkspacePath =
-        typeof input.workspaceConfig?.rootPath === 'string' ? input.workspaceConfig.rootPath.trim() : ''
+        typeof input.workspaceConfig?.rootPath === 'string'
+          ? input.workspaceConfig.rootPath.trim()
+          : ''
       const channelPayload = buildChannelPayload(currentChannelId, nextSelectedChannelId)
 
       if (editingClaw || nextSelectedChannelId.length > 0 || channelPayload) {
         await updateClaw(savedAssistant.id, {
           assistant: {
-            enabled: nextSelectedChannelId.length > 0 ? editingClaw?.enabled ?? true : false,
+            enabled: nextSelectedChannelId.length > 0 ? (editingClaw?.enabled ?? true) : false,
             ...(nextWorkspacePath.length > 0 ? { workspacePath: nextWorkspacePath } : {})
           },
           ...(channelPayload ? { channel: channelPayload } : {})
@@ -459,10 +462,7 @@ export function ClawsPage(): React.JSX.Element {
             <p className="text-muted-foreground text-sm">{t('claws.telegram.description')}</p>
           </div>
 
-          <Button
-            type="button"
-            onClick={openCreateDialog}
-          >
+          <Button type="button" onClick={openCreateDialog}>
             <Plus className="size-4" />
             <span>{t('claws.newButton')}</span>
           </Button>

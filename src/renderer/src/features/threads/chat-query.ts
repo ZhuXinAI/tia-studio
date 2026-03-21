@@ -137,9 +137,7 @@ export async function listThreadChatMessages(input: ThreadChatHistoryInput): Pro
   return (await response.json()) as UIMessage[]
 }
 
-export async function runThreadCommand(
-  input: RunThreadCommandInput
-): Promise<ThreadCommandResult> {
+export async function runThreadCommand(input: RunThreadCommandInput): Promise<ThreadCommandResult> {
   const chatFetch = createDesktopChatFetch()
   const response = await chatFetch(`/chat/${input.assistantId}/commands`, {
     method: 'POST',

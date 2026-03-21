@@ -110,7 +110,11 @@ export function registerThreadsRoute(app: Hono, options: RegisterThreadsRouteOpt
     if (!options.channelThreadBindingsRepo || threads.length === 0) {
       return context.json(
         threads.map((thread) =>
-          toThreadResponse(thread, null, toUsageTotalsResponse(usageTotalsByThreadId[thread.id] ?? null))
+          toThreadResponse(
+            thread,
+            null,
+            toUsageTotalsResponse(usageTotalsByThreadId[thread.id] ?? null)
+          )
         )
       )
     }

@@ -75,9 +75,7 @@ export type TiaBrowserToolAutomationResult = {
   message?: string
 }
 
-export function buildTiaBrowserToolGuidance(options?: {
-  handoffToolAvailable?: boolean
-}): string {
+export function buildTiaBrowserToolGuidance(options?: { handoffToolAvailable?: boolean }): string {
   const handoffGuidance = options?.handoffToolAvailable
     ? '- When a site needs manual login, MFA, CAPTCHA, consent, or other human-only interaction, after you have explained the task to the user, use the request-browser-human-handoff tool to bring the tia-browser-tool window forward and wait until the user clicks "Done, continue".'
     : '- When a site needs manual login, MFA, CAPTCHA, consent, or other human-only interaction, ask the user to temporarily take over in the visible tia-browser-tool window and continue once they are done.'

@@ -18,12 +18,7 @@ type AutoUpdateState = {
   lastCheckedAt: string | null
   message: string | null
 }
-type ManagedRuntimeKind =
-  | 'agent-browser'
-  | 'bun'
-  | 'uv'
-  | 'codex-acp'
-  | 'claude-agent-acp'
+type ManagedRuntimeKind = 'agent-browser' | 'bun' | 'uv' | 'codex-acp' | 'claude-agent-acp'
 type ManagedRuntimeSource = 'managed' | 'custom' | 'none'
 type ManagedRuntimeStatus =
   | 'missing'

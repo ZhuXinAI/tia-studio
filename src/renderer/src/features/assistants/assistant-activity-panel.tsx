@@ -76,7 +76,8 @@ function RunList({
                     {run.status}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {t('assistants.editor.activity.scheduledLabel')}: {new Date(run.scheduledFor).toLocaleString()}
+                    {t('assistants.editor.activity.scheduledLabel')}:{' '}
+                    {new Date(run.scheduledFor).toLocaleString()}
                   </span>
                 </div>
 
@@ -85,7 +86,9 @@ function RunList({
                     <span className="font-medium text-foreground">
                       {t('assistants.editor.activity.outputLabel')}:
                     </span>{' '}
-                    {run.outputText.length > 220 ? `${run.outputText.slice(0, 220)}...` : run.outputText}
+                    {run.outputText.length > 220
+                      ? `${run.outputText.slice(0, 220)}...`
+                      : run.outputText}
                   </p>
                 ) : null}
 
@@ -209,7 +212,9 @@ export function AssistantActivityPanel({
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Activity className="size-4" />
-            <h3 className="text-base font-medium">{t('assistants.editor.activity.heartbeatTitle')}</h3>
+            <h3 className="text-base font-medium">
+              {t('assistants.editor.activity.heartbeatTitle')}
+            </h3>
           </div>
           <p className="text-sm text-muted-foreground">
             {t('assistants.editor.activity.heartbeatDescription')}
@@ -232,7 +237,9 @@ export function AssistantActivityPanel({
               {t('assistants.editor.activity.intervalLabel')}
             </p>
             <p className="mt-2 text-sm font-medium">
-              {heartbeat ? `${heartbeat.intervalMinutes} min` : t('assistants.editor.activity.never')}
+              {heartbeat
+                ? `${heartbeat.intervalMinutes} min`
+                : t('assistants.editor.activity.never')}
             </p>
           </div>
           <div className="rounded-lg border border-border/60 bg-background/70 p-3">
@@ -249,7 +256,9 @@ export function AssistantActivityPanel({
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
               {t('assistants.editor.activity.nextRunLabel')}
             </p>
-            <p className="mt-2 text-sm font-medium">{formatDateTime(heartbeat?.nextRunAt ?? null)}</p>
+            <p className="mt-2 text-sm font-medium">
+              {formatDateTime(heartbeat?.nextRunAt ?? null)}
+            </p>
           </div>
         </div>
 

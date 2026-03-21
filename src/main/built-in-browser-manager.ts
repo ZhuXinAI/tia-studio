@@ -250,9 +250,9 @@ type PendingHandoff = {
 function isEventMessage(value: unknown): value is BuiltInBrowserEventMessage {
   return Boolean(
     value &&
-      typeof value === 'object' &&
-      'type' in value &&
-      typeof (value as { type?: unknown }).type === 'string'
+    typeof value === 'object' &&
+    'type' in value &&
+    typeof (value as { type?: unknown }).type === 'string'
   )
 }
 
@@ -374,9 +374,7 @@ export class BuiltInBrowserManager implements BuiltInBrowserController {
     this.send({ type: 'hide-window' })
   }
 
-  async requestHumanHandoff(
-    input: BrowserHumanHandoffRequest
-  ): Promise<BrowserHumanHandoffResult> {
+  async requestHumanHandoff(input: BrowserHumanHandoffRequest): Promise<BrowserHumanHandoffResult> {
     const message = input.message.trim()
     if (message.length === 0) {
       throw new Error('Human handoff message must not be empty.')
@@ -553,7 +551,7 @@ export class BuiltInBrowserManager implements BuiltInBrowserController {
     if (fresh || !this.currentProfilePath) {
       this.currentProfilePath = fresh
         ? join(profileRootPath, `recovery-${Date.now()}-${randomUUID()}`)
-        : this.readPersistedProfilePath(profileRootPath) ?? join(profileRootPath, 'default')
+        : (this.readPersistedProfilePath(profileRootPath) ?? join(profileRootPath, 'default'))
     }
 
     mkdirSync(this.currentProfilePath, { recursive: true })

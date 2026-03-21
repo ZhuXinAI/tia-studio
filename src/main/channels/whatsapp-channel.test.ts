@@ -268,10 +268,7 @@ describe('WhatsAppChannel', () => {
     await Promise.resolve()
     await channel.sendImage('8613800138000@s.whatsapp.net', '/tmp/reply.png')
 
-    expect(client.sendImage).toHaveBeenCalledWith(
-      '8613800138000@s.whatsapp.net',
-      '/tmp/reply.png'
-    )
+    expect(client.sendImage).toHaveBeenCalledWith('8613800138000@s.whatsapp.net', '/tmp/reply.png')
   })
 
   it('creates a pending pairing for an unknown dm and replies with its code', async () => {

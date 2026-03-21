@@ -41,7 +41,9 @@ export function registerTeamWorkspacesRoute(
   app.get('/v1/team/workspaces', async (context) => {
     const builtInWorkspaceId = await options.teamWorkspacesRepo.getBuiltInDefaultWorkspaceId()
     const workspaces = await options.teamWorkspacesRepo.list()
-    return context.json(workspaces.map((workspace) => toWorkspaceResponse(workspace, builtInWorkspaceId)))
+    return context.json(
+      workspaces.map((workspace) => toWorkspaceResponse(workspace, builtInWorkspaceId))
+    )
   })
 
   app.post('/v1/team/workspaces', async (context) => {
@@ -141,7 +143,9 @@ export function registerTeamWorkspacesRoute(
   })
 
   app.delete('/v1/team/workspaces/:workspaceId', async (context) => {
-    if (await options.teamWorkspacesRepo.isBuiltInDefaultWorkspace(context.req.param('workspaceId'))) {
+    if (
+      await options.teamWorkspacesRepo.isBuiltInDefaultWorkspace(context.req.param('workspaceId'))
+    ) {
       return context.json({ ok: false, error: 'Built-in default team cannot be deleted' }, 409)
     }
 

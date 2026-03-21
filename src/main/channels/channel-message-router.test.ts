@@ -997,7 +997,9 @@ describe('ChannelMessageRouter', () => {
   })
 
   it('handles /new in the channel router without sending it to the LLM', async () => {
-    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () => createAssistantReplyStream('unused'))
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
+      createAssistantReplyStream('unused')
+    )
     const runThreadCommand = vi.fn<AssistantRuntime['runThreadCommand']>(async () => ({
       command: 'new',
       archiveFileName: 'thread_history_2026-03-14.md',

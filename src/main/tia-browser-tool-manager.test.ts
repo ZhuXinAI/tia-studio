@@ -21,7 +21,8 @@ const {
 
 vi.mock('./tia-browser-tool', () => ({
   launchTiaBrowserTool: (options: unknown) => launchTiaBrowserToolMock(options),
-  setTiaBrowserToolRuntimeOptions: (options: unknown) => setTiaBrowserToolRuntimeOptionsMock(options),
+  setTiaBrowserToolRuntimeOptions: (options: unknown) =>
+    setTiaBrowserToolRuntimeOptionsMock(options),
   showTiaBrowserToolWindow: () => showTiaBrowserToolWindowMock(),
   hideTiaBrowserToolWindow: () => hideTiaBrowserToolWindowMock(),
   requestTiaBrowserToolHumanHandoff: (input: unknown) =>

@@ -17,7 +17,8 @@ import { SettingsPageLayout } from '../features/settings/pages/settings-page-lay
 import { RouteError } from '../components/route-error'
 import { TeamPage } from '../features/team/pages/team-page'
 import { ChannelsSettingsPage } from '../features/settings/pages/channels-settings-page'
-import { AppEntryRoute, appEntryLoader } from './routes/app-entry-route'
+import { appEntryLoader } from './routes/app-entry-loader'
+import { AppEntryRoute } from './routes/app-entry-route'
 
 export const appRoutes: RouteObject[] = [
   {

@@ -76,7 +76,9 @@ export class TeamWorkspacesRepository {
       'SELECT id, name, root_path, team_description, supervisor_provider_id, supervisor_model, created_at, updated_at FROM app_team_workspaces ORDER BY created_at DESC'
     )
 
-    const workspaces = result.rows.map((row) => parseTeamWorkspaceRow(row as Record<string, unknown>))
+    const workspaces = result.rows.map((row) =>
+      parseTeamWorkspaceRow(row as Record<string, unknown>)
+    )
 
     if (!builtInWorkspaceId) {
       return workspaces
