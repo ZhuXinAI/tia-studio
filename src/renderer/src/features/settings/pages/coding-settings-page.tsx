@@ -1,6 +1,5 @@
-import { Download, RefreshCcw, Wrench } from 'lucide-react'
+import { Download, RefreshCcw, TerminalSquare } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from '../../../i18n/use-app-translation'
 import { toast } from 'sonner'
 import { Button } from '../../../components/ui/button'
 import {
@@ -10,19 +9,26 @@ import {
   CardHeader,
   CardTitle
 } from '../../../components/ui/card'
+import { useTranslation } from '../../../i18n/use-app-translation'
 import {
   checkManagedRuntimeLatest,
   clearManagedRuntime,
+  codingRuntimeKinds,
   createDefaultManagedRuntimesState,
   getManagedRuntimeStatus,
   installManagedRuntime,
   pickCustomRuntime,
   type ManagedRuntimeKind,
-  type ManagedRuntimesState,
-  runtimeSetupKinds
+  type ManagedRuntimesState
 } from '../runtimes/managed-runtimes-query'
 
-export function RuntimeSetupPage(): React.JSX.Element {
+function descriptionKeyForKind(kind: ManagedRuntimeKind): string {
+  return kind === 'codex-acp'
+    ? 'settings.coding.kindDescription.codexAcp'
+    : 'settings.coding.kindDescription.claudeAgentAcp'
+}
+
+export function CodingSettingsPage(): React.JSX.Element {
   const { t } = useTranslation()
   const [state, setState] = useState<ManagedRuntimesState>(createDefaultManagedRuntimesState())
   const [isLoading, setIsLoading] = useState(true)
@@ -37,7 +43,7 @@ export function RuntimeSetupPage(): React.JSX.Element {
         }
       }
 
-      return t('settings.runtime.toasts.unexpectedError')
+      return t('settings.coding.toasts.unexpectedError')
     },
     [t]
   )
@@ -68,7 +74,7 @@ export function RuntimeSetupPage(): React.JSX.Element {
     try {
       if (action === 'install') {
         setState(await installManagedRuntime(kind))
-        toast.success(t('settings.runtime.toasts.installSuccess', { kind }))
+        toast.success(t('settings.coding.toasts.installSuccess', { kind }))
         return
       }
 
@@ -76,19 +82,19 @@ export function RuntimeSetupPage(): React.JSX.Element {
         const nextState = await pickCustomRuntime(kind)
         if (nextState) {
           setState(nextState)
-          toast.success(t('settings.runtime.toasts.pickSuccess', { kind }))
+          toast.success(t('settings.coding.toasts.pickSuccess', { kind }))
         }
         return
       }
 
       if (action === 'check') {
         setState(await checkManagedRuntimeLatest(kind))
-        toast.success(t('settings.runtime.toasts.checkSuccess', { kind }))
+        toast.success(t('settings.coding.toasts.checkSuccess', { kind }))
         return
       }
 
       setState(await clearManagedRuntime(kind))
-      toast.success(t('settings.runtime.toasts.clearSuccess', { kind }))
+      toast.success(t('settings.coding.toasts.clearSuccess', { kind }))
     } catch (error) {
       toast.error(toErrorMessage(error))
     } finally {
@@ -99,46 +105,40 @@ export function RuntimeSetupPage(): React.JSX.Element {
   return (
     <div className="py-4 flex flex-col gap-4">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{t('settings.runtime.title')}</h1>
-        <p className="text-muted-foreground text-sm">{t('settings.runtime.description')}</p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('settings.coding.title')}</h1>
+        <p className="text-muted-foreground text-sm">{t('settings.coding.description')}</p>
       </header>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        {runtimeSetupKinds.map((kind) => {
+        {codingRuntimeKinds.map((kind) => {
           const runtime = state[kind]
 
           return (
             <Card key={kind}>
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 lowercase">
-                  <Wrench className="size-4" />
-                  {kind}
+                <CardTitle className="flex items-center gap-2">
+                  <TerminalSquare className="size-4" />
+                  {t(`settings.coding.kindLabels.${kind}`)}
                 </CardTitle>
-                <CardDescription>
-                  {kind === 'bun'
-                    ? t('settings.runtime.kindDescription.bun')
-                    : kind === 'uv'
-                      ? t('settings.runtime.kindDescription.uv')
-                      : t('settings.runtime.kindDescription.agentBrowser')}
-                </CardDescription>
+                <CardDescription>{t(descriptionKeyForKind(kind))}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-1 rounded-xl border border-border/70 bg-card/60 px-4 py-3 text-sm">
                   <p>
-                    <span className="font-medium">{t('settings.runtime.labels.status')}</span>{' '}
+                    <span className="font-medium">{t('settings.coding.labels.status')}</span>{' '}
                     {runtime.status}
                   </p>
                   <p>
-                    <span className="font-medium">{t('settings.runtime.labels.source')}</span>{' '}
+                    <span className="font-medium">{t('settings.coding.labels.source')}</span>{' '}
                     {runtime.source}
                   </p>
                   <p>
-                    <span className="font-medium">{t('settings.runtime.labels.version')}</span>{' '}
-                    {runtime.version ?? t('settings.runtime.values.notInstalled')}
+                    <span className="font-medium">{t('settings.coding.labels.version')}</span>{' '}
+                    {runtime.version ?? t('settings.coding.values.notInstalled')}
                   </p>
                   <p>
-                    <span className="font-medium">{t('settings.runtime.labels.binary')}</span>{' '}
-                    {runtime.binaryPath ?? t('settings.runtime.values.noBinary')}
+                    <span className="font-medium">{t('settings.coding.labels.binary')}</span>{' '}
+                    {runtime.binaryPath ?? t('settings.coding.values.noBinary')}
                   </p>
                   {runtime.errorMessage ? (
                     <p role="alert" className="text-destructive text-xs">
@@ -147,7 +147,7 @@ export function RuntimeSetupPage(): React.JSX.Element {
                   ) : null}
                   {isLoading ? (
                     <p className="text-muted-foreground text-xs">
-                      {t('settings.runtime.values.loading')}
+                      {t('settings.coding.values.loading')}
                     </p>
                   ) : null}
                 </div>
@@ -160,8 +160,8 @@ export function RuntimeSetupPage(): React.JSX.Element {
                   >
                     <Download className="size-4" />
                     {busyAction === `${kind}:install`
-                      ? t('settings.runtime.buttons.installing')
-                      : t('settings.runtime.buttons.installLatest')}
+                      ? t('settings.coding.buttons.installing')
+                      : t('settings.coding.buttons.installLatest')}
                   </Button>
                   <Button
                     type="button"
@@ -169,7 +169,7 @@ export function RuntimeSetupPage(): React.JSX.Element {
                     onClick={() => void runAction(kind, 'pick')}
                     disabled={busyAction !== null}
                   >
-                    {t('settings.runtime.buttons.useDownloadedBinary')}
+                    {t('settings.coding.buttons.useDownloadedBinary')}
                   </Button>
                   <Button
                     type="button"
@@ -179,8 +179,8 @@ export function RuntimeSetupPage(): React.JSX.Element {
                   >
                     <RefreshCcw className="size-4" />
                     {busyAction === `${kind}:check`
-                      ? t('settings.runtime.buttons.checking')
-                      : t('settings.runtime.buttons.checkAgain')}
+                      ? t('settings.coding.buttons.checking')
+                      : t('settings.coding.buttons.checkAgain')}
                   </Button>
                   <Button
                     type="button"
@@ -188,7 +188,7 @@ export function RuntimeSetupPage(): React.JSX.Element {
                     onClick={() => void runAction(kind, 'clear')}
                     disabled={busyAction !== null || runtime.source !== 'custom'}
                   >
-                    {t('settings.runtime.buttons.clearCustom')}
+                    {t('settings.coding.buttons.clearCustom')}
                   </Button>
                 </div>
               </CardContent>

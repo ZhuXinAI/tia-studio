@@ -8,6 +8,7 @@ import {
   Monitor,
   Search,
   Shield,
+  TerminalSquare,
   Wrench
 } from 'lucide-react'
 import type { ComponentType } from 'react'
@@ -65,6 +66,11 @@ const settingsNavItems: SettingsNavItem[] = [
     titleKey: 'settings.sidebar.items.mcpServers',
     icon: Cable,
     to: '/settings/mcp-servers'
+  },
+  {
+    titleKey: 'settings.sidebar.items.coding',
+    icon: TerminalSquare,
+    to: '/settings/coding'
   },
   {
     titleKey: 'settings.sidebar.items.runtimeSetup',

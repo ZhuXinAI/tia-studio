@@ -54,6 +54,28 @@ describe('ManagedRuntimesRepository', () => {
         checksum: null,
         status: 'missing',
         errorMessage: null
+      },
+      'codex-acp': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
+      },
+      'claude-agent-acp': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
       }
     })
   })
@@ -94,6 +116,28 @@ describe('ManagedRuntimesRepository', () => {
           releaseUrl: ' https://example.test/agent-browser ',
           checksum: ' def456 ',
           status: 'custom-ready',
+          errorMessage: null
+        },
+        'codex-acp': {
+          source: 'managed',
+          binaryPath: ' /Applications/codex-acp ',
+          version: ' codex-acp 0.10.0 ',
+          installedAt: ' 2026-03-08T04:00:00.000Z ',
+          lastCheckedAt: ' 2026-03-08T05:00:00.000Z ',
+          releaseUrl: ' https://example.test/codex-acp ',
+          checksum: ' ghi789 ',
+          status: 'ready',
+          errorMessage: null
+        },
+        'claude-agent-acp': {
+          source: 'none',
+          binaryPath: null,
+          version: null,
+          installedAt: null,
+          lastCheckedAt: null,
+          releaseUrl: null,
+          checksum: null,
+          status: 'missing',
           errorMessage: null
         }
       }),
@@ -136,6 +180,17 @@ describe('ManagedRuntimesRepository', () => {
       status: 'custom-ready',
       errorMessage: null
     })
+    expect(state['codex-acp']).toEqual({
+      source: 'managed',
+      binaryPath: '/Applications/codex-acp',
+      version: 'codex-acp 0.10.0',
+      installedAt: '2026-03-08T04:00:00.000Z',
+      lastCheckedAt: '2026-03-08T05:00:00.000Z',
+      releaseUrl: 'https://example.test/codex-acp',
+      checksum: 'ghi789',
+      status: 'ready',
+      errorMessage: null
+    })
   })
 
   it('persists normalized runtime fields', async () => {
@@ -175,6 +230,28 @@ describe('ManagedRuntimesRepository', () => {
         checksum: null,
         status: 'missing',
         errorMessage: null
+      },
+      'codex-acp': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
+      },
+      'claude-agent-acp': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
       }
     })
 
@@ -202,6 +279,28 @@ describe('ManagedRuntimesRepository', () => {
         errorMessage: 'failed download'
       },
       'agent-browser': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
+      },
+      'codex-acp': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
+      },
+      'claude-agent-acp': {
         source: 'none',
         binaryPath: null,
         version: null,

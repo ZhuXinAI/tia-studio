@@ -147,6 +147,7 @@ async function waitForCondition(condition: () => boolean, description: string): 
 
 describe('useTeamPageController', () => {
   beforeEach(() => {
+    window.localStorage.clear()
     mockState.routeParams.workspaceId = 'workspace-1'
     mockState.routeParams.threadId = 'thread-1'
 
@@ -354,6 +355,114 @@ describe('useTeamPageController', () => {
       name: 'new-workspace',
       rootPath: '/Users/demo/new-workspace'
     })
+  })
+
+  it('restores the stored workspace and thread when loading /team without route params', async () => {
+    mockState.routeParams.workspaceId = undefined
+    mockState.routeParams.threadId = undefined
+    mockState.listTeamWorkspacesMock.mockResolvedValue([
+      {
+        id: 'workspace-1',
+        name: 'Docs Workspace',
+        rootPath: '/Users/demo/project',
+        teamDescription: '',
+        supervisorProviderId: null,
+        supervisorModel: '',
+        createdAt: '2026-03-07T00:00:00.000Z',
+        updatedAt: '2026-03-07T00:00:00.000Z'
+      },
+      {
+        id: 'workspace-2',
+        name: 'Ops Workspace',
+        rootPath: '/Users/demo/ops',
+        teamDescription: '',
+        supervisorProviderId: null,
+        supervisorModel: '',
+        createdAt: '2026-03-07T00:00:00.000Z',
+        updatedAt: '2026-03-07T00:00:00.000Z'
+      }
+    ])
+    window.localStorage.setItem(
+      'tia.team.last-selection',
+      JSON.stringify({
+        workspaceId: 'workspace-1',
+        threadId: 'thread-1'
+      })
+    )
+
+    await rerenderHarness()
+
+    await waitForCondition(
+      () =>
+        mockState.navigateMock.mock.calls.some(
+          ([nextRoute]) => nextRoute === '/team/workspace-1/thread-1'
+        ),
+      'stored team route restore'
+    )
+  })
+
+  it('falls back to the stored workspace route when the stored thread no longer exists', async () => {
+    mockState.routeParams.workspaceId = undefined
+    mockState.routeParams.threadId = undefined
+    mockState.listTeamThreadsMock.mockResolvedValue([])
+    window.localStorage.setItem(
+      'tia.team.last-selection',
+      JSON.stringify({
+        workspaceId: 'workspace-1',
+        threadId: 'thread-missing'
+      })
+    )
+
+    await rerenderHarness()
+
+    await waitForCondition(
+      () =>
+        mockState.navigateMock.mock.calls.some(
+          ([nextRoute]) => nextRoute === '/team/workspace-1/thread-missing'
+        ),
+      'stored workspace restore attempt'
+    )
+    await rerenderHarness()
+
+    await waitForCondition(
+      () =>
+        mockState.navigateMock.mock.calls.some(
+          ([nextRoute, options]) =>
+            nextRoute === '/team/workspace-1' &&
+            (options as { replace?: boolean } | undefined)?.replace === true
+        ),
+      'fallback to workspace detail route'
+    )
+  })
+
+  it('falls back to the first workspace when there is no stored team selection', async () => {
+    mockState.routeParams.workspaceId = undefined
+    mockState.routeParams.threadId = undefined
+
+    await rerenderHarness()
+
+    await waitForCondition(
+      () =>
+        mockState.navigateMock.mock.calls.some(
+          ([nextRoute, options]) =>
+            nextRoute === '/team/workspace-1' &&
+            (options as { replace?: boolean } | undefined)?.replace === true
+        ),
+      'first workspace route restore'
+    )
+  })
+
+  it('keeps /team in the empty state when there are no workspaces', async () => {
+    mockState.routeParams.workspaceId = undefined
+    mockState.routeParams.threadId = undefined
+    mockState.listTeamWorkspacesMock.mockResolvedValue([])
+
+    await rerenderHarness()
+
+    await waitForCondition(() => controller?.isLoadingData === false, 'empty workspace load')
+
+    expect(controller?.selectedWorkspace).toBeNull()
+    expect(mockState.navigateMock).not.toHaveBeenCalled()
   })
 
   it('saves team config at workspace scope even when no thread is selected', async () => {

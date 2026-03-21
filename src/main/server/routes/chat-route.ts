@@ -60,24 +60,13 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
     assistantId: string
     threadId: string
     profileId: string
-    requestSignal: AbortSignal
   }) => {
     const key = toRunKey(input)
     const controller = new AbortController()
-    const abortFromRequest = (): void => {
-      controller.abort(input.requestSignal.reason)
-    }
-
-    if (input.requestSignal.aborted) {
-      controller.abort(input.requestSignal.reason)
-    } else {
-      input.requestSignal.addEventListener('abort', abortFromRequest, { once: true })
-    }
 
     activeRuns.set(key, controller)
 
     const cleanup = (): void => {
-      input.requestSignal.removeEventListener('abort', abortFromRequest)
       if (activeRuns.get(key) === controller) {
         activeRuns.delete(key)
       }
@@ -89,13 +78,23 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
     }
   }
 
-  const withRunCleanup = (
-    stream: ReadableStream<Uint8Array>,
+  const withRunCleanup = <T>(
+    stream: ReadableStream<T>,
     cleanup: () => void
-  ): ReadableStream<Uint8Array> => {
-    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
+  ): ReadableStream<T> => {
+    let reader: ReadableStreamDefaultReader<T> | null = null
+    let didCleanup = false
 
-    return new ReadableStream<Uint8Array>({
+    const runCleanup = (): void => {
+      if (didCleanup) {
+        return
+      }
+
+      didCleanup = true
+      cleanup()
+    }
+
+    return new ReadableStream<T>({
       start(controller) {
         reader = stream.getReader()
 
@@ -104,7 +103,7 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
             while (true) {
               const { done, value } = await reader!.read()
               if (done) {
-                cleanup()
+                runCleanup()
                 controller.close()
                 return
               }
@@ -112,7 +111,7 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
               controller.enqueue(value)
             }
           } catch (error) {
-            cleanup()
+            runCleanup()
             controller.error(error)
           } finally {
             reader?.releaseLock()
@@ -123,7 +122,6 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
         void pump()
       },
       cancel(reason) {
-        cleanup()
         return reader?.cancel(reason)
       }
     })
@@ -180,7 +178,7 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
 
   app.get('/chat/:assistantId/:chatId/stream', async (context) => {
     const chatId = context.req.param('chatId')
-    const stream = resumableStreams.resume(chatId)
+    const stream = await resumableStreams.resume(chatId)
     if (!stream) {
       return new Response(null, { status: 204 })
     }
@@ -338,8 +336,7 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
       activeRun = registerActiveRun({
         assistantId,
         threadId: parsed.data.threadId,
-        profileId: parsed.data.profileId,
-        requestSignal: context.req.raw.signal
+        profileId: parsed.data.profileId
       })
       const stream = await options.assistantRuntime.streamChat({
         assistantId,
@@ -349,18 +346,24 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
         trigger: parsed.data.trigger,
         abortSignal: activeRun.abortSignal
       })
+      const streamWithCleanup = withRunCleanup(stream, activeRun.cleanup)
 
       const chatId = parsed.data.id ?? `${assistantId}:${parsed.data.threadId}`
-      const response = createUIMessageStreamResponse({
-        stream,
-        consumeSseStream: ({ stream: sseStream }) => {
-          resumableStreams.register(chatId, sseStream)
+      return createUIMessageStreamResponse({
+        stream: streamWithCleanup,
+        consumeSseStream: async ({ stream: sseStream }) => {
+          try {
+            await resumableStreams.register(chatId, sseStream)
+          } catch (error) {
+            logger.error('[ChatRoute] Failed to register resumable chat stream', {
+              assistantId,
+              chatId,
+              threadId: parsed.data.threadId,
+              profileId: parsed.data.profileId,
+              error
+            })
+          }
         }
-      })
-
-      return new Response(withRunCleanup(response.body!, activeRun.cleanup), {
-        status: response.status,
-        headers: response.headers
       })
     } catch (error) {
       activeRun?.cleanup()

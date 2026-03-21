@@ -1,6 +1,11 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 
-type ManagedRuntimeKind = 'agent-browser' | 'bun' | 'uv'
+type ManagedRuntimeKind =
+  | 'agent-browser'
+  | 'bun'
+  | 'uv'
+  | 'codex-acp'
+  | 'claude-agent-acp'
 type ManagedRuntimeSource = 'managed' | 'custom' | 'none'
 type ManagedRuntimeStatus =
   | 'missing'

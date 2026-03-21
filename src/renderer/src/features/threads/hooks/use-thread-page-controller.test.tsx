@@ -191,6 +191,7 @@ function readMessageTexts(messages: unknown): string[] {
 
 describe('useThreadPageController', () => {
   beforeEach(() => {
+    window.localStorage.clear()
     mockState.routeParams.assistantId = 'assistant-1'
     delete mockState.routeParams.threadId
     mockState.chatStatus = 'ready'
@@ -449,9 +450,27 @@ describe('useThreadPageController', () => {
     expect(mockState.sendMessageMock).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps the chat root route in assistant directory mode', async () => {
+  it('restores the stored assistant thread when loading /chat without route params', async () => {
     delete mockState.routeParams.assistantId
     delete mockState.routeParams.threadId
+    mockState.listThreadsMock.mockResolvedValue([
+      {
+        id: 'thread-1',
+        assistantId: 'assistant-1',
+        resourceId: 'default-profile',
+        title: 'Stored thread',
+        lastMessageAt: '2026-03-02T00:00:00.000Z',
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+    window.localStorage.setItem(
+      'tia.chat.last-thread-selection',
+      JSON.stringify({
+        assistantId: 'assistant-1',
+        threadId: 'thread-1'
+      })
+    )
 
     await act(async () => {
       root.render(
@@ -466,10 +485,184 @@ describe('useThreadPageController', () => {
       )
     })
 
-    await waitForCondition(() => controller !== null, 'controller to mount')
+    await waitForCondition(
+      () =>
+        mockState.navigateMock.mock.calls.some(
+          ([to, options]) =>
+            to === '/chat/assistant-1/thread-1' &&
+            (options as { replace?: boolean } | undefined)?.replace === true
+        ),
+      'stored chat route restore'
+    )
+  })
 
-    expect(controller?.selectedAssistant).toBeNull()
-    expect(mockState.navigateMock).not.toHaveBeenCalled()
+  it('routes /chat to the latest thread across assistants when no stored selection exists', async () => {
+    delete mockState.routeParams.assistantId
+    delete mockState.routeParams.threadId
+    mockState.listAssistantsMock.mockResolvedValue([
+      {
+        id: 'assistant-1',
+        name: 'Planner',
+        instructions: 'Keep responses concise.',
+        providerId: 'provider-1',
+        workspaceConfig: { rootPath: '/workspace/demo' },
+        skillsConfig: {},
+        mcpConfig: {},
+        maxSteps: 100,
+        memoryConfig: null,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'assistant-2',
+        name: 'Reviewer',
+        instructions: '',
+        providerId: 'provider-1',
+        workspaceConfig: { rootPath: '/workspace/reviewer' },
+        skillsConfig: {},
+        mcpConfig: {},
+        maxSteps: 100,
+        memoryConfig: null,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z'
+      }
+    ])
+    mockState.assistantsData = [
+      {
+        id: 'assistant-1',
+        name: 'Planner',
+        instructions: 'Keep responses concise.',
+        providerId: 'provider-1',
+        workspaceConfig: { rootPath: '/workspace/demo' },
+        skillsConfig: {},
+        mcpConfig: {},
+        maxSteps: 100,
+        memoryConfig: null,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'assistant-2',
+        name: 'Reviewer',
+        instructions: '',
+        providerId: 'provider-1',
+        workspaceConfig: { rootPath: '/workspace/reviewer' },
+        skillsConfig: {},
+        mcpConfig: {},
+        maxSteps: 100,
+        memoryConfig: null,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z'
+      }
+    ]
+    mockState.listThreadsMock.mockImplementation(async (assistantId: unknown) => {
+      if (assistantId === 'assistant-1') {
+        return [
+          {
+            id: 'thread-1',
+            assistantId: 'assistant-1',
+            resourceId: 'default-profile',
+            title: 'Older thread',
+            lastMessageAt: '2026-03-02T00:00:00.000Z',
+            createdAt: '2026-03-01T00:00:00.000Z',
+            updatedAt: '2026-03-02T00:00:00.000Z'
+          }
+        ]
+      }
+
+      return [
+        {
+          id: 'thread-2',
+          assistantId: 'assistant-2',
+          resourceId: 'default-profile',
+          title: 'Latest thread',
+          lastMessageAt: '2026-03-03T00:00:00.000Z',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-03T00:00:00.000Z'
+        }
+      ]
+    })
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+          onForceRerenderReady={(value) => {
+            forceRerender = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(
+      () =>
+        mockState.navigateMock.mock.calls.some(
+          ([to, options]) =>
+            to === '/chat/assistant-2/thread-2' &&
+            (options as { replace?: boolean } | undefined)?.replace === true
+        ),
+      'latest thread route restore'
+    )
+  })
+
+  it('routes /chat to the first assistant detail when assistants exist but no threads do', async () => {
+    delete mockState.routeParams.assistantId
+    delete mockState.routeParams.threadId
+    mockState.listThreadsMock.mockResolvedValue([])
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+          onForceRerenderReady={(value) => {
+            forceRerender = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(
+      () =>
+        mockState.navigateMock.mock.calls.some(
+          ([to, options]) =>
+            to === '/chat/assistant-1' &&
+            (options as { replace?: boolean } | undefined)?.replace === true
+        ),
+      'first assistant route restore'
+    )
+  })
+
+  it('routes /chat to /claws when there are no assistants to restore', async () => {
+    delete mockState.routeParams.assistantId
+    delete mockState.routeParams.threadId
+    mockState.assistantsData = []
+    mockState.listAssistantsMock.mockResolvedValue([])
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+          onForceRerenderReady={(value) => {
+            forceRerender = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(
+      () =>
+        mockState.navigateMock.mock.calls.some(
+          ([to, options]) =>
+            to === '/claws' && (options as { replace?: boolean } | undefined)?.replace === true
+        ),
+      'claws fallback route'
+    )
   })
 
   it('asks for confirmation before deleting an assistant', async () => {
@@ -783,6 +976,57 @@ describe('useThreadPageController', () => {
       text: '/stop'
     })
     expect(mockState.sendMessageMock).not.toHaveBeenCalled()
+    expect(mockState.stopMock).not.toHaveBeenCalled()
+  })
+
+  it('routes toolbar abort through the main-thread command handler instead of useChat.stop', async () => {
+    mockState.chatStatus = 'streaming'
+    mockState.routeParams.threadId = 'thread-1'
+    mockState.threadsData = [
+      {
+        id: 'thread-1',
+        assistantId: 'assistant-1',
+        resourceId: 'default-profile',
+        title: 'Recovered thread',
+        lastMessageAt: null,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z'
+      }
+    ]
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+          onForceRerenderReady={(value) => {
+            forceRerender = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(() => controller?.selectedThread?.id === 'thread-1', 'selected thread')
+    mockState.runThreadCommandMock.mockResolvedValueOnce({
+      ok: true,
+      handled: true,
+      command: 'stop',
+      stopped: true
+    })
+    mockState.stopMock.mockClear()
+
+    await act(async () => {
+      controller?.onAbortGeneration()
+      await Promise.resolve()
+    })
+
+    expect(mockState.runThreadCommandMock).toHaveBeenCalledWith({
+      assistantId: 'assistant-1',
+      threadId: 'thread-1',
+      profileId: 'default-profile',
+      text: '/stop'
+    })
     expect(mockState.stopMock).not.toHaveBeenCalled()
   })
 

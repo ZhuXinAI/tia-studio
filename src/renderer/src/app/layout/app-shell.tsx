@@ -1,10 +1,14 @@
-import { Bot, Home, Settings, Users } from 'lucide-react'
+import { useEffect } from 'react'
+import { Home, Settings, Users } from 'lucide-react'
 import { useTranslation } from '../../i18n/use-app-translation'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { cn } from '../../lib/utils'
 import clsx from 'clsx'
 import { useAutoUpdate } from '../../features/settings/auto-update/use-auto-update'
+import { storeAppMode } from '../navigation/app-mode-state'
+import { ChatContextSwitcher } from './chat-context-switcher'
+import { TeamContextSwitcher } from './team-context-switcher'
 
 function isWindowsPlatform(): boolean {
   return globalThis.window?.electron?.process.platform === 'win32'
@@ -16,8 +20,32 @@ export function AppShell(): React.JSX.Element {
   const location = useLocation()
   const isChatRoute = location.pathname.startsWith('/chat')
   const isClawsRoute = location.pathname.startsWith('/claws')
+  const isChatAreaRoute = isChatRoute || isClawsRoute
   const isTeamRoute = location.pathname.startsWith('/team')
   const isSettingsRoute = location.pathname.startsWith('/settings')
+
+  useEffect(() => {
+    if (isTeamRoute) {
+      storeAppMode('team')
+      return
+    }
+
+    if (isChatAreaRoute) {
+      storeAppMode('chat')
+    }
+  }, [isChatAreaRoute, isTeamRoute])
+
+  const contextualControl = isChatRoute ? (
+    <ChatContextSwitcher />
+  ) : isTeamRoute ? (
+    <TeamContextSwitcher />
+  ) : isClawsRoute ? (
+    <div className="no-drag min-w-0 px-1">
+      <span className="truncate text-sm font-semibold">
+        {t('appShell.context.assistantsChannels')}
+      </span>
+    </div>
+  ) : null
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground transition-colors duration-200">
@@ -30,42 +58,36 @@ export function AppShell(): React.JSX.Element {
         )}
       >
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Button
-              asChild
-              variant={isClawsRoute ? 'secondary' : 'ghost'}
-              size="sm"
-              className="no-drag"
-            >
-              <NavLink to="/claws" className="no-drag inline-flex items-center gap-2">
-                <Bot className="size-4" />
-                <span className="text-sm font-medium">{t('appShell.nav.claws')}</span>
-              </NavLink>
-            </Button>
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Button
+                asChild
+                variant={isChatAreaRoute ? 'secondary' : 'ghost'}
+                size="sm"
+                className="no-drag"
+              >
+                <NavLink to="/chat" className="no-drag inline-flex items-center gap-2">
+                  <Home className="size-4" />
+                  <span className="text-sm font-medium">{t('appShell.nav.chats')}</span>
+                </NavLink>
+              </Button>
 
-            <Button
-              asChild
-              variant={isChatRoute ? 'secondary' : 'ghost'}
-              size="sm"
-              className="no-drag"
-            >
-              <NavLink to="/chat" className="no-drag inline-flex items-center gap-2">
-                <Home className="size-4" />
-                <span className="text-sm font-medium">{t('appShell.nav.chats')}</span>
-              </NavLink>
-            </Button>
+              <Button
+                asChild
+                variant={isTeamRoute ? 'secondary' : 'ghost'}
+                size="sm"
+                className="no-drag"
+              >
+                <NavLink to="/team" className="no-drag inline-flex items-center gap-2">
+                  <Users className="size-4" />
+                  <span className="text-sm font-medium">{t('appShell.nav.team')}</span>
+                </NavLink>
+              </Button>
+            </div>
 
-            <Button
-              asChild
-              variant={isTeamRoute ? 'secondary' : 'ghost'}
-              size="sm"
-              className="no-drag"
-            >
-              <NavLink to="/team" className="no-drag inline-flex items-center gap-2">
-                <Users className="size-4" />
-                <span className="text-sm font-medium">{t('appShell.nav.team')}</span>
-              </NavLink>
-            </Button>
+            {contextualControl ? <div className="h-5 w-px shrink-0 bg-border/60" /> : null}
+
+            {contextualControl ? <div className="min-w-0 flex-1">{contextualControl}</div> : null}
           </div>
 
           <div className="flex items-center gap-2">

@@ -1,4 +1,9 @@
-export type ManagedRuntimeKind = 'agent-browser' | 'bun' | 'uv'
+export type ManagedRuntimeKind =
+  | 'agent-browser'
+  | 'bun'
+  | 'uv'
+  | 'codex-acp'
+  | 'claude-agent-acp'
 export type ManagedRuntimeSource = 'managed' | 'custom' | 'none'
 export type ManagedRuntimeStatus =
   | 'missing'
@@ -26,7 +31,9 @@ export type ManagedRuntimeRecord = {
 export type ManagedRuntimesState = Record<ManagedRuntimeKind, ManagedRuntimeRecord>
 export type RuntimeOnboardingSkillId = 'agent-browser' | 'find-skills'
 
-export const managedRuntimeKinds: ManagedRuntimeKind[] = ['bun', 'uv', 'agent-browser']
+export const runtimeSetupKinds: ManagedRuntimeKind[] = ['bun', 'uv', 'agent-browser']
+export const codingRuntimeKinds: ManagedRuntimeKind[] = ['codex-acp', 'claude-agent-acp']
+export const managedRuntimeKinds: ManagedRuntimeKind[] = [...runtimeSetupKinds, ...codingRuntimeKinds]
 
 function createDefaultRecord(): ManagedRuntimeRecord {
   return {
@@ -46,7 +53,9 @@ export function createDefaultManagedRuntimesState(): ManagedRuntimesState {
   return {
     bun: createDefaultRecord(),
     uv: createDefaultRecord(),
-    'agent-browser': createDefaultRecord()
+    'agent-browser': createDefaultRecord(),
+    'codex-acp': createDefaultRecord(),
+    'claude-agent-acp': createDefaultRecord()
   }
 }
 

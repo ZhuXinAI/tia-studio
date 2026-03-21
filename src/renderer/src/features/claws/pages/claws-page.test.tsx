@@ -339,7 +339,7 @@ describe('ClawsPage', () => {
     vi.clearAllMocks()
   })
 
-  it('renders onboarding when no claws are connected yet', async () => {
+  it('renders assistant management onboarding when no assistants are connected yet', async () => {
     vi.mocked(listClaws).mockResolvedValue({
       claws: [],
       configuredChannels: []
@@ -354,9 +354,9 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    expect(container.textContent).toContain('Claws')
-    expect(container.textContent).toContain('Set up your first claw')
-    expect(container.textContent).toContain('Create Your First Claw')
+    expect(container.textContent).toContain('Assistants & Channels')
+    expect(container.textContent).toContain('Create your first assistant')
+    expect(container.textContent).toContain('Create Assistant')
   })
 
   it('renders existing claw cards', async () => {
@@ -394,7 +394,7 @@ describe('ClawsPage', () => {
 
     expect(container.textContent).toContain('Ops Assistant')
     expect(container.textContent).toContain('Ops Lark')
-    expect(container.textContent).toContain('New Claw')
+    expect(container.textContent).toContain('New Assistant')
     expect(findButtonByText(findClawCard('Ops Assistant') ?? container, 'Actions')).toBeDefined()
   })
 
@@ -423,7 +423,7 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    expect(container.textContent).not.toContain('Set up your first claw')
+    expect(container.textContent).not.toContain('Create your first assistant')
     expect(container.textContent).toContain('Configure a channel first')
 
     await openClawActions('Ops Assistant')
@@ -451,7 +451,7 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    const createButton = findButtonByText(container, 'Create Your First Claw')
+    const createButton = findButtonByText(container, 'Create Assistant')
 
     await clickElement(createButton)
     await flushAsyncWork()
@@ -552,7 +552,7 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    const createButton = findButtonByText(container, 'Create Your First Claw')
+    const createButton = findButtonByText(container, 'Create Assistant')
 
     await clickElement(createButton)
     await flushAsyncWork()
@@ -677,7 +677,7 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    const createButton = findButtonByText(container, 'Create Your First Claw')
+    const createButton = findButtonByText(container, 'Create Assistant')
 
     await clickElement(createButton)
     await flushAsyncWork()
@@ -789,7 +789,7 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    const newButton = findButtonByText(container, 'New Claw')
+    const newButton = findButtonByText(container, 'New Assistant')
 
     await clickElement(newButton)
     await flushAsyncWork()

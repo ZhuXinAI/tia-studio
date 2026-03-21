@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
@@ -7,6 +8,12 @@ import { Field, FieldLabel, FieldDescription, FieldError } from '../../../compon
 import { Switch } from '../../../components/ui/switch'
 import { getVisibleProviderTypeOptions } from './provider-type-options'
 import type { ProviderType, SaveProviderInput } from './providers-query'
+import {
+  getManagedRuntimeStatus,
+  isManagedRuntimeReady,
+  type ManagedRuntimeKind,
+  type ManagedRuntimesState
+} from '../runtimes/managed-runtimes-query'
 
 export type ProviderFormValues = {
   name: string
@@ -21,6 +28,18 @@ export type ProviderFormValues = {
 
 export type ProviderFormErrors = {
   selectedModel?: string
+}
+
+function isAcpProviderType(type: ProviderType): type is 'codex-acp' | 'claude-agent-acp' {
+  return type === 'codex-acp' || type === 'claude-agent-acp'
+}
+
+function getAcpManagedRuntimeKind(type: ProviderType): ManagedRuntimeKind | null {
+  if (type === 'codex-acp' || type === 'claude-agent-acp') {
+    return type
+  }
+
+  return null
 }
 
 export function validateProviderForm(
@@ -61,16 +80,18 @@ function toProviderPayload(
   values: ProviderFormValues,
   showProviderModels: boolean
 ): SaveProviderInput {
+  const isAcpProvider = isAcpProviderType(values.type)
+
   return {
     name: values.name.trim(),
     type: values.type,
     apiKey: values.apiKey.trim(),
     apiHost: values.apiHost.trim() || undefined,
-    selectedModel: values.selectedModel.trim(),
+    selectedModel: isAcpProvider ? values.selectedModel.trim() || 'default' : values.selectedModel.trim(),
     providerModels: showProviderModels
       ? parseProviderModelsInput(values.providerModelsText)
       : undefined,
-    supportsVision: values.supportsVision,
+    supportsVision: isAcpProvider ? true : values.supportsVision,
     enabled: values.enabled
   }
 }
@@ -90,12 +111,15 @@ export function ProvidersForm({
     type: initialValue?.type ?? 'openai',
     apiKey: initialValue?.apiKey ?? '',
     apiHost: initialValue?.apiHost ?? '',
-    selectedModel: initialValue?.selectedModel ?? '',
+    selectedModel:
+      initialValue?.selectedModel ??
+      (initialValue?.type && isAcpProviderType(initialValue.type) ? 'default' : ''),
     providerModelsText: initialValue?.providerModelsText ?? '',
     supportsVision: initialValue?.supportsVision ?? false,
     enabled: initialValue?.enabled ?? true
   })
   const [errors, setErrors] = useState<ProviderFormErrors>({})
+  const [managedRuntimeState, setManagedRuntimeState] = useState<ManagedRuntimesState | null>(null)
   const [hasProviderModels, setHasProviderModels] = useState<boolean>(() => {
     return Boolean(initialValue?.providerModelsText?.trim().length) || isPrebuilt
   })
@@ -107,12 +131,50 @@ export function ProvidersForm({
     () => getVisibleProviderTypeOptions(values.type),
     [values.type]
   )
+  const acpRuntimeKind = useMemo(() => getAcpManagedRuntimeKind(values.type), [values.type])
+  const isAcpProvider = acpRuntimeKind !== null
+  const acpRuntimeRecord = acpRuntimeKind && managedRuntimeState ? managedRuntimeState[acpRuntimeKind] : null
+  const isAcpRuntimeReady = acpRuntimeRecord ? isManagedRuntimeReady(acpRuntimeRecord) : false
+
+  useEffect(() => {
+    if (!isAcpProvider) {
+      return
+    }
+
+    let isCancelled = false
+
+    void getManagedRuntimeStatus()
+      .then((nextState) => {
+        if (!isCancelled) {
+          setManagedRuntimeState(nextState)
+        }
+      })
+      .catch(() => undefined)
+
+    return () => {
+      isCancelled = true
+    }
+  }, [isAcpProvider])
 
   const updateValue = (key: keyof ProviderFormValues, value: string) => {
-    setValues((prev) => ({
-      ...prev,
-      [key]: value
-    }))
+    setValues((prev) => {
+      if (key === 'type') {
+        const nextType = value as ProviderType
+        return {
+          ...prev,
+          type: nextType,
+          selectedModel:
+            isAcpProviderType(nextType) && prev.selectedModel.trim().length === 0
+              ? 'default'
+              : prev.selectedModel
+        }
+      }
+
+      return {
+        ...prev,
+        [key]: value
+      }
+    })
   }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -202,50 +264,86 @@ export function ProvidersForm({
         </select>
       </Field>
 
-      <Field>
-        <FieldLabel htmlFor="provider-api-key">{t('settings.providers.form.apiKey')}</FieldLabel>
-        <Input
-          id="provider-api-key"
-          value={values.apiKey}
-          onChange={(event) => updateValue('apiKey', event.target.value)}
-          placeholder="sk-..."
-        />
-      </Field>
+      {isAcpProvider ? (
+        <Field>
+          <FieldLabel>{t('settings.providers.form.acpBinaryStatus')}</FieldLabel>
+          <div className="rounded-xl border border-border/70 bg-card/60 px-4 py-3 text-sm space-y-1">
+            <p>{t('settings.providers.form.acpBinaryDescription')}</p>
+            <p>
+              <span className="font-medium">{t('settings.providers.form.acpStatus')}</span>{' '}
+              {acpRuntimeRecord?.status ?? t('settings.providers.form.acpStatusLoading')}
+            </p>
+            <p>
+              <span className="font-medium">{t('settings.providers.form.acpBinary')}</span>{' '}
+              {acpRuntimeRecord?.binaryPath ?? t('settings.providers.form.acpBinaryMissing')}
+            </p>
+            <p>
+              <span className="font-medium">{t('settings.providers.form.acpVersion')}</span>{' '}
+              {acpRuntimeRecord?.version ?? t('settings.providers.form.acpVersionMissing')}
+            </p>
+            <p className="text-muted-foreground">
+              {isAcpRuntimeReady
+                ? t('settings.providers.form.acpReady')
+                : t('settings.providers.form.acpNotReadyPrefix')}{' '}
+              <Link className="underline underline-offset-2" to="/settings/coding">
+                {t('settings.providers.form.acpOpenCoding')}
+              </Link>
+              {!isAcpRuntimeReady
+                ? ` ${t('settings.providers.form.acpNotReadySuffix')}`
+                : null}
+            </p>
+          </div>
+        </Field>
+      ) : (
+        <>
+          <Field>
+            <FieldLabel htmlFor="provider-api-key">{t('settings.providers.form.apiKey')}</FieldLabel>
+            <Input
+              id="provider-api-key"
+              value={values.apiKey}
+              onChange={(event) => updateValue('apiKey', event.target.value)}
+              placeholder="sk-..."
+            />
+          </Field>
 
-      <Field>
-        <FieldLabel htmlFor="provider-api-host">{t('settings.providers.form.apiHost')}</FieldLabel>
-        <Input
-          id="provider-api-host"
-          value={values.apiHost}
-          onChange={(event) => updateValue('apiHost', event.target.value)}
-          placeholder="https://api.openai.com/v1"
-        />
-      </Field>
+          <Field>
+            <FieldLabel htmlFor="provider-api-host">{t('settings.providers.form.apiHost')}</FieldLabel>
+            <Input
+              id="provider-api-host"
+              value={values.apiHost}
+              onChange={(event) => updateValue('apiHost', event.target.value)}
+              placeholder="https://api.openai.com/v1"
+            />
+          </Field>
 
-      <Field>
-        <FieldLabel htmlFor="provider-selected-model">
-          {t('settings.providers.form.selectedModel')}
-        </FieldLabel>
-        <Input
-          id="provider-selected-model"
-          value={values.selectedModel}
-          onChange={(event) => updateValue('selectedModel', event.target.value)}
-          placeholder="gpt-5"
-        />
-        <FieldError>{errors.selectedModel}</FieldError>
-      </Field>
+          <Field>
+            <FieldLabel htmlFor="provider-selected-model">
+              {t('settings.providers.form.selectedModel')}
+            </FieldLabel>
+            <Input
+              id="provider-selected-model"
+              value={values.selectedModel}
+              onChange={(event) => updateValue('selectedModel', event.target.value)}
+              placeholder="gpt-5"
+            />
+            <FieldError>{errors.selectedModel}</FieldError>
+          </Field>
+        </>
+      )}
 
-      <label className="flex items-center gap-2 text-sm text-muted-foreground">
-        <input
-          type="checkbox"
-          className="border-input h-4 w-4 rounded border bg-transparent"
-          checked={hasProviderModels}
-          onChange={(event) => setHasProviderModels(event.target.checked)}
-        />
-        {t('settings.providers.form.includeModelPresets')}
-      </label>
+      {!isAcpProvider ? (
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            className="border-input h-4 w-4 rounded border bg-transparent"
+            checked={hasProviderModels}
+            onChange={(event) => setHasProviderModels(event.target.checked)}
+          />
+          {t('settings.providers.form.includeModelPresets')}
+        </label>
+      ) : null}
 
-      {showProviderModels ? (
+      {showProviderModels && !isAcpProvider ? (
         <Field>
           <FieldLabel htmlFor="provider-models-list">
             {t('settings.providers.form.providerModels')}
@@ -262,28 +360,30 @@ export function ProvidersForm({
         </Field>
       ) : null}
 
-      <Field>
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <FieldLabel htmlFor="supports-vision">
-              {t('settings.providers.form.supportsVision')}
-            </FieldLabel>
-            <FieldDescription>
-              {t('settings.providers.form.supportsVisionDescription')}
-            </FieldDescription>
+      {!isAcpProvider ? (
+        <Field>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <FieldLabel htmlFor="supports-vision">
+                {t('settings.providers.form.supportsVision')}
+              </FieldLabel>
+              <FieldDescription>
+                {t('settings.providers.form.supportsVisionDescription')}
+              </FieldDescription>
+            </div>
+            <Switch
+              id="supports-vision"
+              checked={values.supportsVision}
+              onCheckedChange={(checked) =>
+                setValues((prev) => ({ ...prev, supportsVision: checked }))
+              }
+            />
           </div>
-          <Switch
-            id="supports-vision"
-            checked={values.supportsVision}
-            onCheckedChange={(checked) =>
-              setValues((prev) => ({ ...prev, supportsVision: checked }))
-            }
-          />
-        </div>
-      </Field>
+        </Field>
+      ) : null}
 
       <div className="flex flex-wrap justify-end gap-2">
-        {onTestConnection ? (
+        {onTestConnection && !isAcpProvider ? (
           <Button
             type="button"
             variant="outline"

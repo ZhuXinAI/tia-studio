@@ -123,11 +123,19 @@ function resolveUiConfigStore(): UiConfigStore {
 let isTransparentWindow = Boolean(resolveUiConfigStore().getConfig().transparent)
 
 function assertManagedRuntimeKind(value: unknown): ManagedRuntimeKind {
-  if (value === 'bun' || value === 'uv' || value === 'agent-browser') {
+  if (
+    value === 'bun' ||
+    value === 'uv' ||
+    value === 'agent-browser' ||
+    value === 'codex-acp' ||
+    value === 'claude-agent-acp'
+  ) {
     return value
   }
 
-  throw new Error('Managed runtime kind must be "bun", "uv", or "agent-browser"')
+  throw new Error(
+    'Managed runtime kind must be "bun", "uv", "agent-browser", "codex-acp", or "claude-agent-acp"'
+  )
 }
 
 function assertRecommendedSkillIds(value: unknown): RecommendedSkillId[] {
@@ -150,6 +158,20 @@ function resolveManagedRuntimeService(): ManagedRuntimeService {
   }
 
   return managedRuntimeService
+}
+
+async function syncManagedRuntimeProcessEnv(): Promise<void> {
+  const nextEnv = await resolveManagedRuntimeService().getAugmentedEnv(process.env)
+  for (const [key, value] of Object.entries(nextEnv)) {
+    if (typeof value === 'string') {
+      process.env[key] = value
+      continue
+    }
+
+    if (value === undefined) {
+      delete process.env[key]
+    }
+  }
 }
 
 function resolveBuiltInBrowserManager(): BuiltInBrowserManager {
@@ -248,6 +270,7 @@ async function startLocalApiServer(): Promise<void> {
     repository: managedRuntimesRepo,
     managedRootPath: join(app.getPath('userData'), 'managed-runtimes')
   })
+  await syncManagedRuntimeProcessEnv()
   await ensureBuiltInProviders(providersRepo)
   await ensureBuiltInDefaultAgent({
     assistantsRepo,
@@ -741,16 +764,29 @@ if (hasSingleInstanceLock) {
     })
     ipcMain.handle('tia:check-managed-runtime-latest', async (_event, rawKind) => {
       const kind = assertManagedRuntimeKind(rawKind)
-      return resolveManagedRuntimeService().checkLatest(kind)
+      const state = await resolveManagedRuntimeService().checkLatest(kind)
+      await syncManagedRuntimeProcessEnv()
+      return state
     })
     ipcMain.handle('tia:install-managed-runtime', async (_event, rawKind) => {
       const kind = assertManagedRuntimeKind(rawKind)
-      return resolveManagedRuntimeService().installManagedRuntime(kind)
+      const state = await resolveManagedRuntimeService().installManagedRuntime(kind)
+      await syncManagedRuntimeProcessEnv()
+      return state
     })
     ipcMain.handle('tia:pick-custom-runtime', async (event, rawKind) => {
       const kind = assertManagedRuntimeKind(rawKind)
       const currentWindow = BrowserWindow.fromWebContents(event.sender)
-      const runtimeDisplayName = kind === 'bun' ? 'Bun' : kind === 'uv' ? 'UV' : 'Agent Browser'
+      const runtimeDisplayName =
+        kind === 'bun'
+          ? 'Bun'
+          : kind === 'uv'
+            ? 'UV'
+            : kind === 'agent-browser'
+              ? 'Agent Browser'
+              : kind === 'codex-acp'
+                ? 'Codex ACP'
+                : 'Claude Agent ACP'
       const openDialogOptions: OpenDialogOptions = {
         title: `Select ${runtimeDisplayName} Binary`,
         properties: ['openFile']
@@ -763,11 +799,15 @@ if (hasSingleInstanceLock) {
         return null
       }
 
-      return resolveManagedRuntimeService().setCustomRuntime(kind, result.filePaths[0])
+      const state = await resolveManagedRuntimeService().setCustomRuntime(kind, result.filePaths[0])
+      await syncManagedRuntimeProcessEnv()
+      return state
     })
     ipcMain.handle('tia:clear-managed-runtime', async (_event, rawKind) => {
       const kind = assertManagedRuntimeKind(rawKind)
-      return resolveManagedRuntimeService().clearRuntime(kind)
+      const state = await resolveManagedRuntimeService().clearRuntime(kind)
+      await syncManagedRuntimeProcessEnv()
+      return state
     })
     ipcMain.handle('tia:get-runtime-onboarding-skills-status', async () => {
       return getInstalledRecommendedSkills()

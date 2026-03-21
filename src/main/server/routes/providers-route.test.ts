@@ -75,6 +75,25 @@ describe('providers route', () => {
     expect(body.providerModels).toEqual(['MiniMax-M2.5', 'MiniMax-M2.5-lightning'])
   })
 
+  it('creates ACP providers without an API key', async () => {
+    const response = await app.request('http://localhost/v1/providers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Codex ACP',
+        type: 'codex-acp',
+        apiKey: '',
+        selectedModel: 'default'
+      })
+    })
+
+    expect(response.status).toBe(201)
+    const body = await response.json()
+    expect(body.type).toBe('codex-acp')
+    expect(body.apiKey).toBe('')
+    expect(body.selectedModel).toBe('default')
+  })
+
   it('returns successful provider connection check', async () => {
     const fetchSpy = vi.fn(
       async () =>

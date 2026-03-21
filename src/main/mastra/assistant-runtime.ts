@@ -42,12 +42,16 @@ import type {
 } from '../persistence/repos/web-search-settings-repo'
 import { ChatRouteError } from '../server/chat/chat-errors'
 import { ensureAssistantWorkspaceFiles } from './assistant-workspace'
+import { createCodingAgent } from './coding-agent'
 import { createTiaBrowserToolAgent } from './tia-browser-tool-agent'
 import { createDefaultModelSettings, DEFAULT_MODEL_MAX_RETRIES } from './model-retry-settings'
 import { resolveModel } from './model-resolver'
 import { buildOpenAIProviderOptions } from './openai-provider-options'
 import { AttachmentUploader } from './processors/attachment-uploader'
 import { createBuiltInBrowserTools } from './tools/built-in-browser-tools'
+import {
+  createCodingAgentDelegateTool
+} from './tools/coding-agent-tools'
 import {
   createTiaBrowserToolActionTools,
   createTiaBrowserToolDelegateTool,
@@ -277,6 +281,15 @@ type AssistantRuntimeServiceOptions = {
 }
 
 type JsonObject = Record<string, unknown>
+
+type AssistantCodingAgentConfig = {
+  enabled: boolean
+  providerId: string | null
+}
+
+function isAcpProviderType(type: string): type is 'codex-acp' | 'claude-agent-acp' {
+  return type === 'codex-acp' || type === 'claude-agent-acp'
+}
 
 type ResolvedGuardrailConfig = {
   promptInjectionEnabled: boolean
@@ -983,7 +996,8 @@ ${input.prompt}`
         ? await this.generateThreadCompactionSummary({
             provider,
             threadTitle,
-            transcript
+            transcript,
+            workspaceRootPath
           })
         : EMPTY_THREAD_COMPACTION_SUMMARY
 
@@ -1097,13 +1111,20 @@ ${input.prompt}`
     provider: AppProvider
     threadTitle: string
     transcript: string
+    workspaceRootPath?: string | null
   }): Promise<string> {
-    const model = resolveModel({
-      type: input.provider.type,
-      apiKey: input.provider.apiKey,
-      apiHost: input.provider.apiHost,
-      selectedModel: input.provider.selectedModel
-    }) as unknown as LanguageModel
+    const model = resolveModel(
+      {
+        type: input.provider.type,
+        apiKey: input.provider.apiKey,
+        apiHost: input.provider.apiHost,
+        selectedModel: input.provider.selectedModel
+      },
+      {},
+      {
+        acpWorkingDirectory: input.workspaceRootPath
+      }
+    ) as unknown as LanguageModel
 
     const result = await generateText({
       model,
@@ -1484,6 +1505,8 @@ ${input.prompt}`
       throw new ChatRouteError(409, 'provider_model_missing', 'Assistant provider model is missing')
     }
 
+    await this.assertAcpProviderReady(provider)
+
     return { assistant, provider }
   }
 
@@ -1504,6 +1527,9 @@ ${input.prompt}`
     const guardrailConfig = await this.resolveGuardrailConfig(provider)
     const browserAutomationMode = await this.resolveBrowserAutomationMode()
     const browserAgentName = `${assistant.id}:browser-agent`
+    const codingAgentName = `${assistant.id}:coding-agent`
+    const workspaceRootPath = this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})
+    const codingProvider = await this.resolveEnabledCodingAgentProvider(assistant)
     const nextSignature = [
       assistant.id,
       assistant.updatedAt,
@@ -1531,7 +1557,11 @@ ${input.prompt}`
       options.channelDeliveryEnabled ? 'channel-delivery:on' : 'channel-delivery:off',
       options.channelType ?? '',
       options.cronToolsEnabled !== false ? 'cron-tools:on' : 'cron-tools:off',
-      `browser-mode:${browserAutomationMode}`
+      `browser-mode:${browserAutomationMode}`,
+      `coding-agent:${codingProvider?.id ?? 'off'}`,
+      codingProvider?.updatedAt ?? '',
+      codingProvider?.type ?? '',
+      codingProvider?.selectedModel ?? ''
     ].join('|')
 
     if (this.registeredAgentSignatures.get(assistant.id) === nextSignature) {
@@ -1540,6 +1570,7 @@ ${input.prompt}`
 
     this.options.mastra.removeAgent(assistant.id)
     this.options.mastra.removeAgent(browserAgentName)
+    this.options.mastra.removeAgent(codingAgentName)
 
     const webFetchTool = createWebFetchTool({
       resolveKeepBrowserWindowOpen: async () =>
@@ -1552,12 +1583,16 @@ ${input.prompt}`
       apiKey: provider.apiKey,
       apiHost: provider.apiHost,
       selectedModel: provider.selectedModel
+    }, {}, {
+      acpWorkingDirectory: workspaceRootPath
     })
     const guardrailModel = resolveModel({
       type: guardrailConfig.provider.type,
       apiKey: guardrailConfig.provider.apiKey,
       apiHost: guardrailConfig.provider.apiHost,
       selectedModel: guardrailConfig.provider.selectedModel
+    }, {}, {
+      acpWorkingDirectory: workspaceRootPath
     })
 
     const storage = this.options.mastra.getStorage()
@@ -1570,7 +1605,6 @@ ${input.prompt}`
     })
 
     const mcpTools = await this.buildMcpTools(assistant.id, enabledMcpServers)
-    const workspaceRootPath = this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})
     const soulMemoryTools = workspaceRootPath ? createSoulMemoryTools({ workspaceRootPath }) : {}
     const workLogTools = workspaceRootPath ? createWorkLogTools({ workspaceRootPath }) : {}
     const cronTools =
@@ -1597,18 +1631,6 @@ ${input.prompt}`
         })
       : {}
 
-    logger.debug('[AssistantRuntime] Agent tools registered:', {
-      hasBuiltInBrowserTools: Boolean(this.options.builtInBrowserManager),
-      hasTiaBrowserTool: Boolean(this.options.tiaBrowserToolManager),
-      browserAutomationMode,
-      hasCronTools: Object.keys(cronTools).length > 0,
-      hasChannelTools: Object.keys(channelTools).length > 0,
-      channelToolNames: Object.keys(channelTools),
-      cronToolsEnabled: options.cronToolsEnabled,
-      channelDeliveryEnabled: options.channelDeliveryEnabled,
-      channelType: options.channelType ?? null
-    })
-
     const memorySessionTools = createMemorySessionTools(memory)
     const builtInBrowserTools =
       this.options.builtInBrowserManager && browserAutomationMode === 'built-in-browser'
@@ -1630,11 +1652,34 @@ ${input.prompt}`
             providerOptions: this.buildProviderOptions(provider)
           })
         : {}
+    const codingAgentTools = codingProvider
+      ? createCodingAgentDelegateTool({
+          codingAgentName,
+          providerName: codingProvider.name,
+          maxSteps: assistant.maxSteps,
+          providerOptions: this.buildProviderOptions(codingProvider)
+        })
+      : {}
+
+    logger.debug('[AssistantRuntime] Agent tools registered:', {
+      hasBuiltInBrowserTools: Boolean(this.options.builtInBrowserManager),
+      hasTiaBrowserTool: Boolean(this.options.tiaBrowserToolManager),
+      hasCodingAgent: Boolean(codingProvider),
+      browserAutomationMode,
+      hasCronTools: Object.keys(cronTools).length > 0,
+      hasChannelTools: Object.keys(channelTools).length > 0,
+      channelToolNames: Object.keys(channelTools),
+      cronToolsEnabled: options.cronToolsEnabled,
+      channelDeliveryEnabled: options.channelDeliveryEnabled,
+      channelType: options.channelType ?? null
+    })
+
     const tools: ToolsInput = {
       webFetch: webFetchTool,
       ...builtInBrowserTools,
       ...tiaBrowserToolTools,
       ...browserDelegateTools,
+      ...codingAgentTools,
       ...soulMemoryTools,
       ...workLogTools,
       ...cronTools,
@@ -1678,6 +1723,9 @@ ${input.prompt}`
       this.options.tiaBrowserToolManager && browserAutomationMode === 'tia-browser-tool'
         ? '\nTIA browser tool mode:\n- A use-tia-browser-tool tool is available for common open, snapshot, click, fill, get, and wait workflows.\n- Prefer use-tia-browser-tool for multi-step website tasks instead of recommending external agent-browser unless the user explicitly wants the external tool.\n- The browser subagent already knows how to refresh snapshots after DOM changes and when to request a human handoff.\n'
         : ''
+    const codingAgentInstructions = codingProvider
+      ? '\nCoding agent mode:\n- A use-coding-agent tool is available for code changes, debugging, repository analysis, tests, and implementation work.\n- Delegate coding-heavy tasks to use-coding-agent when specialist coding execution would help.\n- After the coding subagent returns, summarize the useful result for the user.\n'
+      : ''
     const channelImageGuidance = buildChannelImageSupportGuidance(options.channelType)
       .map((line) => `${line}\n`)
       .join('')
@@ -1686,7 +1734,7 @@ ${input.prompt}`
         ? `\nChannel delivery guidelines:\n- Reply in a single message.\n- Do not use [[BR]] in your reply.\n- Keep channel replies short and natural.\n${channelImageGuidance}`
         : `\nChannel delivery guidelines:\n- ${CHANNEL_SPLITTER_INSTRUCTION}\n- Keep channel replies short and natural.\n- Do not mention [[BR]] to the user.\n${channelImageGuidance}`
       : ''
-    const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${webFetchInstructions}${builtInBrowserInstructions}${tiaBrowserToolInstructions}${builtInBrowserDelegateInstructions}${channelInstructions}\n`
+    const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${webFetchInstructions}${builtInBrowserInstructions}${tiaBrowserToolInstructions}${builtInBrowserDelegateInstructions}${codingAgentInstructions}${channelInstructions}\n`
     const workspace = await this.buildWorkspace(
       assistant.workspaceConfig ?? {},
       assistant.skillsConfig ?? {}
@@ -1713,6 +1761,39 @@ ${input.prompt}`
         }
       })
       this.options.mastra.addAgent(browserAgent, browserAgentName)
+    }
+    if (codingProvider) {
+      const codingAgentMemory = new Memory({
+        ...(storage ? { storage } : {}),
+        options: {
+          generateTitle: true
+        }
+      })
+      const codingWorkspace = await this.buildWorkspace(
+        assistant.workspaceConfig ?? {},
+        assistant.skillsConfig ?? {}
+      )
+      const codingAgentModel = resolveModel(
+        {
+          type: codingProvider.type,
+          apiKey: codingProvider.apiKey,
+          apiHost: codingProvider.apiHost,
+          selectedModel: codingProvider.selectedModel
+        },
+        {},
+        {
+          acpWorkingDirectory: workspaceRootPath
+        }
+      )
+      const codingAgent = createCodingAgent({
+        assistantId: assistant.id,
+        assistantName: assistant.name,
+        providerName: codingProvider.name,
+        memory: codingAgentMemory,
+        model: codingAgentModel,
+        ...(codingWorkspace ? { workspace: codingWorkspace } : {})
+      })
+      this.options.mastra.addAgent(codingAgent, codingAgentName)
     }
     const inputProcessors = [
       ...(workspaceRootPath
@@ -1848,6 +1929,113 @@ ${input.prompt}`
   private resolveWorkspaceRootPath(workspaceConfig: JsonObject): string | null {
     const rootPath = this.toNonEmptyString(workspaceConfig.rootPath)
     return rootPath ? path.resolve(rootPath) : null
+  }
+
+  private resolveCodingAgentConfig(workspaceConfig: JsonObject): AssistantCodingAgentConfig {
+    const rawConfig =
+      workspaceConfig.codingAgent &&
+      typeof workspaceConfig.codingAgent === 'object' &&
+      !Array.isArray(workspaceConfig.codingAgent)
+        ? (workspaceConfig.codingAgent as JsonObject)
+        : {}
+    const providerId = this.toNonEmptyString(rawConfig.providerId)
+    const enabled =
+      Boolean(providerId) &&
+      (rawConfig.enabled === undefined ||
+        rawConfig.enabled === true ||
+        rawConfig.enabled === 1 ||
+        rawConfig.enabled === 'true' ||
+        rawConfig.enabled === '1')
+
+    return {
+      enabled,
+      providerId
+    }
+  }
+
+  private getAcpManagedRuntimeKind(type: string): ManagedRuntimeKind | null {
+    if (type === 'codex-acp' || type === 'claude-agent-acp') {
+      return type
+    }
+
+    return null
+  }
+
+  private async isAcpProviderReady(provider: { type: string }): Promise<boolean> {
+    const runtimeKind = this.getAcpManagedRuntimeKind(provider.type)
+    const runtimeResolver = this.options.managedRuntimeResolver
+    if (!runtimeKind || !runtimeResolver) {
+      return runtimeKind === null
+    }
+
+    const status = await runtimeResolver.getStatus()
+    return this.isManagedRuntimeReady(status[runtimeKind])
+  }
+
+  private async assertAcpProviderReady(provider: {
+    name: string
+    type: string
+  }): Promise<void> {
+    const runtimeKind = this.getAcpManagedRuntimeKind(provider.type)
+    if (!runtimeKind) {
+      return
+    }
+
+    const runtimeResolver = this.options.managedRuntimeResolver
+    if (!runtimeResolver) {
+      throw new ChatRouteError(
+        409,
+        'managed_runtime_missing',
+        `Provider "${provider.name}" depends on ${runtimeKind}, but managed runtimes are unavailable.`
+      )
+    }
+
+    const status = await runtimeResolver.getStatus()
+    if (this.isManagedRuntimeReady(status[runtimeKind])) {
+      return
+    }
+
+    throw new ChatRouteError(
+      409,
+      'managed_runtime_missing',
+      `Provider "${provider.name}" depends on ${runtimeKind}. Open Coding to install or select ${runtimeKind}.`
+    )
+  }
+
+  private async resolveEnabledCodingAgentProvider(
+    assistant: AssistantContext['assistant']
+  ): Promise<AppProvider | null> {
+    const config = this.resolveCodingAgentConfig(assistant.workspaceConfig ?? {})
+    if (!config.enabled || !config.providerId) {
+      return null
+    }
+
+    if (!this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})) {
+      logger.warn('[AssistantRuntime] Coding agent is enabled but the assistant workspace is missing')
+      return null
+    }
+
+    const provider = await this.options.providersRepo.getById(config.providerId)
+    if (!provider) {
+      logger.warn(`[AssistantRuntime] Coding agent provider "${config.providerId}" was not found`)
+      return null
+    }
+
+    if (!provider.enabled || !provider.selectedModel.trim() || !isAcpProviderType(provider.type)) {
+      logger.warn(
+        `[AssistantRuntime] Coding agent provider "${provider.id}" is disabled, missing a model, or not ACP-backed`
+      )
+      return null
+    }
+
+    if (!(await this.isAcpProviderReady(provider))) {
+      logger.warn(
+        `[AssistantRuntime] Coding agent provider "${provider.id}" is configured but its ACP runtime is not ready`
+      )
+      return null
+    }
+
+    return provider
   }
 
   private resolveSkillsPaths(workspaceRootPath: string, skillsConfig: JsonObject): string[] {

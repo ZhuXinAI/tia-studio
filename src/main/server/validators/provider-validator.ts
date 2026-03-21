@@ -6,25 +6,55 @@ export const providerTypeSchema = z.enum([
   'openrouter',
   'gemini',
   'anthropic',
-  'ollama'
+  'ollama',
+  'codex-acp',
+  'claude-agent-acp'
 ])
 
-export const createProviderSchema = z.object({
-  name: z.string().min(1),
-  type: providerTypeSchema,
-  apiKey: z.string().min(1),
-  apiHost: z.string().url().optional(),
-  selectedModel: z.string().min(1),
-  providerModels: z.array(z.string().min(1)).optional(),
-  enabled: z.boolean().optional(),
-  supportsVision: z.boolean().optional()
-})
+function apiKeyOptionalForType(type: z.infer<typeof providerTypeSchema>): boolean {
+  return type === 'ollama' || type === 'codex-acp' || type === 'claude-agent-acp'
+}
+
+export const createProviderSchema = z
+  .object({
+    name: z.string().min(1),
+    type: providerTypeSchema,
+    apiKey: z.string(),
+    apiHost: z.string().url().optional(),
+    selectedModel: z.string().min(1),
+    providerModels: z.array(z.string().min(1)).optional(),
+    enabled: z.boolean().optional(),
+    supportsVision: z.boolean().optional()
+  })
+  .superRefine((input, context) => {
+    if (apiKeyOptionalForType(input.type) || input.apiKey.trim().length > 0) {
+      return
+    }
+
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['apiKey'],
+      message: 'apiKey is required'
+    })
+  })
 
 export const updateProviderSchema = createProviderSchema.partial()
 
-export const testProviderConnectionSchema = z.object({
-  type: providerTypeSchema,
-  apiKey: z.string().min(1),
-  apiHost: z.string().url().optional(),
-  selectedModel: z.string().min(1)
-})
+export const testProviderConnectionSchema = z
+  .object({
+    type: providerTypeSchema,
+    apiKey: z.string(),
+    apiHost: z.string().url().optional(),
+    selectedModel: z.string().min(1)
+  })
+  .superRefine((input, context) => {
+    if (apiKeyOptionalForType(input.type) || input.apiKey.trim().length > 0) {
+      return
+    }
+
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['apiKey'],
+      message: 'apiKey is required'
+    })
+  })

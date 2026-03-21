@@ -53,6 +53,33 @@ describe('ManagedRuntimeService', () => {
     expect(asset?.browser_download_url).toBe('https://example.test/agent-browser')
   })
 
+  it('selects a codex-acp release asset for darwin arm64', () => {
+    const asset = ManagedRuntimeService.selectReleaseAsset('codex-acp', 'darwin', 'arm64', [
+      {
+        name: 'codex-acp-0.10.0-aarch64-apple-darwin.tar.gz',
+        browser_download_url: 'https://example.test/codex-acp.tar.gz'
+      }
+    ])
+
+    expect(asset?.browser_download_url).toBe('https://example.test/codex-acp.tar.gz')
+  })
+
+  it('selects a claude-agent-acp release asset for darwin arm64', () => {
+    const asset = ManagedRuntimeService.selectReleaseAsset(
+      'claude-agent-acp',
+      'darwin',
+      'arm64',
+      [
+        {
+          name: 'claude-agent-acp-darwin-arm64.zip',
+          browser_download_url: 'https://example.test/claude-agent-acp.zip'
+        }
+      ]
+    )
+
+    expect(asset?.browser_download_url).toBe('https://example.test/claude-agent-acp.zip')
+  })
+
   it('validates a custom runtime path by running --version', async () => {
     const repository = new ManagedRuntimesRepository(path.join(tempDir, 'managed-runtimes.json'))
     const runCommand = vi.fn(async () => ({
@@ -219,6 +246,28 @@ describe('ManagedRuntimeService', () => {
         checksum: null,
         status: 'missing',
         errorMessage: null
+      },
+      'codex-acp': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
+      },
+      'claude-agent-acp': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
       }
     })
     const service = new ManagedRuntimeService({
@@ -265,6 +314,28 @@ describe('ManagedRuntimeService', () => {
         errorMessage: null
       },
       'agent-browser': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
+      },
+      'codex-acp': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
+      },
+      'claude-agent-acp': {
         source: 'none',
         binaryPath: null,
         version: null,
@@ -326,6 +397,28 @@ describe('ManagedRuntimeService', () => {
         releaseUrl: 'https://example.test/agent-browser',
         checksum: null,
         status: 'ready',
+        errorMessage: null
+      },
+      'codex-acp': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
+        errorMessage: null
+      },
+      'claude-agent-acp': {
+        source: 'none',
+        binaryPath: null,
+        version: null,
+        installedAt: null,
+        lastCheckedAt: null,
+        releaseUrl: null,
+        checksum: null,
+        status: 'missing',
         errorMessage: null
       }
     })

@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ClawEditorDialog } from './claw-editor-dialog'
 import {
+  createDefaultManagedRuntimesState,
   getManagedRuntimeStatus,
   getRuntimeOnboardingSkillsStatus,
   installRuntimeOnboardingSkills
@@ -89,6 +90,7 @@ describe('ClawEditorDialog', () => {
     document.body.appendChild(container)
     root = createRoot(container)
     vi.mocked(getManagedRuntimeStatus).mockResolvedValue({
+      ...createDefaultManagedRuntimesState(),
       bun: {
         source: 'managed',
         binaryPath: '/managed/bun/bin/bun',
@@ -98,28 +100,6 @@ describe('ClawEditorDialog', () => {
         releaseUrl: 'https://example.test/bun',
         checksum: null,
         status: 'ready',
-        errorMessage: null
-      },
-      uv: {
-        source: 'none',
-        binaryPath: null,
-        version: null,
-        installedAt: null,
-        lastCheckedAt: null,
-        releaseUrl: null,
-        checksum: null,
-        status: 'missing',
-        errorMessage: null
-      },
-      'agent-browser': {
-        source: 'none',
-        binaryPath: null,
-        version: null,
-        installedAt: null,
-        lastCheckedAt: null,
-        releaseUrl: null,
-        checksum: null,
-        status: 'missing',
         errorMessage: null
       }
     })

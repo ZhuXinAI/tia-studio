@@ -18,6 +18,26 @@
       "team": "Team",
       "modelProviders": "Model Providers",
       "notes": "TIA Studio Notes"
+    },
+    "chatSwitcher": {
+      "label": "Current assistant",
+      "ariaLabel": "Switch active assistant",
+      "loading": "Loading assistant...",
+      "fallback": "Assistant",
+      "searchPlaceholder": "Search assistants...",
+      "searchAriaLabel": "Search assistants",
+      "empty": "No assistants yet",
+      "manageAction": "Manage assistants & channels"
+    },
+    "teamSwitcher": {
+      "label": "Current team",
+      "ariaLabel": "Switch active team workspace",
+      "loading": "Loading team...",
+      "fallback": "Team workspace",
+      "empty": "No team workspaces yet"
+    },
+    "context": {
+      "assistantsChannels": "Assistants & Channels"
     }
   },
   "common": {
@@ -61,6 +81,7 @@
         "cronJobs": "Cron Jobs",
         "webSearch": "Browsing",
         "mcpServers": "MCP Servers",
+        "coding": "Coding",
         "runtimeSetup": "Runtime Setup",
         "display": "Display",
         "aboutFeedback": "About & Feedback"
@@ -236,6 +257,44 @@
         "unexpectedError": "Unexpected managed runtime error"
       }
     },
+    "coding": {
+      "title": "Coding",
+      "description": "Install the ACP adapters that power Codex and Claude Agent inside TIA Studio, or point TIA Studio at a binary you already downloaded.",
+      "kindLabels": {
+        "codex-acp": "Codex ACP",
+        "claude-agent-acp": "Claude Agent ACP"
+      },
+      "kindDescription": {
+        "codexAcp": "Used for Codex-backed coding providers and assistant coding subagents.",
+        "claudeAgentAcp": "Used for Claude Agent-backed coding providers and assistant coding subagents."
+      },
+      "labels": {
+        "status": "Status:",
+        "source": "Source:",
+        "version": "Version:",
+        "binary": "Binary:"
+      },
+      "values": {
+        "notInstalled": "Not installed",
+        "noBinary": "No active binary selected",
+        "loading": "Loading coding runtime status..."
+      },
+      "buttons": {
+        "installLatest": "Install latest",
+        "installing": "Installing...",
+        "useDownloadedBinary": "Use downloaded binary",
+        "checkAgain": "Check again",
+        "checking": "Checking...",
+        "clearCustom": "Clear custom"
+      },
+      "toasts": {
+        "installSuccess": "Installed latest {{kind}} runtime.",
+        "pickSuccess": "Activated custom {{kind}} runtime.",
+        "checkSuccess": "Checked {{kind}} runtime status.",
+        "clearSuccess": "Cleared {{kind}} runtime selection.",
+        "unexpectedError": "Unexpected managed runtime error"
+      }
+    },
     "webSearch": {
       "title": "Browsing",
       "description": "Choose how TIA opens pages and which browser runtime it uses for browsing tasks.",
@@ -344,7 +403,9 @@
         "openrouter": "OpenRouter",
         "gemini": "Gemini",
         "anthropic": "Anthropic",
-        "ollama": "Ollama"
+        "ollama": "Ollama",
+        "codex-acp": "Codex ACP",
+        "claude-agent-acp": "Claude Agent ACP"
       },
       "typeDescriptions": {
         "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
@@ -352,7 +413,9 @@
         "openrouter": "For OpenRouter's native AI SDK provider integration. This type is intended for built-in OpenRouter templates.",
         "gemini": "For Google Gemini models. Requires Google AI API key from ai.google.dev.",
         "anthropic": "For Claude models from Anthropic. Requires Anthropic API key from console.anthropic.com.",
-        "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint."
+        "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint.",
+        "codex-acp": "Runs the Codex ACP adapter as a local AI SDK provider. Configure the binary in Coding settings.",
+        "claude-agent-acp": "Runs the Claude Agent ACP adapter as a local AI SDK provider. Configure the binary in Coding settings."
       },
       "form": {
         "errors": {
@@ -369,6 +432,18 @@
         "apiKey": "API Key",
         "apiHost": "API Host",
         "selectedModel": "Selected Model",
+        "acpBinaryStatus": "ACP Binary Status",
+        "acpBinaryDescription": "This provider uses a local ACP executable instead of a remote HTTP endpoint.",
+        "acpStatus": "Status:",
+        "acpStatusLoading": "Loading...",
+        "acpBinary": "Binary:",
+        "acpBinaryMissing": "No ACP binary is currently ready",
+        "acpVersion": "Version:",
+        "acpVersionMissing": "No version detected",
+        "acpReady": "Binary is ready. You can save this provider and use it in assistants.",
+        "acpNotReadyPrefix": "Binary is not ready yet.",
+        "acpNotReadySuffix": "Install or select the executable there before relying on this provider.",
+        "acpOpenCoding": "Open Coding",
         "includeModelPresets": "Include optional provider model presets",
         "providerModels": "Provider Models (optional)",
         "providerModelsDescription": "Enter model names separated by commas or new lines",
@@ -442,13 +517,13 @@
     }
   },
   "claws": {
-    "eyebrow": "Claws",
-    "title": "Claws",
-    "description": "Connect assistants to external WhatsApp, Telegram, Lark, or Wecom channels without digging through raw settings.",
-    "newButton": "New Claw",
+    "eyebrow": "Assistant Management",
+    "title": "Assistants & Channels",
+    "description": "Manage assistants, their channel bindings, and activation without leaving the main chat workspace.",
+    "newButton": "New Assistant",
     "telegram": {
-      "description": "Connect assistants to external WhatsApp, Telegram, Lark, or Wecom channels without digging through raw settings.",
-      "emptyDescription": "Start with one assistant, one provider, and one WhatsApp, Telegram, Lark, or Wecom channel for the quickest onboarding path.",
+      "description": "Manage assistants, channel bindings, pairings, and activation from one focused setup surface.",
+      "emptyDescription": "Start with one assistant, one provider, and one WhatsApp, Telegram, Lark, or Wecom channel, then switch to it from the top bar.",
       "pairingSummary": "{{pairedCount}} paired · {{pendingCount}} pending",
       "managePairingsButton": "Manage Pairings",
       "defaultClawName": "Messaging claw"
@@ -464,10 +539,10 @@
       "unknown": "Unknown provider"
     },
     "empty": {
-      "title": "Set up your first claw",
-      "description": "Start with one assistant, one provider, and one WhatsApp, Telegram, Lark, or Wecom channel for the quickest onboarding path.",
+      "title": "Create your first assistant",
+      "description": "Start with one assistant, one provider, and one WhatsApp, Telegram, Lark, or Wecom channel, then switch to it from the top bar.",
       "note": "Assistant identity, heartbeat, and future cron stay assistant-owned.",
-      "createButton": "Create Your First Claw"
+      "createButton": "Create Assistant"
     },
     "card": {
       "noChannelConnected": "No channel connected",
@@ -945,6 +1020,19 @@
       "descriptionHelp": "Helps the team supervisor choose this assistant for the right task.",
       "workspacePathHelp": "To allow the agent to perform more complex tasks, select a workspace.",
       "openingButton": "Opening...",
+      "codingAgent": {
+        "title": "Coding Agent",
+        "description": "Delegate coding-heavy tasks to a dedicated Codex or Claude Agent ACP subagent.",
+        "toggleAriaLabel": "Enable coding agent",
+        "providerLabel": "Coding provider",
+        "selectProvider": "Select coding provider",
+        "workspaceRequired": "Set a workspace path before enabling the coding agent.",
+        "runtimeMissingPrefix": "The selected coding provider needs its ACP binary. Finish setup in",
+        "codingLinkLabel": "Coding",
+        "noProvidersPrefix": "No enabled Codex or Claude Agent ACP providers are available yet. Add one in",
+        "providersLinkLabel": "Model Provider",
+        "noProvidersSuffix": "and make sure its ACP binary is ready in Coding."
+      },
       "runtimeNoteTitle": "Some MCP tools use managed runtimes.",
       "runtimeNotePrefix": "Finish setup in",
       "runtimeNoteLinkLabel": "Runtime Setup",
@@ -960,6 +1048,8 @@
         "nameRequired": "Assistant name is required",
         "providerRequired": "Provider is required",
         "maxStepsInvalid": "Max steps must be a positive whole number",
+        "codingProviderRequired": "Select a coding provider before enabling the coding agent",
+        "codingWorkspaceRequired": "A workspace path is required when the coding agent is enabled",
         "workspacePickerFailed": "Unable to pick workspace folder"
       },
       "skillSources": {

@@ -18,6 +18,26 @@
       "team": "團隊",
       "modelProviders": "模型供應商",
       "notes": "TIA Studio 備註"
+    },
+    "chatSwitcher": {
+      "label": "Current assistant",
+      "ariaLabel": "Switch active assistant",
+      "loading": "Loading assistant...",
+      "fallback": "Assistant",
+      "searchPlaceholder": "Search assistants...",
+      "searchAriaLabel": "Search assistants",
+      "empty": "No assistants yet",
+      "manageAction": "Manage assistants & channels"
+    },
+    "teamSwitcher": {
+      "label": "Current team",
+      "ariaLabel": "Switch active team workspace",
+      "loading": "Loading team...",
+      "fallback": "Team workspace",
+      "empty": "No team workspaces yet"
+    },
+    "context": {
+      "assistantsChannels": "Assistants & Channels"
     }
   },
   "common": {

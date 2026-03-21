@@ -10,12 +10,14 @@ import { McpServersSettingsPage } from '../features/settings/pages/mcp-servers-s
 import { AboutSettingsPage } from '../features/settings/pages/about-settings-page'
 import { DisplaySettingsPage } from '../features/settings/pages/display-settings-page'
 import { GeneralSettingsPage } from '../features/settings/pages/general-settings-page'
+import { CodingSettingsPage } from '../features/settings/pages/coding-settings-page'
 import { RuntimeSetupPage } from '../features/settings/pages/runtime-setup-page'
 import { SecuritySettingsPage } from '../features/settings/pages/security-settings-page'
 import { SettingsPageLayout } from '../features/settings/pages/settings-page-layout'
 import { RouteError } from '../components/route-error'
 import { TeamPage } from '../features/team/pages/team-page'
 import { ChannelsSettingsPage } from '../features/settings/pages/channels-settings-page'
+import { AppEntryRoute, appEntryLoader } from './routes/app-entry-route'
 
 export const appRoutes: RouteObject[] = [
   {
@@ -25,7 +27,8 @@ export const appRoutes: RouteObject[] = [
     children: [
       {
         index: true,
-        loader: () => redirect('/claws')
+        element: <AppEntryRoute />,
+        loader: appEntryLoader
       },
       {
         path: 'chat',
@@ -84,6 +87,10 @@ export const appRoutes: RouteObject[] = [
             element: <McpServersSettingsPage />
           },
           {
+            path: 'coding',
+            element: <CodingSettingsPage />
+          },
+          {
             path: 'runtimes',
             element: <RuntimeSetupPage />
           },
@@ -106,7 +113,7 @@ export function createAppRouter(): ReturnType<typeof createHashRouter> {
 }
 
 export function createAppMemoryRouter(
-  initialEntries: string[] = ['/claws']
+  initialEntries: string[] = ['/']
 ): ReturnType<typeof createMemoryRouter> {
   return createMemoryRouter(appRoutes, {
     initialEntries

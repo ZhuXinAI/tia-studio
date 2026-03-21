@@ -7,7 +7,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AssistantEditor } from './assistant-editor'
 import { getAssistantHeartbeat } from './assistant-heartbeat-query'
 import type { ProviderRecord } from '../settings/providers/providers-query'
-import type { ManagedRuntimesState } from '../settings/runtimes/managed-runtimes-query'
+import {
+  createDefaultManagedRuntimesState,
+  type ManagedRuntimesState
+} from '../settings/runtimes/managed-runtimes-query'
 
 vi.mock('./assistant-heartbeat-query', () => ({
   getAssistantHeartbeat: vi.fn(),
@@ -95,6 +98,22 @@ describe('assistant editor', () => {
     createdAt: '2026-03-02T00:00:00.000Z',
     updatedAt: '2026-03-02T00:00:00.000Z'
   }
+  const codingProvider: ProviderRecord = {
+    id: 'provider-coding',
+    name: 'Codex',
+    type: 'codex-acp',
+    apiKey: '',
+    apiHost: null,
+    selectedModel: 'default',
+    providerModels: null,
+    enabled: true,
+    supportsVision: true,
+    isBuiltIn: true,
+    icon: null,
+    officialSite: null,
+    createdAt: '2026-03-02T00:00:00.000Z',
+    updatedAt: '2026-03-02T00:00:00.000Z'
+  }
   const mcpServers = {
     docs: {
       isActive: true,
@@ -115,41 +134,7 @@ describe('assistant editor', () => {
       installSource: 'local'
     }
   }
-  const missingManagedRuntimes: ManagedRuntimesState = {
-    bun: {
-      source: 'none',
-      binaryPath: null,
-      version: null,
-      installedAt: null,
-      lastCheckedAt: null,
-      releaseUrl: null,
-      checksum: null,
-      status: 'missing',
-      errorMessage: null
-    },
-    uv: {
-      source: 'none',
-      binaryPath: null,
-      version: null,
-      installedAt: null,
-      lastCheckedAt: null,
-      releaseUrl: null,
-      checksum: null,
-      status: 'missing',
-      errorMessage: null
-    },
-    'agent-browser': {
-      source: 'none',
-      binaryPath: null,
-      version: null,
-      installedAt: null,
-      lastCheckedAt: null,
-      releaseUrl: null,
-      checksum: null,
-      status: 'missing',
-      errorMessage: null
-    }
-  }
+  const missingManagedRuntimes: ManagedRuntimesState = createDefaultManagedRuntimesState()
 
   it('fills workspace path from system folder picker', async () => {
     const onSelectWorkspacePath = vi.fn().mockResolvedValue('/Users/windht/Dev')
@@ -448,6 +433,85 @@ describe('assistant editor', () => {
         mcpConfig: {
           docs: true,
           github: false
+        }
+      }),
+      null
+    )
+  })
+
+  it('stores coding agent configuration inside the workspace config', async () => {
+    const onSubmit = vi.fn(async () => undefined)
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <AssistantEditor
+            providers={[provider, codingProvider]}
+            mcpServers={{}}
+            initialValue={{
+              id: 'assistant-1',
+              name: 'Planner',
+              description: '',
+              instructions: '',
+              enabled: true,
+              providerId: 'provider-1',
+              workspaceConfig: { rootPath: '/Users/windht/Dev/tia-studio' },
+              skillsConfig: {},
+              mcpConfig: {},
+              maxSteps: 100,
+              memoryConfig: null,
+              createdAt: '2026-03-02T00:00:00.000Z',
+              updatedAt: '2026-03-02T00:00:00.000Z'
+            }}
+            onSubmit={onSubmit}
+          />
+        </MemoryRouter>
+      )
+    })
+
+    const toolsButton = findButtonByText(container, 'Tools')
+    await act(async () => {
+      toolsButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    const codingToggle = container.querySelector(
+      '[aria-label="Enable coding agent"]'
+    ) as HTMLButtonElement | null
+    expect(codingToggle).not.toBeNull()
+
+    await act(async () => {
+      codingToggle?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    const codingProviderSelect = container.querySelector(
+      '#assistant-coding-provider'
+    ) as HTMLSelectElement | null
+    expect(codingProviderSelect).not.toBeNull()
+
+    await act(async () => {
+      if (codingProviderSelect) {
+        const valueSetter = Object.getOwnPropertyDescriptor(
+          HTMLSelectElement.prototype,
+          'value'
+        )?.set
+        valueSetter?.call(codingProviderSelect, 'provider-coding')
+        codingProviderSelect.dispatchEvent(new Event('change', { bubbles: true }))
+      }
+    })
+
+    const submitButton = findButtonByText(container, 'Update Assistant')
+    await act(async () => {
+      submitButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceConfig: {
+          rootPath: '/Users/windht/Dev/tia-studio',
+          codingAgent: {
+            enabled: true,
+            providerId: 'provider-coding'
+          }
         }
       }),
       null

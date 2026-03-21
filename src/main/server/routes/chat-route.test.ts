@@ -340,6 +340,63 @@ describe('chat route', () => {
     await streamResponse.body?.cancel()
   })
 
+  it('keeps a run resumable after the initial client disconnects', async () => {
+    let streamController: ReadableStreamDefaultController<unknown> | null = null
+    let activeAbortSignal: AbortSignal | undefined
+    const streamChat = vi.fn(
+      async ({ abortSignal }: { abortSignal?: AbortSignal }) =>
+        new ReadableStream({
+          start(controller) {
+            streamController = controller as ReadableStreamDefaultController<unknown>
+            activeAbortSignal = abortSignal
+          }
+        })
+    )
+    const app = new Hono()
+    registerChatRoute(app, {
+      assistantRuntime: createAssistantRuntimeStub({
+        streamChat
+      })
+    })
+
+    const streamResponse = await app.request('http://localhost/chat/assistant-1', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: 'assistant-1:thread-1',
+        messages: [],
+        threadId: 'thread-1',
+        profileId: 'profile-1'
+      })
+    })
+    expect(streamResponse.status).toBe(200)
+    expect(activeAbortSignal?.aborted).toBe(false)
+
+    await streamResponse.body?.cancel()
+    expect(activeAbortSignal?.aborted).toBe(false)
+
+    streamController!.enqueue({
+      type: 'text-delta',
+      id: 'message-1',
+      delta: 'Hello'
+    })
+
+    const resumeResponse = await app.request(
+      'http://localhost/chat/assistant-1/assistant-1:thread-1/stream'
+    )
+    expect(resumeResponse.status).toBe(200)
+
+    const reader = resumeResponse.body?.getReader()
+    expect(reader).toBeDefined()
+    const firstChunk = await reader!.read()
+    expect(firstChunk.done).toBe(false)
+    const text = new TextDecoder().decode(firstChunk.value)
+    expect(text).toContain('Hello')
+
+    await reader!.cancel()
+    streamController!.close()
+  })
+
   it('streams thread message update events', async () => {
     const streamChat = vi.fn(async () => new ReadableStream())
     const listThreadMessages = vi.fn(async () => [])

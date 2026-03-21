@@ -1,7 +1,12 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
-export type ManagedRuntimeKind = 'agent-browser' | 'bun' | 'uv'
+export type ManagedRuntimeKind =
+  | 'agent-browser'
+  | 'bun'
+  | 'uv'
+  | 'codex-acp'
+  | 'claude-agent-acp'
 export type ManagedRuntimeSource = 'managed' | 'custom' | 'none'
 export type ManagedRuntimeStatus =
   | 'missing'
@@ -28,7 +33,13 @@ export type ManagedRuntimeRecord = {
 
 export type ManagedRuntimesState = Record<ManagedRuntimeKind, ManagedRuntimeRecord>
 
-const runtimeKinds: ManagedRuntimeKind[] = ['bun', 'uv', 'agent-browser']
+const runtimeKinds: ManagedRuntimeKind[] = [
+  'bun',
+  'uv',
+  'agent-browser',
+  'codex-acp',
+  'claude-agent-acp'
+]
 const validSources = new Set<ManagedRuntimeSource>(['managed', 'custom', 'none'])
 const validStatuses = new Set<ManagedRuntimeStatus>([
   'missing',
@@ -60,7 +71,9 @@ function createDefaultState(): ManagedRuntimesState {
   return {
     bun: createDefaultRecord(),
     uv: createDefaultRecord(),
-    'agent-browser': createDefaultRecord()
+    'agent-browser': createDefaultRecord(),
+    'codex-acp': createDefaultRecord(),
+    'claude-agent-acp': createDefaultRecord()
   }
 }
 

@@ -285,8 +285,6 @@ export function useThreadPageController() {
     messages: chatMessages
   } = chat
   const setMessagesRef = useRef(setMessages)
-  const stopChatRef = useRef(stop)
-  const isChatStreamingRef = useRef(false)
   const currentChatMessagesRef = useRef<readonly UIMessage[]>(chatMessages)
 
   const isChatStreaming = chatStatus === 'submitted' || chatStatus === 'streaming'
@@ -322,19 +320,8 @@ export function useThreadPageController() {
 
   useEffect(() => {
     setMessagesRef.current = setMessages
-    stopChatRef.current = stop
-    isChatStreamingRef.current = isChatStreaming
     currentChatMessagesRef.current = chatMessages
-  }, [chatMessages, isChatStreaming, setMessages, stop])
-
-  // Stop any ongoing chat operations when assistant or thread changes
-  useEffect(() => {
-    return () => {
-      if (isChatStreamingRef.current) {
-        stopChatRef.current()
-      }
-    }
-  }, [selectedAssistant?.id, selectedThread?.id])
+  }, [chatMessages, setMessages])
 
   // Load MCP servers on mount
   useEffect(() => {
@@ -387,15 +374,14 @@ export function useThreadPageController() {
     }
 
     if (assistants.length === 0) {
+      if (!params.assistantId) {
+        navigate('/claws', { replace: true })
+      }
       return
     }
 
     const selectedAssistantId = params.assistantId ?? null
-    if (!selectedAssistantId) {
-      return
-    }
-
-    if (assistants.some((assistant) => assistant.id === selectedAssistantId)) {
+    if (selectedAssistantId && assistants.some((assistant) => assistant.id === selectedAssistantId)) {
       return
     }
 
@@ -472,7 +458,13 @@ export function useThreadPageController() {
           return
         }
         toast.error(toErrorMessage(error))
-        navigate(routeToAssistantThreads(assistants[0].id), { replace: true })
+        const fallbackAssistant = assistants[0]
+        if (fallbackAssistant) {
+          navigate(routeToAssistantThreads(fallbackAssistant.id), { replace: true })
+          return
+        }
+
+        navigate('/claws', { replace: true })
       }
     }
 
@@ -844,8 +836,20 @@ export function useThreadPageController() {
       return
     }
 
+    if (selectedAssistant && selectedThread) {
+      void runThreadCommand({
+        assistantId: selectedAssistant.id,
+        threadId: selectedThread.id,
+        profileId,
+        text: '/stop'
+      }).catch((error) => {
+        toast.error(toErrorMessage(error))
+      })
+      return
+    }
+
     void stop()
-  }, [isChatStreaming, stop])
+  }, [isChatStreaming, profileId, selectedAssistant, selectedThread, stop])
 
   useEffect(() => {
     if (!hasPendingMessage) {

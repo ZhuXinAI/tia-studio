@@ -36,6 +36,8 @@ type AssistantEditorValues = {
   description: string
   instructions: string
   providerId: string
+  codingProviderId: string
+  codingAgentEnabled: boolean
   workspacePath: string
   maxSteps: string
   mcpConfig: Record<string, boolean>
@@ -121,11 +123,29 @@ function toInitialValues(
     }
   }
 
+  const codingAgentConfig =
+    initialValue?.workspaceConfig?.codingAgent &&
+    typeof initialValue.workspaceConfig.codingAgent === 'object' &&
+    !Array.isArray(initialValue.workspaceConfig.codingAgent)
+      ? (initialValue.workspaceConfig.codingAgent as Record<string, unknown>)
+      : null
+  const codingProviderId =
+    typeof codingAgentConfig?.providerId === 'string' ? codingAgentConfig.providerId.trim() : ''
+  const codingAgentEnabled =
+    codingProviderId.length > 0 &&
+    (codingAgentConfig?.enabled === undefined ||
+      codingAgentConfig.enabled === true ||
+      codingAgentConfig.enabled === 1 ||
+      codingAgentConfig.enabled === 'true' ||
+      codingAgentConfig.enabled === '1')
+
   return {
     name: initialValue?.name ?? '',
     description: initialValue?.description ?? '',
     instructions: initialValue?.instructions ?? '',
     providerId: initialValue?.providerId ?? '',
+    codingProviderId,
+    codingAgentEnabled,
     workspacePath:
       typeof initialValue?.workspaceConfig?.rootPath === 'string'
         ? (initialValue.workspaceConfig.rootPath as string)
@@ -213,6 +233,14 @@ function validate(
     return t('assistants.editor.errors.maxStepsInvalid')
   }
 
+  if (values.codingAgentEnabled && values.codingProviderId.trim().length === 0) {
+    return t('assistants.editor.errors.codingProviderRequired')
+  }
+
+  if (values.codingAgentEnabled && values.workspacePath.trim().length === 0) {
+    return t('assistants.editor.errors.codingWorkspaceRequired')
+  }
+
   if (heartbeatValues) {
     if (!parseHeartbeatIntervalMinutes(heartbeatValues.intervalMinutes)) {
       return t('assistants.editor.heartbeat.errors.intervalInvalid')
@@ -263,6 +291,15 @@ export function AssistantEditor({
   const selectedProvider = useMemo(() => {
     return providers.find((provider) => provider.id === values.providerId) ?? null
   }, [providers, values.providerId])
+  const codingProviders = useMemo(() => {
+    return providers.filter(
+      (provider) =>
+        provider.enabled && (provider.type === 'codex-acp' || provider.type === 'claude-agent-acp')
+    )
+  }, [providers])
+  const selectedCodingProvider = useMemo(() => {
+    return codingProviders.find((provider) => provider.id === values.codingProviderId) ?? null
+  }, [codingProviders, values.codingProviderId])
 
   const mcpServerEntries = useMemo(() => {
     return Object.entries(mcpServers).sort(([left], [right]) => left.localeCompare(right))
@@ -286,6 +323,24 @@ export function AssistantEditor({
       return requiredRuntime ? !isManagedRuntimeReady(managedRuntimeState[requiredRuntime]) : false
     })
   }, [managedRuntimeState, runtimeBackedServerEntries])
+  const selectedCodingRuntimeKind = useMemo(() => {
+    if (!selectedCodingProvider) {
+      return null
+    }
+
+    return selectedCodingProvider.type === 'codex-acp'
+      ? 'codex-acp'
+      : selectedCodingProvider.type === 'claude-agent-acp'
+        ? 'claude-agent-acp'
+        : null
+  }, [selectedCodingProvider])
+  const isSelectedCodingRuntimeReady = useMemo(() => {
+    if (!selectedCodingRuntimeKind || !managedRuntimeState) {
+      return false
+    }
+
+    return isManagedRuntimeReady(managedRuntimeState[selectedCodingRuntimeKind])
+  }, [managedRuntimeState, selectedCodingRuntimeKind])
 
   useEffect(() => {
     if (activeTab !== 'skills') {
@@ -476,7 +531,15 @@ export function AssistantEditor({
         workspaceConfig:
           workspacePath.length > 0
             ? {
-                rootPath: workspacePath
+                rootPath: workspacePath,
+                ...(values.codingAgentEnabled && values.codingProviderId.trim().length > 0
+                  ? {
+                      codingAgent: {
+                        enabled: true,
+                        providerId: values.codingProviderId.trim()
+                      }
+                    }
+                  : {})
               }
             : undefined,
         mcpConfig: nextMcpConfig,
@@ -784,6 +847,105 @@ export function AssistantEditor({
 
           {activeTab === 'tools' ? (
             <div className="space-y-3">
+              <article className="rounded-xl border border-border/70 bg-card/50 px-4 py-3 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <h4 className="text-base font-medium">
+                      {t('assistants.editor.codingAgent.title')}
+                    </h4>
+                    <p className="text-muted-foreground text-sm">
+                      {t('assistants.editor.codingAgent.description')}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-label={t('assistants.editor.codingAgent.toggleAriaLabel')}
+                    aria-checked={values.codingAgentEnabled}
+                    className={cn(
+                      'relative inline-flex h-6 w-11 items-center rounded-full border transition-colors',
+                      values.codingAgentEnabled
+                        ? 'border-emerald-400/80 bg-emerald-500/30'
+                        : 'border-border/80 bg-background/80'
+                    )}
+                    onClick={() =>
+                      setValues((current) => ({
+                        ...current,
+                        codingAgentEnabled: !current.codingAgentEnabled,
+                        codingProviderId:
+                          current.codingProviderId ||
+                          codingProviders.at(0)?.id ||
+                          current.codingProviderId
+                      }))
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <span
+                      className={cn(
+                        'inline-block size-4 rounded-full bg-foreground/90 transition-transform',
+                        values.codingAgentEnabled ? 'translate-x-6' : 'translate-x-1'
+                      )}
+                    />
+                  </button>
+                </div>
+
+                {codingProviders.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    {t('assistants.editor.codingAgent.noProvidersPrefix')}{' '}
+                    <Link className="underline underline-offset-2" to="/settings/providers">
+                      {t('assistants.editor.codingAgent.providersLinkLabel')}
+                    </Link>
+                    . {t('assistants.editor.codingAgent.noProvidersSuffix')}
+                  </p>
+                ) : null}
+
+                {values.codingAgentEnabled ? (
+                  <Field>
+                    <FieldLabel htmlFor="assistant-coding-provider">
+                      {t('assistants.editor.codingAgent.providerLabel')}
+                    </FieldLabel>
+                    <select
+                      id="assistant-coding-provider"
+                      className="border-input file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                      value={values.codingProviderId}
+                      onChange={(event) =>
+                        setValues((current) => ({
+                          ...current,
+                          codingProviderId: event.target.value
+                        }))
+                      }
+                      disabled={isSubmitting || codingProviders.length === 0}
+                    >
+                      <option value="">{t('assistants.editor.codingAgent.selectProvider')}</option>
+                      {codingProviders.map((provider) => (
+                        <option key={provider.id} value={provider.id}>
+                          {provider.name} ({provider.selectedModel})
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                ) : null}
+
+                {values.codingAgentEnabled && values.workspacePath.trim().length === 0 ? (
+                  <p className="text-amber-500 text-sm">
+                    {t('assistants.editor.codingAgent.workspaceRequired')}
+                  </p>
+                ) : null}
+
+                {values.codingAgentEnabled &&
+                selectedCodingProvider &&
+                selectedCodingRuntimeKind &&
+                !isSelectedCodingRuntimeReady ? (
+                  <p className="text-amber-500 text-sm">
+                    {t('assistants.editor.codingAgent.runtimeMissingPrefix')}{' '}
+                    <Link className="underline underline-offset-2" to="/settings/coding">
+                      {t('assistants.editor.codingAgent.codingLinkLabel')}
+                    </Link>
+                    .
+                  </p>
+                ) : null}
+              </article>
+
               {shouldShowManagedRuntimeNote ? (
                 <div className="rounded-md border border-amber-300/40 bg-amber-400/10 px-3 py-2">
                   <p className="text-sm font-medium text-amber-900 dark:text-amber-200">

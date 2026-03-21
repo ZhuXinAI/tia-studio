@@ -50,6 +50,28 @@ function createManagedRuntimeState(readyKinds: ManagedRuntimeKind[] = []): Manag
       checksum: null,
       status: isReady('agent-browser') ? 'ready' : 'missing',
       errorMessage: null
+    },
+    'codex-acp': {
+      source: isReady('codex-acp') ? 'managed' : 'none',
+      binaryPath: isReady('codex-acp') ? '/managed/bin/codex-acp' : null,
+      version: isReady('codex-acp') ? 'codex-acp 0.10.0' : null,
+      installedAt: null,
+      lastCheckedAt: null,
+      releaseUrl: null,
+      checksum: null,
+      status: isReady('codex-acp') ? 'ready' : 'missing',
+      errorMessage: null
+    },
+    'claude-agent-acp': {
+      source: isReady('claude-agent-acp') ? 'managed' : 'none',
+      binaryPath: isReady('claude-agent-acp') ? '/managed/bin/claude-agent-acp' : null,
+      version: isReady('claude-agent-acp') ? 'claude-agent-acp 0.22.2' : null,
+      installedAt: null,
+      lastCheckedAt: null,
+      releaseUrl: null,
+      checksum: null,
+      status: isReady('claude-agent-acp') ? 'ready' : 'missing',
+      errorMessage: null
     }
   }
 }

@@ -1,5 +1,7 @@
+// @vitest-environment jsdom
+
 import { renderToString } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { RouterProvider } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createAppMemoryRouter } from './router'
@@ -25,11 +27,35 @@ function renderRouter(initialEntries: string[]): string {
 }
 
 describe('app router', () => {
-  it('redirects root route to /claws', async () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
+  it('redirects root route to /chat when no app mode has been stored', async () => {
     const router = createAppMemoryRouter(['/'])
 
     await router.navigate('/')
-    expect(router.state.location.pathname).toBe('/claws')
+    expect(router.state.location.pathname).toBe('/chat')
+  })
+
+  it('redirects root route to /chat when chat mode was the last active mode', async () => {
+    window.localStorage.setItem('tia.app.last-mode', JSON.stringify({ mode: 'chat' }))
+
+    const router = createAppMemoryRouter(['/'])
+
+    await router.navigate('/')
+
+    expect(router.state.location.pathname).toBe('/chat')
+  })
+
+  it('redirects root route to /team when team mode was the last active mode', async () => {
+    window.localStorage.setItem('tia.app.last-mode', JSON.stringify({ mode: 'team' }))
+
+    const router = createAppMemoryRouter(['/'])
+
+    await router.navigate('/')
+
+    expect(router.state.location.pathname).toBe('/team')
   })
 
   it('redirects settings index route to /settings/general', async () => {
@@ -90,6 +116,14 @@ describe('app router', () => {
     expect(html).toContain('Runtime Setup')
   })
 
+  it('renders coding settings route', () => {
+    const html = renderRouter(['/settings/coding'])
+
+    expect(html).toContain('Coding')
+    expect(html).toContain('Codex ACP')
+    expect(html).toContain('Claude Agent ACP')
+  })
+
   it('renders about settings route', () => {
     const html = renderRouter(['/settings/about'])
 
@@ -116,12 +150,12 @@ describe('app router', () => {
     expect(html).toContain('Add Channel')
   })
 
-  it('renders claws route from the top nav', () => {
+  it('renders the assistant and channel management route', () => {
     const html = renderRouter(['/claws'])
 
-    expect(html).toContain('Claws')
-    expect(html).toContain('Set up your first claw')
-    expect(html).toContain('Create Your First Claw')
+    expect(html).toContain('Assistants &amp; Channels')
+    expect(html).toContain('Create your first assistant')
+    expect(html).toContain('Create Assistant')
   })
 
   it('renders cron jobs settings route', () => {
@@ -134,20 +168,21 @@ describe('app router', () => {
     expect(html).toContain('Browsing')
   })
 
-  it('renders chat route with assistant creation controls', () => {
+  it('renders chat route with the thread sidebar shell while assistant detail restores', () => {
     const html = renderRouter(['/chat'])
 
-    expect(html).toContain('Assistants')
-    expect(html).toContain('aria-label="Create assistant"')
+    expect(html).toContain('Conversations')
+    expect(html).toContain('Loading assistants...')
   })
 
-  it('renders header nav with settings gear icon and no legacy control center sidebar', () => {
+  it('renders header nav with chats, team, and the shell context switcher', () => {
     const html = renderRouter(['/chat'])
 
     expect(html).toContain('aria-label="Open settings"')
     expect(html).toContain('Chats')
-    expect(html).toContain('Claws')
     expect(html).toContain('Team')
+    expect(html).toContain('Current assistant')
+    expect(html).toContain('aria-label="Switch active assistant"')
     expect(html).not.toContain('Control Center')
   })
 

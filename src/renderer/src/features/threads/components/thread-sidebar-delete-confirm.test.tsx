@@ -70,19 +70,12 @@ describe('ThreadSidebar delete confirmation', () => {
             ]}
             selectedThreadId={null}
             deletingThreadId={null}
-            deletingAssistantId={null}
             isLoadingData={false}
-            assistantsCount={1}
             isLoadingThreads={false}
             isCreatingThread={false}
             canCreateThread
             onCreateThread={() => undefined}
-            onCreateAssistant={() => undefined}
-            onBrowseAssistants={() => undefined}
-            onSelectAssistant={() => undefined}
             onSelectThread={() => undefined}
-            onEditAssistant={() => undefined}
-            onDeleteAssistant={() => undefined}
             onDeleteThread={onDeleteThread}
           />
         </MemoryRouter>

@@ -149,4 +149,61 @@ describe('resolveModel', () => {
     expect(anthropicResult).toEqual({ id: 'anthropic-model' })
     expect(ollamaResult).toEqual({ id: 'ollama-model' })
   })
+
+  it('resolves codex-acp models with the workspace cwd', () => {
+    const languageModel = { id: 'codex-acp-model' }
+    const provider = {
+      languageModel: vi.fn(() => languageModel)
+    }
+    const factories = {
+      acpProviderFactory: vi.fn(() => provider)
+    }
+
+    const result = resolveModel(
+      {
+        type: 'codex-acp',
+        apiKey: '',
+        selectedModel: 'default'
+      },
+      factories,
+      {
+        acpWorkingDirectory: '/tmp/project'
+      }
+    )
+
+    expect(result).toBe(languageModel)
+    expect(factories.acpProviderFactory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        command: 'codex-acp',
+        persistSession: true,
+        session: {
+          cwd: '/tmp/project',
+          mcpServers: []
+        }
+      })
+    )
+    expect(provider.languageModel).toHaveBeenCalledWith(undefined)
+  })
+
+  it('passes selected models through to claude-agent-acp', () => {
+    const languageModel = { id: 'claude-agent-acp-model' }
+    const provider = {
+      languageModel: vi.fn(() => languageModel)
+    }
+    const factories = {
+      acpProviderFactory: vi.fn(() => provider)
+    }
+
+    const result = resolveModel(
+      {
+        type: 'claude-agent-acp',
+        apiKey: '',
+        selectedModel: 'claude-sonnet-4-5'
+      },
+      factories
+    )
+
+    expect(result).toBe(languageModel)
+    expect(provider.languageModel).toHaveBeenCalledWith('claude-sonnet-4-5')
+  })
 })

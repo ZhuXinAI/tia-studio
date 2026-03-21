@@ -8,6 +8,8 @@ export type ProviderType =
   | 'gemini'
   | 'anthropic'
   | 'ollama'
+  | 'codex-acp'
+  | 'claude-agent-acp'
 
 export type ProviderRecord = {
   id: string

@@ -1,99 +1,97 @@
-type ActiveResumableChatStream = {
-  chunks: string[]
-  subscribers: Set<ReadableStreamDefaultController<string>>
+import { createResumableStreamContext } from 'resumable-stream/generic'
+
+type SubscriberCallback = (message: string) => void
+
+class InMemoryResumableStreamBus {
+  private readonly kv = new Map<string, string>()
+  private readonly expiry = new Map<string, ReturnType<typeof setTimeout>>()
+  private readonly channels = new Map<string, Set<SubscriberCallback>>()
+
+  async connect(): Promise<void> {}
+
+  async publish(channel: string, message: string): Promise<number> {
+    const listeners = [...(this.channels.get(channel) ?? [])]
+    for (const listener of listeners) {
+      queueMicrotask(() => listener(message))
+    }
+
+    return listeners.length
+  }
+
+  async subscribe(channel: string, callback: SubscriberCallback): Promise<number> {
+    let listeners = this.channels.get(channel)
+    if (!listeners) {
+      listeners = new Set()
+      this.channels.set(channel, listeners)
+    }
+
+    listeners.add(callback)
+    return listeners.size
+  }
+
+  async unsubscribe(channel: string): Promise<void> {
+    this.channels.delete(channel)
+  }
+
+  async set(key: string, value: string, options?: { EX?: number }): Promise<'OK'> {
+    this.kv.set(key, value)
+
+    const existingTimer = this.expiry.get(key)
+    if (existingTimer) {
+      clearTimeout(existingTimer)
+      this.expiry.delete(key)
+    }
+
+    if (options?.EX) {
+      const timer = setTimeout(() => {
+        this.kv.delete(key)
+        this.expiry.delete(key)
+      }, options.EX * 1000)
+      timer.unref?.()
+      this.expiry.set(key, timer)
+    }
+
+    return 'OK'
+  }
+
+  async get(key: string): Promise<string | null> {
+    return this.kv.get(key) ?? null
+  }
+
+  async incr(key: string): Promise<number> {
+    const currentValue = this.kv.get(key)
+    if (currentValue == null) {
+      this.kv.set(key, '1')
+      return 1
+    }
+
+    const parsedValue = Number(currentValue)
+    if (!Number.isInteger(parsedValue)) {
+      throw new Error('ERR value is not an integer or out of range')
+    }
+
+    const nextValue = parsedValue + 1
+    this.kv.set(key, String(nextValue))
+    return nextValue
+  }
 }
 
 export class ResumableChatStreams {
-  private readonly activeStreams = new Map<string, ActiveResumableChatStream>()
+  private readonly bus = new InMemoryResumableStreamBus()
 
-  register(chatId: string, stream: ReadableStream<string>): void {
-    const previous = this.activeStreams.get(chatId)
-    if (previous) {
-      this.closeSubscribers(previous)
-      this.activeStreams.delete(chatId)
-    }
+  private readonly context = createResumableStreamContext({
+    waitUntil: null,
+    publisher: this.bus,
+    subscriber: this.bus,
+    keyPrefix: 'tia-studio-chat'
+  })
 
-    const activeStream: ActiveResumableChatStream = {
-      chunks: [],
-      subscribers: new Set()
-    }
-    this.activeStreams.set(chatId, activeStream)
-
-    void this.consumeStream(chatId, stream, activeStream)
+  async register(chatId: string, stream: ReadableStream<string>): Promise<void> {
+    await this.context.createNewResumableStream(chatId, () => stream)
   }
 
-  resume(chatId: string): ReadableStream<string> | null {
-    const activeStream = this.activeStreams.get(chatId)
-    if (!activeStream) {
-      return null
-    }
-
-    let subscriberController: ReadableStreamDefaultController<string> | null = null
-    return new ReadableStream<string>({
-      start: (controller) => {
-        subscriberController = controller
-        for (const chunk of activeStream.chunks) {
-          controller.enqueue(chunk)
-        }
-
-        activeStream.subscribers.add(controller)
-      },
-      cancel: () => {
-        if (!subscriberController) {
-          return
-        }
-        activeStream.subscribers.delete(subscriberController)
-      }
-    })
-  }
-
-  private async consumeStream(
-    chatId: string,
-    stream: ReadableStream<string>,
-    activeStream: ActiveResumableChatStream
-  ): Promise<void> {
-    const reader = stream.getReader()
-    try {
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) {
-          break
-        }
-
-        activeStream.chunks.push(value)
-        for (const subscriber of activeStream.subscribers) {
-          try {
-            subscriber.enqueue(value)
-          } catch {
-            activeStream.subscribers.delete(subscriber)
-          }
-        }
-      }
-    } catch (error) {
-      for (const subscriber of activeStream.subscribers) {
-        try {
-          subscriber.error(error)
-        } catch {
-          activeStream.subscribers.delete(subscriber)
-        }
-      }
-    } finally {
-      this.closeSubscribers(activeStream)
-      if (this.activeStreams.get(chatId) === activeStream) {
-        this.activeStreams.delete(chatId)
-      }
-      reader.releaseLock()
-    }
-  }
-
-  private closeSubscribers(activeStream: ActiveResumableChatStream): void {
-    for (const subscriber of activeStream.subscribers) {
-      try {
-        subscriber.close()
-      } catch (error) {
-        void error
-      }
-    }
-    activeStream.subscribers.clear()
+  async resume(chatId: string): Promise<ReadableStream<string> | null> {
+    const stream = await this.context.resumeExistingStream(chatId)
+    return stream ?? null
   }
 }

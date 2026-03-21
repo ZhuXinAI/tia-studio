@@ -1,6 +1,14 @@
 const defaultTimeoutMs = 8000
 
-type ProviderType = 'openai' | 'openai-response' | 'openrouter' | 'gemini' | 'anthropic' | 'ollama'
+type ProviderType =
+  | 'openai'
+  | 'openai-response'
+  | 'openrouter'
+  | 'gemini'
+  | 'anthropic'
+  | 'ollama'
+  | 'codex-acp'
+  | 'claude-agent-acp'
 
 type ProviderConnectionInput = {
   type: ProviderType
@@ -53,6 +61,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function parseModelIds(providerType: ProviderType, payload: unknown): string[] {
+  if (providerType === 'codex-acp' || providerType === 'claude-agent-acp') {
+    return []
+  }
+
   if (!isRecord(payload)) {
     return []
   }
@@ -115,6 +127,12 @@ function extractErrorMessage(payload: unknown): string | null {
 }
 
 function buildConnectionRequest(input: ProviderConnectionInput): ConnectionRequest {
+  if (input.type === 'codex-acp' || input.type === 'claude-agent-acp') {
+    return {
+      url: 'about:blank'
+    }
+  }
+
   if (input.type === 'openai' || input.type === 'openai-response' || input.type === 'openrouter') {
     return {
       url: joinUrl(
@@ -199,6 +217,10 @@ export async function testProviderConnection(
   input: ProviderConnectionInput,
   options: TestProviderConnectionOptions = {}
 ): Promise<void> {
+  if (input.type === 'codex-acp' || input.type === 'claude-agent-acp') {
+    return
+  }
+
   const connectionRequest = buildConnectionRequest(input)
   const fetcher = options.fetcher ?? fetch
   const timeoutMs = options.timeoutMs ?? defaultTimeoutMs

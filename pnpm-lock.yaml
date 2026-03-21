@@ -65,6 +65,9 @@ importers:
       '@mastra/memory':
         specifier: ^1.5.2
         version: 1.5.2(@mastra/core@1.10.0(@cfworker/json-schema@4.1.1)(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@4.3.6))(zod@4.3.6))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@4.3.6))(@types/json-schema@7.0.15)(bufferutil@4.1.0)(openapi-types@12.1.3)(zod@4.3.6))(zod@4.3.6)
+      '@mcpc-tech/acp-ai-provider':
+        specifier: 0.3.0
+        version: 0.3.0(@cfworker/json-schema@4.1.1)
       '@openrouter/ai-sdk-provider':
         specifier: ^2.3.0
         version: 2.3.0(ai@6.0.105(zod@4.3.6))(zod@4.3.6)
@@ -161,6 +164,9 @@ importers:
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1
+      resumable-stream:
+        specifier: 2.2.12
+        version: 2.2.12
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -286,6 +292,11 @@ packages:
 
   '@acemir/cssom@0.9.31':
     resolution: {integrity: sha512-ZnR3GSaH+/vJ0YlHau21FjfLYjMpYVIzTD8M8vIEQvIGxeOXyXdzCI140rrCY862p/C/BbzWsjc1dgnM9mkoTA==}
+
+  '@agentclientprotocol/sdk@0.14.1':
+    resolution: {integrity: sha512-b6r3PS3Nly+Wyw9U+0nOr47bV8tfS476EgyEMhoKvJCZLbgqoDFN7DJwkxL88RR0aiOqOYV1ZnESHqb+RmdH8w==}
+    peerDependencies:
+      zod: ^3.25.0 || ^4.0.0
 
   '@ai-sdk/amazon-bedrock@3.0.88':
     resolution: {integrity: sha512-boKql8OkCiBCEK6ETc6BCwHxAzWhleiAkSvZbxU/UjmusZXyfTktk+KAQOu+y6ct5R6vu3E1Iqfgpk6GiBy1ZQ==}
@@ -1563,6 +1574,9 @@ packages:
     engines: {node: '>=22.13.0'}
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
+
+  '@mcpc-tech/acp-ai-provider@0.3.0':
+    resolution: {integrity: sha512-KhzIzV6lFEDpFanvSfDkmkyln0Uhkrws/LWL2dvlV7WqE1NHfIXfe67NLff7iuiTN+5qV9zPkMsnrbgbV8Ryxw==}
 
   '@modelcontextprotocol/sdk@1.27.1':
     resolution: {integrity: sha512-sr6GbP+4edBwFndLbM60gf07z0FQ79gaExpnsjMGePXqFcSSb7t6iscpjk9DhFhwd+mTEQrzNafGP8/iGGFYaA==}
@@ -6099,6 +6113,9 @@ packages:
     resolution: {integrity: sha512-l+sSefzHpj5qimhFSE5a8nufZYAM3sBSVMAPtYkmC+4EH2anSGaEMXSD0izRQbu9nfyQ9y5JrVmp7E8oZrUjvA==}
     engines: {node: '>=8'}
 
+  resumable-stream@2.2.12:
+    resolution: {integrity: sha512-e6boHekmb72MdWDn7vSV9kiuRb9K3CepcDj+3Z0NNhdAfld7uHbVU8+NKlHRf3LO2Chtj4cXuWL88StLg64eIw==}
+
   retry@0.12.0:
     resolution: {integrity: sha512-9LkiTwjUh6rT555DtE9rTX+BKByPfrMzEAtnlEtdEwr3Nkffwiihqe2bWADg+OQRjt9gl6ICdmB/ZFDCGAtSow==}
     engines: {node: '>= 4'}
@@ -7125,6 +7142,10 @@ snapshots:
 
   '@acemir/cssom@0.9.31': {}
 
+  '@agentclientprotocol/sdk@0.14.1(zod@3.25.76)':
+    dependencies:
+      zod: 3.25.76
+
   '@ai-sdk/amazon-bedrock@3.0.88(zod@4.3.6)':
     dependencies:
       '@ai-sdk/anthropic': 2.0.70(zod@4.3.6)
@@ -7178,6 +7199,13 @@ snapshots:
       '@ai-sdk/provider-utils': 3.0.22(zod@4.3.6)
       '@vercel/oidc': 3.1.0
       zod: 4.3.6
+
+  '@ai-sdk/gateway@3.0.59(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.8
+      '@ai-sdk/provider-utils': 4.0.16(zod@3.25.76)
+      '@vercel/oidc': 3.1.0
+      zod: 3.25.76
 
   '@ai-sdk/gateway@3.0.59(zod@4.3.6)':
     dependencies:
@@ -7279,6 +7307,13 @@ snapshots:
       '@standard-schema/spec': 1.1.0
       eventsource-parser: 3.0.6
       zod: 4.3.6
+
+  '@ai-sdk/provider-utils@4.0.16(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.8
+      '@standard-schema/spec': 1.1.0
+      eventsource-parser: 3.0.6
+      zod: 3.25.76
 
   '@ai-sdk/provider-utils@4.0.16(zod@4.3.6)':
     dependencies:
@@ -8544,6 +8579,41 @@ snapshots:
       zod-from-json-schema: 0.5.2
       zod-from-json-schema-v3: zod-from-json-schema@0.0.5
       zod-to-json-schema: 3.25.1(zod@4.3.6)
+
+  '@mcpc-tech/acp-ai-provider@0.3.0(@cfworker/json-schema@4.1.1)':
+    dependencies:
+      '@agentclientprotocol/sdk': 0.14.1(zod@3.25.76)
+      '@ai-sdk/provider': 3.0.8
+      '@modelcontextprotocol/sdk': 1.27.1(@cfworker/json-schema@4.1.1)(zod@3.25.76)
+      ai: 6.0.105(zod@3.25.76)
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - '@cfworker/json-schema'
+      - supports-color
+
+  '@modelcontextprotocol/sdk@1.27.1(@cfworker/json-schema@4.1.1)(zod@3.25.76)':
+    dependencies:
+      '@hono/node-server': 1.19.9(hono@4.12.3)
+      ajv: 8.18.0
+      ajv-formats: 3.0.1(ajv@8.18.0)
+      content-type: 1.0.5
+      cors: 2.8.6
+      cross-spawn: 7.0.6
+      eventsource: 3.0.7
+      eventsource-parser: 3.0.6
+      express: 5.2.1
+      express-rate-limit: 8.2.1(express@5.2.1)
+      hono: 4.12.3
+      jose: 6.1.3
+      json-schema-typed: 8.0.2
+      pkce-challenge: 5.0.1
+      raw-body: 3.0.2
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.1(zod@3.25.76)
+    optionalDependencies:
+      '@cfworker/json-schema': 4.1.1
+    transitivePeerDependencies:
+      - supports-color
 
   '@modelcontextprotocol/sdk@1.27.1(@cfworker/json-schema@4.1.1)(zod@4.3.6)':
     dependencies:
@@ -10170,6 +10240,14 @@ snapshots:
       '@ai-sdk/provider-utils': 3.0.22(zod@4.3.6)
       '@opentelemetry/api': 1.9.0
       zod: 4.3.6
+
+  ai@6.0.105(zod@3.25.76):
+    dependencies:
+      '@ai-sdk/gateway': 3.0.59(zod@3.25.76)
+      '@ai-sdk/provider': 3.0.8
+      '@ai-sdk/provider-utils': 4.0.16(zod@3.25.76)
+      '@opentelemetry/api': 1.9.0
+      zod: 3.25.76
 
   ai@6.0.105(zod@4.3.6):
     dependencies:
@@ -13897,6 +13975,8 @@ snapshots:
     dependencies:
       onetime: 5.1.2
       signal-exit: 3.0.7
+
+  resumable-stream@2.2.12: {}
 
   retry@0.12.0: {}
 

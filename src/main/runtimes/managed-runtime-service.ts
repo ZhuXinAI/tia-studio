@@ -50,7 +50,10 @@ const execFileAsync = promisify(execFile)
 const githubReleaseUrls: Record<ManagedRuntimeKind, string> = {
   'agent-browser': 'https://api.github.com/repos/vercel-labs/agent-browser/releases/latest',
   bun: 'https://api.github.com/repos/oven-sh/bun/releases/latest',
-  uv: 'https://api.github.com/repos/astral-sh/uv/releases/latest'
+  uv: 'https://api.github.com/repos/astral-sh/uv/releases/latest',
+  'codex-acp': 'https://api.github.com/repos/zed-industries/codex-acp/releases/latest',
+  'claude-agent-acp':
+    'https://api.github.com/repos/zed-industries/claude-agent-acp/releases/latest'
 }
 
 function createDefaultRecord(): ManagedRuntimeRecord {
@@ -101,6 +104,14 @@ function runtimeBinaryName(kind: ManagedRuntimeKind, platform: NodeJS.Platform):
 
   if (kind === 'agent-browser') {
     return `agent-browser${suffix}`
+  }
+
+  if (kind === 'codex-acp') {
+    return `codex-acp${suffix}`
+  }
+
+  if (kind === 'claude-agent-acp') {
+    return `claude-agent-acp${suffix}`
   }
 
   return `${kind}${suffix}`
@@ -306,7 +317,13 @@ function createManagedRuntimeEnv(
   state: ManagedRuntimesState,
   env: NodeJS.ProcessEnv
 ): NodeJS.ProcessEnv {
-  const runtimeDirs = [state.bun, state.uv, state['agent-browser']]
+  const runtimeDirs = [
+    state.bun,
+    state.uv,
+    state['agent-browser'],
+    state['codex-acp'],
+    state['claude-agent-acp']
+  ]
     .filter((record): record is ManagedRuntimeRecord => isRuntimeRecordActive(record))
     .map((record) => dirname(record.binaryPath as string))
 
@@ -371,6 +388,11 @@ export class ManagedRuntimeService {
 
   async getStatus(): Promise<ManagedRuntimesState> {
     return this.repository.getState()
+  }
+
+  async getAugmentedEnv(env: NodeJS.ProcessEnv = process.env): Promise<NodeJS.ProcessEnv> {
+    const state = await this.repository.getState()
+    return createManagedRuntimeEnv(state, env)
   }
 
   async checkLatest(kind: ManagedRuntimeKind): Promise<ManagedRuntimesState> {
@@ -672,6 +694,50 @@ export class ManagedRuntimeService {
       }
       if (platform === 'win32' && arch === 'x64') {
         return ['agent-browser-win32-x64']
+      }
+      return []
+    }
+
+    if (kind === 'codex-acp') {
+      if (platform === 'darwin' && arch === 'arm64') {
+        return ['codex-acp-aarch64-apple-darwin']
+      }
+      if (platform === 'darwin' && arch === 'x64') {
+        return ['codex-acp-x86_64-apple-darwin']
+      }
+      if (platform === 'linux' && arch === 'arm64') {
+        return ['codex-acp-aarch64-unknown-linux-gnu', 'codex-acp-aarch64-unknown-linux-musl']
+      }
+      if (platform === 'linux' && arch === 'x64') {
+        return ['codex-acp-x86_64-unknown-linux-gnu', 'codex-acp-x86_64-unknown-linux-musl']
+      }
+      if (platform === 'win32' && arch === 'arm64') {
+        return ['codex-acp-aarch64-pc-windows-msvc']
+      }
+      if (platform === 'win32' && arch === 'x64') {
+        return ['codex-acp-x86_64-pc-windows-msvc']
+      }
+      return []
+    }
+
+    if (kind === 'claude-agent-acp') {
+      if (platform === 'darwin' && arch === 'arm64') {
+        return ['claude-agent-acp-darwin-arm64']
+      }
+      if (platform === 'darwin' && arch === 'x64') {
+        return ['claude-agent-acp-darwin-x64']
+      }
+      if (platform === 'linux' && arch === 'arm64') {
+        return ['claude-agent-acp-linux-arm64', 'claude-agent-acp-linux-arm64-musl']
+      }
+      if (platform === 'linux' && arch === 'x64') {
+        return ['claude-agent-acp-linux-x64', 'claude-agent-acp-linux-x64-musl']
+      }
+      if (platform === 'win32' && arch === 'arm64') {
+        return ['claude-agent-acp-windows-arm64']
+      }
+      if (platform === 'win32' && arch === 'x64') {
+        return ['claude-agent-acp-windows-x64']
       }
       return []
     }

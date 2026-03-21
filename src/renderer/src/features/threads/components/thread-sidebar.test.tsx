@@ -34,7 +34,7 @@ type TestThread = {
   updatedAt: string
 }
 
-describe('thread sidebar assistant management', () => {
+describe('thread sidebar thread navigation', () => {
   let container: HTMLDivElement
   let root: Root
 
@@ -54,56 +54,42 @@ describe('thread sidebar assistant management', () => {
     vi.clearAllMocks()
   })
 
-  function renderSidebar(callbacks?: {
-    onCreateAssistant?: () => void
-    onBrowseAssistants?: () => void
-    onSelectAssistant?: (assistantId: string) => void
-    onEditAssistant?: (assistantId: string) => void
-    onDeleteAssistant?: (assistantId: string) => void
-    canDeleteAssistant?: boolean
-    isDetailView?: boolean
-    threads?: TestThread[]
-    assistantName?: string
-    extraBranches?: Array<{
+  function renderSidebar(input?: {
+    branches?: Array<{
       assistantId: string
       assistantName: string
       canDeleteAssistant: boolean
       isSelected: boolean
       threads: TestThread[]
     }>
+    isLoadingData?: boolean
+    isLoadingThreads?: boolean
+    onCreateThread?: () => void
+    onSelectThread?: (assistantId: string, threadId: string) => void
   }): void {
-    const assistantName = callbacks?.assistantName ?? 'Planner'
-    const isDetailView = callbacks?.isDetailView ?? false
-
     act(() => {
       root.render(
         <MemoryRouter>
           <ThreadSidebar
-            branches={[
-              {
-                assistantId: 'assistant-1',
-                assistantName,
-                canDeleteAssistant: callbacks?.canDeleteAssistant ?? true,
-                isSelected: isDetailView,
-                threads: callbacks?.threads ?? []
-              },
-              ...(callbacks?.extraBranches ?? [])
-            ]}
+            branches={
+              input?.branches ?? [
+                {
+                  assistantId: 'assistant-1',
+                  assistantName: 'Planner',
+                  canDeleteAssistant: true,
+                  isSelected: true,
+                  threads: []
+                }
+              ]
+            }
             selectedThreadId={null}
             deletingThreadId={null}
-            deletingAssistantId={null}
-            isLoadingData={false}
-            assistantsCount={1 + (callbacks?.extraBranches?.length ?? 0)}
-            isLoadingThreads={false}
+            isLoadingData={input?.isLoadingData ?? false}
+            isLoadingThreads={input?.isLoadingThreads ?? false}
             isCreatingThread={false}
-            canCreateThread={isDetailView}
-            onCreateThread={() => undefined}
-            onCreateAssistant={callbacks?.onCreateAssistant ?? (() => undefined)}
-            onBrowseAssistants={callbacks?.onBrowseAssistants ?? (() => undefined)}
-            onSelectAssistant={callbacks?.onSelectAssistant ?? (() => undefined)}
-            onSelectThread={() => undefined}
-            onEditAssistant={callbacks?.onEditAssistant ?? (() => undefined)}
-            onDeleteAssistant={callbacks?.onDeleteAssistant ?? (() => undefined)}
+            canCreateThread
+            onCreateThread={input?.onCreateThread ?? (() => undefined)}
+            onSelectThread={input?.onSelectThread ?? (() => undefined)}
             onDeleteThread={() => undefined}
           />
         </MemoryRouter>
@@ -111,169 +97,71 @@ describe('thread sidebar assistant management', () => {
     })
   }
 
-  it('opens create assistant dialog from assistants heading in master view', () => {
-    const onCreateAssistant = vi.fn()
-    renderSidebar({ onCreateAssistant })
-
-    const createAssistantButton = container.querySelector(
-      '[aria-label="Create assistant"]'
-    ) as HTMLButtonElement | null
-    expect(createAssistantButton).not.toBeNull()
-
-    act(() => {
-      createAssistantButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    expect(onCreateAssistant).toHaveBeenCalledTimes(1)
-  })
-
-  it('shows assistant actions menu with edit and destructive delete controls in master view', () => {
-    const onEditAssistant = vi.fn()
-    const onDeleteAssistant = vi.fn()
-    renderSidebar({ onEditAssistant, onDeleteAssistant })
-
-    const menuTrigger = container.querySelector(
-      '[aria-label="Assistant actions for Planner"]'
-    ) as HTMLButtonElement | null
-    expect(menuTrigger).not.toBeNull()
-
-    act(() => {
-      menuTrigger?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    const editButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Edit')
-    )
-    const deleteButton = container.querySelector(
-      '[aria-label="Delete assistant Planner"]'
-    ) as HTMLButtonElement | null
-    const actionsMenu = container.querySelector('[role="menu"]') as HTMLDivElement | null
-
-    expect(editButton).not.toBeUndefined()
-    expect(deleteButton).not.toBeNull()
-    expect(actionsMenu).not.toBeNull()
-    expect(actionsMenu?.className).toContain('bg-card')
-    expect(deleteButton?.className).toContain('text-destructive')
-
-    act(() => {
-      editButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-    expect(onEditAssistant).toHaveBeenCalledWith('assistant-1')
-
-    act(() => {
-      menuTrigger?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-    const reopenedDeleteButton = container.querySelector(
-      '[aria-label="Delete assistant Planner"]'
-    ) as HTMLButtonElement | null
-    act(() => {
-      reopenedDeleteButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-    expect(onDeleteAssistant).toHaveBeenCalledWith('assistant-1')
-  })
-
-  it('hides delete action for assistants that cannot be deleted', () => {
-    const onDeleteAssistant = vi.fn()
-    renderSidebar({ onDeleteAssistant, canDeleteAssistant: false })
-
-    const menuTrigger = container.querySelector(
-      '[aria-label="Assistant actions for Planner"]'
-    ) as HTMLButtonElement | null
-    expect(menuTrigger).not.toBeNull()
-
-    act(() => {
-      menuTrigger?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    const deleteButton = container.querySelector(
-      '[aria-label="Delete assistant Planner"]'
-    ) as HTMLButtonElement | null
-
-    expect(deleteButton).toBeNull()
-    expect(onDeleteAssistant).not.toHaveBeenCalled()
-  })
-
-  it('shows detail view controls and lets the user return to assistants', () => {
-    const onBrowseAssistants = vi.fn()
-    renderSidebar({ isDetailView: true, onBrowseAssistants })
-
-    expect(container.textContent).toContain('Current assistant')
-    expect(container.textContent).toContain('Threads')
-
-    const backButton = container.querySelector(
-      '[aria-label="Back to assistants"]'
-    ) as HTMLButtonElement | null
-    expect(backButton).not.toBeNull()
-
-    act(() => {
-      backButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    expect(onBrowseAssistants).toHaveBeenCalledTimes(1)
-  })
-
-  it('supports switching assistants from the detail header dropdown', () => {
-    const onSelectAssistant = vi.fn()
+  it('shows a loading placeholder while chat route selection is being resolved', () => {
     renderSidebar({
-      isDetailView: true,
-      onSelectAssistant,
-      extraBranches: [
+      branches: [
         {
-          assistantId: 'assistant-2',
-          assistantName: 'Reviewer',
+          assistantId: 'assistant-1',
+          assistantName: 'Planner',
           canDeleteAssistant: true,
           isSelected: false,
           threads: []
         }
-      ]
+      ],
+      isLoadingData: true
     })
 
-    const switcherTrigger = container.querySelector(
-      '[aria-label="Switch assistants"]'
-    ) as HTMLButtonElement | null
-    expect(switcherTrigger).not.toBeNull()
-
-    act(() => {
-      switcherTrigger?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    expect(container.textContent).toContain('Reviewer')
-
-    const reviewerButton = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent?.trim() === 'Reviewer'
-    )
-
-    act(() => {
-      reviewerButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    expect(onSelectAssistant).toHaveBeenCalledWith('assistant-2')
+    expect(container.textContent).toContain('Conversations')
+    expect(container.textContent).toContain('Loading assistants...')
   })
 
-  it('filters the virtualized thread list by search text in detail view', async () => {
+  it('creates a new thread from the active assistant thread view', () => {
+    const onCreateThread = vi.fn()
+    renderSidebar({ onCreateThread })
+
+    const createThreadButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('New Thread')
+    )
+    expect(createThreadButton).not.toBeUndefined()
+
+    act(() => {
+      createThreadButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(onCreateThread).toHaveBeenCalledTimes(1)
+  })
+
+  it('filters the virtualized thread list by search text in the active assistant view', async () => {
     const releaseThreadTitle = 'Release checklist'
     const skillThreadTitle = 'Help creating a coding skill'
 
     renderSidebar({
-      isDetailView: true,
-      threads: [
+      branches: [
         {
-          id: 'thread-1',
           assistantId: 'assistant-1',
-          resourceId: 'default-profile',
-          title: skillThreadTitle,
-          lastMessageAt: '2026-03-03T15:24:00.000Z',
-          createdAt: '2026-03-01T00:00:00.000Z',
-          updatedAt: '2026-03-01T00:00:00.000Z'
-        },
-        {
-          id: 'thread-2',
-          assistantId: 'assistant-1',
-          resourceId: 'default-profile',
-          title: releaseThreadTitle,
-          lastMessageAt: '2026-03-04T15:24:00.000Z',
-          createdAt: '2026-03-02T00:00:00.000Z',
-          updatedAt: '2026-03-02T00:00:00.000Z'
+          assistantName: 'Planner',
+          canDeleteAssistant: true,
+          isSelected: true,
+          threads: [
+            {
+              id: 'thread-1',
+              assistantId: 'assistant-1',
+              resourceId: 'default-profile',
+              title: skillThreadTitle,
+              lastMessageAt: '2026-03-03T15:24:00.000Z',
+              createdAt: '2026-03-01T00:00:00.000Z',
+              updatedAt: '2026-03-01T00:00:00.000Z'
+            },
+            {
+              id: 'thread-2',
+              assistantId: 'assistant-1',
+              resourceId: 'default-profile',
+              title: releaseThreadTitle,
+              lastMessageAt: '2026-03-04T15:24:00.000Z',
+              createdAt: '2026-03-02T00:00:00.000Z',
+              updatedAt: '2026-03-02T00:00:00.000Z'
+            }
+          ]
         }
       ]
     })
@@ -305,19 +193,26 @@ describe('thread sidebar assistant management', () => {
     expect(container.textContent).not.toContain(skillThreadTitle)
   })
 
-  it('shows only the thread title without an inline timestamp in detail view', () => {
+  it('shows only the thread title without an inline timestamp in the active assistant view', () => {
     const threadTitle = 'Help creating a coding skill'
     renderSidebar({
-      isDetailView: true,
-      threads: [
+      branches: [
         {
-          id: 'thread-1',
           assistantId: 'assistant-1',
-          resourceId: 'default-profile',
-          title: threadTitle,
-          lastMessageAt: '2026-03-03T15:24:00.000Z',
-          createdAt: '2026-03-01T00:00:00.000Z',
-          updatedAt: '2026-03-01T00:00:00.000Z'
+          assistantName: 'Planner',
+          canDeleteAssistant: true,
+          isSelected: true,
+          threads: [
+            {
+              id: 'thread-1',
+              assistantId: 'assistant-1',
+              resourceId: 'default-profile',
+              title: threadTitle,
+              lastMessageAt: '2026-03-03T15:24:00.000Z',
+              createdAt: '2026-03-01T00:00:00.000Z',
+              updatedAt: '2026-03-01T00:00:00.000Z'
+            }
+          ]
         }
       ]
     })

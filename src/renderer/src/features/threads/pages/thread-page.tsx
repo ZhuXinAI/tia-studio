@@ -14,19 +14,12 @@ export function ThreadPage(): React.JSX.Element {
           branches={controller.sidebarBranches}
           selectedThreadId={controller.selectedThread?.id ?? null}
           deletingThreadId={controller.deletingThreadId}
-          deletingAssistantId={controller.deletingAssistantId}
           isLoadingData={controller.isLoadingData}
-          assistantsCount={controller.assistantsCount}
           isLoadingThreads={controller.isLoadingThreads}
           isCreatingThread={controller.isCreatingThread}
           canCreateThread={Boolean(controller.selectedAssistant)}
           onCreateThread={controller.onCreateThread}
-          onCreateAssistant={controller.onCreateAssistant}
-          onBrowseAssistants={controller.onBrowseAssistants}
-          onSelectAssistant={controller.onSelectAssistant}
           onSelectThread={controller.onSelectThread}
-          onEditAssistant={controller.onEditAssistant}
-          onDeleteAssistant={controller.onDeleteAssistant}
           onDeleteThread={controller.onDeleteThread}
         />
 

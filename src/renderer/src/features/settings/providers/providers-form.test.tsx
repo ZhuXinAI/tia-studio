@@ -41,4 +41,9 @@ describe('providers form helpers', () => {
     expect(getVisibleProviderTypeOptions()).not.toContain('openrouter')
     expect(getVisibleProviderTypeOptions('openrouter')).toContain('openrouter')
   })
+
+  it('includes ACP providers in the visible manual provider options', () => {
+    expect(getVisibleProviderTypeOptions()).toContain('codex-acp')
+    expect(getVisibleProviderTypeOptions()).toContain('claude-agent-acp')
+  })
 })

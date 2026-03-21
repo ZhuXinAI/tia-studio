@@ -27,6 +27,12 @@ import {
   type TeamWorkspaceRecord
 } from '../team-workspaces-query'
 import type { TeamConfigDialogValues } from '../components/team-config-dialog'
+import {
+  readStoredTeamSelection,
+  routeToTeam,
+  sortTeamThreadsByRecentActivity,
+  storeTeamSelection
+} from '../team-page-routing'
 
 type TeamReadinessCheckId = 'workspace' | 'provider' | 'model' | 'members'
 
@@ -48,29 +54,9 @@ type PendingTeamMessage = {
   text: string
 }
 
-function routeToTeam(workspaceId?: string | null, threadId?: string | null): string {
-  if (workspaceId && threadId) {
-    return `/team/${workspaceId}/${threadId}`
-  }
-
-  if (workspaceId) {
-    return `/team/${workspaceId}`
-  }
-
-  return '/team'
-}
-
 function createWorkspaceName(rootPath: string): string {
   const segments = rootPath.split(/[\\/]/).filter((segment) => segment.length > 0)
   return segments.at(-1) ?? i18n.t('team.sidebar.defaultWorkspaceName')
-}
-
-function sortTeamThreadsByRecentActivity(threads: TeamThreadRecord[]): TeamThreadRecord[] {
-  return [...threads].sort((left, right) => {
-    const leftDate = Date.parse(left.lastMessageAt ?? left.createdAt)
-    const rightDate = Date.parse(right.lastMessageAt ?? right.createdAt)
-    return rightDate - leftDate
-  })
 }
 
 function hasNonEmptyText(value: string | null | undefined): boolean {
@@ -291,8 +277,31 @@ export function useTeamPageController() {
       return
     }
 
+    const storedSelection = readStoredTeamSelection()
+    if (storedSelection) {
+      const matchedWorkspace = workspaces.find(
+        (workspace) => workspace.id === storedSelection.workspaceId
+      )
+
+      if (matchedWorkspace) {
+        navigate(routeToTeam(matchedWorkspace.id, storedSelection.threadId), { replace: true })
+        return
+      }
+    }
+
     navigate(routeToTeam(workspaces[0]?.id ?? null), { replace: true })
   }, [isLoadingData, navigate, selectedWorkspace, workspaces])
+
+  useEffect(() => {
+    if (!selectedWorkspace) {
+      return
+    }
+
+    storeTeamSelection({
+      workspaceId: selectedWorkspace.id,
+      threadId: selectedThread?.id ?? null
+    })
+  }, [selectedThread?.id, selectedWorkspace])
 
   useEffect(() => {
     if (!selectedWorkspace) {

@@ -120,5 +120,23 @@ export const BUILT_IN_PROVIDERS: BuiltInProviderConfig[] = [
     apiHost: 'https://api.kimi.com/coding/v1',
     defaultModel: 'kimi-k2.5',
     supportsVision: false
+  },
+  {
+    id: 'built-in-codex-acp',
+    name: 'Codex',
+    type: 'codex-acp',
+    icon: 'openai',
+    officialSite: 'https://github.com/zed-industries/codex-acp',
+    defaultModel: 'default',
+    supportsVision: true
+  },
+  {
+    id: 'built-in-claude-agent-acp',
+    name: 'Claude Agent',
+    type: 'claude-agent-acp',
+    icon: 'anthropic',
+    officialSite: 'https://github.com/zed-industries/claude-agent-acp',
+    defaultModel: 'default',
+    supportsVision: true
   }
 ]

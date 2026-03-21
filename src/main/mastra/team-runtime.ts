@@ -190,6 +190,8 @@ export class TeamRuntimeService implements TeamRuntime {
         apiKey: supervisorProvider.apiKey,
         apiHost: supervisorProvider.apiHost,
         selectedModel: supervisorModel
+      }, {}, {
+        acpWorkingDirectory: workspace.rootPath
       }) as never,
       tools: supervisorTools,
       memory: sharedMemory as never,
@@ -329,6 +331,8 @@ export class TeamRuntimeService implements TeamRuntime {
             apiKey: provider.apiKey,
             apiHost: provider.apiHost,
             selectedModel: provider.selectedModel
+          }, {}, {
+            acpWorkingDirectory: input.teamWorkspaceRootPath
           }) as never,
           ...(Object.keys(builtInBrowserTools).length > 0 ? { tools: builtInBrowserTools } : {}),
           memory: input.sharedMemory as never,

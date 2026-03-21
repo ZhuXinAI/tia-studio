@@ -1,6 +1,7 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
+import { createACPProvider, type ACPProviderSettings } from '@mcpc-tech/acp-ai-provider'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import type { MastraLanguageModel, MastraLegacyLanguageModel } from '@mastra/core/agent'
 import { createOllama } from 'ollama-ai-provider'
@@ -35,6 +36,15 @@ export type ModelResolverFactories = {
   }) => (modelId: string) => unknown
   googleFactory: (options?: { apiKey?: string; baseURL?: string }) => (modelId: string) => unknown
   ollamaFactory: (options?: { baseURL?: string }) => (modelId: string) => unknown
+  acpProviderFactory: (
+    options: ACPProviderSettings
+  ) => {
+    languageModel: (modelId?: string, modeId?: string) => unknown
+  }
+}
+
+export type ResolveModelOptions = {
+  acpWorkingDirectory?: string | null
 }
 
 export type ResolvedModel = MastraLanguageModel | MastraLegacyLanguageModel
@@ -44,12 +54,29 @@ const defaultFactories: ModelResolverFactories = {
   openrouterFactory: createOpenRouter,
   anthropicFactory: createAnthropic,
   googleFactory: createGoogleGenerativeAI,
-  ollamaFactory: createOllama
+  ollamaFactory: createOllama,
+  acpProviderFactory: createACPProvider
+}
+
+function toStringEnv(env: NodeJS.ProcessEnv): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(env).filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+  )
+}
+
+function toACPModelId(selectedModel: string): string | undefined {
+  const normalized = selectedModel.trim()
+  if (normalized.length === 0 || normalized === 'default') {
+    return undefined
+  }
+
+  return normalized
 }
 
 export function resolveModel(
   provider: ProviderModelConfig,
-  factories: Partial<ModelResolverFactories> = {}
+  factories: Partial<ModelResolverFactories> = {},
+  options: ResolveModelOptions = {}
 ): ResolvedModel {
   const mergedFactories = {
     ...defaultFactories,
@@ -108,6 +135,20 @@ export function resolveModel(
     })
 
     return ollamaProvider(provider.selectedModel) as ResolvedModel
+  }
+
+  if (provider.type === 'codex-acp' || provider.type === 'claude-agent-acp') {
+    const acpProvider = mergedFactories.acpProviderFactory({
+      command: provider.type,
+      env: toStringEnv(process.env),
+      session: {
+        cwd: options.acpWorkingDirectory?.trim() || process.cwd(),
+        mcpServers: []
+      },
+      persistSession: true
+    })
+
+    return acpProvider.languageModel(toACPModelId(provider.selectedModel)) as ResolvedModel
   }
 
   throw new Error(`Unsupported provider type: ${provider.type}`)

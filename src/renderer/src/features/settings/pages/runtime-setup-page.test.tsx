@@ -5,7 +5,10 @@ import { createRoot, type Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RuntimeSetupPage } from './runtime-setup-page'
-import { getManagedRuntimeStatus } from '../runtimes/managed-runtimes-query'
+import {
+  createDefaultManagedRuntimesState,
+  getManagedRuntimeStatus
+} from '../runtimes/managed-runtimes-query'
 
 vi.mock('../runtimes/managed-runtimes-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../runtimes/managed-runtimes-query')>()
@@ -37,6 +40,7 @@ describe('runtime setup page', () => {
     root = createRoot(container)
 
     vi.mocked(getManagedRuntimeStatus).mockResolvedValue({
+      ...createDefaultManagedRuntimesState(),
       bun: {
         source: 'managed',
         binaryPath: '/managed/bun/bin/bun',
@@ -46,28 +50,6 @@ describe('runtime setup page', () => {
         releaseUrl: 'https://example.test/bun',
         checksum: null,
         status: 'ready',
-        errorMessage: null
-      },
-      uv: {
-        source: 'none',
-        binaryPath: null,
-        version: null,
-        installedAt: null,
-        lastCheckedAt: null,
-        releaseUrl: null,
-        checksum: null,
-        status: 'missing',
-        errorMessage: null
-      },
-      'agent-browser': {
-        source: 'none',
-        binaryPath: null,
-        version: null,
-        installedAt: null,
-        lastCheckedAt: null,
-        releaseUrl: null,
-        checksum: null,
-        status: 'missing',
         errorMessage: null
       }
     })
