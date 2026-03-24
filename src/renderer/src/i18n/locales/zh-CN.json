@@ -530,6 +530,9 @@
       "managePairingsButton": "管理配对",
       "defaultClawName": "Telegram Claw"
     },
+    "wechat": {
+      "manageSetupButton": "Open Setup"
+    },
     "errors": {
       "loadFailed": "加载 Claw 失败",
       "saveFailed": "保存 Claw 失败",
@@ -619,6 +622,7 @@
         "lark": "Lark",
         "telegram": "Telegram",
         "whatsapp": "WhatsApp",
+        "wechat": "Wechat",
         "wecom": "企业微信",
         "wechatKf": "微信客服"
       },
@@ -666,6 +670,7 @@
         "title": "添加频道",
         "description": "创建新的 WhatsApp、Telegram、Lark、企业微信或微信客服频道配置。",
         "whatsappHint": "无需令牌。保存后，打开“管理配对”扫描 WhatsApp 二维码。",
+        "wechatHint": "No token is required. After saving, open Wechat Setup to scan the Wechat login QR code.",
         "wechatKfHintPrefix": "微信客服需要先使用",
         "wechatKfHintSuffix": "完成 relay 服务部署，再填写服务地址和服务密钥。",
         "save": "添加频道",
@@ -756,8 +761,10 @@
     },
     "pairings": {
       "title": "管理配对",
+      "wechatTitle": "Wechat Setup",
       "description": "查看 {{clawName}} 的 Telegram 配对请求。",
       "whatsappDescription": "Scan the WhatsApp QR code and review pairing requests for {{clawName}}.",
+      "wechatDescription": "Scan the Wechat QR code to bind {{clawName}}.",
       "loading": "正在加载配对...",
       "empty": "还没有 Telegram 配对。",
       "senderIds": "发送者 ID：{{senderId}} · 聊天 ID：{{chatId}}",
@@ -775,6 +782,21 @@
           "qrReady": "QR code ready to scan.",
           "connected": "Connected as {{phoneNumber}}.",
           "error": "WhatsApp needs attention."
+        }
+      },
+      "wechatAuth": {
+        "title": "Wechat Login",
+        "description": "Scan this QR code in Wechat on your phone to bind the channel.",
+        "loading": "Preparing Wechat login...",
+        "scanHint": "Open Wechat on your phone and scan the QR code to confirm the login.",
+        "qrAlt": "Wechat login QR code",
+        "accountFallback": "your Wechat account",
+        "status": {
+          "disconnected": "Wechat is disconnected.",
+          "connecting": "Connecting to Wechat...",
+          "qrReady": "QR code ready to scan.",
+          "connected": "Connected as {{accountId}}.",
+          "error": "Wechat needs attention."
         }
       },
       "status": {

@@ -19,6 +19,7 @@ import type { WebSearchSettingsRepository } from '../persistence/repos/web-searc
 import type { AssistantRuntime } from '../mastra/assistant-runtime'
 import type { TeamRuntime } from '../mastra/team-runtime'
 import type { WhatsAppAuthStateStore } from '../channels/whatsapp-auth-state-store'
+import type { WechatAuthStateStore } from '../channels/wechat-auth-state-store'
 import { createBearerAuthMiddleware } from './auth-middleware'
 import type { ThreadMessageEventsStore } from './chat/thread-message-events-store'
 import type { TeamRunStatusStore } from './chat/team-run-status-store'
@@ -66,6 +67,7 @@ type CreateAppOptions = {
     reload(): Promise<void>
   }
   whatsAppAuthStateStore?: WhatsAppAuthStateStore
+  wechatAuthStateStore?: WechatAuthStateStore
   cronSchedulerService?: {
     reload(): Promise<void>
   }
@@ -126,6 +128,7 @@ export function createApp(options: CreateAppOptions): Hono {
         pairingsRepo: options.repositories.pairings,
         channelService: options.channelService,
         whatsAppAuthStateStore: options.whatsAppAuthStateStore,
+        wechatAuthStateStore: options.wechatAuthStateStore,
         cronSchedulerService: options.cronSchedulerService,
         heartbeatsRepo: options.repositories.heartbeats,
         threadsRepo: options.repositories.threads,

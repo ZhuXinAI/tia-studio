@@ -315,6 +315,7 @@ describe('ClawsPage', () => {
       qrCodeDataUrl: 'data:image/png;base64,qr',
       qrCodeValue: 'qr-value',
       phoneNumber: null,
+      accountId: null,
       errorMessage: null,
       updatedAt: '2026-03-10T00:00:00.000Z'
     })
@@ -372,6 +373,7 @@ describe('ClawsPage', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     act(() => {
       root.unmount()
     })
@@ -936,6 +938,244 @@ describe('ClawsPage', () => {
     expect(getClawChannelAuthState).toHaveBeenCalledWith('assistant-whatsapp')
     expect(document.body.querySelector('img')).not.toBeNull()
     expect(document.body.querySelector('input[id="assistant-name"]')).toBeNull()
+  })
+
+  it('opens wechat setup immediately after saving a wechat claw', async () => {
+    vi.mocked(listClaws)
+      .mockResolvedValueOnce({
+        claws: [],
+        configuredChannels: []
+      })
+      .mockResolvedValueOnce({
+        claws: [
+          {
+            id: 'assistant-wechat',
+            name: 'Wechat Assistant',
+            description: '',
+            providerId: 'provider-1',
+            workspacePath: null,
+            enabled: true,
+            channel: {
+              id: 'channel-wechat',
+              type: 'wechat',
+              name: 'Wechat Device',
+              status: 'disconnected',
+              errorMessage: null,
+              pairedCount: 0,
+              pendingPairingCount: 0
+            }
+          }
+        ],
+        configuredChannels: []
+      })
+    vi.mocked(createAssistant).mockResolvedValue({
+      id: 'assistant-wechat',
+      name: 'Wechat Assistant',
+      description: '',
+      instructions: '',
+      enabled: true,
+      providerId: 'provider-1',
+      workspaceConfig: {},
+      skillsConfig: {},
+      mcpConfig: {},
+      maxSteps: 100,
+      memoryConfig: null,
+      createdAt: '2026-03-08T00:00:00.000Z',
+      updatedAt: '2026-03-08T00:00:00.000Z'
+    })
+    vi.mocked(getClawChannelAuthState).mockResolvedValueOnce({
+      channelId: 'channel-wechat',
+      channelType: 'wechat',
+      status: 'qr_ready',
+      qrCodeDataUrl: 'data:image/png;base64,wechat-qr',
+      qrCodeValue: 'https://wechat.example/qr',
+      phoneNumber: null,
+      accountId: null,
+      errorMessage: null,
+      updatedAt: '2026-03-24T00:00:00.000Z'
+    })
+    vi.mocked(listAssistants).mockResolvedValue([])
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ClawsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const newButton = findButtonByText(container, 'New Assistant')
+
+    await clickElement(newButton)
+    await flushAsyncWork()
+
+    const body = document.body
+    const nameInput = body.querySelector('input[id="assistant-name"]') as HTMLInputElement
+    await act(async () => {
+      setElementValue(nameInput, 'Wechat Assistant')
+    })
+    await chooseProvider('OpenAI')
+    await clickElement(findButtonByText(body, 'Channels'))
+    await flushAsyncWork()
+
+    const addChannelButton = body.querySelector(
+      'button[id="claw-channel-selector-add"]'
+    ) as HTMLButtonElement
+
+    await clickElement(addChannelButton)
+    await flushAsyncWork()
+
+    const channelTypeSelect = body.querySelector(
+      'select[id="claw-channel-create-type"]'
+    ) as HTMLSelectElement
+
+    await act(async () => {
+      setElementValue(channelTypeSelect, 'wechat')
+    })
+    await flushAsyncWork()
+
+    const channelNameInput = body.querySelector(
+      'input[id="claw-channel-create-name"]'
+    ) as HTMLInputElement
+
+    await act(async () => {
+      setElementValue(channelNameInput, 'Wechat Device')
+    })
+
+    vi.mocked(createClawChannel).mockResolvedValueOnce({
+      id: 'channel-wechat-new',
+      type: 'wechat',
+      name: 'Wechat Device',
+      assistantId: null,
+      assistantName: null,
+      status: 'disconnected',
+      errorMessage: null,
+      pairedCount: 0,
+      pendingPairingCount: 0
+    })
+
+    const createChannelButton = body.querySelector(
+      'button[id="claw-channel-create-save"]'
+    ) as HTMLButtonElement
+
+    await clickElement(createChannelButton)
+    await flushAsyncWork()
+    await clickElement(findButtonByText(body, 'Essential Settings'))
+    await flushAsyncWork()
+
+    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
+
+    await clickElement(saveButton)
+    await flushAsyncWork()
+
+    expect(createClawChannel).toHaveBeenCalledWith({
+      type: 'wechat',
+      name: 'Wechat Device'
+    })
+    expect(getClawChannelAuthState).toHaveBeenCalledWith('assistant-wechat')
+    expect(listClawPairings).not.toHaveBeenCalledWith('assistant-wechat')
+    expect(document.body.textContent).toContain('Wechat Setup')
+    expect(document.body.querySelector('img')).not.toBeNull()
+    expect(document.body.querySelector('input[id="assistant-name"]')).toBeNull()
+  })
+
+  it('refreshes claw status after wechat setup connects', async () => {
+    vi.useFakeTimers()
+    vi.mocked(listClaws)
+      .mockResolvedValueOnce({
+        claws: [
+          {
+            id: 'assistant-wechat',
+            name: 'Wechat Assistant',
+            description: '',
+            providerId: 'provider-1',
+            workspacePath: null,
+            enabled: true,
+            channel: {
+              id: 'channel-wechat',
+              type: 'wechat',
+              name: 'Wechat Device',
+              status: 'disconnected',
+              errorMessage: null,
+              pairedCount: 0,
+              pendingPairingCount: 0
+            }
+          }
+        ],
+        configuredChannels: []
+      })
+      .mockResolvedValueOnce({
+        claws: [
+          {
+            id: 'assistant-wechat',
+            name: 'Wechat Assistant',
+            description: '',
+            providerId: 'provider-1',
+            workspacePath: null,
+            enabled: true,
+            channel: {
+              id: 'channel-wechat',
+              type: 'wechat',
+              name: 'Wechat Device',
+              status: 'connected',
+              errorMessage: null,
+              pairedCount: 0,
+              pendingPairingCount: 0
+            }
+          }
+        ],
+        configuredChannels: []
+      })
+    vi.mocked(getClawChannelAuthState)
+      .mockResolvedValueOnce({
+        channelId: 'channel-wechat',
+        channelType: 'wechat',
+        status: 'qr_ready',
+        qrCodeDataUrl: 'data:image/png;base64,wechat-qr',
+        qrCodeValue: 'https://wechat.example/qr',
+        phoneNumber: null,
+        accountId: null,
+        errorMessage: null,
+        updatedAt: '2026-03-24T00:00:00.000Z'
+      })
+      .mockResolvedValueOnce({
+        channelId: 'channel-wechat',
+        channelType: 'wechat',
+        status: 'connected',
+        qrCodeDataUrl: null,
+        qrCodeValue: null,
+        phoneNumber: null,
+        accountId: 'wechat-user-1',
+        errorMessage: null,
+        updatedAt: '2026-03-24T00:00:05.000Z'
+      })
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ClawsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const wechatCard = findClawCard('Wechat Assistant')
+    const openSetupButton = wechatCard ? findButtonByText(wechatCard, 'Open Setup') : undefined
+
+    await clickElement(openSetupButton)
+    await flushAsyncWork()
+
+    await act(async () => {
+      vi.advanceTimersByTime(5000)
+      await Promise.resolve()
+    })
+    await flushAsyncWork()
+
+    expect(vi.mocked(listClaws)).toHaveBeenCalledTimes(2)
+    expect(findClawCard('Wechat Assistant')?.textContent).toContain('connected')
+
+    vi.useRealTimers()
   })
 
   it('opens telegram pairings and approves a pending request', async () => {

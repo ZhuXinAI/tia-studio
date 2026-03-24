@@ -41,7 +41,7 @@ type ClawChannelSelectorDialogProps = {
   onDeleteChannel: (channelId: string) => Promise<void> | void
 }
 
-type ChannelType = 'discord' | 'lark' | 'telegram' | 'whatsapp' | 'wecom' | 'wechat-kf'
+type ChannelType = 'discord' | 'lark' | 'telegram' | 'whatsapp' | 'wechat' | 'wecom' | 'wechat-kf'
 type ChannelFormMode = 'create' | 'edit'
 
 type ChannelFormState = {
@@ -95,6 +95,8 @@ function toEditFormState(channel: ConfiguredClawChannelRecord): ChannelFormState
         ? 'telegram'
         : channel.type === 'whatsapp'
           ? 'whatsapp'
+          : channel.type === 'wechat'
+            ? 'wechat'
           : channel.type === 'wecom'
             ? 'wecom'
             : channel.type === 'wechat-kf'
@@ -138,6 +140,13 @@ function buildCreateInput(formState: ChannelFormState): CreateClawChannelInput {
       type: 'whatsapp',
       name: formState.name.trim(),
       groupRequireMention: formState.groupRequireMention
+    }
+  }
+
+  if (formState.type === 'wechat') {
+    return {
+      type: 'wechat',
+      name: formState.name.trim()
     }
   }
 
@@ -192,6 +201,13 @@ function buildUpdateInput(formState: ChannelFormState): UpdateClawChannelInput {
       type: 'whatsapp',
       name: formState.name.trim(),
       groupRequireMention: formState.groupRequireMention
+    }
+  }
+
+  if (formState.type === 'wechat') {
+    return {
+      type: 'wechat',
+      name: formState.name.trim()
     }
   }
 
@@ -606,6 +622,7 @@ export function ClawChannelSelectorDialog({
           <option value="lark">{t('claws.dialog.channelTypes.lark')}</option>
           <option value="telegram">{t('claws.dialog.channelTypes.telegram')}</option>
           <option value="whatsapp">{t('claws.dialog.channelTypes.whatsapp')}</option>
+          <option value="wechat">{t('claws.dialog.channelTypes.wechat')}</option>
           <option value="wecom">{t('claws.dialog.channelTypes.wecom')}</option>
           <option value="wechat-kf">{t('claws.dialog.channelTypes.wechatKf')}</option>
         </select>
@@ -651,6 +668,8 @@ export function ClawChannelSelectorDialog({
         <p className="text-sm text-muted-foreground">
           {t('claws.channelSelector.create.whatsappHint')}
         </p>
+      ) : formState.type === 'wechat' ? (
+        <p className="text-sm text-muted-foreground">{t('claws.channelSelector.create.wechatHint')}</p>
       ) : formState.type === 'wechat-kf' ? (
         <div className="space-y-3">
           <div className="rounded-lg border border-border/70 bg-muted/30 p-3 text-sm text-muted-foreground">
@@ -821,7 +840,7 @@ export function ClawChannelSelectorDialog({
         </div>
       )}
 
-      {formMode === 'edit' && formState.type !== 'whatsapp' ? (
+      {formMode === 'edit' && formState.type !== 'whatsapp' && formState.type !== 'wechat' ? (
         <p className="text-xs text-muted-foreground">
           {t('claws.channelSelector.edit.credentialsOptional')}
         </p>

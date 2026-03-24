@@ -42,6 +42,7 @@ describe('ClawPairingsDialog', () => {
             qrCodeDataUrl: 'data:image/png;base64,qr',
             qrCodeValue: 'qr-value',
             phoneNumber: null,
+            accountId: null,
             errorMessage: null,
             updatedAt: '2026-03-10T00:00:00.000Z'
           }}
@@ -58,6 +59,43 @@ describe('ClawPairingsDialog', () => {
 
     expect(document.body.textContent).toContain('WhatsApp Login')
     expect(document.body.textContent).toContain('Scan this QR code')
+    expect(document.body.querySelector('img')).not.toBeNull()
+  })
+
+  it('renders wechat setup without pairing actions', async () => {
+    await act(async () => {
+      root.render(
+        <ClawPairingsDialog
+          isOpen
+          clawName="Wechat Assistant"
+          channelType="wechat"
+          pairings={[]}
+          isLoading={false}
+          channelAuthState={{
+            channelId: 'channel-wechat',
+            channelType: 'wechat',
+            status: 'qr_ready',
+            qrCodeDataUrl: 'data:image/png;base64,wechat-qr',
+            qrCodeValue: 'https://wechat.example/qr',
+            phoneNumber: null,
+            accountId: null,
+            errorMessage: null,
+            updatedAt: '2026-03-24T00:00:00.000Z'
+          }}
+          isChannelAuthLoading={false}
+          isSubmitting={false}
+          errorMessage={null}
+          onClose={() => undefined}
+          onApprove={() => undefined}
+          onReject={() => undefined}
+          onRevoke={() => undefined}
+        />
+      )
+    })
+
+    expect(document.body.textContent).toContain('Wechat Setup')
+    expect(document.body.textContent).toContain('Scan this QR code in Wechat')
+    expect(document.body.textContent).not.toContain('No pairing requests yet.')
     expect(document.body.querySelector('img')).not.toBeNull()
   })
 

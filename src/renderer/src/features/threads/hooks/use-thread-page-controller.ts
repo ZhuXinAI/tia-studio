@@ -17,12 +17,21 @@ import {
 } from '../../assistants/assistant-heartbeat-query'
 import type { AssistantManagementDialogMode } from '../../claws/components/assistant-management-dialog'
 import {
+  approveClawPairing,
   clawKeys,
   createClawChannel,
   deleteClawChannel,
+  getClawChannelAuthState,
+  listClawPairings,
+  listClaws,
+  rejectClawPairing,
+  revokeClawPairing,
   updateClaw,
   updateClawChannel,
   useClaws,
+  type ClawChannelAuthRecord,
+  type ClawPairingRecord,
+  type ClawRecord,
   type ClawsResponse,
   type ConfiguredClawChannelRecord,
   type CreateClawChannelInput,
@@ -104,6 +113,10 @@ function buildChannelPayload(
     mode: 'attach',
     channelId: selectedChannelId
   }
+}
+
+function supportsChannelAccess(channelType: string | null | undefined): boolean {
+  return channelType === 'telegram' || channelType === 'whatsapp' || channelType === 'wechat'
 }
 
 function createPendingUserMessage(threadId: string, text: string): UIMessage {
@@ -221,6 +234,13 @@ export function useThreadPageController() {
   const [isAssistantDialogOpen, setIsAssistantDialogOpen] = useState(false)
   const [assistantDialogError, setAssistantDialogError] = useState<string | null>(null)
   const [isAssistantChannelMutating, setIsAssistantChannelMutating] = useState(false)
+  const [channelAccessClaw, setChannelAccessClaw] = useState<ClawRecord | null>(null)
+  const [channelAccessPairings, setChannelAccessPairings] = useState<ClawPairingRecord[]>([])
+  const [isChannelAccessLoading, setIsChannelAccessLoading] = useState(false)
+  const [channelAuthState, setChannelAuthState] = useState<ClawChannelAuthRecord | null>(null)
+  const [isChannelAuthLoading, setIsChannelAuthLoading] = useState(false)
+  const [isChannelAccessSubmitting, setIsChannelAccessSubmitting] = useState(false)
+  const [channelAccessError, setChannelAccessError] = useState<string | null>(null)
   const [heartbeatMonitorAssistant, setHeartbeatMonitorAssistant] =
     useState<AssistantRecord | null>(null)
   const [cronMonitorAssistant, setCronMonitorAssistant] = useState<AssistantRecord | null>(null)
@@ -228,6 +248,7 @@ export function useThreadPageController() {
   const activePendingUserMessagesRef = useRef(new Map<string, UIMessage>())
   const [hasPendingMessage, setHasPendingMessage] = useState(false)
   const hasLoadedInitialMessagesRef = useRef(false)
+  const connectedAuthRefreshKeyRef = useRef<string | null>(null)
   const profileId = useMemo(() => getActiveResourceId(), [])
 
   const selectedAssistant = useMemo(() => {
@@ -765,6 +786,67 @@ export function useThreadPageController() {
     await queryClient.invalidateQueries({ queryKey: clawKeys.list() })
   }, [])
 
+  const refreshClawsData = useCallback(async (): Promise<ClawsResponse> => {
+    await invalidateClawsCache()
+
+    return queryClient.fetchQuery({
+      queryKey: clawKeys.list(),
+      queryFn: listClaws
+    })
+  }, [invalidateClawsCache])
+
+  const refreshChannelAccessPairings = useCallback(async (assistantId: string): Promise<void> => {
+    const nextPairings = await listClawPairings(assistantId)
+    setChannelAccessPairings(nextPairings.pairings)
+  }, [])
+
+  const refreshChannelAccessAuthState = useCallback(
+    async (assistantId: string): Promise<void> => {
+      const nextAuthState = await getClawChannelAuthState(assistantId)
+      setChannelAuthState(nextAuthState)
+
+      if (nextAuthState.status === 'connected') {
+        const refreshKey = `${assistantId}:${nextAuthState.updatedAt}`
+        if (connectedAuthRefreshKeyRef.current !== refreshKey) {
+          connectedAuthRefreshKeyRef.current = refreshKey
+          await refreshClawsData()
+        }
+      }
+    },
+    [refreshClawsData]
+  )
+
+  const openChannelAccessDialog = useCallback(
+    async (claw: ClawRecord): Promise<void> => {
+      const channelType = claw.channel?.type ?? null
+      const shouldLoadPairings = channelType === 'telegram' || channelType === 'whatsapp'
+      const shouldLoadAuth = channelType === 'whatsapp' || channelType === 'wechat'
+
+      setChannelAccessClaw(claw)
+      setChannelAccessPairings([])
+      setChannelAuthState(null)
+      setChannelAccessError(null)
+      connectedAuthRefreshKeyRef.current = null
+      setIsChannelAccessLoading(shouldLoadPairings)
+      setIsChannelAuthLoading(shouldLoadAuth)
+
+      try {
+        await Promise.all([
+          shouldLoadPairings ? refreshChannelAccessPairings(claw.id) : Promise.resolve(),
+          shouldLoadAuth ? refreshChannelAccessAuthState(claw.id) : Promise.resolve()
+        ])
+      } catch (error) {
+        setChannelAccessError(
+          error instanceof Error ? error.message : t('claws.pairings.errors.loadFailed')
+        )
+      } finally {
+        setIsChannelAccessLoading(false)
+        setIsChannelAuthLoading(false)
+      }
+    },
+    [refreshChannelAccessAuthState, refreshChannelAccessPairings, t]
+  )
+
   const handleCreateChannel = useCallback(
     async (input: CreateClawChannelInput): Promise<ConfiguredClawChannelRecord> => {
       setIsAssistantChannelMutating(true)
@@ -854,6 +936,7 @@ export function useThreadPageController() {
         if (heartbeatInput) {
           await updateAssistantHeartbeat(createdAssistant.id, heartbeatInput)
         }
+        let latestClaw: ClawRecord | null = null
         if (nextSelectedChannelId.length > 0 || channelPayload) {
           await updateClaw(createdAssistant.id, {
             assistant: {
@@ -862,7 +945,8 @@ export function useThreadPageController() {
             },
             ...(channelPayload ? { channel: channelPayload } : {})
           })
-          await invalidateClawsCache()
+          const latestClaws = await refreshClawsData()
+          latestClaw = latestClaws.claws.find((claw) => claw.id === createdAssistant.id) ?? null
         }
         setThreads([])
         toast.success(t('threads.toasts.assistantCreated'))
@@ -870,6 +954,11 @@ export function useThreadPageController() {
         setAssistantDialogAssistantId(null)
         setAssistantDialogChannelIdOverride(null)
         navigate(routeToAssistantThreads(createdAssistant.id))
+
+        if (latestClaw && supportsChannelAccess(latestClaw.channel?.type)) {
+          await openChannelAccessDialog(latestClaw)
+        }
+
         return
       }
 
@@ -885,6 +974,7 @@ export function useThreadPageController() {
       if (heartbeatInput) {
         await updateAssistantHeartbeat(assistantDialogAssistant.id, heartbeatInput)
       }
+      let latestClaw: ClawRecord | null = null
       if (assistantDialogCurrentClaw || nextSelectedChannelId.length > 0 || channelPayload) {
         await updateClaw(assistantDialogAssistant.id, {
           assistant: {
@@ -896,16 +986,84 @@ export function useThreadPageController() {
           },
           ...(channelPayload ? { channel: channelPayload } : {})
         })
-        await invalidateClawsCache()
+        const latestClaws = await refreshClawsData()
+        latestClaw = latestClaws.claws.find((claw) => claw.id === assistantDialogAssistant.id) ?? null
       }
       toast.success(t('threads.toasts.assistantUpdated'))
       setIsAssistantDialogOpen(false)
       setAssistantDialogAssistantId(null)
       setAssistantDialogChannelIdOverride(null)
+
+      if (
+        latestClaw &&
+        supportsChannelAccess(latestClaw.channel?.type) &&
+        (!supportsChannelAccess(assistantDialogCurrentClaw?.channel?.type) ||
+          assistantDialogCurrentClaw?.channel?.id !== latestClaw.channel?.id)
+      ) {
+        await openChannelAccessDialog(latestClaw)
+      }
     } catch (error) {
       setAssistantDialogError(toErrorMessage(error))
     }
   }
+
+  const handleChannelAccessAction = useCallback(
+    async (
+      action: (assistantId: string, pairingId: string) => Promise<unknown>,
+      pairingId: string
+    ): Promise<void> => {
+      if (!channelAccessClaw) {
+        return
+      }
+
+      setIsChannelAccessSubmitting(true)
+      setChannelAccessError(null)
+
+      try {
+        await action(channelAccessClaw.id, pairingId)
+        await Promise.all([
+          refreshChannelAccessPairings(channelAccessClaw.id),
+          channelAccessClaw.channel?.type === 'whatsapp'
+            ? refreshChannelAccessAuthState(channelAccessClaw.id)
+            : Promise.resolve(),
+          refreshClawsData()
+        ])
+      } catch (error) {
+        setChannelAccessError(
+          error instanceof Error ? error.message : t('claws.pairings.errors.updateFailed')
+        )
+      } finally {
+        setIsChannelAccessSubmitting(false)
+      }
+    },
+    [channelAccessClaw, refreshChannelAccessAuthState, refreshChannelAccessPairings, refreshClawsData, t]
+  )
+
+  useEffect(() => {
+    if (
+      !channelAccessClaw ||
+      (channelAccessClaw.channel?.type !== 'whatsapp' &&
+        channelAccessClaw.channel?.type !== 'wechat')
+    ) {
+      return
+    }
+
+    if (channelAuthState?.status === 'connected') {
+      return
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshChannelAccessAuthState(channelAccessClaw.id).catch((error) => {
+        setChannelAccessError(
+          error instanceof Error ? error.message : t('claws.pairings.errors.loadFailed')
+        )
+      })
+    }, 5000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [channelAccessClaw, channelAuthState?.status, refreshChannelAccessAuthState, t])
 
   const handleDeleteAssistant = useCallback(
     async (assistantId: string): Promise<void> => {
@@ -1126,6 +1284,15 @@ export function useThreadPageController() {
     updateAssistantMutation.isPending
   ])
 
+  const openAssistantChannelSetup = useCallback(async (): Promise<void> => {
+    if (!assistantDialogCurrentClaw || !supportsChannelAccess(assistantDialogCurrentClaw.channel?.type)) {
+      return
+    }
+
+    closeAssistantDialog()
+    await openChannelAccessDialog(assistantDialogCurrentClaw)
+  }, [assistantDialogCurrentClaw, closeAssistantDialog, openChannelAccessDialog])
+
   const openCreateAssistantDialog = useCallback(() => {
     setAssistantDialogMode('create')
     setAssistantDialogAssistantId(null)
@@ -1196,6 +1363,17 @@ export function useThreadPageController() {
         }
       : undefined
 
+  const assistantDialogChannelSetupAction =
+    assistantDialogCurrentClaw && supportsChannelAccess(assistantDialogCurrentClaw.channel?.type)
+      ? {
+          label:
+            assistantDialogCurrentClaw.channel?.type === 'wechat'
+              ? t('claws.wechat.manageSetupButton')
+              : t('claws.telegram.managePairingsButton'),
+          onOpen: openAssistantChannelSetup
+        }
+      : null
+
   return {
     assistantsCount: assistants.length,
     sidebarBranches,
@@ -1221,12 +1399,20 @@ export function useThreadPageController() {
     assistantDialogMode,
     assistantDialogAssistant,
     assistantDialogChannels,
+    assistantDialogChannelSetupAction,
     isAssistantDialogOpen,
     isSubmittingAssistantDialog:
       createAssistantMutation.isPending ||
       updateAssistantMutation.isPending ||
       isAssistantChannelMutating,
     assistantDialogError,
+    channelAccessClaw,
+    channelAccessPairings,
+    isChannelAccessLoading,
+    channelAuthState,
+    isChannelAuthLoading,
+    isChannelAccessSubmitting,
+    channelAccessError,
     tokenUsage,
     heartbeatMonitorAssistant,
     cronMonitorAssistant,
@@ -1258,6 +1444,27 @@ export function useThreadPageController() {
       setCronMonitorAssistant(null)
     },
     onCloseAssistantDialog: closeAssistantDialog,
+    onCloseChannelAccessDialog: () => {
+      if (isChannelAccessSubmitting) {
+        return
+      }
+
+      setChannelAccessClaw(null)
+      setChannelAccessPairings([])
+      setIsChannelAccessLoading(false)
+      setChannelAuthState(null)
+      setIsChannelAuthLoading(false)
+      setChannelAccessError(null)
+    },
+    onApproveChannelAccessPairing: (pairingId: string) => {
+      void handleChannelAccessAction(approveClawPairing, pairingId)
+    },
+    onRejectChannelAccessPairing: (pairingId: string) => {
+      void handleChannelAccessAction(rejectClawPairing, pairingId)
+    },
+    onRevokeChannelAccessPairing: (pairingId: string) => {
+      void handleChannelAccessAction(revokeClawPairing, pairingId)
+    },
     onSelectWorkspacePath: selectWorkspacePath,
     onSubmitAssistantDialog: handleSubmitAssistantDialog
   }

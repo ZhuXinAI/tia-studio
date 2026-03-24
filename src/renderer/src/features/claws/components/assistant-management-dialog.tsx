@@ -21,6 +21,10 @@ type AssistantManagementDialogProps = {
   providers: ProviderRecord[]
   mcpServers: Record<string, McpServerRecord>
   channels?: AssistantEditorChannelsProps
+  channelSetupAction?: {
+    label: string
+    onOpen: () => Promise<void> | void
+  } | null
   isSaving: boolean
   errorMessage: string | null
   onClose: () => void
@@ -38,6 +42,7 @@ export function AssistantManagementDialog({
   providers,
   mcpServers,
   channels,
+  channelSetupAction,
   isSaving,
   errorMessage,
   onClose,
@@ -95,16 +100,29 @@ export function AssistantManagementDialog({
               </CardTitle>
               <p className="text-sm text-muted-foreground">{description}</p>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              disabled={isSaving}
-              aria-label={t('common.actions.close')}
-            >
-              <X className="size-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              {channelSetupAction ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={channelSetupAction.onOpen}
+                  disabled={isSaving}
+                >
+                  {channelSetupAction.label}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                disabled={isSaving}
+                aria-label={t('common.actions.close')}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
 

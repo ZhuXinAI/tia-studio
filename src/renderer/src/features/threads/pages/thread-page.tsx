@@ -2,6 +2,7 @@ import { SidebarInset } from '../../../components/ui/sidebar'
 import { AssistantManagementDialog } from '../../claws/components/assistant-management-dialog'
 import { ClawCronMonitorDialog } from '../../claws/components/claw-cron-monitor-dialog'
 import { ClawHeartbeatMonitorDialog } from '../../claws/components/claw-heartbeat-monitor-dialog'
+import { ClawPairingsDialog } from '../../claws/components/claw-pairings-dialog'
 import { ThreadChatCard } from '../components/thread-chat-card'
 import { ThreadSidebar } from '../components/thread-sidebar'
 import { useThreadPageController } from '../hooks/use-thread-page-controller'
@@ -55,11 +56,28 @@ export function ThreadPage(): React.JSX.Element {
         providers={controller.providers}
         mcpServers={controller.mcpServers}
         channels={controller.assistantDialogChannels}
+        channelSetupAction={controller.assistantDialogChannelSetupAction}
         isSaving={controller.isSubmittingAssistantDialog}
         errorMessage={controller.assistantDialogError}
         onClose={controller.onCloseAssistantDialog}
         onSelectWorkspacePath={controller.onSelectWorkspacePath}
         onSubmit={controller.onSubmitAssistantDialog}
+      />
+
+      <ClawPairingsDialog
+        isOpen={controller.channelAccessClaw !== null}
+        clawName={controller.channelAccessClaw?.name ?? controller.selectedAssistant?.name ?? ''}
+        channelType={controller.channelAccessClaw?.channel?.type ?? null}
+        pairings={controller.channelAccessPairings}
+        isLoading={controller.isChannelAccessLoading}
+        channelAuthState={controller.channelAuthState}
+        isChannelAuthLoading={controller.isChannelAuthLoading}
+        isSubmitting={controller.isChannelAccessSubmitting}
+        errorMessage={controller.channelAccessError}
+        onClose={controller.onCloseChannelAccessDialog}
+        onApprove={controller.onApproveChannelAccessPairing}
+        onReject={controller.onRejectChannelAccessPairing}
+        onRevoke={controller.onRevokeChannelAccessPairing}
       />
 
       <ClawHeartbeatMonitorDialog

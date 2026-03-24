@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { WhatsAppAuthStateStore } from '../../channels/whatsapp-auth-state-store'
+import { WechatAuthStateStore } from '../../channels/wechat-auth-state-store'
 import { BUILT_IN_DEFAULT_AGENT_MCP_KEY } from '../../default-agent/default-agent-bootstrap'
 import type { AppDatabase } from '../../persistence/client'
 import { migrateAppSchema } from '../../persistence/migrate'
@@ -24,6 +25,7 @@ describe('claws route', () => {
   let channelsRepo: ChannelsRepository
   let pairingsRepo: ChannelPairingsRepository
   let whatsAppAuthStateStore: WhatsAppAuthStateStore
+  let wechatAuthStateStore: WechatAuthStateStore
   let channelReloadMock: ReturnType<typeof vi.fn<() => Promise<void>>>
   let cronReloadMock: ReturnType<typeof vi.fn<() => Promise<void>>>
   let providerId: string
@@ -35,6 +37,9 @@ describe('claws route', () => {
     channelsRepo = new ChannelsRepository(db)
     pairingsRepo = new ChannelPairingsRepository(db)
     whatsAppAuthStateStore = new WhatsAppAuthStateStore({
+      now: () => new Date('2026-03-10T00:00:00.000Z')
+    })
+    wechatAuthStateStore = new WechatAuthStateStore({
       now: () => new Date('2026-03-10T00:00:00.000Z')
     })
     channelReloadMock = vi.fn(async () => undefined)
@@ -55,6 +60,7 @@ describe('claws route', () => {
       channelsRepo,
       pairingsRepo,
       whatsAppAuthStateStore,
+      wechatAuthStateStore,
       channelService: {
         reload: channelReloadMock
       },
@@ -379,6 +385,27 @@ describe('claws route', () => {
     await expect(response.json()).resolves.toMatchObject({
       type: 'whatsapp',
       name: 'Configured WhatsApp',
+      assistantId: null,
+      assistantName: null,
+      status: 'disconnected',
+      errorMessage: null
+    })
+  })
+
+  it('creates an unbound configured wechat channel', async () => {
+    const response = await app.request('http://localhost/v1/claws/channels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'wechat',
+        name: 'Configured Wechat'
+      })
+    })
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toMatchObject({
+      type: 'wechat',
+      name: 'Configured Wechat',
       assistantId: null,
       assistantName: null,
       status: 'disconnected',
@@ -1029,12 +1056,47 @@ describe('claws route', () => {
       qrCodeDataUrl: 'data:image/png;base64,qr',
       qrCodeValue: 'whatsapp-qr-value',
       phoneNumber: null,
+      accountId: null,
       errorMessage: null,
       updatedAt: expect.any(String)
     })
   })
 
-  it('returns 404 when auth state is requested for a non-whatsapp claw', async () => {
+  it('returns wechat auth state for a claw', async () => {
+    const assistant = await assistantsRepo.create({
+      name: 'Wechat Assistant',
+      providerId,
+      enabled: true
+    })
+    const channel = await channelsRepo.create({
+      type: 'wechat',
+      name: 'Wechat Device',
+      assistantId: assistant.id,
+      enabled: true,
+      config: {}
+    })
+    wechatAuthStateStore.setQrCode(channel.id, {
+      qrCodeValue: 'https://wechat.example/qr',
+      qrCodeDataUrl: 'data:image/png;base64,wechat-qr'
+    })
+
+    const response = await app.request(`http://localhost/v1/claws/${assistant.id}/channel-auth`)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      channelId: channel.id,
+      channelType: 'wechat',
+      status: 'qr_ready',
+      qrCodeDataUrl: 'data:image/png;base64,wechat-qr',
+      qrCodeValue: 'https://wechat.example/qr',
+      phoneNumber: null,
+      accountId: null,
+      errorMessage: null,
+      updatedAt: expect.any(String)
+    })
+  })
+
+  it('returns 404 when auth state is requested for a non-auth claw', async () => {
     const assistant = await assistantsRepo.create({
       name: 'Telegram Assistant',
       providerId,
@@ -1088,6 +1150,45 @@ describe('claws route', () => {
         expect.objectContaining({
           id: channel.id,
           type: 'whatsapp',
+          status: 'connected'
+        })
+      ]
+    })
+  })
+
+  it('lists wechat claws as connected only after auth is established', async () => {
+    const assistant = await assistantsRepo.create({
+      name: 'Wechat Assistant',
+      providerId,
+      enabled: true
+    })
+    const channel = await channelsRepo.create({
+      type: 'wechat',
+      name: 'Wechat Device',
+      assistantId: assistant.id,
+      enabled: true,
+      config: {}
+    })
+    wechatAuthStateStore.setConnected(channel.id, 'wechat-user-1')
+
+    const response = await app.request('http://localhost/v1/claws')
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      claws: [
+        expect.objectContaining({
+          id: assistant.id,
+          channel: expect.objectContaining({
+            id: channel.id,
+            type: 'wechat',
+            status: 'connected'
+          })
+        })
+      ],
+      configuredChannels: [
+        expect.objectContaining({
+          id: channel.id,
+          type: 'wechat',
           status: 'connected'
         })
       ]

@@ -27,6 +27,8 @@ import { createLlmInterruptionDecider } from './channels/llm-interruption-decide
 import { ChannelMessageRouter } from './channels/channel-message-router'
 import { ChannelService } from './channels/channel-service'
 import { TelegramChannel } from './channels/telegram-channel'
+import { WechatAuthStateStore } from './channels/wechat-auth-state-store'
+import { WechatChannel } from './channels/wechat-channel'
 import { WechatKfChannel } from './channels/wechat-kf-channel'
 import { WeComChannel } from './channels/wecom-channel'
 import { WhatsAppAuthStateStore } from './channels/whatsapp-auth-state-store'
@@ -284,6 +286,7 @@ async function startLocalApiServer(): Promise<void> {
   })
   const channelEventBus = new ChannelEventBus()
   const whatsAppAuthStateStore = new WhatsAppAuthStateStore()
+  const wechatAuthStateStore = new WechatAuthStateStore()
   const assistantCronJobsService = new AssistantCronJobsService({
     cronJobsRepo,
     assistantsRepo,
@@ -367,6 +370,26 @@ async function startLocalApiServer(): Promise<void> {
           onFatalError: async (error) => {
             const message = error instanceof Error ? error.message : 'Unknown error'
             await channelsRepo.setLastError(channel.id, message)
+          }
+        })
+      },
+      wechat: async (channel) => {
+        return new WechatChannel({
+          id: channel.id,
+          dataDirectoryPath: join(app.getPath('userData'), 'channels', 'wechat', channel.id),
+          authStateStore: wechatAuthStateStore,
+          apiBaseUrl:
+            typeof channel.config.baseUrl === 'string' && channel.config.baseUrl.trim().length > 0
+              ? channel.config.baseUrl
+              : undefined,
+          onStateChange: async (state) => {
+            await channelsRepo.setLastError(
+              channel.id,
+              state.status === 'error' ? state.errorMessage : null
+            )
+          },
+          onFatalError: async (error) => {
+            logger.error(`[WechatChannel:${channel.id}] fatal error:`, error)
           }
         })
       },
@@ -525,6 +548,7 @@ async function startLocalApiServer(): Promise<void> {
     cronSchedulerService,
     heartbeatSchedulerService,
     whatsAppAuthStateStore,
+    wechatAuthStateStore,
     onShowBuiltInBrowserChange: async (show) => {
       await syncBuiltInBrowserVisibility(show)
     },

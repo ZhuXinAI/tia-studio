@@ -209,6 +209,7 @@ describe('claws query api client', () => {
             qrCodeDataUrl: 'data:image/png;base64,qr',
             qrCodeValue: 'qr-value',
             phoneNumber: null,
+            accountId: null,
             errorMessage: null,
             updatedAt: '2026-03-10T00:00:00.000Z'
           }),

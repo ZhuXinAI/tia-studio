@@ -30,6 +30,12 @@ const mockState = vi.hoisted(() => {
       claws: Array<Record<string, unknown>>
       configuredChannels: Array<Record<string, unknown>>
     },
+    listClawsMock: vi.fn(),
+    listClawPairingsMock: vi.fn(),
+    getClawChannelAuthStateMock: vi.fn(),
+    approveClawPairingMock: vi.fn(),
+    rejectClawPairingMock: vi.fn(),
+    revokeClawPairingMock: vi.fn(),
     updateClawMock: vi.fn(),
     createClawChannelMock: vi.fn(),
     updateClawChannelMock: vi.fn(),
@@ -106,6 +112,12 @@ vi.mock('../../claws/claws-query', () => ({
     isLoading: false,
     error: null
   }),
+  listClaws: (...args: unknown[]) => mockState.listClawsMock(...args),
+  listClawPairings: (...args: unknown[]) => mockState.listClawPairingsMock(...args),
+  getClawChannelAuthState: (...args: unknown[]) => mockState.getClawChannelAuthStateMock(...args),
+  approveClawPairing: (...args: unknown[]) => mockState.approveClawPairingMock(...args),
+  rejectClawPairing: (...args: unknown[]) => mockState.rejectClawPairingMock(...args),
+  revokeClawPairing: (...args: unknown[]) => mockState.revokeClawPairingMock(...args),
   updateClaw: (...args: unknown[]) => mockState.updateClawMock(...args),
   createClawChannel: (...args: unknown[]) => mockState.createClawChannelMock(...args),
   updateClawChannel: (...args: unknown[]) => mockState.updateClawChannelMock(...args),
@@ -155,6 +167,7 @@ vi.mock('@ai-sdk/react', () => ({
 }))
 
 import { useThreadPageController, type ThreadPageController } from './use-thread-page-controller'
+import { queryClient } from '../../../lib/query-client'
 
 let controller: ThreadPageController | null = null
 let forceRerender: (() => void) | null = null
@@ -224,6 +237,7 @@ function readMessageTexts(messages: unknown): string[] {
 
 describe('useThreadPageController', () => {
   beforeEach(() => {
+    queryClient.clear()
     window.localStorage.clear()
     mockState.routeParams.assistantId = 'assistant-1'
     delete mockState.routeParams.threadId
@@ -355,6 +369,28 @@ describe('useThreadPageController', () => {
       claws: [],
       configuredChannels: []
     }
+    mockState.listClawsMock.mockReset()
+    mockState.listClawsMock.mockImplementation(async () => mockState.clawsData as never)
+    mockState.listClawPairingsMock.mockReset()
+    mockState.listClawPairingsMock.mockResolvedValue({ pairings: [] })
+    mockState.getClawChannelAuthStateMock.mockReset()
+    mockState.getClawChannelAuthStateMock.mockResolvedValue({
+      channelId: 'channel-1',
+      channelType: 'wechat',
+      status: 'disconnected',
+      qrCodeDataUrl: null,
+      qrCodeValue: null,
+      phoneNumber: null,
+      accountId: null,
+      errorMessage: null,
+      updatedAt: '2026-03-24T00:00:00.000Z'
+    })
+    mockState.approveClawPairingMock.mockReset()
+    mockState.approveClawPairingMock.mockResolvedValue(undefined)
+    mockState.rejectClawPairingMock.mockReset()
+    mockState.rejectClawPairingMock.mockResolvedValue(undefined)
+    mockState.revokeClawPairingMock.mockReset()
+    mockState.revokeClawPairingMock.mockResolvedValue(undefined)
     mockState.updateClawMock.mockReset()
     mockState.updateClawMock.mockResolvedValue({
       id: 'assistant-1',
@@ -468,6 +504,7 @@ describe('useThreadPageController', () => {
     act(() => {
       root.unmount()
     })
+    queryClient.clear()
     container.remove()
     delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT
     vi.clearAllMocks()
@@ -1482,5 +1519,175 @@ describe('useThreadPageController', () => {
         }
       })
     )
+  })
+
+  it('exposes assistant modal setup action for a saved wechat channel', async () => {
+    mockState.clawsData = {
+      claws: [
+        {
+          id: 'assistant-1',
+          name: 'Planner',
+          description: '',
+          providerId: 'provider-1',
+          enabled: true,
+          workspacePath: '/workspace/demo',
+          channel: {
+            id: 'channel-wechat',
+            type: 'wechat',
+            name: 'Wechat Device',
+            status: 'disconnected',
+            errorMessage: null,
+            pairedCount: 0,
+            pendingPairingCount: 0
+          }
+        }
+      ],
+      configuredChannels: []
+    }
+    mockState.getClawChannelAuthStateMock.mockResolvedValueOnce({
+      channelId: 'channel-wechat',
+      channelType: 'wechat',
+      status: 'qr_ready',
+      qrCodeDataUrl: 'data:image/png;base64,wechat-qr',
+      qrCodeValue: 'https://wechat.example/qr',
+      phoneNumber: null,
+      accountId: null,
+      errorMessage: null,
+      updatedAt: '2026-03-24T00:00:00.000Z'
+    })
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+          onForceRerenderReady={(value) => {
+            forceRerender = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(() => controller?.selectedAssistant?.id === 'assistant-1', 'assistant')
+
+    act(() => {
+      controller?.onOpenAssistantConfig()
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(controller?.assistantDialogChannelSetupAction?.label).toBe('Open Setup')
+
+    await act(async () => {
+      await controller?.assistantDialogChannelSetupAction?.onOpen()
+    })
+
+    await waitForCondition(
+      () => controller?.channelAccessClaw?.id === 'assistant-1',
+      'wechat setup dialog'
+    )
+
+    expect(controller?.isAssistantDialogOpen).toBe(false)
+    expect(mockState.getClawChannelAuthStateMock).toHaveBeenCalledWith('assistant-1')
+  })
+
+  it('opens wechat setup immediately after creating an assistant with a wechat channel', async () => {
+    mockState.clawsData = {
+      claws: [],
+      configuredChannels: [
+        {
+          id: 'channel-wechat',
+          type: 'wechat',
+          name: 'Wechat Device',
+          assistantId: null,
+          assistantName: null,
+          status: 'disconnected',
+          errorMessage: null,
+          pairedCount: 0,
+          pendingPairingCount: 0
+        }
+      ]
+    }
+    mockState.listClawsMock.mockResolvedValueOnce({
+      claws: [
+        {
+          id: 'assistant-2',
+          name: 'Reviewer',
+          description: '',
+          providerId: 'provider-1',
+          enabled: true,
+          workspacePath: '/workspace/reviewer',
+          channel: {
+            id: 'channel-wechat',
+            type: 'wechat',
+            name: 'Wechat Device',
+            status: 'disconnected',
+            errorMessage: null,
+            pairedCount: 0,
+            pendingPairingCount: 0
+          }
+        }
+      ],
+      configuredChannels: mockState.clawsData.configuredChannels
+    })
+    mockState.getClawChannelAuthStateMock.mockResolvedValueOnce({
+      channelId: 'channel-wechat',
+      channelType: 'wechat',
+      status: 'qr_ready',
+      qrCodeDataUrl: 'data:image/png;base64,wechat-qr',
+      qrCodeValue: 'https://wechat.example/qr',
+      phoneNumber: null,
+      accountId: null,
+      errorMessage: null,
+      updatedAt: '2026-03-24T00:00:00.000Z'
+    })
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+          onForceRerenderReady={(value) => {
+            forceRerender = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(() => controller?.selectedAssistant?.id === 'assistant-1', 'assistant')
+
+    act(() => {
+      controller?.onCreateAssistant()
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    act(() => {
+      controller?.assistantDialogChannels?.onSelectedChannelChange('channel-wechat')
+    })
+
+    await act(async () => {
+      await controller?.onSubmitAssistantDialog({
+        name: 'Reviewer',
+        providerId: 'provider-1',
+        workspaceConfig: {
+          rootPath: '/workspace/reviewer'
+        }
+      })
+    })
+
+    await waitForCondition(
+      () => controller?.channelAccessClaw?.id === 'assistant-2',
+      'created assistant wechat setup dialog'
+    )
+
+    expect(mockState.getClawChannelAuthStateMock).toHaveBeenCalledWith('assistant-2')
+    expect(controller?.isAssistantDialogOpen).toBe(false)
   })
 })

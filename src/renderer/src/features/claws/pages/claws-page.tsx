@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Bot, Plus } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '../../../components/ui/button'
@@ -102,6 +102,10 @@ function buildChannelPayload(
   }
 }
 
+function supportsChannelAccess(channelType: string | null | undefined): boolean {
+  return channelType === 'telegram' || channelType === 'whatsapp' || channelType === 'wechat'
+}
+
 export function ClawsPage(): React.JSX.Element {
   const { t } = useTranslation()
   const location = useLocation()
@@ -125,6 +129,7 @@ export function ClawsPage(): React.JSX.Element {
   const [clawPendingDelete, setClawPendingDelete] = useState<ClawRecord | null>(null)
   const [heartbeatMonitorClaw, setHeartbeatMonitorClaw] = useState<ClawRecord | null>(null)
   const [cronMonitorClaw, setCronMonitorClaw] = useState<ClawRecord | null>(null)
+  const connectedAuthRefreshKeyRef = useRef<string | null>(null)
 
   async function refreshPage(): Promise<ClawsResponse> {
     const [nextClaws, nextProviders, nextAssistants, nextMcpServers] = await Promise.all([
@@ -218,11 +223,7 @@ export function ClawsPage(): React.JSX.Element {
 
       const nextClaws = await refreshPage()
       const savedClaw = nextClaws.claws.find((claw) => claw.id === savedAssistant.id) ?? null
-      if (
-        !editingClaw &&
-        savedClaw &&
-        (savedClaw.channel?.type === 'telegram' || savedClaw.channel?.type === 'whatsapp')
-      ) {
+      if (!editingClaw && savedClaw && supportsChannelAccess(savedClaw.channel?.type)) {
         await handleOpenPairings(savedClaw)
       }
     } catch (error) {
@@ -360,20 +361,33 @@ export function ClawsPage(): React.JSX.Element {
   async function refreshChannelAuthState(assistantId: string): Promise<void> {
     const nextAuthState = await getClawChannelAuthState(assistantId)
     setChannelAuthState(nextAuthState)
+
+    if (nextAuthState.status === 'connected') {
+      const refreshKey = `${assistantId}:${nextAuthState.updatedAt}`
+      if (connectedAuthRefreshKeyRef.current !== refreshKey) {
+        connectedAuthRefreshKeyRef.current = refreshKey
+        await refreshPage()
+      }
+    }
   }
 
   async function handleOpenPairings(claw: ClawRecord): Promise<void> {
+    const channelType = claw.channel?.type ?? null
+    const shouldLoadPairings = channelType === 'telegram' || channelType === 'whatsapp'
+    const shouldLoadAuth = channelType === 'whatsapp' || channelType === 'wechat'
+
     setPairingsClaw(claw)
     setPairings([])
     setChannelAuthState(null)
     setPairingsErrorMessage(null)
-    setIsPairingsLoading(true)
-    setIsChannelAuthLoading(claw.channel?.type === 'whatsapp')
+    connectedAuthRefreshKeyRef.current = null
+    setIsPairingsLoading(shouldLoadPairings)
+    setIsChannelAuthLoading(shouldLoadAuth)
 
     try {
       await Promise.all([
-        refreshPairings(claw.id),
-        claw.channel?.type === 'whatsapp' ? refreshChannelAuthState(claw.id) : Promise.resolve()
+        shouldLoadPairings ? refreshPairings(claw.id) : Promise.resolve(),
+        shouldLoadAuth ? refreshChannelAuthState(claw.id) : Promise.resolve()
       ])
     } catch (error) {
       setPairingsErrorMessage(
@@ -415,7 +429,10 @@ export function ClawsPage(): React.JSX.Element {
   }
 
   useEffect(() => {
-    if (!pairingsClaw || pairingsClaw.channel?.type !== 'whatsapp') {
+    if (
+      !pairingsClaw ||
+      (pairingsClaw.channel?.type !== 'whatsapp' && pairingsClaw.channel?.type !== 'wechat')
+    ) {
       return
     }
 
@@ -522,6 +539,26 @@ export function ClawsPage(): React.JSX.Element {
             onUpdateChannel: handleUpdateChannel,
             onDeleteChannel: handleDeleteChannel
           }}
+          channelSetupAction={
+            editingClaw && supportsChannelAccess(editingClaw.channel?.type)
+              ? {
+                  label:
+                    editingClaw.channel?.type === 'wechat'
+                      ? t('claws.wechat.manageSetupButton')
+                      : t('claws.telegram.managePairingsButton'),
+                  onOpen: () => {
+                    if (isSubmitting) {
+                      return
+                    }
+
+                    setIsDialogOpen(false)
+                    setEditingClaw(null)
+                    setSelectedChannelId('')
+                    void handleOpenPairings(editingClaw)
+                  }
+                }
+              : null
+          }
           isSaving={isSubmitting}
           errorMessage={errorMessage}
           onClose={() => {

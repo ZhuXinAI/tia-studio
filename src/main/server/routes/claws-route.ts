@@ -3,6 +3,10 @@ import {
   createDefaultWhatsAppChannelAuthState,
   type WhatsAppAuthStateStore
 } from '../../channels/whatsapp-auth-state-store'
+import {
+  createDefaultWechatChannelAuthState,
+  type WechatAuthStateStore
+} from '../../channels/wechat-auth-state-store'
 import { BUILT_IN_DEFAULT_AGENT_MCP_KEY } from '../../default-agent/default-agent-bootstrap'
 import { AssistantHeartbeatsService } from '../../heartbeat/assistant-heartbeats-service'
 import { createDefaultWorkspaceConfig } from '../../mastra/workspace-path-resolver'
@@ -46,6 +50,7 @@ type RegisterClawsRouteOptions = {
   >
   channelService: ChannelServiceLike
   whatsAppAuthStateStore?: Pick<WhatsAppAuthStateStore, 'get'>
+  wechatAuthStateStore?: Pick<WechatAuthStateStore, 'get'>
   cronSchedulerService?: CronSchedulerServiceLike
   heartbeatsRepo?: Pick<
     import('../../persistence/repos/assistant-heartbeats-repo').AssistantHeartbeatsRepository,
@@ -96,16 +101,29 @@ type ClawPairingResponse = {
   updatedAt: string
 }
 
-type ClawChannelAuthResponse = {
-  channelId: string
-  channelType: 'whatsapp'
-  status: 'disconnected' | 'connecting' | 'qr_ready' | 'connected' | 'error'
-  qrCodeDataUrl: string | null
-  qrCodeValue: string | null
-  phoneNumber: string | null
-  errorMessage: string | null
-  updatedAt: string
-}
+type ClawChannelAuthResponse =
+  | {
+      channelId: string
+      channelType: 'whatsapp'
+      status: 'disconnected' | 'connecting' | 'qr_ready' | 'connected' | 'error'
+      qrCodeDataUrl: string | null
+      qrCodeValue: string | null
+      phoneNumber: string | null
+      accountId: null
+      errorMessage: string | null
+      updatedAt: string
+    }
+  | {
+      channelId: string
+      channelType: 'wechat'
+      status: 'disconnected' | 'connecting' | 'qr_ready' | 'connected' | 'error'
+      qrCodeDataUrl: string | null
+      qrCodeValue: string | null
+      phoneNumber: null
+      accountId: string | null
+      errorMessage: string | null
+      updatedAt: string
+    }
 
 type ConfiguredChannelResponse = {
   id: string
@@ -146,7 +164,8 @@ function hasValidChannelConfig(
       typeof channel.config.serverKey === 'string' &&
       channel.config.serverKey.trim().length > 0) ||
     (typeof channel.config.botToken === 'string' && channel.config.botToken.trim().length > 0) ||
-    channelType === 'whatsapp'
+    channelType === 'whatsapp' ||
+    channelType === 'wechat'
   )
 }
 
@@ -163,6 +182,25 @@ async function toChannelStatus(
 
   if (channel.type === 'whatsapp') {
     const authState = options.whatsAppAuthStateStore?.get(channel.id) ?? null
+    if (authState?.status === 'error') {
+      return 'error'
+    }
+
+    if (
+      assistantEnabled &&
+      channel.enabled &&
+      channel.assistantId &&
+      hasValidConfig &&
+      authState?.status === 'connected'
+    ) {
+      return 'connected'
+    }
+
+    return 'disconnected'
+  }
+
+  if (channel.type === 'wechat') {
+    const authState = options.wechatAuthStateStore?.get(channel.id) ?? null
     if (authState?.status === 'error') {
       return 'error'
     }
@@ -393,6 +431,7 @@ function buildChannelConfig(
     | { type: 'telegram'; botToken: string; groupRequireMention?: boolean }
     | { type: 'discord'; botToken: string; groupRequireMention?: boolean }
     | { type: 'whatsapp'; groupRequireMention?: boolean }
+    | { type: 'wechat' }
     | { type: 'wecom'; botId: string; secret: string; groupRequireMention?: boolean }
     | { type: 'wechat-kf'; serverUrl: string; serverKey: string }
 ): Record<string, unknown> {
@@ -412,6 +451,10 @@ function buildChannelConfig(
     return {
       groupRequireMention
     }
+  }
+
+  if (channel.type === 'wechat') {
+    return {}
   }
 
   if (channel.type === 'wecom') {
@@ -443,6 +486,7 @@ function mergeChannelConfig(
     | { type: 'telegram'; botToken?: string; groupRequireMention?: boolean }
     | { type: 'discord'; botToken?: string; groupRequireMention?: boolean }
     | { type: 'whatsapp'; groupRequireMention?: boolean }
+    | { type: 'wechat' }
     | { type: 'wecom'; botId?: string; secret?: string; groupRequireMention?: boolean }
     | { type: 'wechat-kf'; serverUrl?: string; serverKey?: string }
 ): Record<string, unknown> {
@@ -467,6 +511,10 @@ function mergeChannelConfig(
       ...existingChannel.config,
       groupRequireMention
     }
+  }
+
+  if (channel.type === 'wechat') {
+    return existingChannel.config
   }
 
   if (channel.type === 'wecom') {
@@ -584,6 +632,50 @@ async function loadWhatsAppAuthState(
     qrCodeDataUrl: authState.qrCodeDataUrl,
     qrCodeValue: authState.qrCodeValue,
     phoneNumber: authState.phoneNumber,
+    accountId: null,
+    errorMessage: authState.errorMessage,
+    updatedAt: authState.updatedAt
+  }
+}
+
+async function loadWechatChannelByAssistantId(
+  assistantId: string,
+  options: RegisterClawsRouteOptions
+): Promise<AppChannel | null> {
+  const assistant = await loadVisibleAssistant(assistantId, options)
+  if (!assistant) {
+    return null
+  }
+
+  const channel = await options.channelsRepo.getByAssistantId(assistant.id)
+  if (!channel || channel.type !== 'wechat') {
+    return null
+  }
+
+  return channel
+}
+
+async function loadWechatAuthState(
+  assistantId: string,
+  options: RegisterClawsRouteOptions
+): Promise<ClawChannelAuthResponse | null> {
+  const channel = await loadWechatChannelByAssistantId(assistantId, options)
+  if (!channel) {
+    return null
+  }
+
+  const authState =
+    options.wechatAuthStateStore?.get(channel.id) ??
+    createDefaultWechatChannelAuthState(channel.id, new Date().toISOString())
+
+  return {
+    channelId: channel.id,
+    channelType: 'wechat',
+    status: authState.status,
+    qrCodeDataUrl: authState.qrCodeDataUrl,
+    qrCodeValue: authState.qrCodeValue,
+    phoneNumber: null,
+    accountId: authState.accountId,
     errorMessage: authState.errorMessage,
     updatedAt: authState.updatedAt
   }
@@ -920,9 +1012,12 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
   })
 
   app.get('/v1/claws/:assistantId/channel-auth', async (context) => {
-    const authState = await loadWhatsAppAuthState(context.req.param('assistantId'), options)
+    const assistantId = context.req.param('assistantId')
+    const authState =
+      (await loadWhatsAppAuthState(assistantId, options)) ??
+      (await loadWechatAuthState(assistantId, options))
     if (!authState) {
-      return context.json({ ok: false, error: 'WhatsApp channel not found' }, 404)
+      return context.json({ ok: false, error: 'Channel auth state not found' }, 404)
     }
 
     return context.json(authState)

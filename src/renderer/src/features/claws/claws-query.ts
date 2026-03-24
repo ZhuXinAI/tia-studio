@@ -62,16 +62,29 @@ export type ClawPairingsResponse = {
   pairings: ClawPairingRecord[]
 }
 
-export type ClawChannelAuthRecord = {
-  channelId: string
-  channelType: 'whatsapp'
-  status: 'disconnected' | 'connecting' | 'qr_ready' | 'connected' | 'error'
-  qrCodeDataUrl: string | null
-  qrCodeValue: string | null
-  phoneNumber: string | null
-  errorMessage: string | null
-  updatedAt: string
-}
+export type ClawChannelAuthRecord =
+  | {
+      channelId: string
+      channelType: 'whatsapp'
+      status: 'disconnected' | 'connecting' | 'qr_ready' | 'connected' | 'error'
+      qrCodeDataUrl: string | null
+      qrCodeValue: string | null
+      phoneNumber: string | null
+      accountId: null
+      errorMessage: string | null
+      updatedAt: string
+    }
+  | {
+      channelId: string
+      channelType: 'wechat'
+      status: 'disconnected' | 'connecting' | 'qr_ready' | 'connected' | 'error'
+      qrCodeDataUrl: string | null
+      qrCodeValue: string | null
+      phoneNumber: null
+      accountId: string | null
+      errorMessage: string | null
+      updatedAt: string
+    }
 
 export type SaveClawInput = {
   assistant: {
@@ -108,6 +121,11 @@ export type SaveClawInput = {
         type: 'whatsapp'
         name: string
         groupRequireMention?: boolean
+      }
+    | {
+        mode: 'create'
+        type: 'wechat'
+        name: string
       }
     | {
         mode: 'create'
@@ -162,6 +180,10 @@ export type CreateClawChannelInput =
       groupRequireMention?: boolean
     }
   | {
+      type: 'wechat'
+      name: string
+    }
+  | {
       type: 'wecom'
       name: string
       botId: string
@@ -199,6 +221,10 @@ export type UpdateClawChannelInput =
       type: 'whatsapp'
       name: string
       groupRequireMention?: boolean
+    }
+  | {
+      type: 'wechat'
+      name: string
     }
   | {
       type: 'wecom'

@@ -47,8 +47,28 @@ function statusLabel(
 function whatsappAuthStatusLabel(
   status: ClawChannelAuthRecord['status'],
   translate: (key: string, options?: Record<string, unknown>) => string,
-  phoneNumber: string | null
+  channelAuthState: ClawChannelAuthRecord
 ): string {
+  if (channelAuthState.channelType === 'wechat') {
+    switch (status) {
+      case 'disconnected':
+        return translate('claws.pairings.wechatAuth.status.disconnected')
+      case 'connecting':
+        return translate('claws.pairings.wechatAuth.status.connecting')
+      case 'qr_ready':
+        return translate('claws.pairings.wechatAuth.status.qrReady')
+      case 'connected':
+        return translate('claws.pairings.wechatAuth.status.connected', {
+          accountId:
+            channelAuthState.accountId ?? translate('claws.pairings.wechatAuth.accountFallback')
+        })
+      case 'error':
+        return translate('claws.pairings.wechatAuth.status.error')
+      default:
+        return status
+    }
+  }
+
   switch (status) {
     case 'disconnected':
       return translate('claws.pairings.whatsappAuth.status.disconnected')
@@ -58,7 +78,8 @@ function whatsappAuthStatusLabel(
       return translate('claws.pairings.whatsappAuth.status.qrReady')
     case 'connected':
       return translate('claws.pairings.whatsappAuth.status.connected', {
-        phoneNumber: phoneNumber ?? translate('claws.pairings.whatsappAuth.phoneFallback')
+        phoneNumber:
+          channelAuthState.phoneNumber ?? translate('claws.pairings.whatsappAuth.phoneFallback')
       })
     case 'error':
       return translate('claws.pairings.whatsappAuth.status.error')
@@ -84,52 +105,67 @@ export function ClawPairingsDialog({
 }: ClawPairingsDialogProps): React.JSX.Element {
   const { t } = useTranslation()
   const isWhatsApp = channelType === 'whatsapp'
+  const isWechat = channelType === 'wechat'
+  const showsAuth = isWhatsApp || isWechat
+  const showsPairings = channelType === 'telegram' || channelType === 'whatsapp'
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{t('claws.pairings.title')}</DialogTitle>
+          <DialogTitle>
+            {isWechat ? t('claws.pairings.wechatTitle') : t('claws.pairings.title')}
+          </DialogTitle>
           <DialogDescription>
             {isWhatsApp
               ? t('claws.pairings.whatsappDescription', { clawName })
+              : isWechat
+                ? t('claws.pairings.wechatDescription', { clawName })
               : t('claws.pairings.description', { clawName })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
-          {isWhatsApp ? (
+          {showsAuth ? (
             <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
               <div className="space-y-1">
-                <p className="font-medium">{t('claws.pairings.whatsappAuth.title')}</p>
+                <p className="font-medium">
+                  {isWechat ? t('claws.pairings.wechatAuth.title') : t('claws.pairings.whatsappAuth.title')}
+                </p>
                 <p className="text-sm text-muted-foreground">
-                  {t('claws.pairings.whatsappAuth.description')}
+                  {isWechat
+                    ? t('claws.pairings.wechatAuth.description')
+                    : t('claws.pairings.whatsappAuth.description')}
                 </p>
               </div>
 
               {isChannelAuthLoading ? (
                 <p className="text-sm text-muted-foreground">
-                  {t('claws.pairings.whatsappAuth.loading')}
+                  {isWechat
+                    ? t('claws.pairings.wechatAuth.loading')
+                    : t('claws.pairings.whatsappAuth.loading')}
                 </p>
               ) : channelAuthState ? (
                 <div className="space-y-3">
                   <p className="text-sm">
-                    {whatsappAuthStatusLabel(
-                      channelAuthState.status,
-                      t,
-                      channelAuthState.phoneNumber
-                    )}
+                    {whatsappAuthStatusLabel(channelAuthState.status, t, channelAuthState)}
                   </p>
 
                   {channelAuthState.qrCodeDataUrl ? (
                     <div className="space-y-2">
                       <img
                         src={channelAuthState.qrCodeDataUrl}
-                        alt={t('claws.pairings.whatsappAuth.qrAlt')}
+                        alt={
+                          isWechat
+                            ? t('claws.pairings.wechatAuth.qrAlt')
+                            : t('claws.pairings.whatsappAuth.qrAlt')
+                        }
                         className="h-56 w-56 rounded-lg border border-border bg-white object-contain p-3"
                       />
                       <p className="text-sm text-muted-foreground">
-                        {t('claws.pairings.whatsappAuth.scanHint')}
+                        {isWechat
+                          ? t('claws.pairings.wechatAuth.scanHint')
+                          : t('claws.pairings.whatsappAuth.scanHint')}
                       </p>
                     </div>
                   ) : null}
@@ -142,13 +178,13 @@ export function ClawPairingsDialog({
             </div>
           ) : null}
 
-          {isLoading ? (
+          {showsPairings && isLoading ? (
             <p className="text-sm text-muted-foreground">{t('claws.pairings.loading')}</p>
           ) : null}
-          {!isLoading && pairings.length === 0 ? (
+          {showsPairings && !isLoading && pairings.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('claws.pairings.empty')}</p>
           ) : null}
-          {!isLoading
+          {showsPairings && !isLoading
             ? pairings.map((pairing) => (
                 <div
                   key={pairing.id}

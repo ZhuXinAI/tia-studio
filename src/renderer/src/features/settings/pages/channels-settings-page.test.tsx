@@ -365,6 +365,66 @@ describe('channels settings page', () => {
     expect(container.textContent).toContain('Ops WhatsApp')
   })
 
+  it('creates a configured wechat channel without extra credentials', async () => {
+    vi.mocked(createClawChannel).mockResolvedValueOnce(
+      buildChannel({
+        id: 'channel-wechat',
+        type: 'wechat',
+        name: 'Ops Wechat'
+      })
+    )
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ChannelsSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const addButton = container.querySelector(
+      'button[id="settings-channels-add"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const typeSelect = document.body.querySelector(
+      'select[id="settings-channel-create-type"]'
+    ) as HTMLSelectElement
+    const nameInput = document.body.querySelector(
+      'input[id="settings-channel-create-name"]'
+    ) as HTMLInputElement
+    const saveButton = document.body.querySelector(
+      'button[id="settings-channel-create-save"]'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      setElementValue(typeSelect, 'wechat')
+      setElementValue(nameInput, 'Ops Wechat')
+    })
+    await flushAsyncWork()
+
+    expect(document.body.textContent).toContain('Wechat login QR code')
+    expect(
+      document.body.querySelector('button[id="settings-channel-create-group-require-mention"]')
+    ).toBeNull()
+
+    await act(async () => {
+      saveButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(createClawChannel).toHaveBeenCalledWith({
+      type: 'wechat',
+      name: 'Ops Wechat'
+    })
+    expect(container.textContent).toContain('Ops Wechat')
+  })
+
   it('creates a configured wecom channel with bot credentials', async () => {
     vi.mocked(createClawChannel).mockResolvedValueOnce(
       buildChannel({

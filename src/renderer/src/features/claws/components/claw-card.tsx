@@ -48,8 +48,11 @@ export function ClawCard({
 }: ClawCardProps): React.JSX.Element {
   const { t } = useTranslation()
 
-  const showManagePairings =
-    onManagePairings && (claw.channel?.type === 'telegram' || claw.channel?.type === 'whatsapp')
+  const showManageAccess =
+    onManagePairings &&
+    (claw.channel?.type === 'telegram' ||
+      claw.channel?.type === 'whatsapp' ||
+      claw.channel?.type === 'wechat')
 
   return (
     <Card className="gap-3">
@@ -173,14 +176,16 @@ export function ClawCard({
                     {claw.channel.status}
                   </span>
                 </div>
-                {showManagePairings ? (
+                {showManageAccess ? (
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">
-                      {t('claws.telegram.pairingSummary', {
-                        pairedCount: claw.channel.pairedCount ?? 0,
-                        pendingCount: claw.channel.pendingPairingCount ?? 0
-                      })}
-                    </p>
+                    {claw.channel?.type === 'telegram' || claw.channel?.type === 'whatsapp' ? (
+                      <p className="text-xs text-muted-foreground">
+                        {t('claws.telegram.pairingSummary', {
+                          pairedCount: claw.channel.pairedCount ?? 0,
+                          pendingCount: claw.channel.pendingPairingCount ?? 0
+                        })}
+                      </p>
+                    ) : null}
                     <Button
                       type="button"
                       variant="outline"
@@ -189,7 +194,9 @@ export function ClawCard({
                       onClick={onManagePairings}
                       className="h-7 text-xs"
                     >
-                      {t('claws.telegram.managePairingsButton')}
+                      {claw.channel?.type === 'wechat'
+                        ? t('claws.wechat.manageSetupButton')
+                        : t('claws.telegram.managePairingsButton')}
                     </Button>
                   </div>
                 ) : null}
