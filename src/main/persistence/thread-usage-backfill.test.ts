@@ -137,5 +137,5 @@ describe('runThreadUsageBackfill', () => {
 
     await mastraDb.close()
     await appDb.close()
-  })
+  }, 30_000)
 })

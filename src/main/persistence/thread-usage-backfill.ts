@@ -213,6 +213,6 @@ export async function runThreadUsageBackfill(input: RunThreadUsageBackfillInput)
 
     await markBackfillComplete(input.appDb)
   } finally {
-    mastraDb.close()
+    await mastraDb.close()
   }
 }
