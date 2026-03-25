@@ -942,7 +942,6 @@
       "tokens": "tokens",
       "tokenInput": "{{value}} in",
       "tokenOutput": "{{value}} out",
-      "modeLabel": "{{name}} assistant chat",
       "remoteBadge": "Remote channel",
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "New thread",
@@ -1014,6 +1013,7 @@
       "createTitle": "Create Assistant",
       "tabs": {
         "essential": "Essential Settings",
+        "coding": "Coding",
         "tools": "Tools",
         "skills": "Skills",
         "channels": "Channels",
@@ -1076,12 +1076,24 @@
       "descriptionHelp": "Helps the team supervisor choose this assistant for the right task.",
       "workspacePathHelp": "To allow the agent to perform more complex tasks, select a workspace.",
       "openingButton": "Opening...",
+      "channels": {
+        "title": "Channel Setup",
+        "description": "Choose the channel this assistant owns and keep setup actions close to the selection flow.",
+        "empty": "No channel is currently selected for this assistant.",
+        "openSetupDescription": "Open setup here to manage pairings, QR login, or other channel-specific onboarding."
+      },
       "codingAgent": {
-        "title": "Coding Agent",
-        "description": "Delegate coding-heavy tasks to a dedicated Codex or Claude Agent ACP subagent.",
-        "toggleAriaLabel": "Enable coding agent",
-        "providerLabel": "Coding provider",
+        "description": "Enable dedicated Codex ACP and Claude Agent ACP coding subagents for repository work. Each subagent shares this assistant's workspace as its working directory.",
+        "toggleForAriaLabel": "Enable {{kind}}",
+        "providerLabel": "Subagent provider",
         "selectProvider": "Select coding provider",
+        "availableStatus": "Installed",
+        "missingStatus": "Not installed",
+        "cwdPrefix": "This coding subagent will use this workspace as cwd:",
+        "runtimeDescriptions": {
+          "codex-acp": "Use Codex ACP for implementation-focused coding tasks inside the assistant workspace.",
+          "claude-agent-acp": "Use Claude Agent ACP for coding tasks inside the assistant workspace."
+        },
         "workspaceRequired": "Set a workspace path before enabling the coding agent.",
         "runtimeMissingPrefix": "The selected coding provider needs its ACP binary. Finish setup in",
         "codingLinkLabel": "Coding",
@@ -1089,6 +1101,7 @@
         "providersLinkLabel": "Model Provider",
         "noProvidersSuffix": "and make sure its ACP binary is ready in Coding."
       },
+      "toolsDescription": "Control the MCP servers and runtime-backed tools that this assistant can use.",
       "runtimeNoteTitle": "Some MCP tools use managed runtimes.",
       "runtimeNotePrefix": "Finish setup in",
       "runtimeNoteLinkLabel": "Runtime Setup",

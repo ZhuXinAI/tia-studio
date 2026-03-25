@@ -942,7 +942,6 @@
       "tokens": "トークン",
       "tokenInput": "{{value}} 入力",
       "tokenOutput": "{{value}} 出力",
-      "modeLabel": "{{name}} のアシスタントチャット",
       "remoteBadge": "Remote channel",
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "新しいスレッド",

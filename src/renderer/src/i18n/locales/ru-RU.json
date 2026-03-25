@@ -942,7 +942,6 @@
       "tokens": "токенов",
       "tokenInput": "{{value}} вход",
       "tokenOutput": "{{value}} выход",
-      "modeLabel": "Чат с ассистентом {{name}}",
       "remoteBadge": "Remote channel",
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "Новый тред",

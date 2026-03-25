@@ -3,11 +3,16 @@ import type { AgentExecutionOptions } from '@mastra/core/agent'
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 
-type CodingAgentDelegateToolOptions = {
-  codingAgentName: string
+type CodingAgentTarget = {
+  target: string
+  agentName: string
   providerName: string
-  maxSteps?: number | null
   providerOptions?: AgentExecutionOptions['providerOptions']
+}
+
+type CodingAgentDelegateToolOptions = {
+  codingAgents: CodingAgentTarget[]
+  maxSteps?: number | null
 }
 
 const DEFAULT_CODING_AGENT_DELEGATE_TIMEOUT_MS = 10 * 60 * 1000
@@ -21,27 +26,57 @@ function truncateForLog(value: string, maxLength = 160): string {
 }
 
 export function createCodingAgentDelegateTool(options: CodingAgentDelegateToolOptions) {
-  const useCodingAgent = createTool({
+  const availableTargets = new Map(
+    options.codingAgents.map((codingAgent) => [codingAgent.target, codingAgent])
+  )
+  const supportedTargets = options.codingAgents.map((codingAgent) => codingAgent.target)
+
+  return createTool({
     id: 'use-coding-agent',
-    description:
-      'Delegate a coding-heavy task to the dedicated coding subagent. Use this for implementation, debugging, code review, build issues, repo analysis, and test failures.',
-    inputSchema: z.object({
-      task: z.string().trim().min(1)
-    }),
+    description: [
+      'Delegate a coding-heavy task to a dedicated coding subagent.',
+      'Use this for implementation, debugging, code review, build issues, repo analysis, and test failures.',
+      supportedTargets.length > 0 ? `Available targets: ${supportedTargets.join(', ')}.` : ''
+    ]
+      .filter((value) => value.length > 0)
+      .join(' '),
+    inputSchema: z
+      .object({
+        task: z.string().trim().min(1),
+        target: z.string().trim().optional()
+      })
+      .superRefine((input, context) => {
+        if (!input.target || supportedTargets.includes(input.target)) {
+          return
+        }
+
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['target'],
+          message: `Unsupported coding target. Expected one of: ${supportedTargets.join(', ')}`
+        })
+      }),
     outputSchema: z.object({
       text: z.string(),
       providerName: z.string(),
+      target: z.string(),
       subAgentThreadId: z.string(),
       subAgentResourceId: z.string()
     }),
-    execute: async ({ task }, context) => {
-      const agent = context?.mastra?.getAgent?.(options.codingAgentName)
-      if (!agent) {
-        throw new Error(`Coding agent "${options.codingAgentName}" is unavailable.`)
+    execute: async ({ task, target }, context) => {
+      const resolvedCodingAgent =
+        (target ? availableTargets.get(target) : undefined) ?? options.codingAgents.at(0)
+      if (!resolvedCodingAgent) {
+        throw new Error('No coding agents are available.')
       }
 
-      const subAgentThreadId = `${options.codingAgentName}:${randomUUID()}`
-      const subAgentResourceId = options.codingAgentName
+      const agent = context?.mastra?.getAgent?.(resolvedCodingAgent.agentName)
+      if (!agent) {
+        throw new Error(`Coding agent "${resolvedCodingAgent.agentName}" is unavailable.`)
+      }
+
+      const subAgentThreadId = `${resolvedCodingAgent.agentName}:${randomUUID()}`
+      const subAgentResourceId = resolvedCodingAgent.agentName
       let timeoutHandle: ReturnType<typeof setTimeout> | null = null
 
       const run = async () => {
@@ -50,7 +85,9 @@ export function createCodingAgentDelegateTool(options: CodingAgentDelegateToolOp
           {
             requestContext: context?.requestContext,
             ...(typeof options.maxSteps === 'number' ? { maxSteps: options.maxSteps } : {}),
-            ...(options.providerOptions ? { providerOptions: options.providerOptions } : {}),
+            ...(resolvedCodingAgent.providerOptions
+              ? { providerOptions: resolvedCodingAgent.providerOptions }
+              : {}),
             memory: {
               resource: subAgentResourceId,
               thread: subAgentThreadId,
@@ -64,7 +101,8 @@ export function createCodingAgentDelegateTool(options: CodingAgentDelegateToolOp
         const text = await stream.text
         return {
           text,
-          providerName: options.providerName,
+          providerName: resolvedCodingAgent.providerName,
+          target: resolvedCodingAgent.target,
           subAgentThreadId,
           subAgentResourceId
         }
@@ -90,8 +128,4 @@ export function createCodingAgentDelegateTool(options: CodingAgentDelegateToolOp
       }
     }
   })
-
-  return {
-    useCodingAgent
-  }
 }

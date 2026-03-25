@@ -96,4 +96,48 @@ describe('ChannelThreadBindingsRepository', () => {
       })
     ])
   })
+
+  it('replaces an existing binding when upserting a new thread id', async () => {
+    await repo.create({
+      channelId,
+      remoteChatId: 'oc_123',
+      threadId
+    })
+
+    const providersRepo = new ProvidersRepository(db)
+    const assistantsRepo = new AssistantsRepository(db)
+    const threadsRepo = new ThreadsRepository(db)
+    const provider = (await providersRepo.list())[0]
+    if (!provider) {
+      throw new Error('Expected a provider fixture')
+    }
+
+    const nextAssistant = await assistantsRepo.create({
+      name: 'Next Assistant',
+      providerId: provider.id
+    })
+    const nextThread = await threadsRepo.create({
+      assistantId: nextAssistant.id,
+      resourceId: 'default-profile',
+      title: 'Replacement thread'
+    })
+
+    const updated = await repo.upsert({
+      channelId,
+      remoteChatId: 'oc_123',
+      threadId: nextThread.id
+    })
+
+    expect(updated).toMatchObject({
+      channelId,
+      remoteChatId: 'oc_123',
+      threadId: nextThread.id
+    })
+
+    await expect(repo.getByChannelAndRemoteChat(channelId, 'oc_123')).resolves.toMatchObject({
+      channelId,
+      remoteChatId: 'oc_123',
+      threadId: nextThread.id
+    })
+  })
 })

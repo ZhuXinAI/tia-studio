@@ -293,6 +293,73 @@ describe('ChannelMessageRouter', () => {
     )
   })
 
+  it('rebinds a remote chat when the channel is reassigned to a different assistant', async () => {
+    const oldThread = await threadsRepo.create({
+      assistantId,
+      resourceId: 'default-profile',
+      title: 'Old channel thread'
+    })
+    await bindingsRepo.create({
+      channelId,
+      remoteChatId: 'oc_123',
+      threadId: oldThread.id
+    })
+
+    const provider = (await new ProvidersRepository(db).list())[0]
+    if (!provider) {
+      throw new Error('Expected a provider fixture')
+    }
+
+    const nextAssistant = await new AssistantsRepository(db).create({
+      name: 'Next Assistant',
+      providerId: provider.id,
+      enabled: true
+    })
+    await channelsRepo.update(channelId, {
+      assistantId: nextAssistant.id
+    })
+
+    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () => createStream())
+    const router = new ChannelMessageRouter({
+      eventBus,
+      channelsRepo,
+      bindingsRepo,
+      threadsRepo,
+      assistantRuntime: createAssistantRuntimeStub(streamChat)
+    })
+
+    await router.handleInboundEvent({
+      eventId: 'evt-rebind',
+      channelId,
+      channelType: 'lark',
+      message: {
+        id: 'msg-rebind',
+        remoteChatId: 'oc_123',
+        senderId: 'ou_user',
+        content: 'hello after reassignment',
+        timestamp: new Date('2026-03-08T00:00:00.000Z')
+      }
+    })
+
+    const reboundBinding = await bindingsRepo.getByChannelAndRemoteChat(channelId, 'oc_123')
+    expect(reboundBinding).not.toBeNull()
+    expect(reboundBinding?.threadId).not.toBe(oldThread.id)
+
+    const reboundThread = await threadsRepo.getById(reboundBinding?.threadId ?? '')
+    expect(reboundThread).toMatchObject({
+      assistantId: nextAssistant.id,
+      resourceId: 'default-profile',
+      title: 'New Thread'
+    })
+
+    expect(streamChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assistantId: nextAssistant.id,
+        threadId: reboundBinding?.threadId
+      })
+    )
+  })
+
   it('subscribes to inbound channel events', async () => {
     const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () => createStream())
     const router = new ChannelMessageRouter({

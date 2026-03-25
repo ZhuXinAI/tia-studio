@@ -2,15 +2,24 @@ import { Bot, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
   AssistantEditor,
+  type AssistantEditorChannelSetupAction,
   type AssistantEditorChannelsProps
 } from '../../assistants/assistant-editor'
 import type { SaveAssistantHeartbeatInput } from '../../assistants/assistant-heartbeat-query'
 import type { AssistantRecord, SaveAssistantInput } from '../../assistants/assistants-query'
 import type { McpServerRecord } from '../../settings/mcp-servers/mcp-servers-query'
-import type { ProviderRecord } from '../../settings/providers/providers-query'
+import {
+  createProvider,
+  providerKeys,
+  type ProviderRecord,
+  type SaveProviderInput,
+  updateProvider
+} from '../../settings/providers/providers-query'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { useTranslation } from '../../../i18n/use-app-translation'
+import { queryClient } from '../../../lib/query-client'
+import { ClawEditorDialog } from './claw-editor-dialog'
 
 export type AssistantManagementDialogMode = 'create' | 'edit'
 
@@ -21,17 +30,15 @@ type AssistantManagementDialogProps = {
   providers: ProviderRecord[]
   mcpServers: Record<string, McpServerRecord>
   channels?: AssistantEditorChannelsProps
-  channelSetupAction?: {
-    label: string
-    onOpen: () => Promise<void> | void
-  } | null
+  channelSetupAction?: AssistantEditorChannelSetupAction | null
   isSaving: boolean
   errorMessage: string | null
   onClose: () => void
   onSelectWorkspacePath: () => Promise<string | null>
   onSubmit: (
     input: SaveAssistantInput,
-    heartbeatInput?: SaveAssistantHeartbeatInput | null
+    heartbeatInput?: SaveAssistantHeartbeatInput | null,
+    selectedChannelId?: string
   ) => Promise<void>
 }
 
@@ -51,12 +58,71 @@ export function AssistantManagementDialog({
 }: AssistantManagementDialogProps): React.JSX.Element | null {
   const { t } = useTranslation()
 
+  async function handleCreateProvider(input: SaveProviderInput): Promise<ProviderRecord> {
+    const createdProvider = await createProvider(input)
+    await queryClient.invalidateQueries({ queryKey: providerKeys.lists() })
+    return createdProvider
+  }
+
+  async function handleUpdateProvider(
+    providerId: string,
+    input: Partial<SaveProviderInput>
+  ): Promise<ProviderRecord> {
+    const updatedProvider = await updateProvider(providerId, input)
+    await queryClient.invalidateQueries({ queryKey: providerKeys.lists() })
+    return updatedProvider
+  }
+
   if (!isOpen) {
     return null
   }
 
   if (mode === 'edit' && !assistant) {
     return null
+  }
+
+  if (mode === 'create' && channels) {
+    return (
+      <ClawEditorDialog
+        isOpen={isOpen}
+        claw={null}
+        providers={providers}
+        configuredChannels={channels.channels}
+        isSubmitting={isSaving}
+        externalErrorMessage={errorMessage}
+        copy={{
+          createTitle: t('threads.assistantDialog.createTitle'),
+          description: t('claws.empty.description'),
+          createButton: t('threads.assistantDialog.createTitle')
+        }}
+        onClose={onClose}
+        onSubmit={async (input) => {
+          const workspacePath = input.assistant.workspacePath?.trim() ?? ''
+
+          await onSubmit(
+            {
+              name: input.assistant.name,
+              providerId: input.assistant.providerId,
+              enabled: input.assistant.enabled,
+              ...(workspacePath.length > 0
+                ? {
+                    workspaceConfig: {
+                      rootPath: workspacePath
+                    }
+                  }
+                : {})
+            },
+            null,
+            input.channel?.mode === 'attach' ? input.channel.channelId : ''
+          )
+        }}
+        onCreateChannel={channels.onCreateChannel}
+        onUpdateChannel={channels.onUpdateChannel}
+        onDeleteChannel={channels.onDeleteChannel}
+        onCreateProvider={handleCreateProvider}
+        onUpdateProvider={handleUpdateProvider}
+      />
+    )
   }
 
   const isCreateMode = mode === 'create'
@@ -101,17 +167,6 @@ export function AssistantManagementDialog({
               <p className="text-sm text-muted-foreground">{description}</p>
             </div>
             <div className="flex items-center gap-2">
-              {channelSetupAction ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={channelSetupAction.onOpen}
-                  disabled={isSaving}
-                >
-                  {channelSetupAction.label}
-                </Button>
-              ) : null}
               <Button
                 type="button"
                 variant="ghost"
@@ -158,8 +213,9 @@ export function AssistantManagementDialog({
               channels={channels}
               showActivityTab={!isCreateMode}
               submitButtonId={isCreateMode ? 'claw-create-submit' : 'claw-edit-submit'}
+              channelSetupAction={channelSetupAction}
               onSelectWorkspacePath={onSelectWorkspacePath}
-              onSubmit={onSubmit}
+              onSubmit={(input, heartbeatInput) => onSubmit(input, heartbeatInput)}
             />
           </div>
         </CardContent>

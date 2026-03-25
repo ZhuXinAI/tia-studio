@@ -3,7 +3,7 @@ import type { Workspace } from '@mastra/core/workspace'
 import type { Memory } from '@mastra/memory'
 
 type CreateCodingAgentInput = {
-  assistantId: string
+  agentId: string
   assistantName: string
   providerName: string
   memory: Memory
@@ -23,8 +23,8 @@ function buildCodingAgentDescription(input: {
 
 export function createCodingAgent(input: CreateCodingAgentInput): Agent {
   return new Agent({
-    id: `${input.assistantId}:coding-agent`,
-    name: `${input.assistantName} Coding Agent`,
+    id: input.agentId,
+    name: `${input.assistantName} ${input.providerName} Coding Agent`,
     description: buildCodingAgentDescription({
       assistantName: input.assistantName,
       providerName: input.providerName

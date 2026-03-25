@@ -184,7 +184,8 @@ export function ClawsPage(): React.JSX.Element {
 
   async function handleDialogSubmit(
     input: SaveAssistantInput,
-    heartbeatInput?: SaveAssistantHeartbeatInput | null
+    heartbeatInput?: SaveAssistantHeartbeatInput | null,
+    selectedChannelIdOverride?: string
   ): Promise<void> {
     setIsSubmitting(true)
     setErrorMessage(null)
@@ -199,7 +200,7 @@ export function ClawsPage(): React.JSX.Element {
       }
 
       const currentChannelId = editingClaw?.channel?.id ?? ''
-      const nextSelectedChannelId = selectedChannelId.trim()
+      const nextSelectedChannelId = (selectedChannelIdOverride ?? selectedChannelId).trim()
       const nextWorkspacePath =
         typeof input.workspaceConfig?.rootPath === 'string'
           ? input.workspaceConfig.rootPath.trim()

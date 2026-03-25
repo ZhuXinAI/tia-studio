@@ -6,7 +6,6 @@ import {
   Link2,
   LoaderIcon,
   Plus,
-  Sparkles,
   Settings2
 } from 'lucide-react'
 import { getToolName, isToolUIPart, type UIMessage } from 'ai'
@@ -386,10 +385,6 @@ export function ThreadChatCard({
                   </span>
                 </div>
               )}
-              <div className="bg-muted/50 text-muted-foreground inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs">
-                <Sparkles className="size-3.5" />
-                {t('threads.chat.modeLabel', { name: assistantName })}
-              </div>
               <Button
                 type="button"
                 variant="outline"

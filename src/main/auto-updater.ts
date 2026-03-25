@@ -33,6 +33,23 @@ type UpdateDownloadedEventLike = {
   version?: string
 }
 
+type UpdateInfoLike = {
+  version?: string
+}
+
+type DownloadProgressLike = {
+  percent?: number
+  transferred?: number
+  total?: number
+  bytesPerSecond?: number
+}
+
+type LoggerLike = {
+  info: (message: string, data?: unknown) => void
+  warn: (message: string, data?: unknown) => void
+  error: (message: string, data?: unknown) => void
+}
+
 type UpdaterLike = {
   autoDownload: boolean
   checkForUpdates: () => Promise<{
@@ -42,11 +59,13 @@ type UpdaterLike = {
   } | null>
   quitAndInstall: () => void
   on: AppUpdater['on']
+  logger?: LoggerLike | null
 }
 
 type AutoUpdateServiceOptions = {
   app: AppLike
   updater: UpdaterLike
+  logger?: LoggerLike
   onStateChange?: (state: AutoUpdateState) => void
   settingsFilePath?: string
   readFile?: (path: string, encoding: 'utf8') => Promise<string>
@@ -84,20 +103,26 @@ export class AutoUpdateService {
   private readonly app: AppLike
   private readonly updater: UpdaterLike
   private readonly onStateChange?: (state: AutoUpdateState) => void
+  private readonly logger?: LoggerLike
   private readonly readFile: (path: string, encoding: 'utf8') => Promise<string>
   private readonly writeFile: (path: string, data: string, encoding: 'utf8') => Promise<void>
   private readonly settingsFilePath: string
   private state: AutoUpdateState
+  private lastLoggedDownloadBucket: number | null = null
 
   constructor(options: AutoUpdateServiceOptions) {
     this.app = options.app
     this.updater = options.updater
     this.onStateChange = options.onStateChange
+    this.logger = options.logger
     this.readFile = options.readFile ?? readFileFromFs
     this.writeFile = options.writeFile ?? writeFileFromFs
     this.settingsFilePath =
       options.settingsFilePath ?? join(this.app.getPath('userData'), 'auto-update.json')
     this.state = { ...defaultState }
+    if ('logger' in this.updater) {
+      this.updater.logger = this.logger ?? null
+    }
     this.registerUpdaterListeners()
   }
 
@@ -105,6 +130,11 @@ export class AutoUpdateService {
     const enabled = await this.loadEnabled()
     this.state.enabled = enabled
     this.updater.autoDownload = enabled
+    this.logInfo('[AutoUpdate] initialized state', {
+      enabled,
+      autoDownload: this.updater.autoDownload,
+      settingsFilePath: this.settingsFilePath
+    })
     return this.emitStateChanged()
   }
 
@@ -116,17 +146,29 @@ export class AutoUpdateService {
     this.state.enabled = enabled
     this.updater.autoDownload = enabled
     await this.persistEnabled(enabled)
+    this.logInfo('[AutoUpdate] updated automatic download preference', {
+      enabled,
+      autoDownload: this.updater.autoDownload
+    })
     return this.emitStateChanged()
   }
 
   async checkForUpdates(): Promise<AutoUpdateState> {
     const now = new Date().toISOString()
     this.state.lastCheckedAt = now
+    this.lastLoggedDownloadBucket = null
+    this.logInfo('[AutoUpdate] check requested', {
+      currentVersion: this.app.getVersion().trim(),
+      enabled: this.state.enabled,
+      isPackaged: this.app.isPackaged,
+      lastCheckedAt: now
+    })
 
     if (!this.app.isPackaged) {
       this.state.status = 'unsupported'
       this.state.availableVersion = null
       this.state.message = 'Auto updates are available in packaged builds only.'
+      this.logWarn('[AutoUpdate] check skipped because app is not packaged')
       return this.emitStateChanged()
     }
 
@@ -151,24 +193,70 @@ export class AutoUpdateService {
         this.state.message = 'You are up to date.'
       }
 
+      this.logInfo('[AutoUpdate] check completed', {
+        currentVersion,
+        latestVersion,
+        hasUpdate,
+        autoDownload: this.updater.autoDownload
+      })
       return this.emitStateChanged()
     } catch (error) {
       this.state.status = 'error'
       this.state.availableVersion = null
       this.state.message = toErrorMessage(error)
+      this.logError('[AutoUpdate] check failed', error)
       return this.emitStateChanged()
     }
   }
 
   restartToUpdate(): void {
     if (this.state.status !== 'update-downloaded') {
+      this.logWarn('[AutoUpdate] restart requested without a downloaded update', {
+        status: this.state.status,
+        availableVersion: this.state.availableVersion
+      })
       throw new Error('No downloaded update is ready to install.')
     }
 
+    this.logInfo('[AutoUpdate] restart requested for downloaded update', {
+      availableVersion: this.state.availableVersion
+    })
     this.updater.quitAndInstall()
   }
 
   private registerUpdaterListeners(): void {
+    this.updater.on('checking-for-update', () => {
+      this.logInfo('[AutoUpdate] updater emitted checking-for-update')
+    })
+
+    this.updater.on('update-available', (info: UpdateInfoLike) => {
+      this.logInfo('[AutoUpdate] updater emitted update-available', {
+        version: info.version?.trim() ?? null
+      })
+    })
+
+    this.updater.on('update-not-available', (info: UpdateInfoLike) => {
+      this.logInfo('[AutoUpdate] updater emitted update-not-available', {
+        version: info.version?.trim() ?? null
+      })
+    })
+
+    this.updater.on('download-progress', (info: DownloadProgressLike) => {
+      const percent = typeof info.percent === 'number' ? info.percent : null
+      const bucket = percent === null ? null : Math.min(100, Math.floor(percent / 10) * 10)
+      if (bucket !== null && bucket === this.lastLoggedDownloadBucket && bucket !== 100) {
+        return
+      }
+
+      this.lastLoggedDownloadBucket = bucket
+      this.logInfo('[AutoUpdate] download progress', {
+        percent,
+        transferred: info.transferred ?? null,
+        total: info.total ?? null,
+        bytesPerSecond: info.bytesPerSecond ?? null
+      })
+    })
+
     this.updater.on('update-downloaded', (event: UpdateDownloadedEventLike) => {
       const downloadedVersion = event.version?.trim() ?? this.state.availableVersion
       this.state.status = 'update-downloaded'
@@ -176,13 +264,20 @@ export class AutoUpdateService {
       this.state.message = downloadedVersion
         ? `Update ${downloadedVersion} is ready to install. Restart TIA Studio to finish updating.`
         : 'An update is ready to install. Restart TIA Studio to finish updating.'
+      this.logInfo('[AutoUpdate] updater emitted update-downloaded', {
+        version: downloadedVersion
+      })
       this.emitStateChanged()
     })
 
-    this.updater.on('error', (error: Error) => {
+    this.updater.on('error', (error: Error, message?: string) => {
       this.state.status = 'error'
       this.state.availableVersion = null
       this.state.message = toErrorMessage(error)
+      this.logError('[AutoUpdate] updater emitted error', {
+        error,
+        message: message ?? null
+      })
       this.emitStateChanged()
     })
   }
@@ -217,5 +312,17 @@ export class AutoUpdateService {
     )
 
     await this.writeFile(this.settingsFilePath, payload, 'utf8')
+  }
+
+  private logInfo(message: string, data?: unknown): void {
+    this.logger?.info(message, data)
+  }
+
+  private logWarn(message: string, data?: unknown): void {
+    this.logger?.warn(message, data)
+  }
+
+  private logError(message: string, data?: unknown): void {
+    this.logger?.error(message, data)
   }
 }

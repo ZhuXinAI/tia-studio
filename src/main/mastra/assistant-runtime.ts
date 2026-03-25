@@ -280,10 +280,13 @@ type AssistantRuntimeServiceOptions = {
 
 type JsonObject = Record<string, unknown>
 
-type AssistantCodingAgentConfig = {
+type CodingRuntimeKind = Extract<ManagedRuntimeKind, 'codex-acp' | 'claude-agent-acp'>
+type AssistantCodingAgentTargetConfig = {
   enabled: boolean
   providerId: string | null
 }
+
+const CODING_RUNTIME_KINDS: CodingRuntimeKind[] = ['codex-acp', 'claude-agent-acp']
 
 function isAcpProviderType(type: string): type is 'codex-acp' | 'claude-agent-acp' {
   return type === 'codex-acp' || type === 'claude-agent-acp'
@@ -1526,9 +1529,12 @@ ${input.prompt}`
     await this.assertAcpProviderReady(guardrailConfig.provider)
     const browserAutomationMode = await this.resolveBrowserAutomationMode()
     const browserAgentName = `${assistant.id}:browser-agent`
-    const codingAgentName = `${assistant.id}:coding-agent`
+    const legacyCodingAgentName = `${assistant.id}:coding-agent`
+    const codingAgentNames = CODING_RUNTIME_KINDS.map((kind) =>
+      this.buildCodingAgentName(assistant.id, kind)
+    )
     const workspaceRootPath = this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})
-    const codingProvider = await this.resolveEnabledCodingAgentProvider(assistant)
+    const codingAgents = await this.resolveEnabledCodingAgentProviders(assistant)
     const nextSignature = [
       assistant.id,
       assistant.updatedAt,
@@ -1557,10 +1563,12 @@ ${input.prompt}`
       options.channelType ?? '',
       options.cronToolsEnabled !== false ? 'cron-tools:on' : 'cron-tools:off',
       `browser-mode:${browserAutomationMode}`,
-      `coding-agent:${codingProvider?.id ?? 'off'}`,
-      codingProvider?.updatedAt ?? '',
-      codingProvider?.type ?? '',
-      codingProvider?.selectedModel ?? ''
+      ...codingAgents.flatMap(({ kind, provider }) => [
+        `coding-agent:${kind}:${provider.id}`,
+        provider.updatedAt,
+        provider.type,
+        provider.selectedModel
+      ])
     ].join('|')
 
     if (this.registeredAgentSignatures.get(assistant.id) === nextSignature) {
@@ -1569,7 +1577,10 @@ ${input.prompt}`
 
     this.options.mastra.removeAgent(assistant.id)
     this.options.mastra.removeAgent(browserAgentName)
-    this.options.mastra.removeAgent(codingAgentName)
+    this.options.mastra.removeAgent(legacyCodingAgentName)
+    for (const codingAgentName of codingAgentNames) {
+      this.options.mastra.removeAgent(codingAgentName)
+    }
 
     const webFetchTool = createWebFetchTool({
       resolveKeepBrowserWindowOpen: async () =>
@@ -1659,19 +1670,26 @@ ${input.prompt}`
             providerOptions: this.buildProviderOptions(provider)
           })
         : {}
-    const codingAgentTools = codingProvider
-      ? createCodingAgentDelegateTool({
-          codingAgentName,
-          providerName: codingProvider.name,
-          maxSteps: assistant.maxSteps,
-          providerOptions: this.buildProviderOptions(codingProvider)
-        })
-      : {}
+    const codingAgentTools =
+      codingAgents.length > 0
+        ? {
+            useCodingAgent: createCodingAgentDelegateTool({
+              codingAgents: codingAgents.map(({ kind, provider }) => ({
+                target: kind,
+                agentName: this.buildCodingAgentName(assistant.id, kind),
+                providerName: provider.name,
+                providerOptions: this.buildProviderOptions(provider)
+              })),
+              maxSteps: assistant.maxSteps
+            })
+          }
+        : {}
 
     logger.debug('[AssistantRuntime] Agent tools registered:', {
       hasBuiltInBrowserTools: Boolean(this.options.builtInBrowserManager),
       hasTiaBrowserTool: Boolean(this.options.tiaBrowserToolManager),
-      hasCodingAgent: Boolean(codingProvider),
+      hasCodingAgent: codingAgents.length > 0,
+      codingAgentTargets: codingAgents.map(({ kind }) => kind),
       browserAutomationMode,
       hasCronTools: Object.keys(cronTools).length > 0,
       hasChannelTools: Object.keys(channelTools).length > 0,
@@ -1730,9 +1748,10 @@ ${input.prompt}`
       this.options.tiaBrowserToolManager && browserAutomationMode === 'tia-browser-tool'
         ? '\nTIA browser tool mode:\n- A use-tia-browser-tool tool is available for common open, snapshot, click, fill, get, and wait workflows.\n- Prefer use-tia-browser-tool for multi-step website tasks instead of recommending external agent-browser unless the user explicitly wants the external tool.\n- The browser subagent already knows how to refresh snapshots after DOM changes and when to request a human handoff.\n'
         : ''
-    const codingAgentInstructions = codingProvider
-      ? '\nCoding agent mode:\n- A use-coding-agent tool is available for code changes, debugging, repository analysis, tests, and implementation work.\n- Delegate coding-heavy tasks to use-coding-agent when specialist coding execution would help.\n- After the coding subagent returns, summarize the useful result for the user.\n'
-      : ''
+    const codingAgentInstructions =
+      codingAgents.length > 0
+        ? `\nCoding agent mode:\n- A use-coding-agent tool is available for code changes, debugging, repository analysis, tests, and implementation work.\n- Available coding targets: ${codingAgents.map(({ kind }) => kind).join(', ')}.\n- Set the target when you want a specific coding subagent. If omitted, the tool chooses the default enabled coding target.\n- After the coding subagent returns, summarize the useful result for the user.\n`
+        : ''
     const channelImageGuidance = buildChannelImageSupportGuidance(options.channelType)
       .map((line) => `${line}\n`)
       .join('')
@@ -1769,38 +1788,42 @@ ${input.prompt}`
       })
       this.options.mastra.addAgent(browserAgent, browserAgentName)
     }
-    if (codingProvider) {
-      const codingAgentMemory = new Memory({
-        ...(storage ? { storage } : {}),
-        options: {
-          generateTitle: true
-        }
-      })
+    if (codingAgents.length > 0) {
       const codingWorkspace = await this.buildWorkspace(
         assistant.workspaceConfig ?? {},
         assistant.skillsConfig ?? {}
       )
-      const codingAgentModel = resolveModel(
-        {
-          type: codingProvider.type,
-          apiKey: codingProvider.apiKey,
-          apiHost: codingProvider.apiHost,
-          selectedModel: codingProvider.selectedModel
-        },
-        {},
-        {
-          acpWorkingDirectory: workspaceRootPath
-        }
-      )
-      const codingAgent = createCodingAgent({
-        assistantId: assistant.id,
-        assistantName: assistant.name,
-        providerName: codingProvider.name,
-        memory: codingAgentMemory,
-        model: codingAgentModel,
-        ...(codingWorkspace ? { workspace: codingWorkspace } : {})
-      })
-      this.options.mastra.addAgent(codingAgent, codingAgentName)
+
+      for (const { kind, provider: codingProvider } of codingAgents) {
+        const codingAgentMemory = new Memory({
+          ...(storage ? { storage } : {}),
+          options: {
+            generateTitle: true
+          }
+        })
+        const codingAgentModel = resolveModel(
+          {
+            type: codingProvider.type,
+            apiKey: codingProvider.apiKey,
+            apiHost: codingProvider.apiHost,
+            selectedModel: codingProvider.selectedModel
+          },
+          {},
+          {
+            acpWorkingDirectory: workspaceRootPath
+          }
+        )
+        const codingAgentName = this.buildCodingAgentName(assistant.id, kind)
+        const codingAgent = createCodingAgent({
+          agentId: codingAgentName,
+          assistantName: assistant.name,
+          providerName: codingProvider.name,
+          memory: codingAgentMemory,
+          model: codingAgentModel,
+          ...(codingWorkspace ? { workspace: codingWorkspace } : {})
+        })
+        this.options.mastra.addAgent(codingAgent, codingAgentName)
+      }
     }
     const inputProcessors = [
       ...(workspaceRootPath
@@ -1938,26 +1961,69 @@ ${input.prompt}`
     return rootPath ? path.resolve(rootPath) : null
   }
 
-  private resolveCodingAgentConfig(workspaceConfig: JsonObject): AssistantCodingAgentConfig {
-    const rawConfig =
+  private buildCodingAgentName(assistantId: string, kind: CodingRuntimeKind): string {
+    return `${assistantId}:coding-agent:${kind}`
+  }
+
+  private isCodingAgentEnabledFlag(value: unknown): boolean {
+    return value === undefined || value === true || value === 1 || value === 'true' || value === '1'
+  }
+
+  private resolveCodingAgentTargets(
+    workspaceConfig: JsonObject
+  ): Record<CodingRuntimeKind, AssistantCodingAgentTargetConfig> {
+    const targets = Object.fromEntries(
+      CODING_RUNTIME_KINDS.map((kind) => [
+        kind,
+        {
+          enabled: false,
+          providerId: null
+        }
+      ])
+    ) as Record<CodingRuntimeKind, AssistantCodingAgentTargetConfig>
+
+    const rawTargets =
+      workspaceConfig.codingAgents &&
+      typeof workspaceConfig.codingAgents === 'object' &&
+      !Array.isArray(workspaceConfig.codingAgents)
+        ? (workspaceConfig.codingAgents as JsonObject)
+        : {}
+
+    for (const kind of CODING_RUNTIME_KINDS) {
+      const rawTarget =
+        rawTargets[kind] && typeof rawTargets[kind] === 'object' && !Array.isArray(rawTargets[kind])
+          ? (rawTargets[kind] as JsonObject)
+          : {}
+      const providerId = this.toNonEmptyString(rawTarget.providerId)
+
+      targets[kind] = {
+        enabled: Boolean(providerId) && this.isCodingAgentEnabledFlag(rawTarget.enabled),
+        providerId
+      }
+    }
+
+    const legacyConfig =
       workspaceConfig.codingAgent &&
       typeof workspaceConfig.codingAgent === 'object' &&
       !Array.isArray(workspaceConfig.codingAgent)
         ? (workspaceConfig.codingAgent as JsonObject)
         : {}
-    const providerId = this.toNonEmptyString(rawConfig.providerId)
-    const enabled =
-      Boolean(providerId) &&
-      (rawConfig.enabled === undefined ||
-        rawConfig.enabled === true ||
-        rawConfig.enabled === 1 ||
-        rawConfig.enabled === 'true' ||
-        rawConfig.enabled === '1')
+    const legacyProviderId = this.toNonEmptyString(legacyConfig.providerId)
+    const legacyKind =
+      legacyProviderId === 'built-in-codex-acp'
+        ? 'codex-acp'
+        : legacyProviderId === 'built-in-claude-agent-acp'
+          ? 'claude-agent-acp'
+          : null
 
-    return {
-      enabled,
-      providerId
+    if (legacyKind && !targets[legacyKind].providerId) {
+      targets[legacyKind] = {
+        enabled: this.isCodingAgentEnabledFlag(legacyConfig.enabled),
+        providerId: legacyProviderId
+      }
     }
+
+    return targets
   }
 
   private getAcpManagedRuntimeKind(type: string): ManagedRuntimeKind | null {
@@ -2006,42 +2072,96 @@ ${input.prompt}`
     )
   }
 
-  private async resolveEnabledCodingAgentProvider(
+  private async resolveEnabledCodingAgentProviders(
     assistant: AssistantContext['assistant']
-  ): Promise<AppProvider | null> {
-    const config = this.resolveCodingAgentConfig(assistant.workspaceConfig ?? {})
-    if (!config.enabled || !config.providerId) {
-      return null
+  ): Promise<Array<{ kind: CodingRuntimeKind; provider: AppProvider }>> {
+    const configs = this.resolveCodingAgentTargets(assistant.workspaceConfig ?? {})
+    const enabledTargets = CODING_RUNTIME_KINDS.filter(
+      (kind) => configs[kind].enabled && configs[kind].providerId
+    )
+
+    const legacyConfig =
+      assistant.workspaceConfig?.codingAgent &&
+      typeof assistant.workspaceConfig.codingAgent === 'object' &&
+      !Array.isArray(assistant.workspaceConfig.codingAgent)
+        ? (assistant.workspaceConfig.codingAgent as JsonObject)
+        : {}
+    const legacyProviderId = this.toNonEmptyString(legacyConfig.providerId)
+    const shouldUseLegacyProvider =
+      enabledTargets.length === 0 &&
+      legacyProviderId &&
+      this.isCodingAgentEnabledFlag(legacyConfig.enabled)
+
+    if (enabledTargets.length === 0 && !shouldUseLegacyProvider) {
+      return []
     }
 
     if (!this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})) {
       logger.warn(
-        '[AssistantRuntime] Coding agent is enabled but the assistant workspace is missing'
+        '[AssistantRuntime] Coding agents are enabled but the assistant workspace is missing'
       )
-      return null
+      return []
     }
 
-    const provider = await this.options.providersRepo.getById(config.providerId)
-    if (!provider) {
-      logger.warn(`[AssistantRuntime] Coding agent provider "${config.providerId}" was not found`)
-      return null
-    }
+    const resolvedProviders = await Promise.all(
+      [
+        ...enabledTargets.map(
+          (kind) =>
+            ({
+              kind,
+              providerId: configs[kind].providerId
+            }) as const
+        ),
+        ...(shouldUseLegacyProvider
+          ? [
+              {
+                kind: null,
+                providerId: legacyProviderId
+              } as const
+            ]
+          : [])
+      ].map(async ({ kind, providerId }) => {
+        if (!providerId) {
+          return null
+        }
 
-    if (!provider.enabled || !provider.selectedModel.trim() || !isAcpProviderType(provider.type)) {
-      logger.warn(
-        `[AssistantRuntime] Coding agent provider "${provider.id}" is disabled, missing a model, or not ACP-backed`
-      )
-      return null
-    }
+        const provider = await this.options.providersRepo.getById(providerId)
+        if (!provider) {
+          logger.warn(`[AssistantRuntime] Coding agent provider "${providerId}" was not found`)
+          return null
+        }
 
-    if (!(await this.isAcpProviderReady(provider))) {
-      logger.warn(
-        `[AssistantRuntime] Coding agent provider "${provider.id}" is configured but its ACP runtime is not ready`
-      )
-      return null
-    }
+        if (!provider.selectedModel.trim() || !isAcpProviderType(provider.type)) {
+          logger.warn(
+            `[AssistantRuntime] Coding agent provider "${provider.id}" is missing a model or not ACP-backed`
+          )
+          return null
+        }
 
-    return provider
+        if (!provider.enabled && !provider.isBuiltIn) {
+          logger.warn(
+            `[AssistantRuntime] Coding agent provider "${provider.id}" is disabled and not built-in`
+          )
+          return null
+        }
+
+        if (!(await this.isAcpProviderReady(provider))) {
+          logger.warn(
+            `[AssistantRuntime] Coding agent provider "${provider.id}" is configured but its ACP runtime is not ready`
+          )
+          return null
+        }
+
+        return {
+          kind: (kind ?? provider.type) as CodingRuntimeKind,
+          provider
+        }
+      })
+    )
+
+    return resolvedProviders.filter(
+      (entry): entry is { kind: CodingRuntimeKind; provider: AppProvider } => entry !== null
+    )
   }
 
   private resolveSkillsPaths(workspaceRootPath: string, skillsConfig: JsonObject): string[] {

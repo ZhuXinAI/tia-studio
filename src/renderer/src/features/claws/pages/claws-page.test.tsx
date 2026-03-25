@@ -27,7 +27,12 @@ import {
 } from '../claws-query'
 
 vi.mock('../../settings/providers/providers-query', () => ({
-  listProviders: vi.fn()
+  providerKeys: {
+    lists: () => ['providers', 'list']
+  },
+  listProviders: vi.fn(),
+  createProvider: vi.fn(),
+  updateProvider: vi.fn()
 }))
 
 vi.mock('../../settings/mcp-servers/mcp-servers-query', () => ({
@@ -67,6 +72,12 @@ vi.mock('../claws-query', () => ({
 async function flushAsyncWork(): Promise<void> {
   await act(async () => {
     await Promise.resolve()
+  })
+}
+
+async function flushTimerWork(): Promise<void> {
+  await act(async () => {
+    await new Promise((resolve) => window.setTimeout(resolve, 0))
   })
 }
 
@@ -132,6 +143,17 @@ function findMenuItemByText(text: string): HTMLElement | undefined {
 }
 
 async function chooseProvider(providerName: string): Promise<void> {
+  const providerButton = Array.from(document.body.querySelectorAll('button')).find(
+    (button) =>
+      button.getAttribute('data-provider-id') !== null && button.textContent?.includes(providerName)
+  ) as HTMLButtonElement | undefined
+
+  if (providerButton) {
+    await clickElement(providerButton)
+    await flushAsyncWork()
+    return
+  }
+
   const openSelectorButton = Array.from(document.body.querySelectorAll('button')).find((button) =>
     button.textContent?.includes('Select provider')
   ) as HTMLButtonElement | undefined
@@ -139,12 +161,36 @@ async function chooseProvider(providerName: string): Promise<void> {
   await clickElement(openSelectorButton)
   await flushAsyncWork()
 
-  const providerButton = Array.from(document.body.querySelectorAll('button')).find((button) =>
-    button.textContent?.includes(providerName)
+  const modelPickerProviderButton = Array.from(document.body.querySelectorAll('button')).find(
+    (button) => button.textContent?.includes(providerName)
   ) as HTMLButtonElement | undefined
 
-  await clickElement(providerButton)
+  await clickElement(modelPickerProviderButton)
   await flushAsyncWork()
+}
+
+async function clickCreateNext(): Promise<void> {
+  await clickElement(document.body.querySelector('button[id="claw-create-next"]'))
+  await flushAsyncWork()
+}
+
+async function clickCreateSubmit(): Promise<void> {
+  await clickElement(document.body.querySelector('button[id="claw-create-submit"]'))
+  await flushAsyncWork()
+}
+
+async function openCreateAssistantDialog(buttonText: string): Promise<void> {
+  const createButton = findButtonByText(document.body, buttonText)
+  await clickElement(createButton)
+  await flushAsyncWork()
+}
+
+async function fillCreateAssistantName(name: string): Promise<void> {
+  const nameInput = document.body.querySelector('input[id="claw-name"]') as HTMLInputElement
+
+  await act(async () => {
+    setElementValue(nameInput, name)
+  })
 }
 
 describe('ClawsPage', () => {
@@ -496,20 +542,11 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    const createButton = findButtonByText(container, 'Create Assistant')
-
-    await clickElement(createButton)
-    await flushAsyncWork()
+    await openCreateAssistantDialog('Create Assistant')
 
     const body = document.body
-    const nameInput = body.querySelector('input[id="assistant-name"]') as HTMLInputElement
-    await act(async () => {
-      setElementValue(nameInput, 'Ops Assistant')
-    })
     await chooseProvider('OpenAI')
-
-    await clickElement(findButtonByText(body, 'Channels'))
-    await flushAsyncWork()
+    await clickCreateNext()
 
     const addChannelButton = body.querySelector(
       'button[id="claw-channel-selector-add"]'
@@ -551,13 +588,12 @@ describe('ClawsPage', () => {
 
     await clickElement(createChannelButton)
     await flushAsyncWork()
-    await clickElement(findButtonByText(body, 'Essential Settings'))
-    await flushAsyncWork()
-
-    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
-
-    await clickElement(saveButton)
-    await flushAsyncWork()
+    await clickCreateNext()
+    await flushTimerWork()
+    await fillCreateAssistantName('Ops Assistant')
+    await clickCreateNext()
+    await flushTimerWork()
+    await clickCreateSubmit()
 
     expect(createClawChannel).toHaveBeenCalledWith({
       type: 'lark',
@@ -599,19 +635,11 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    const createButton = findButtonByText(container, 'Create Assistant')
-
-    await clickElement(createButton)
-    await flushAsyncWork()
+    await openCreateAssistantDialog('Create Assistant')
 
     const body = document.body
-    const nameInput = body.querySelector('input[id="assistant-name"]') as HTMLInputElement
-    await act(async () => {
-      setElementValue(nameInput, 'Telegram Assistant')
-    })
     await chooseProvider('OpenAI')
-    await clickElement(findButtonByText(body, 'Channels'))
-    await flushAsyncWork()
+    await clickCreateNext()
 
     const addChannelButton = body.querySelector(
       'button[id="claw-channel-selector-add"]'
@@ -659,13 +687,12 @@ describe('ClawsPage', () => {
 
     await clickElement(createChannelButton)
     await flushAsyncWork()
-    await clickElement(findButtonByText(body, 'Essential Settings'))
-    await flushAsyncWork()
-
-    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
-
-    await clickElement(saveButton)
-    await flushAsyncWork()
+    await clickCreateNext()
+    await flushTimerWork()
+    await fillCreateAssistantName('Telegram Assistant')
+    await clickCreateNext()
+    await flushTimerWork()
+    await clickCreateSubmit()
 
     expect(createClawChannel).toHaveBeenCalledWith({
       type: 'telegram',
@@ -743,19 +770,11 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    const createButton = findButtonByText(container, 'Create Assistant')
-
-    await clickElement(createButton)
-    await flushAsyncWork()
+    await openCreateAssistantDialog('Create Assistant')
 
     const body = document.body
-    const nameInput = body.querySelector('input[id="assistant-name"]') as HTMLInputElement
-    await act(async () => {
-      setElementValue(nameInput, 'Telegram Assistant')
-    })
     await chooseProvider('OpenAI')
-    await clickElement(findButtonByText(body, 'Channels'))
-    await flushAsyncWork()
+    await clickCreateNext()
 
     const addChannelButton = body.querySelector(
       'button[id="claw-channel-selector-add"]'
@@ -803,17 +822,16 @@ describe('ClawsPage', () => {
 
     await clickElement(createChannelButton)
     await flushAsyncWork()
-    await clickElement(findButtonByText(body, 'Essential Settings'))
-    await flushAsyncWork()
-
-    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
-
-    await clickElement(saveButton)
-    await flushAsyncWork()
+    await clickCreateNext()
+    await flushTimerWork()
+    await fillCreateAssistantName('Telegram Assistant')
+    await clickCreateNext()
+    await flushTimerWork()
+    await clickCreateSubmit()
 
     expect(listClawPairings).toHaveBeenCalledWith('assistant-telegram')
     expect(document.body.textContent).toContain('Manage Pairings')
-    expect(document.body.querySelector('input[id="assistant-name"]')).toBeNull()
+    expect(document.body.querySelector('input[id="claw-name"]')).toBeNull()
   })
 
   it('opens whatsapp auth state and pairings immediately after saving a whatsapp claw', async () => {
@@ -870,19 +888,11 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    const newButton = findButtonByText(container, 'New Assistant')
-
-    await clickElement(newButton)
-    await flushAsyncWork()
+    await openCreateAssistantDialog('New Assistant')
 
     const body = document.body
-    const nameInput = body.querySelector('input[id="assistant-name"]') as HTMLInputElement
-    await act(async () => {
-      setElementValue(nameInput, 'WhatsApp Assistant')
-    })
     await chooseProvider('OpenAI')
-    await clickElement(findButtonByText(body, 'Channels'))
-    await flushAsyncWork()
+    await clickCreateNext()
 
     const addChannelButton = body.querySelector(
       'button[id="claw-channel-selector-add"]'
@@ -926,18 +936,17 @@ describe('ClawsPage', () => {
 
     await clickElement(createChannelButton)
     await flushAsyncWork()
-    await clickElement(findButtonByText(body, 'Essential Settings'))
-    await flushAsyncWork()
-
-    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
-
-    await clickElement(saveButton)
-    await flushAsyncWork()
+    await clickCreateNext()
+    await flushTimerWork()
+    await fillCreateAssistantName('WhatsApp Assistant')
+    await clickCreateNext()
+    await flushTimerWork()
+    await clickCreateSubmit()
 
     expect(listClawPairings).toHaveBeenCalledWith('assistant-whatsapp')
     expect(getClawChannelAuthState).toHaveBeenCalledWith('assistant-whatsapp')
     expect(document.body.querySelector('img')).not.toBeNull()
-    expect(document.body.querySelector('input[id="assistant-name"]')).toBeNull()
+    expect(document.body.querySelector('input[id="claw-name"]')).toBeNull()
   })
 
   it('opens wechat setup immediately after saving a wechat claw', async () => {
@@ -1005,19 +1014,11 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    const newButton = findButtonByText(container, 'New Assistant')
-
-    await clickElement(newButton)
-    await flushAsyncWork()
+    await openCreateAssistantDialog('New Assistant')
 
     const body = document.body
-    const nameInput = body.querySelector('input[id="assistant-name"]') as HTMLInputElement
-    await act(async () => {
-      setElementValue(nameInput, 'Wechat Assistant')
-    })
     await chooseProvider('OpenAI')
-    await clickElement(findButtonByText(body, 'Channels'))
-    await flushAsyncWork()
+    await clickCreateNext()
 
     const addChannelButton = body.querySelector(
       'button[id="claw-channel-selector-add"]'
@@ -1061,13 +1062,12 @@ describe('ClawsPage', () => {
 
     await clickElement(createChannelButton)
     await flushAsyncWork()
-    await clickElement(findButtonByText(body, 'Essential Settings'))
-    await flushAsyncWork()
-
-    const saveButton = body.querySelector('button[id="claw-create-submit"]') as HTMLButtonElement
-
-    await clickElement(saveButton)
-    await flushAsyncWork()
+    await clickCreateNext()
+    await flushTimerWork()
+    await fillCreateAssistantName('Wechat Assistant')
+    await clickCreateNext()
+    await flushTimerWork()
+    await clickCreateSubmit()
 
     expect(createClawChannel).toHaveBeenCalledWith({
       type: 'wechat',
@@ -1077,7 +1077,7 @@ describe('ClawsPage', () => {
     expect(listClawPairings).not.toHaveBeenCalledWith('assistant-wechat')
     expect(document.body.textContent).toContain('Wechat Setup')
     expect(document.body.querySelector('img')).not.toBeNull()
-    expect(document.body.querySelector('input[id="assistant-name"]')).toBeNull()
+    expect(document.body.querySelector('input[id="claw-name"]')).toBeNull()
   })
 
   it('refreshes claw status after wechat setup connects', async () => {

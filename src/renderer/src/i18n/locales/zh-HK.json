@@ -942,7 +942,6 @@
       "tokens": "權杖",
       "tokenInput": "{{value}} 輸入",
       "tokenOutput": "{{value}} 輸出",
-      "modeLabel": "{{name}} 助手對話",
       "remoteBadge": "Remote channel",
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "新增執行緒",
@@ -1014,6 +1013,7 @@
       "createTitle": "建立助手",
       "tabs": {
         "essential": "基本設定",
+        "coding": "Coding",
         "tools": "工具",
         "skills": "Skills",
         "channels": "Channels",
@@ -1076,12 +1076,24 @@
       "descriptionHelp": "幫助 Team 主管為合適的任務挑選這位助手。",
       "workspacePathHelp": "若要讓助手執行更複雜的任務，請選擇一個工作區。",
       "openingButton": "正在開啟...",
+      "channels": {
+        "title": "Channel Setup",
+        "description": "Choose the channel this assistant owns and keep setup actions close to the selection flow.",
+        "empty": "No channel is currently selected for this assistant.",
+        "openSetupDescription": "Open setup here to manage pairings, QR login, or other channel-specific onboarding."
+      },
       "codingAgent": {
-        "title": "Coding Agent",
-        "description": "Delegate coding-heavy tasks to a dedicated Codex or Claude Agent ACP subagent.",
-        "toggleAriaLabel": "Enable coding agent",
-        "providerLabel": "Coding provider",
+        "description": "Enable dedicated Codex ACP and Claude Agent ACP coding subagents for repository work. Each subagent shares this assistant's workspace as its working directory.",
+        "toggleForAriaLabel": "Enable {{kind}}",
+        "providerLabel": "Subagent provider",
         "selectProvider": "Select coding provider",
+        "availableStatus": "Installed",
+        "missingStatus": "Not installed",
+        "cwdPrefix": "This coding subagent will use this workspace as cwd:",
+        "runtimeDescriptions": {
+          "codex-acp": "Use Codex ACP for implementation-focused coding tasks inside the assistant workspace.",
+          "claude-agent-acp": "Use Claude Agent ACP for coding tasks inside the assistant workspace."
+        },
         "workspaceRequired": "Set a workspace path before enabling the coding agent.",
         "runtimeMissingPrefix": "The selected coding provider needs its ACP binary. Finish setup in",
         "codingLinkLabel": "Coding",
@@ -1089,6 +1101,7 @@
         "providersLinkLabel": "Model Provider",
         "noProvidersSuffix": "and make sure its ACP binary is ready in Coding."
       },
+      "toolsDescription": "Control the MCP servers and runtime-backed tools that this assistant can use.",
       "runtimeNoteTitle": "部分 MCP 工具會使用受管理執行環境。",
       "runtimeNotePrefix": "請先到",
       "runtimeNoteLinkLabel": "執行環境設定",

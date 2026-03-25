@@ -30,6 +30,14 @@ type ClawEditorDialogProps = {
   providers: ProviderRecord[]
   configuredChannels: ConfiguredClawChannelRecord[]
   isSubmitting: boolean
+  externalErrorMessage?: string | null
+  copy?: {
+    createTitle?: string
+    editTitle?: string
+    description?: string
+    createButton?: string
+    saveButton?: string
+  }
   onClose: () => void
   onSubmit: (input: SaveClawInput) => Promise<void> | void
   onCreateChannel: (
@@ -72,6 +80,8 @@ function CreateClawDialog({
   providers,
   configuredChannels,
   isSubmitting,
+  externalErrorMessage,
+  copy,
   onClose,
   onSubmit,
   onCreateChannel,
@@ -255,6 +265,7 @@ function CreateClawDialog({
       : currentStep === 1
         ? isChannelInlineFlowOpen
         : false)
+  const visibleErrorMessage = errorMessage ?? externalErrorMessage
   const createFlowBody = (
     <>
       <ClawDialogStepper steps={steps} currentStep={currentStep} />
@@ -410,7 +421,9 @@ function CreateClawDialog({
         </div>
       ) : null}
 
-      {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
+      {visibleErrorMessage ? (
+        <p className="text-sm text-destructive">{visibleErrorMessage}</p>
+      ) : null}
 
       <DialogFooter>
         <Button
@@ -440,7 +453,7 @@ function CreateClawDialog({
             disabled={isSubmitting || !isSubmitArmed}
             onClick={() => void handleSubmit()}
           >
-            {t('claws.dialog.createButton')}
+            {copy?.createButton ?? t('claws.dialog.createButton')}
           </Button>
         )}
       </DialogFooter>
@@ -451,8 +464,10 @@ function CreateClawDialog({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[85vh] w-[80vw] max-w-[80vw] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{t('claws.dialog.createTitle')}</DialogTitle>
-          <DialogDescription>{t('claws.dialog.telegramDescription')}</DialogDescription>
+          <DialogTitle>{copy?.createTitle ?? t('claws.dialog.createTitle')}</DialogTitle>
+          <DialogDescription>
+            {copy?.description ?? t('claws.dialog.telegramDescription')}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-6">{createFlowBody}</div>
       </DialogContent>
@@ -466,6 +481,8 @@ function EditClawDialog({
   providers,
   configuredChannels,
   isSubmitting,
+  externalErrorMessage,
+  copy,
   onClose,
   onSubmit,
   onCreateChannel,
@@ -530,6 +547,7 @@ function EditClawDialog({
 
     return providers.find((provider) => provider.id === providerId) ?? null
   }, [providerId, providers])
+  const visibleErrorMessage = errorMessage ?? externalErrorMessage
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
@@ -565,8 +583,8 @@ function EditClawDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>{t('claws.dialog.editTitle')}</DialogTitle>
-            <DialogDescription>{t('claws.dialog.telegramDescription')}</DialogDescription>
+            <DialogTitle>{copy?.editTitle ?? t('claws.dialog.editTitle')}</DialogTitle>
+            <DialogDescription>{copy?.description ?? t('claws.dialog.telegramDescription')}</DialogDescription>
           </DialogHeader>
 
           <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
@@ -674,14 +692,16 @@ function EditClawDialog({
               <span>{t('claws.dialog.enableAfterSaving')}</span>
             </label>
 
-            {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
+            {visibleErrorMessage ? (
+              <p className="text-sm text-destructive">{visibleErrorMessage}</p>
+            ) : null}
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
                 {t('common.actions.cancel')}
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {t('claws.dialog.saveButton')}
+                {copy?.saveButton ?? t('claws.dialog.saveButton')}
               </Button>
             </DialogFooter>
           </form>

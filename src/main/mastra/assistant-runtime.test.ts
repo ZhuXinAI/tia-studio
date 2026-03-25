@@ -9,6 +9,7 @@ import type { AppAssistant } from '../persistence/repos/assistants-repo'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { AppProvider } from '../persistence/repos/providers-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
+import type { ManagedRuntimesState } from '../persistence/repos/managed-runtimes-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import { ChannelEventBus } from '../channels/channel-event-bus'
@@ -84,6 +85,70 @@ function buildProvider(overrides?: Partial<AppProvider>): AppProvider {
     createdAt: '2026-03-02T00:00:00.000Z',
     updatedAt: '2026-03-02T00:00:00.000Z',
     ...overrides
+  }
+}
+
+function buildManagedRuntimeState(
+  readyKinds: Array<'codex-acp' | 'claude-agent-acp'>
+): ManagedRuntimesState {
+  const isReady = (kind: 'codex-acp' | 'claude-agent-acp'): boolean => readyKinds.includes(kind)
+
+  return {
+    bun: {
+      source: 'none',
+      binaryPath: null,
+      version: null,
+      installedAt: null,
+      lastCheckedAt: null,
+      releaseUrl: null,
+      checksum: null,
+      status: 'missing',
+      errorMessage: null
+    },
+    uv: {
+      source: 'none',
+      binaryPath: null,
+      version: null,
+      installedAt: null,
+      lastCheckedAt: null,
+      releaseUrl: null,
+      checksum: null,
+      status: 'missing',
+      errorMessage: null
+    },
+    'agent-browser': {
+      source: 'none',
+      binaryPath: null,
+      version: null,
+      installedAt: null,
+      lastCheckedAt: null,
+      releaseUrl: null,
+      checksum: null,
+      status: 'missing',
+      errorMessage: null
+    },
+    'codex-acp': {
+      source: isReady('codex-acp') ? 'managed' : 'none',
+      binaryPath: isReady('codex-acp') ? '/managed/bin/codex-acp' : null,
+      version: isReady('codex-acp') ? 'codex-acp 0.10.0' : null,
+      installedAt: null,
+      lastCheckedAt: null,
+      releaseUrl: null,
+      checksum: null,
+      status: isReady('codex-acp') ? 'ready' : 'missing',
+      errorMessage: null
+    },
+    'claude-agent-acp': {
+      source: isReady('claude-agent-acp') ? 'managed' : 'none',
+      binaryPath: isReady('claude-agent-acp') ? '/managed/bin/claude-agent-acp' : null,
+      version: isReady('claude-agent-acp') ? 'claude-agent-acp 0.22.2' : null,
+      installedAt: null,
+      lastCheckedAt: null,
+      releaseUrl: null,
+      checksum: null,
+      status: isReady('claude-agent-acp') ? 'ready' : 'missing',
+      errorMessage: null
+    }
   }
 }
 
@@ -176,6 +241,88 @@ describe('AssistantRuntimeService', () => {
 
     const memory = await agent.getMemory()
     expect(memory?.getMergedThreadConfig().generateTitle).toBe(true)
+  })
+
+  it('registers Codex ACP and Claude Agent ACP coding subagents from assistant config', async () => {
+    const assistant = buildAssistant({
+      workspaceConfig: {
+        rootPath: '/tmp',
+        codingAgents: {
+          'codex-acp': {
+            enabled: true,
+            providerId: 'provider-codex'
+          },
+          'claude-agent-acp': {
+            enabled: true,
+            providerId: 'provider-claude'
+          }
+        }
+      }
+    })
+    const mastra = await createMastraInstance(':memory:')
+    const runtime = new AssistantRuntimeService({
+      mastra,
+      assistantsRepo: { getById: vi.fn() } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async (providerId: string) => {
+          if (providerId === 'provider-codex') {
+            return buildProvider({
+              id: 'provider-codex',
+              name: 'Codex ACP',
+              type: 'codex-acp',
+              apiKey: '',
+              apiHost: null,
+              selectedModel: 'default',
+              enabled: false,
+              isBuiltIn: true
+            })
+          }
+
+          if (providerId === 'provider-claude') {
+            return buildProvider({
+              id: 'provider-claude',
+              name: 'Claude Agent ACP',
+              type: 'claude-agent-acp',
+              apiKey: '',
+              apiHost: null,
+              selectedModel: 'default',
+              enabled: false,
+              isBuiltIn: true
+            })
+          }
+
+          return buildProvider()
+        })
+      } as unknown as ProvidersRepository,
+      threadsRepo: { getById: vi.fn() } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never,
+      managedRuntimeResolver: {
+        getStatus: vi.fn(async () => buildManagedRuntimeState(['codex-acp', 'claude-agent-acp'])),
+        resolveManagedCommand: vi.fn(async (command: string, args: string[], env = {}) => ({
+          command,
+          args,
+          env
+        }))
+      }
+    })
+
+    await (
+      runtime as unknown as {
+        ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
+      }
+    ).ensureAgentRegistered(assistant, buildProvider())
+
+    expect(mastra.getAgentById('assistant-1:coding-agent:codex-acp')).toBeDefined()
+    expect(mastra.getAgentById('assistant-1:coding-agent:claude-agent-acp')).toBeDefined()
+    await expect(getAgentInstructions(mastra.getAgentById('assistant-1'))).resolves.toContain(
+      'Available coding targets: codex-acp, claude-agent-acp.'
+    )
   })
 
   it('adds channel splitter guidance only for channel-targeted runs', async () => {

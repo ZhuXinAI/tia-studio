@@ -6,6 +6,7 @@ import {
   dialog,
   Menu,
   Tray,
+  autoUpdater as electronAutoUpdater,
   type OpenDialogOptions,
   nativeImage
 } from 'electron'
@@ -91,6 +92,7 @@ let serverConfig = resolveServerConfig({})
 const autoUpdateService = new AutoUpdateService({
   app,
   updater: autoUpdater,
+  logger,
   onStateChange: (state) => {
     for (const window of BrowserWindow.getAllWindows()) {
       if (!window.isDestroyed()) {
@@ -111,6 +113,13 @@ let heartbeatSchedulerService: HeartbeatSchedulerService | null = null
 let builtInBrowserManager: BuiltInBrowserManager | null = null
 let tiaBrowserToolManager: TiaBrowserToolManager | null = null
 let uiConfigStore: UiConfigStore | null = null
+
+function logAppLifecycle(eventName: string, data?: Record<string, unknown>): void {
+  logger.info(`[AppLifecycle] ${eventName}`, {
+    windowCount: BrowserWindow.getAllWindows().filter((window) => !window.isDestroyed()).length,
+    ...data
+  })
+}
 
 function resolveUiConfigStore(): UiConfigStore {
   if (!uiConfigStore) {
@@ -614,7 +623,6 @@ function stopLocalApiServer(): void {
 
   localApiServer.close()
   localApiServer = null
-  logger.close()
 }
 
 function createMainWindow(): BrowserWindow {
@@ -912,7 +920,18 @@ if (hasSingleInstanceLock) {
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
+electronAutoUpdater.on('before-quit-for-update', () => {
+  logAppLifecycle('before-quit-for-update', {
+    packaged: app.isPackaged,
+    version: app.getVersion()
+  })
+})
+
 app.on('before-quit', () => {
+  logAppLifecycle('before-quit', {
+    packaged: app.isPackaged,
+    version: app.getVersion()
+  })
   if (appTray) {
     appTray.destroy()
     appTray = null
@@ -922,7 +941,27 @@ app.on('before-quit', () => {
   stopLocalApiServer()
 })
 
+app.on('will-quit', () => {
+  logAppLifecycle('will-quit', {
+    packaged: app.isPackaged,
+    version: app.getVersion()
+  })
+})
+
+app.on('quit', (_event, exitCode) => {
+  logAppLifecycle('quit', {
+    exitCode,
+    packaged: app.isPackaged,
+    version: app.getVersion()
+  })
+  logger.close()
+})
+
 app.on('window-all-closed', () => {
+  logAppLifecycle('window-all-closed', {
+    packaged: app.isPackaged,
+    version: app.getVersion()
+  })
   // Keep the process alive so the tray menu can reopen the window.
 })
 

@@ -942,7 +942,6 @@
       "tokens": "token-uri",
       "tokenInput": "{{value}} intrare",
       "tokenOutput": "{{value}} ieșire",
-      "modeLabel": "Chat cu asistentul {{name}}",
       "remoteBadge": "Remote channel",
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "Thread nou",

@@ -914,14 +914,15 @@ export function useThreadPageController() {
 
   const handleSubmitAssistantDialog = async (
     input: SaveAssistantInput,
-    heartbeatInput?: SaveAssistantHeartbeatInput | null
+    heartbeatInput?: SaveAssistantHeartbeatInput | null,
+    selectedChannelIdOverride?: string
   ): Promise<void> => {
     setAssistantDialogError(null)
 
     try {
       const currentChannelId = assistantDialogCurrentClaw?.channel?.id ?? ''
       const nextSelectedChannelId = canManageAssistantChannels
-        ? assistantDialogSelectedChannelId.trim()
+        ? (selectedChannelIdOverride ?? assistantDialogSelectedChannelId).trim()
         : ''
       const nextWorkspacePath =
         typeof input.workspaceConfig?.rootPath === 'string'

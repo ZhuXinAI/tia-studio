@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AssistantEditor } from './assistant-editor'
 import { getAssistantHeartbeat } from './assistant-heartbeat-query'
+import type { ConfiguredClawChannelRecord } from '../claws/claws-query'
 import type { ProviderRecord } from '../settings/providers/providers-query'
 import {
   createDefaultManagedRuntimesState,
@@ -47,6 +48,12 @@ function setInputValue(element: HTMLInputElement | HTMLTextAreaElement, value: s
 
   valueSetter?.call(element, value)
   element.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+function setSelectValue(element: HTMLSelectElement, value: string): void {
+  const valueSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set
+  valueSetter?.call(element, value)
+  element.dispatchEvent(new Event('change', { bubbles: true }))
 }
 
 describe('assistant editor', () => {
@@ -100,8 +107,24 @@ describe('assistant editor', () => {
   }
   const codingProvider: ProviderRecord = {
     id: 'provider-coding',
-    name: 'Codex',
+    name: 'Codex ACP',
     type: 'codex-acp',
+    apiKey: '',
+    apiHost: null,
+    selectedModel: 'default',
+    providerModels: null,
+    enabled: true,
+    supportsVision: true,
+    isBuiltIn: true,
+    icon: null,
+    officialSite: null,
+    createdAt: '2026-03-02T00:00:00.000Z',
+    updatedAt: '2026-03-02T00:00:00.000Z'
+  }
+  const claudeCodingProvider: ProviderRecord = {
+    id: 'provider-claude-coding',
+    name: 'Claude Agent ACP',
+    type: 'claude-agent-acp',
     apiKey: '',
     apiHost: null,
     selectedModel: 'default',
@@ -135,6 +158,31 @@ describe('assistant editor', () => {
     }
   }
   const missingManagedRuntimes: ManagedRuntimesState = createDefaultManagedRuntimesState()
+  const readyCodingManagedRuntimes: ManagedRuntimesState = {
+    ...createDefaultManagedRuntimesState(),
+    'codex-acp': {
+      source: 'managed',
+      binaryPath: '/managed/bin/codex-acp',
+      version: 'codex-acp 0.10.0',
+      installedAt: '2026-03-20T00:00:00.000Z',
+      lastCheckedAt: '2026-03-20T00:00:00.000Z',
+      releaseUrl: null,
+      checksum: null,
+      status: 'ready',
+      errorMessage: null
+    },
+    'claude-agent-acp': {
+      source: 'managed',
+      binaryPath: '/managed/bin/claude-agent-acp',
+      version: 'claude-agent-acp 0.22.2',
+      installedAt: '2026-03-20T00:00:00.000Z',
+      lastCheckedAt: '2026-03-20T00:00:00.000Z',
+      releaseUrl: null,
+      checksum: null,
+      status: 'ready',
+      errorMessage: null
+    }
+  }
 
   it('fills workspace path from system folder picker', async () => {
     const onSelectWorkspacePath = vi.fn().mockResolvedValue('/Users/windht/Dev')
@@ -332,6 +380,78 @@ describe('assistant editor', () => {
     expect(container.textContent).toContain('Disabled globally in MCP Server Settings.')
   })
 
+  it('renders channel setup actions inside the channels tab', async () => {
+    const channels: ConfiguredClawChannelRecord[] = [
+      {
+        id: 'channel-1',
+        type: 'wechat',
+        name: 'WeChat Support',
+        assistantId: 'assistant-1',
+        assistantName: 'Planner',
+        status: 'connected',
+        errorMessage: null,
+        pairedCount: 0,
+        pendingPairingCount: 0
+      }
+    ]
+    const onOpenSetup = vi.fn(async () => undefined)
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <AssistantEditor
+            providers={[provider]}
+            mcpServers={{}}
+            initialValue={{
+              id: 'assistant-1',
+              name: 'Planner',
+              description: '',
+              instructions: '',
+              enabled: true,
+              providerId: 'provider-1',
+              workspaceConfig: { rootPath: '/Users/windht/Dev/tia-studio' },
+              skillsConfig: {},
+              mcpConfig: {},
+              maxSteps: 100,
+              memoryConfig: null,
+              createdAt: '2026-03-02T00:00:00.000Z',
+              updatedAt: '2026-03-02T00:00:00.000Z'
+            }}
+            channels={{
+              currentAssistantId: 'assistant-1',
+              channels,
+              selectedChannelId: 'channel-1',
+              isMutating: false,
+              errorMessage: null,
+              onSelectedChannelChange: vi.fn(),
+              onCreateChannel: vi.fn(async () => channels[0]),
+              onUpdateChannel: vi.fn(async () => channels[0]),
+              onDeleteChannel: vi.fn(async () => undefined)
+            }}
+            channelSetupAction={{
+              label: 'Open Setup',
+              onOpen: onOpenSetup
+            }}
+            onSubmit={() => undefined}
+          />
+        </MemoryRouter>
+      )
+    })
+
+    const channelsButton = findButtonByText(container, 'Channels')
+    await act(async () => {
+      channelsButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(container.textContent).toContain('WeChat Support')
+    const openSetupButton = findButtonByText(container, 'Open Setup')
+    await act(async () => {
+      openSetupButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(onOpenSetup).toHaveBeenCalledTimes(1)
+  })
+
   it('shows runtime setup guidance for runtime-backed MCP tools', async () => {
     window.tiaDesktop = {
       getConfig: vi.fn(async () => ({
@@ -441,12 +561,13 @@ describe('assistant editor', () => {
 
   it('stores coding agent configuration inside the workspace config', async () => {
     const onSubmit = vi.fn(async () => undefined)
+    window.tiaDesktop.getManagedRuntimeStatus = vi.fn(async () => readyCodingManagedRuntimes)
 
     await act(async () => {
       root.render(
         <MemoryRouter>
           <AssistantEditor
-            providers={[provider, codingProvider]}
+            providers={[provider, codingProvider, claudeCodingProvider]}
             mcpServers={{}}
             initialValue={{
               id: 'assistant-1',
@@ -468,14 +589,15 @@ describe('assistant editor', () => {
         </MemoryRouter>
       )
     })
+    await flushAsyncWork()
 
-    const toolsButton = findButtonByText(container, 'Tools')
+    const codingButton = findButtonByText(container, 'Coding')
     await act(async () => {
-      toolsButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      codingButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
     const codingToggle = container.querySelector(
-      '[aria-label="Enable coding agent"]'
+      '[aria-label="Enable Codex ACP"]'
     ) as HTMLButtonElement | null
     expect(codingToggle).not.toBeNull()
 
@@ -484,18 +606,13 @@ describe('assistant editor', () => {
     })
 
     const codingProviderSelect = container.querySelector(
-      '#assistant-coding-provider'
+      '#assistant-coding-provider-codex-acp'
     ) as HTMLSelectElement | null
     expect(codingProviderSelect).not.toBeNull()
 
     await act(async () => {
       if (codingProviderSelect) {
-        const valueSetter = Object.getOwnPropertyDescriptor(
-          HTMLSelectElement.prototype,
-          'value'
-        )?.set
-        valueSetter?.call(codingProviderSelect, 'provider-coding')
-        codingProviderSelect.dispatchEvent(new Event('change', { bubbles: true }))
+        setSelectValue(codingProviderSelect, 'provider-coding')
       }
     })
 
@@ -508,9 +625,11 @@ describe('assistant editor', () => {
       expect.objectContaining({
         workspaceConfig: {
           rootPath: '/Users/windht/Dev/tia-studio',
-          codingAgent: {
-            enabled: true,
-            providerId: 'provider-coding'
+          codingAgents: {
+            'codex-acp': {
+              enabled: true,
+              providerId: 'provider-coding'
+            }
           }
         }
       }),

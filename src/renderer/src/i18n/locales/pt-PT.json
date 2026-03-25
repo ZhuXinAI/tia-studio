@@ -942,7 +942,6 @@
       "tokens": "tokens",
       "tokenInput": "{{value}} entrada",
       "tokenOutput": "{{value}} saída",
-      "modeLabel": "Chat com o assistente {{name}}",
       "remoteBadge": "Remote channel",
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "Nova thread",

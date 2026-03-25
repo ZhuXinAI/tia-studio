@@ -13,6 +13,8 @@ export type CreateChannelThreadBindingInput = {
   threadId: string
 }
 
+export type UpsertChannelThreadBindingInput = CreateChannelThreadBindingInput
+
 function parseChannelThreadBindingRow(row: Record<string, unknown>): AppChannelThreadBinding {
   return {
     channelId: String(row.channel_id),
@@ -59,6 +61,27 @@ export class ChannelThreadBindingsRepository {
     const binding = await this.getByChannelAndRemoteChat(input.channelId, input.remoteChatId)
     if (!binding) {
       throw new Error('Failed to create channel thread binding')
+    }
+
+    return binding
+  }
+
+  async upsert(input: UpsertChannelThreadBindingInput): Promise<AppChannelThreadBinding> {
+    await this.db.execute(
+      `
+        INSERT INTO app_channel_thread_bindings (channel_id, remote_chat_id, thread_id)
+        VALUES (?, ?, ?)
+        ON CONFLICT(channel_id, remote_chat_id)
+        DO UPDATE SET
+          thread_id = excluded.thread_id,
+          created_at = CURRENT_TIMESTAMP
+      `,
+      [input.channelId, input.remoteChatId, input.threadId]
+    )
+
+    const binding = await this.getByChannelAndRemoteChat(input.channelId, input.remoteChatId)
+    if (!binding) {
+      throw new Error('Failed to upsert channel thread binding')
     }
 
     return binding

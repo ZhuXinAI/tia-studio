@@ -631,7 +631,18 @@ export class ChannelMessageRouter {
 
     logger.debug(`[ChannelMessageRouter] existingBinding: ${JSON.stringify(existingBinding)}`)
     if (existingBinding) {
-      return existingBinding.threadId
+      const existingThread = await this.options.threadsRepo.getById(existingBinding.threadId)
+      if (
+        existingThread &&
+        existingThread.assistantId === input.assistantId &&
+        existingThread.resourceId === DEFAULT_PROFILE_ID
+      ) {
+        return existingBinding.threadId
+      }
+
+      logger.warn(
+        `[ChannelMessageRouter] Rebinding stale channel thread binding for channel "${input.channelId}" and remote chat "${input.remoteChatId}"`
+      )
     }
 
     const binding = await this.createThreadBinding(input)
@@ -649,7 +660,7 @@ export class ChannelMessageRouter {
       title: DEFAULT_THREAD_TITLE
     })
 
-    return this.options.bindingsRepo.create({
+    return this.options.bindingsRepo.upsert({
       channelId: input.channelId,
       remoteChatId: input.remoteChatId,
       threadId: thread.id
