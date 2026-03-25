@@ -109,7 +109,7 @@ export function TeamSidebar({
 
   if (!selectedWorkspace) {
     return (
-      <Sidebar className="h-full w-80 border-r border-b-0">
+      <Sidebar className="h-full w-80 border-r border-b-0 bg-transparent backdrop-blur-none">
         <SidebarHeader className="space-y-3">
           <div className="space-y-1">
             <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
@@ -128,7 +128,7 @@ export function TeamSidebar({
   }
 
   return (
-    <Sidebar className="h-full w-80 border-r border-b-0">
+    <Sidebar className="h-full w-80 border-r border-b-0 bg-transparent backdrop-blur-none">
       <SidebarHeader className="space-y-3">
         <div className="space-y-1">
           <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
@@ -140,7 +140,7 @@ export function TeamSidebar({
         <Button
           type="button"
           size="sm"
-          className="w-full justify-start"
+          className="w-full justify-start rounded-xl"
           aria-label={t('team.sidebar.createThreadAriaLabel')}
           disabled={isCreatingThread}
           onClick={onCreateThread}

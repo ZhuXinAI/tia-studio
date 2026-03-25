@@ -257,7 +257,7 @@ function ThreadChatComposer({
       : t('threads.chat.composer.helperEmpty')
 
   return (
-    <div className="border-t border-border/70 p-4">
+    <div className="border-t border-border/70 border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-4 sm:p-5">
       <ComposerPrimitive.Root
         className="space-y-3"
         onSubmit={async (event) => {
@@ -280,7 +280,7 @@ function ThreadChatComposer({
           disabled={!canCompose || !readiness.canChat}
           placeholder={placeholder}
           aria-label={t('threads.chat.composer.ariaLabel')}
-          className="border-input placeholder:text-muted-foreground focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive flex w-full rounded-md border bg-transparent px-3 py-2 text-base shadow-xs outline-none transition-[color,box-shadow] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:ring-[3px]"
+          className="placeholder:text-muted-foreground focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive flex w-full rounded-[1.25rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-muted)] px-4 py-3 text-base shadow-none outline-none transition-[color,box-shadow,border-color,background-color] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:ring-[3px]"
         />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -339,10 +339,13 @@ export function ThreadChatCard({
         selectedAssistantId={selectedAssistant?.id}
         selectedThreadId={selectedThread?.id}
       />
-      <Card className="flex min-h-0 flex-1 flex-col gap-0 border-border/80 bg-card/78 py-0 rounded-none border-t-0">
-        <CardHeader className="border-b border-border/70 py-2">
+      <Card className="flex min-h-0 flex-1 flex-col gap-0 rounded-none border-t-0 border-transparent bg-[color:var(--surface-panel-strong)] py-0 shadow-none">
+        <CardHeader
+          className="border-b border-border/70 py-2 bg-[color:var(--surface-panel-soft)] sm:py-3"
+          style={{ borderColor: 'var(--surface-border)' }}
+        >
           <div className="flex h-full flex-nowrap items-center justify-between gap-3 overflow-hidden">
-            <CardTitle className="min-w-0 flex-1 text-base">
+            <CardTitle className="min-w-0 flex-1 text-base tracking-[-0.015em]">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="truncate">
                   {selectedThread?.title ??
@@ -365,7 +368,7 @@ export function ThreadChatCard({
                 <div
                   data-testid="thread-token-usage"
                   title="Persisted total token usage for this thread"
-                  className="bg-muted/50 text-muted-foreground inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs"
+                  className="text-muted-foreground inline-flex items-center gap-1.5 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-muted)] px-3 py-1 text-xs"
                 >
                   <span className="font-medium">
                     {tokenUsage.totalTokens.toLocaleString(i18n.resolvedLanguage)}
@@ -389,6 +392,7 @@ export function ThreadChatCard({
                 type="button"
                 variant="outline"
                 size="sm"
+                className="rounded-full"
                 disabled={!selectedAssistant}
                 onClick={onCreateThread}
               >
@@ -399,6 +403,7 @@ export function ThreadChatCard({
                 type="button"
                 variant="outline"
                 size="sm"
+                className="rounded-full"
                 disabled={!selectedAssistant}
                 onClick={onOpenHeartbeatMonitor}
               >
@@ -409,6 +414,7 @@ export function ThreadChatCard({
                 type="button"
                 variant="outline"
                 size="sm"
+                className="rounded-full"
                 disabled={!selectedAssistant}
                 onClick={onOpenCronMonitor}
               >
@@ -419,6 +425,7 @@ export function ThreadChatCard({
                 type="button"
                 variant="outline"
                 size="sm"
+                className="rounded-full"
                 disabled={!selectedAssistant}
                 onClick={onOpenAssistantConfig}
               >

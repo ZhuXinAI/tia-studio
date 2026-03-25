@@ -42,7 +42,7 @@ const composerStyle: MentionsInputStyle = {
       minHeight: 88
     },
     highlighter: {
-      padding: '8px 12px',
+      padding: '12px 16px',
       border: '1px solid transparent',
       lineHeight: '1.5rem',
       whiteSpace: 'pre-wrap',
@@ -50,16 +50,16 @@ const composerStyle: MentionsInputStyle = {
     },
     input: {
       width: '100%',
-      minHeight: 88,
+      minHeight: 96,
       margin: 0,
-      border: '1px solid var(--input)',
-      borderRadius: 'calc(var(--radius) - 2px)',
-      backgroundColor: 'transparent',
+      border: '1px solid var(--surface-border)',
+      borderRadius: '1.25rem',
+      backgroundColor: 'var(--surface-muted)',
       color: 'inherit',
-      padding: '8px 12px',
+      padding: '12px 16px',
       outline: 'none',
       lineHeight: '1.5rem',
-      boxShadow: 'var(--shadow-xs)',
+      boxShadow: 'none',
       overflow: 'auto'
     }
   },
@@ -67,9 +67,9 @@ const composerStyle: MentionsInputStyle = {
     background: 'transparent',
     list: {
       backgroundColor: 'var(--popover)',
-      border: '1px solid var(--border)',
-      borderRadius: 'calc(var(--radius) - 2px)',
-      boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+      border: '1px solid var(--surface-border-strong)',
+      borderRadius: '1rem',
+      boxShadow: '0 24px 50px -28px rgb(15 23 42 / 0.55)',
       marginTop: 8,
       overflow: 'hidden',
       position: 'relative',
@@ -130,7 +130,7 @@ function TeamChatComposer({
     canCompose
 
   return (
-    <div className="border-t border-border/70 p-4">
+    <div className="border-t border-border/70 border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-4 sm:p-5">
       <form
         className="space-y-3"
         onSubmit={async (event) => {
@@ -227,26 +227,32 @@ export function TeamChatCard({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <Card className="flex h-full min-h-0 flex-col gap-0 border-border/80 bg-card/78">
-        <CardHeader className="border-b border-border/70 py-3">
+      <Card className="flex h-full min-h-0 flex-col gap-0 border-0 bg-[color:var(--surface-panel-strong)] shadow-none">
+        <CardHeader className="border-b border-border/70 border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <CardTitle className="truncate text-base">
+              <CardTitle className="truncate text-base tracking-[-0.015em]">
                 {selectedThread?.title || t('team.chat.defaultTitle')}
               </CardTitle>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <div className="bg-muted/50 text-muted-foreground inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs">
+                <div className="text-muted-foreground inline-flex items-center gap-1 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-muted)] px-3 py-1 text-xs">
                   <Users className="size-3.5" />
                   {selectedWorkspace?.name ?? t('team.chat.noWorkspaceSelected')}
                 </div>
-                <div className="bg-muted/50 text-muted-foreground inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs">
+                <div className="text-muted-foreground inline-flex items-center gap-1 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-muted)] px-3 py-1 text-xs">
                   {t('team.chat.membersLabel', { count: selectedMembers.length })}
                 </div>
               </div>
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={onCreateThread}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+                onClick={onCreateThread}
+              >
                 <Plus className="size-4" />
                 {t('team.chat.newThread')}
               </Button>
@@ -254,6 +260,7 @@ export function TeamChatCard({
                 type="button"
                 variant="outline"
                 size="sm"
+                className="rounded-full"
                 disabled={!selectedWorkspace}
                 onClick={onOpenTeamConfig}
               >
@@ -278,7 +285,7 @@ export function TeamChatCard({
             ) : null}
 
             {!selectedThread ? (
-              <div className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 p-6 text-center">
+              <div className="flex min-h-0 flex-1 items-center justify-center rounded-[1.25rem] border border-dashed border-border/70 border-[color:var(--surface-border)] bg-[color:var(--surface-muted)] p-6 text-center">
                 <div className="space-y-2">
                   <p className="text-sm font-medium">{t('team.chat.emptyTitle')}</p>
                   <p className="text-muted-foreground text-sm">{t('team.chat.emptyDescription')}</p>

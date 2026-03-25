@@ -12,7 +12,7 @@ export function ThreadPage(): React.JSX.Element {
 
   return (
     <>
-      <section className="flex h-[calc(100vh-3.5rem)] min-h-[650px] min-w-[720px] flex-row overflow-hidden rounded-none border border-border/80 bg-background/50">
+      <section className="flex h-[calc(100vh-3.5rem)] min-h-[650px] min-w-[720px] flex-row overflow-hidden rounded-[1.5rem] border border-border/80 border-[color:var(--surface-border)] bg-background/50 bg-[color:var(--surface-panel)] shadow-[0_28px_80px_-60px_rgba(15,23,42,0.65)]">
         <ThreadSidebar
           branches={controller.sidebarBranches}
           selectedThreadId={controller.selectedThread?.id ?? null}
@@ -26,7 +26,7 @@ export function ThreadPage(): React.JSX.Element {
           onDeleteThread={controller.onDeleteThread}
         />
 
-        <SidebarInset className="flex min-h-0 flex-1 flex-col p-0 rounded-none">
+        <SidebarInset className="flex min-h-0 flex-1 flex-col p-0">
           <ThreadChatCard
             selectedAssistant={controller.selectedAssistant}
             selectedThread={controller.selectedThread}

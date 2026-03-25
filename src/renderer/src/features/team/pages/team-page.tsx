@@ -42,7 +42,7 @@ export function TeamPage(): React.JSX.Element {
     <>
       <section
         data-team-page-shell="true"
-        className="flex h-[calc(100vh-3.5rem)] min-h-[650px] min-w-[720px] flex-row overflow-hidden rounded-none border border-border/80 bg-background/50"
+        className="flex h-[calc(100vh-3.5rem)] min-h-[650px] min-w-[720px] flex-row overflow-hidden rounded-[1.5rem] border border-border/80 bg-background/50 border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] shadow-[0_28px_80px_-60px_rgba(15,23,42,0.65)]"
       >
         <TeamSidebar
           selectedWorkspace={controller.selectedWorkspace}
@@ -57,7 +57,7 @@ export function TeamPage(): React.JSX.Element {
           onDeleteThread={controller.handleDeleteThread}
         />
 
-        <SidebarInset className="flex min-h-0 flex-1 flex-col p-0 rounded-none">
+        <SidebarInset className="flex min-h-0 flex-1 flex-col p-0">
           <div data-team-main-chat="true" className="min-h-0 flex-1">
             <TeamChatCard
               selectedWorkspace={controller.selectedWorkspace}

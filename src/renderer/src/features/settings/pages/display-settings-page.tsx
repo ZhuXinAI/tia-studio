@@ -10,6 +10,74 @@ import {
 import { useTheme, type Theme } from '../../../components/theme-provider'
 import { Moon, Sun, Monitor, type LucideIcon } from 'lucide-react'
 import { getUiConfig, setUiConfig } from '../ui-config'
+import { cn } from '../../../lib/utils'
+
+function ThemePreview({ theme }: { theme: Theme }): React.JSX.Element {
+  if (theme === 'light') {
+    return (
+      <div className="rounded-[1.15rem] border border-slate-200 bg-white p-3 text-slate-900 shadow-sm">
+        <div className="mb-3 flex items-center gap-1.5 text-slate-300">
+          <span className="h-2 w-2 rounded-full bg-current" />
+          <span className="h-2 w-2 rounded-full bg-current" />
+          <span className="h-2 w-2 rounded-full bg-current" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-3 w-20 rounded-full bg-slate-900/75" />
+          <div className="grid gap-2">
+            <div className="h-10 rounded-xl bg-slate-100" />
+            <div className="grid grid-cols-[1.35fr_0.65fr] gap-2">
+              <div className="h-8 rounded-lg bg-slate-100" />
+              <div className="h-8 rounded-lg bg-blue-100" />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (theme === 'dark') {
+    return (
+      <div className="rounded-[1.15rem] border border-white/10 bg-[#161a22] p-3 text-slate-100 shadow-sm">
+        <div className="mb-3 flex items-center gap-1.5 text-white/15">
+          <span className="h-2 w-2 rounded-full bg-current" />
+          <span className="h-2 w-2 rounded-full bg-current" />
+          <span className="h-2 w-2 rounded-full bg-current" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-3 w-20 rounded-full bg-white/75" />
+          <div className="grid gap-2">
+            <div className="h-10 rounded-xl bg-white/6" />
+            <div className="grid grid-cols-[1.35fr_0.65fr] gap-2">
+              <div className="h-8 rounded-lg bg-white/6" />
+              <div className="h-8 rounded-lg bg-blue-500/18" />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <div className="rounded-[1.15rem] border border-slate-200 bg-white p-3 text-slate-900 shadow-sm">
+        <div className="mb-3 flex items-center gap-1.5 text-slate-300">
+          <span className="h-2 w-2 rounded-full bg-current" />
+          <span className="h-2 w-2 rounded-full bg-current" />
+          <span className="h-2 w-2 rounded-full bg-current" />
+        </div>
+        <div className="h-3 w-16 rounded-full bg-slate-900/70" />
+      </div>
+      <div className="rounded-[1.15rem] border border-white/10 bg-[#161a22] p-3 text-slate-100 shadow-sm">
+        <div className="mb-3 flex items-center gap-1.5 text-white/15">
+          <span className="h-2 w-2 rounded-full bg-current" />
+          <span className="h-2 w-2 rounded-full bg-current" />
+          <span className="h-2 w-2 rounded-full bg-current" />
+        </div>
+        <div className="h-3 w-16 rounded-full bg-white/70" />
+      </div>
+    </div>
+  )
+}
 
 export function DisplaySettingsPage(): React.JSX.Element {
   const { t } = useTranslation()
@@ -48,13 +116,15 @@ export function DisplaySettingsPage(): React.JSX.Element {
   }
 
   return (
-    <div className="py-4 flex flex-col gap-4 space-y-6">
-      <Card className="border-border/70 bg-card/80 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle>{t('settings.display.title')}</CardTitle>
-          <CardDescription>{t('settings.display.description')}</CardDescription>
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 py-6">
+      <Card className="border-border/70 bg-[color:var(--surface-panel)] shadow-none">
+        <CardHeader className="pb-0">
+          <CardTitle className="tracking-[-0.02em]">{t('settings.display.title')}</CardTitle>
+          <CardDescription className="max-w-2xl">
+            {t('settings.display.description')}
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="grid gap-6 py-6 xl:grid-cols-[minmax(0,1.25fr)_340px]">
           <div className="space-y-4">
             <h3 className="text-sm font-medium">{t('settings.display.themeLabel')}</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -63,19 +133,25 @@ export function DisplaySettingsPage(): React.JSX.Element {
                   type="button"
                   key={value}
                   onClick={() => setTheme(value)}
-                  className={`flex flex-col items-center justify-between rounded-md border-2 p-4 transition-all gap-2 cursor-pointer 
-                    ${theme === value ? 'border-primary text-primary bg-accent/50' : 'border-muted bg-popover hover:bg-accent hover:text-accent-foreground'}
-                  `}
+                  className={cn(
+                    'flex cursor-pointer flex-col gap-4 rounded-[1.25rem] border p-4 text-left transition-[background-color,border-color,box-shadow,color]',
+                    theme === value
+                      ? 'border-primary bg-[color:var(--surface-active)] text-foreground shadow-[0_0_0_1px_var(--surface-active-strong)]'
+                      : 'border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] hover:bg-[color:var(--surface-muted)]'
+                  )}
                 >
-                  <Icon className="size-6 mb-2" />
-                  <span className="font-semibold">{label}</span>
+                  <div className="flex items-center gap-2">
+                    <Icon className="size-5" />
+                    <span className="font-semibold">{label}</span>
+                  </div>
+                  <ThemePreview theme={value} />
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="space-y-4 pt-4 border-t border-border/50">
-            <div className="flex items-center justify-between">
+          <div className="rounded-[1.25rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-5">
+            <div className="flex items-center justify-between gap-4">
               <div className="space-y-0.5">
                 <h3 className="text-sm font-medium">{t('settings.display.transparentTitle')}</h3>
                 <p className="text-sm text-muted-foreground">

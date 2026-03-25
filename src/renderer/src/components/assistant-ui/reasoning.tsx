@@ -18,9 +18,11 @@ const ANIMATION_DURATION = 200
 const reasoningVariants = cva('aui-reasoning-root mb-4 w-full', {
   variants: {
     variant: {
-      outline: 'rounded-lg border px-3 py-2',
+      outline:
+        'rounded-[24px] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] px-3 py-2',
       ghost: '',
-      muted: 'rounded-lg bg-muted/50 px-3 py-2'
+      muted:
+        'rounded-[24px] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] px-3 py-2'
     }
   },
   defaultVariants: {
@@ -93,8 +95,7 @@ function ReasoningFade({ className, ...props }: React.ComponentProps<'div'>) {
       data-slot="reasoning-fade"
       className={cn(
         'aui-reasoning-fade pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8',
-        'bg-[linear-gradient(to_top,var(--color-background),transparent)]',
-        'group-data-[variant=muted]/reasoning-root:bg-[linear-gradient(to_top,hsl(var(--muted)/0.5),transparent)]',
+        'bg-[linear-gradient(to_top,var(--surface-panel-soft),transparent)]',
         'fade-in-0 animate-in',
         'group-data-[state=open]/collapsible-content:animate-out',
         'group-data-[state=open]/collapsible-content:fade-out-0',
@@ -124,7 +125,7 @@ function ReasoningTrigger({
     <CollapsibleTrigger
       data-slot="reasoning-trigger"
       className={cn(
-        'aui-reasoning-trigger group/trigger flex max-w-[75%] items-center gap-2 py-1 text-muted-foreground text-sm transition-colors hover:text-foreground',
+        'aui-reasoning-trigger group/trigger inline-flex max-w-full items-center gap-2 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-3 py-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground',
         className
       )}
       {...props}
@@ -193,7 +194,7 @@ function ReasoningText({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="reasoning-text"
       className={cn(
-        'aui-reasoning-text relative z-0 max-h-64 overflow-y-auto pt-2 pb-2 pl-6 leading-relaxed',
+        'aui-reasoning-text relative z-0 max-h-64 overflow-y-auto border-l border-[color:var(--surface-border)] pt-3 pb-2 pl-4 leading-7',
         'transform-gpu transition-[transform,opacity]',
         'group-data-[state=open]/collapsible-content:animate-in',
         'group-data-[state=closed]/collapsible-content:animate-out',

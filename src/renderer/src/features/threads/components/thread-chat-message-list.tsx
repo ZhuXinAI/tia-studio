@@ -20,6 +20,7 @@ import { Button } from '../../../components/ui/button'
 import { Image } from '@renderer/components/assistant-ui/image'
 import { UserMessageAttachments } from '@renderer/components/assistant-ui/attachment'
 import { useTranslation } from '../../../i18n/use-app-translation'
+import { cn } from '../../../lib/utils'
 
 type ThreadChatMessageListProps = {
   threadId: string | null
@@ -417,11 +418,10 @@ function MessageTimestamp({ className }: { className?: string }): React.JSX.Elem
   return (
     <p
       data-testid="message-timestamp"
-      className={
+      className={cn(
+        'text-muted-foreground w-fit rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-2.5 py-1 text-[11px] leading-none',
         className
-          ? `text-muted-foreground text-[11px] ${className}`
-          : `text-muted-foreground text-[11px]`
-      }
+      )}
     >
       {timestampLabel}
     </p>
@@ -465,11 +465,10 @@ function MessageUsageDetails({
   return (
     <p
       data-testid="message-usage"
-      className={
-        align === 'right'
-          ? 'text-muted-foreground text-[11px] text-right'
-          : 'text-muted-foreground text-[11px]'
-      }
+      className={cn(
+        'text-muted-foreground w-fit rounded-full bg-[color:var(--surface-panel)] px-2.5 py-1 text-[11px] leading-none',
+        align === 'right' && 'ml-auto text-right'
+      )}
     >
       {usageSegments.join(' • ')}
     </p>
@@ -477,7 +476,9 @@ function MessageUsageDetails({
 }
 
 function UserTextPart(): React.JSX.Element {
-  return <MessagePartPrimitive.Text className="text-sm leading-relaxed whitespace-pre-wrap" />
+  return (
+    <MessagePartPrimitive.Text className="text-sm leading-7 whitespace-pre-wrap text-foreground" />
+  )
 }
 
 function UserFileAttachment(): React.JSX.Element {
@@ -485,7 +486,7 @@ function UserFileAttachment(): React.JSX.Element {
   const file = useMessagePartFile()
 
   return (
-    <div className="mb-2 inline-flex items-center gap-2 rounded-md border border-border/70 bg-muted/30 px-3 py-2">
+    <div className="mb-2 inline-flex items-center gap-2 rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-3 py-2">
       <File className="size-4 text-muted-foreground" />
       <span className="text-sm">{file.filename || t('threads.messageList.untitledFile')}</span>
       {file.mimeType && <span className="text-muted-foreground text-xs">({file.mimeType})</span>}
@@ -497,22 +498,27 @@ function UserMessageBubble(): React.JSX.Element {
   const { t } = useTranslation()
   return (
     <MessagePrimitive.Root className="ml-auto max-w-2xl px-4 py-3">
-      <p className="text-muted-foreground mb-1 text-[11px] font-medium uppercase tracking-wide">
-        {t('threads.messageList.you')}
-      </p>
+      <div className="flex flex-col items-end gap-2">
+        <p className="text-muted-foreground text-[11px] font-medium uppercase tracking-[0.18em]">
+          {t('threads.messageList.you')}
+        </p>
 
-      <UserMessageAttachments />
+        <div className="w-full rounded-[26px] border border-[color:var(--surface-border)] bg-[color:var(--surface-active)] px-4 py-3 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.42)]">
+          <UserMessageAttachments />
 
-      <MessagePrimitive.Parts
-        components={{
-          Text: UserTextPart,
-          Image: Image,
-          File: UserFileAttachment
-        }}
-      />
-      <div className="mt-2 space-y-2">
-        <MessageTimestamp className="text-right" />
-        <MessageUsageDetails align="right" />
+          <MessagePrimitive.Parts
+            components={{
+              Text: UserTextPart,
+              Image: Image,
+              File: UserFileAttachment
+            }}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <MessageTimestamp className="ml-auto text-right" />
+          <MessageUsageDetails align="right" />
+        </div>
       </div>
     </MessagePrimitive.Root>
   )
@@ -543,20 +549,23 @@ function ToolAgentStreamPart({
   }
 
   return (
-    <div className="mb-3 rounded-lg border border-border/60 bg-muted/25 px-4 py-3">
-      <p className="text-muted-foreground mb-1 text-[11px] font-medium uppercase tracking-wide">
+    <div className="mb-3 rounded-[22px] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-4 py-3">
+      <p className="text-muted-foreground mb-2 text-[11px] font-medium uppercase tracking-[0.18em]">
         Delegated stream
       </p>
-      <div className="whitespace-pre-wrap text-sm leading-relaxed">{text}</div>
+      <div className="whitespace-pre-wrap text-sm leading-7">{text}</div>
     </div>
   )
 }
 
 function AssistantMessageHeader({ assistantName }: { assistantName: string }): React.JSX.Element {
   return (
-    <p className="text-muted-foreground mb-1 text-[11px] font-medium uppercase tracking-wide">
-      {assistantName}
-    </p>
+    <div className="flex items-center gap-2">
+      <span className="size-1.5 rounded-full bg-primary/60" />
+      <p className="text-muted-foreground text-[11px] font-medium uppercase tracking-[0.18em]">
+        {assistantName}
+      </p>
+    </div>
   )
 }
 
@@ -564,17 +573,20 @@ function AssistantMessageActions(): React.JSX.Element {
   const { t } = useTranslation()
 
   return (
-    <div className="mt-2 space-y-2">
-      <div className="flex items-center justify-between gap-2">
+    <div className="mt-4 space-y-2 border-t border-[color:var(--surface-border)] pt-3">
+      <div className="flex flex-wrap items-center gap-2">
         <MessageTimestamp />
 
-        <ActionBarPrimitive.Root autohide="never" className="ml-auto flex items-center gap-1">
+        <ActionBarPrimitive.Root
+          autohide="never"
+          className="ml-auto flex items-center gap-1 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] p-1"
+        >
           <ActionBarPrimitive.Copy asChild>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="size-7"
+              className="text-muted-foreground size-7 rounded-full hover:text-foreground"
               aria-label={t('threads.messageList.copyMessage')}
             >
               <Copy className="size-3.5" />
@@ -585,7 +597,7 @@ function AssistantMessageActions(): React.JSX.Element {
               type="button"
               variant="ghost"
               size="icon"
-              className="size-7"
+              className="text-muted-foreground size-7 rounded-full hover:text-foreground"
               aria-label={t('threads.messageList.reloadMessage')}
             >
               <RotateCw className="size-3.5" />
@@ -598,16 +610,16 @@ function AssistantMessageActions(): React.JSX.Element {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-7"
+                className="text-muted-foreground size-7 rounded-full hover:text-foreground"
                 aria-label={t('threads.messageList.moreActions')}
               >
                 <MoreHorizontal className="size-3.5" />
               </Button>
             </ActionBarMorePrimitive.Trigger>
 
-            <ActionBarMorePrimitive.Content className="bg-card text-card-foreground border-border z-50 min-w-44 rounded-md border p-1 shadow-lg">
+            <ActionBarMorePrimitive.Content className="z-50 min-w-44 rounded-xl border border-[color:var(--surface-border-strong)] bg-[color:var(--surface-panel-strong)] p-1.5 text-card-foreground shadow-[0_20px_45px_-30px_rgba(15,23,42,0.48)]">
               <ActionBarPrimitive.ExportMarkdown asChild>
-                <ActionBarMorePrimitive.Item className="data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:opacity-50">
+                <ActionBarMorePrimitive.Item className="flex cursor-default select-none items-center rounded-lg px-2.5 py-2 text-sm outline-none transition-colors data-[disabled]:opacity-50 data-[highlighted]:bg-[color:var(--surface-muted)] data-[highlighted]:text-foreground">
                   {t('threads.messageList.exportMarkdown')}
                 </ActionBarMorePrimitive.Item>
               </ActionBarPrimitive.ExportMarkdown>
@@ -625,20 +637,34 @@ function StandardAssistantMessageBubble(): React.JSX.Element {
 
   return (
     <MessagePrimitive.Root className="max-w-3xl px-4 py-3">
-      <AssistantMessageHeader assistantName={assistantName} />
-      <MessagePrimitive.Parts components={assistantPartsComponents} />
-      <AssistantMessageActions />
+      <div className="space-y-3 rounded-[28px] bg-[color:var(--surface-panel-soft)] px-4 py-4">
+        <AssistantMessageHeader assistantName={assistantName} />
+        <MessagePrimitive.Parts components={assistantPartsComponents} />
+        <AssistantMessageActions />
+      </div>
     </MessagePrimitive.Root>
   )
 }
 
 function TeamVisibleMessageCard({ block }: { block: TeamVisibleMessageBlock }): React.JSX.Element {
   return (
-    <div className="rounded-xl border border-border/70 bg-background/70 px-4 py-3">
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <p className="text-muted-foreground text-[11px] font-medium uppercase tracking-wide">
-          {block.assistantName}
-        </p>
+    <div className="rounded-[24px] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-strong)] px-4 py-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              'size-2 rounded-full',
+              block.status === 'running'
+                ? 'bg-blue-500/80'
+                : block.status === 'error'
+                  ? 'bg-red-500/80'
+                  : 'bg-emerald-500/70'
+            )}
+          />
+          <p className="text-muted-foreground text-[11px] font-medium uppercase tracking-[0.18em]">
+            {block.assistantName}
+          </p>
+        </div>
         {block.status === 'running' ? (
           <LoaderIcon className="text-muted-foreground size-3.5 animate-spin" />
         ) : null}
@@ -648,8 +674,8 @@ function TeamVisibleMessageCard({ block }: { block: TeamVisibleMessageBlock }): 
         <div
           className={
             block.status === 'error'
-              ? 'text-destructive whitespace-pre-wrap text-sm leading-relaxed'
-              : 'whitespace-pre-wrap text-sm leading-relaxed'
+              ? 'text-destructive whitespace-pre-wrap text-sm leading-7'
+              : 'whitespace-pre-wrap text-sm leading-7'
           }
         >
           {block.text}
@@ -659,24 +685,24 @@ function TeamVisibleMessageCard({ block }: { block: TeamVisibleMessageBlock }): 
       )}
 
       {block.mentions.length > 0 ? (
-        <p className="text-muted-foreground mt-3 text-xs">
+        <p className="text-muted-foreground mt-4 inline-flex rounded-full bg-[color:var(--surface-panel)] px-2.5 py-1 text-xs">
           Suggested next: {block.mentions.join(', ')}
         </p>
       ) : null}
 
       {block.nestedTools.length > 0 ? (
-        <div className="mt-3 border-t border-dashed pt-3">
-          <p className="text-muted-foreground mb-2 text-[11px] font-medium uppercase tracking-wide">
+        <div className="mt-4 rounded-[20px] bg-[color:var(--surface-panel-soft)] p-3">
+          <p className="text-muted-foreground mb-2 text-[11px] font-medium uppercase tracking-[0.18em]">
             Tools
           </p>
           <div className="space-y-2">
             {block.nestedTools.map((tool) => (
               <div
                 key={tool.key}
-                className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm"
+                className="flex items-center justify-between gap-3 rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-3 py-2 text-sm"
               >
                 <span>{tool.name}</span>
-                <span className="text-muted-foreground text-xs uppercase tracking-wide">
+                <span className="text-muted-foreground text-xs uppercase tracking-[0.18em]">
                   {tool.status}
                 </span>
               </div>
@@ -709,14 +735,14 @@ function TeamAssistantMessageBubble(): React.JSX.Element | null {
 
   return (
     <MessagePrimitive.Root className="max-w-3xl px-4 py-3">
-      <div className="space-y-4">
+      <div className="space-y-4 rounded-[28px] bg-[color:var(--surface-panel-soft)] px-4 py-4">
         {visibleBlocks.map((block) => (
           <TeamVisibleMessageCard key={block.key} block={block} />
         ))}
-      </div>
 
-      <div className="sr-only">{assistantName}</div>
-      <AssistantMessageActions />
+        <div className="sr-only">{assistantName}</div>
+        <AssistantMessageActions />
+      </div>
     </MessagePrimitive.Root>
   )
 }
@@ -819,7 +845,7 @@ export function ThreadChatMessageList({
 
   function Footer(): React.JSX.Element {
     return (
-      <div className="space-y-3 pt-3">
+      <div className="space-y-3 pt-4">
         <ThreadChatStatus
           isLoadingChatHistory={isLoadingChatHistory}
           isChatStreaming={isChatStreaming}
@@ -850,7 +876,7 @@ export function ThreadChatMessageList({
           Footer
         }}
         itemContent={(index) => (
-          <div className="flex pb-3">
+          <div className="flex pb-4">
             <ThreadPrimitive.MessageByIndex index={index} components={messageComponents} />
           </div>
         )}

@@ -469,25 +469,27 @@ export function ClawsPage(): React.JSX.Element {
   }
 
   return (
-    <section className="min-h-full bg-muted/20 px-6 py-6">
+    <section className="min-h-full bg-transparent px-6 py-6">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-end justify-between gap-4 rounded-[1.75rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-6 py-6 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.55)]">
           <div className="space-y-1">
             <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
               {t('claws.eyebrow')}
             </p>
-            <h1 className="text-3xl font-semibold">{t('claws.title')}</h1>
-            <p className="text-muted-foreground text-sm">{t('claws.telegram.description')}</p>
+            <h1 className="text-3xl font-semibold tracking-[-0.03em]">{t('claws.title')}</h1>
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              {t('claws.telegram.description')}
+            </p>
           </div>
 
-          <Button type="button" onClick={openCreateDialog}>
+          <Button type="button" className="rounded-full px-5" onClick={openCreateDialog}>
             <Plus className="size-4" />
             <span>{t('claws.newButton')}</span>
           </Button>
         </div>
 
         {!hasAnyClaw ? (
-          <Card>
+          <Card className="shadow-none">
             <CardHeader>
               <CardTitle>{t('claws.empty.title')}</CardTitle>
               <CardDescription>{t('claws.telegram.emptyDescription')}</CardDescription>
@@ -506,13 +508,14 @@ export function ClawsPage(): React.JSX.Element {
 
         {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
 
-        <div className="grid gap-4 md:grid-cols-2">
-          {data.claws.map((claw) => (
+        <div className="grid auto-rows-fr gap-4 xl:grid-cols-2">
+          {data.claws.map((claw, index) => (
             <ClawCard
               key={claw.id}
               claw={claw}
               providerLabel={providerLabel(claw.providerId)}
               isSubmitting={isSubmitting || isPairingsSubmitting}
+              featured={index === 0 && data.claws.length > 1}
               onToggleEnabled={() => void handleToggleEnabled(claw)}
               onEdit={() => openEditDialog(claw)}
               onDelete={() => setClawPendingDelete(claw)}

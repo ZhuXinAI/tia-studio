@@ -97,12 +97,18 @@ export function AssistantManagementDialog({
         }}
         onClose={onClose}
         onSubmit={async (input) => {
+          const assistantName = input.assistant.name?.trim() ?? ''
+          const providerId = input.assistant.providerId?.trim() ?? ''
           const workspacePath = input.assistant.workspacePath?.trim() ?? ''
+
+          if (!assistantName || !providerId) {
+            return
+          }
 
           await onSubmit(
             {
-              name: input.assistant.name,
-              providerId: input.assistant.providerId,
+              name: assistantName,
+              providerId,
               enabled: input.assistant.enabled,
               ...(workspacePath.length > 0
                 ? {

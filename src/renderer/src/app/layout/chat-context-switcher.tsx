@@ -1,4 +1,4 @@
-import { Bot, ChevronDown } from 'lucide-react'
+import { Bot, ChevronDown, Search } from 'lucide-react'
 import { useDeferredValue, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
@@ -9,6 +9,15 @@ import { listAssistants, type AssistantRecord } from '../../features/assistants/
 
 function normalizeSearchValue(value: string): string {
   return value.trim().toLocaleLowerCase()
+}
+
+function getAssistantSecondaryText(assistant: AssistantRecord | null): string | null {
+  if (!assistant) {
+    return null
+  }
+
+  const description = assistant.description.trim()
+  return description.length > 0 ? description : null
 }
 
 export function ChatContextSwitcher(): React.JSX.Element {
@@ -90,6 +99,7 @@ export function ChatContextSwitcher(): React.JSX.Element {
   const selectedAssistant =
     assistants.find((assistant) => assistant.id === params.assistantId) ?? null
   const selectedAssistantLabel = selectedAssistant?.name?.trim()
+  const selectedAssistantSecondaryText = getAssistantSecondaryText(selectedAssistant)
 
   const filteredAssistants =
     normalizedAssistantSearchQuery.length === 0
@@ -103,7 +113,10 @@ export function ChatContextSwitcher(): React.JSX.Element {
       <button
         type="button"
         className={cn(
-          'no-drag group hover:bg-accent/40 focus-visible:ring-ring/50 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left outline-none transition-colors focus-visible:ring-[3px]'
+          'no-drag group flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left outline-none transition-[background-color,border-color,box-shadow] focus-visible:ring-[3px] focus-visible:ring-ring/50',
+          '[border-color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] hover:bg-[color:var(--surface-panel)]',
+          isOpen &&
+            'border-[color:var(--surface-border-strong)] bg-[color:var(--surface-panel)] shadow-[0_16px_40px_-30px_rgba(15,23,42,0.42)]'
         )}
         aria-label={t('appShell.chatSwitcher.ariaLabel')}
         aria-expanded={isOpen}
@@ -112,74 +125,130 @@ export function ChatContextSwitcher(): React.JSX.Element {
           setIsOpen((currentState) => !currentState)
         }}
       >
-        <Bot className="size-4 shrink-0" />
-        <span className="text-muted-foreground shrink-0 text-[10px] tracking-[0.18em] uppercase">
-          {t('appShell.chatSwitcher.label')}
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl border [border-color:var(--surface-border)] bg-[color:var(--surface-panel)] text-foreground transition-colors">
+          <Bot className="size-4" />
         </span>
-        <span className="text-muted-foreground shrink-0 text-xs">/</span>
-        <span className="truncate text-sm font-semibold">
-          {selectedAssistantLabel && selectedAssistantLabel.length > 0
-            ? selectedAssistantLabel
-            : isLoading
-              ? t('appShell.chatSwitcher.loading')
-              : t('appShell.chatSwitcher.fallback')}
+        <span className="min-w-0 flex-1">
+          <span className="text-muted-foreground block text-[10px] tracking-[0.18em] uppercase">
+            {t('appShell.chatSwitcher.label')}
+          </span>
+          <span className="mt-0.5 block truncate text-sm font-semibold">
+            {selectedAssistantLabel && selectedAssistantLabel.length > 0
+              ? selectedAssistantLabel
+              : isLoading
+                ? t('appShell.chatSwitcher.loading')
+                : t('appShell.chatSwitcher.fallback')}
+          </span>
         </span>
         <ChevronDown
           className={cn(
             'text-muted-foreground ml-auto size-4 shrink-0 transition-transform transition-opacity',
-            isOpen ? 'translate-y-px opacity-100' : 'opacity-60 group-hover:opacity-100'
+            isOpen ? 'rotate-180 opacity-100' : 'opacity-60 group-hover:opacity-100'
           )}
         />
       </button>
 
       {isOpen ? (
-        <div className="bg-card text-card-foreground border-border absolute left-0 top-full z-20 mt-2 w-full min-w-[280px] rounded-xl border p-3 shadow-xl">
+        <div className="absolute left-0 top-full z-20 mt-2 w-full min-w-[320px] rounded-[24px] border border-[color:var(--surface-border-strong)] bg-[color:var(--surface-panel-strong)] p-3 text-card-foreground shadow-[0_26px_60px_-34px_rgba(15,23,42,0.52)] backdrop-blur-xl">
           <div className="space-y-3">
-            <Input
-              autoFocus
-              value={assistantSearchQuery}
-              onChange={(event) => {
-                setAssistantSearchQuery(event.target.value)
-              }}
-              placeholder={t('appShell.chatSwitcher.searchPlaceholder')}
-              aria-label={t('appShell.chatSwitcher.searchAriaLabel')}
-            />
+            <div className="rounded-2xl border [border-color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-3">
+              <div className="flex items-start gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[color:var(--surface-active)] text-foreground">
+                  <Bot className="size-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-muted-foreground text-[10px] tracking-[0.18em] uppercase">
+                    {t('appShell.chatSwitcher.label')}
+                  </p>
+                  <p className="mt-1 truncate text-sm font-semibold">
+                    {selectedAssistantLabel && selectedAssistantLabel.length > 0
+                      ? selectedAssistantLabel
+                      : isLoading
+                        ? t('appShell.chatSwitcher.loading')
+                        : t('appShell.chatSwitcher.fallback')}
+                  </p>
+                  {selectedAssistantSecondaryText ? (
+                    <p className="text-muted-foreground mt-1 truncate text-xs">
+                      {selectedAssistantSecondaryText}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
 
-            <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
+            <div className="relative">
+              <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2" />
+              <Input
+                autoFocus
+                value={assistantSearchQuery}
+                className="pl-9"
+                onChange={(event) => {
+                  setAssistantSearchQuery(event.target.value)
+                }}
+                placeholder={t('appShell.chatSwitcher.searchPlaceholder')}
+                aria-label={t('appShell.chatSwitcher.searchAriaLabel')}
+              />
+            </div>
+
+            <div className="max-h-72 space-y-1 overflow-y-auto rounded-2xl bg-[color:var(--surface-panel-soft)] p-1.5">
               {filteredAssistants.length === 0 ? (
-                <p className="text-muted-foreground px-2 py-3 text-xs">
+                <p className="text-muted-foreground px-3 py-4 text-xs">
                   {t('appShell.chatSwitcher.empty')}
                 </p>
               ) : (
                 filteredAssistants.map((assistant) => {
                   const isSelected = assistant.id === params.assistantId
+                  const secondaryText = getAssistantSecondaryText(assistant)
 
                   return (
                     <button
                       key={assistant.id}
                       type="button"
                       className={cn(
-                        'hover:bg-accent/60 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors',
-                        isSelected && 'bg-accent text-accent-foreground'
+                        'flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left transition-[background-color,border-color,box-shadow]',
+                        'hover:border-[color:var(--surface-border)] hover:bg-[color:var(--surface-panel)]',
+                        isSelected &&
+                          'border-[color:var(--surface-border-strong)] bg-[color:var(--surface-panel-strong)] shadow-[0_14px_30px_-28px_rgba(15,23,42,0.45)]'
                       )}
                       onClick={() => {
                         setIsOpen(false)
                         navigate(`/chat/${assistant.id}`)
                       }}
                     >
-                      <Bot className="size-4 shrink-0" />
-                      <span className="truncate">{assistant.name}</span>
+                      <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl border [border-color:var(--surface-border)] bg-[color:var(--surface-panel)] text-foreground">
+                        <Bot className="size-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">
+                          {assistant.name}
+                        </span>
+                        {secondaryText ? (
+                          <span className="text-muted-foreground mt-0.5 block truncate text-xs">
+                            {secondaryText}
+                          </span>
+                        ) : null}
+                      </span>
+                      <span
+                        className={cn(
+                          'size-2 shrink-0 rounded-full',
+                          isSelected
+                            ? 'bg-primary'
+                            : assistant.enabled
+                              ? 'bg-emerald-500/70'
+                              : 'bg-muted-foreground/30'
+                        )}
+                      />
                     </button>
                   )
                 })
               )}
             </div>
 
-            <div className="flex flex-col gap-2 border-t border-border/60 pt-3">
+            <div className="flex flex-col gap-2 border-t border-[color:var(--surface-border)] pt-3">
               <Button
                 type="button"
                 size="sm"
-                className="w-full justify-start"
+                className="w-full justify-start rounded-xl"
                 onClick={() => {
                   setIsOpen(false)
                   navigate('/claws', {
@@ -195,7 +264,7 @@ export function ChatContextSwitcher(): React.JSX.Element {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="w-full justify-start"
+                className="w-full justify-start rounded-xl"
                 onClick={() => {
                   setIsOpen(false)
                   navigate('/claws')

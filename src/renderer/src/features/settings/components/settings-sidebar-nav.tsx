@@ -94,15 +94,15 @@ export function SettingsSidebarNav(): React.JSX.Element {
   const { t } = useTranslation()
 
   return (
-    <Sidebar className="h-full border-b-0 border-r border-border/70">
-      <SidebarHeader className="space-y-1">
+    <Sidebar className="h-full border-b-0 border-r border-border/70 bg-transparent backdrop-blur-none">
+      <SidebarHeader className="space-y-2">
         <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
           {t('settings.sidebar.title')}
         </p>
         <h1 className="text-lg font-semibold">{t('settings.sidebar.subtitle')}</h1>
       </SidebarHeader>
 
-      <SidebarContent className="py-4">
+      <SidebarContent className="py-5">
         <SidebarGroup>
           <SidebarGroupLabel>{t('settings.sidebar.categories')}</SidebarGroupLabel>
           <SidebarMenu>

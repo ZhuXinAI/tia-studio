@@ -37,11 +37,15 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
   }
 
   return (
-    <div className="aui-code-header-root mt-2.5 flex items-center justify-between rounded-t-lg border border-border/50 border-b-0 bg-muted/50 px-3 py-1.5 text-xs">
-      <span className="aui-code-header-language font-medium text-muted-foreground lowercase">
+    <div className="aui-code-header-root mt-3 flex items-center justify-between rounded-t-[20px] border border-[color:var(--surface-border)] border-b-0 bg-[color:var(--surface-panel-soft)] px-4 py-2 text-xs">
+      <span className="aui-code-header-language font-medium text-muted-foreground lowercase tracking-[0.18em]">
         {language}
       </span>
-      <TooltipIconButton tooltip={t('assistantUi.markdown.copyCode')} onClick={onCopy}>
+      <TooltipIconButton
+        tooltip={t('assistantUi.markdown.copyCode')}
+        className="rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] text-muted-foreground hover:text-foreground"
+        onClick={onCopy}
+      >
         {!isCopied && <CopyIcon />}
         {isCopied && <CheckIcon />}
       </TooltipIconButton>
@@ -135,7 +139,7 @@ const defaultComponents = memoizeMarkdownComponents({
   blockquote: ({ className, ...props }) => (
     <blockquote
       className={cn(
-        'aui-md-blockquote my-2.5 border-muted-foreground/30 border-l-2 pl-3 text-muted-foreground italic',
+        'aui-md-blockquote my-3 rounded-r-2xl border-l-[3px] border-[color:var(--surface-border-strong)] bg-[color:var(--surface-panel-soft)] px-4 py-3 text-muted-foreground',
         className
       )}
       {...props}
@@ -165,7 +169,7 @@ const defaultComponents = memoizeMarkdownComponents({
   table: ({ className, ...props }) => (
     <table
       className={cn(
-        'aui-md-table my-2 w-full border-separate border-spacing-0 overflow-y-auto',
+        'aui-md-table my-3 w-full border-separate border-spacing-0 overflow-y-auto text-sm',
         className
       )}
       {...props}
@@ -174,7 +178,7 @@ const defaultComponents = memoizeMarkdownComponents({
   th: ({ className, ...props }) => (
     <th
       className={cn(
-        'aui-md-th bg-muted px-2 py-1 text-left font-medium first:rounded-tl-lg last:rounded-tr-lg [[align=center]]:text-center [[align=right]]:text-right',
+        'aui-md-th bg-[color:var(--surface-panel-soft)] px-3 py-2 text-left font-medium first:rounded-tl-2xl last:rounded-tr-2xl [[align=center]]:text-center [[align=right]]:text-right',
         className
       )}
       {...props}
@@ -183,7 +187,7 @@ const defaultComponents = memoizeMarkdownComponents({
   td: ({ className, ...props }) => (
     <td
       className={cn(
-        'aui-md-td border-muted-foreground/20 border-b border-l px-2 py-1 text-left last:border-r [[align=center]]:text-center [[align=right]]:text-right',
+        'aui-md-td border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-3 py-2 text-left align-top [[align=center]]:text-center [[align=right]]:text-right',
         className
       )}
       {...props}
@@ -192,7 +196,7 @@ const defaultComponents = memoizeMarkdownComponents({
   tr: ({ className, ...props }) => (
     <tr
       className={cn(
-        'aui-md-tr m-0 border-b p-0 first:border-t [&:last-child>td:first-child]:rounded-bl-lg [&:last-child>td:last-child]:rounded-br-lg',
+        'aui-md-tr m-0 p-0 [&:last-child>td:first-child]:rounded-bl-2xl [&:last-child>td:last-child]:rounded-br-2xl',
         className
       )}
       {...props}
@@ -207,7 +211,7 @@ const defaultComponents = memoizeMarkdownComponents({
   pre: ({ className, ...props }) => (
     <pre
       className={cn(
-        'aui-md-pre overflow-x-auto rounded-t-none rounded-b-lg border border-border/50 border-t-0 bg-muted/30 p-3 text-xs leading-relaxed',
+        'aui-md-pre overflow-x-auto rounded-t-none rounded-b-[20px] border border-[color:var(--surface-border)] border-t-0 bg-[color:var(--surface-panel-strong)] px-4 py-3.5 text-xs leading-relaxed shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]',
         className
       )}
       {...props}
@@ -219,7 +223,7 @@ const defaultComponents = memoizeMarkdownComponents({
       <code
         className={cn(
           !isCodeBlock &&
-            'aui-md-inline-code rounded-md border border-border/50 bg-muted/50 px-1.5 py-0.5 font-mono text-[0.85em]',
+            'aui-md-inline-code rounded-md border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-1.5 py-0.5 font-mono text-[0.85em]',
           className
         )}
         {...props}

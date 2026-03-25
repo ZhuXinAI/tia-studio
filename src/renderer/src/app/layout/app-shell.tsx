@@ -48,10 +48,10 @@ export function AppShell(): React.JSX.Element {
   ) : null
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground transition-colors duration-200">
+    <div className="flex min-h-screen flex-col bg-[color:var(--surface-canvas)] text-foreground transition-colors duration-200">
       <header
         className={clsx(
-          'drag-region sticky top-0 z-20 border-b border-border/70 bg-background/20 pr-3 py-1 backdrop-blur-sm',
+          'drag-region sticky top-0 z-20 border-b border-border/70 border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] pr-3 py-2 shadow-[0_1px_0_0_var(--surface-border)] backdrop-blur-xl',
           {
             'pl-[80px]': !isWindowsPlatform()
           }
@@ -59,12 +59,12 @@ export function AppShell(): React.JSX.Element {
       >
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-1">
               <Button
                 asChild
                 variant={isChatAreaRoute ? 'secondary' : 'ghost'}
                 size="sm"
-                className="no-drag"
+                className="no-drag rounded-full"
               >
                 <NavLink to="/chat" className="no-drag inline-flex items-center gap-2">
                   <Home className="size-4" />
@@ -76,7 +76,7 @@ export function AppShell(): React.JSX.Element {
                 asChild
                 variant={isTeamRoute ? 'secondary' : 'ghost'}
                 size="sm"
-                className="no-drag"
+                className="no-drag rounded-full"
               >
                 <NavLink to="/team" className="no-drag inline-flex items-center gap-2">
                   <Users className="size-4" />
@@ -85,7 +85,9 @@ export function AppShell(): React.JSX.Element {
               </Button>
             </div>
 
-            {contextualControl ? <div className="h-5 w-px shrink-0 bg-border/60" /> : null}
+            {contextualControl ? (
+              <div className="h-5 w-px shrink-0 bg-[color:var(--surface-border)]" />
+            ) : null}
 
             {contextualControl ? <div className="min-w-0 flex-1">{contextualControl}</div> : null}
           </div>
@@ -109,7 +111,7 @@ export function AppShell(): React.JSX.Element {
               asChild
               variant={isSettingsRoute ? 'secondary' : 'ghost'}
               size="icon"
-              className="no-drag"
+              className="no-drag rounded-full"
             >
               <NavLink
                 to="/settings/about"

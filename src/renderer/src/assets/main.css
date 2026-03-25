@@ -28,27 +28,36 @@
 :root {
   --background: #181818;
   --foreground: oklch(0.96 0.01 255);
-  --card: #181818;
+  --card: #1a1d22;
   --card-foreground: oklch(0.96 0.01 255);
-  --popover: #181818;
+  --popover: #1a1d22;
   --popover-foreground: oklch(0.96 0.01 255);
   --primary: oklch(0.73 0.12 234);
   --primary-foreground: oklch(0.15 0.04 258);
-  --secondary: oklch(0.31 0.05 256);
+  --secondary: oklch(0.28 0.04 256);
   --secondary-foreground: oklch(0.93 0.01 255);
-  --muted: oklch(0.25 0.03 258);
+  --muted: oklch(0.24 0.03 258);
   --muted-foreground: oklch(0.76 0.02 255);
-  --accent: #222222;
+  --accent: #23272f;
   --accent-foreground: oklch(0.97 0.01 255);
   --destructive: oklch(0.64 0.19 25);
-  --border: #2f2f2f;
-  --input: oklch(0.36 0.05 256);
+  --border: #313640;
+  --input: #3b414d;
   --ring: oklch(0.73 0.12 234 / 65%);
   --radius: 0.72rem;
+  --surface-canvas: #101318;
+  --surface-panel: rgb(24 28 34 / 88%);
+  --surface-panel-strong: #191d23;
+  --surface-panel-soft: rgb(255 255 255 / 0.03);
+  --surface-muted: rgb(255 255 255 / 0.04);
+  --surface-border: rgb(255 255 255 / 0.08);
+  --surface-border-strong: rgb(255 255 255 / 0.14);
+  --surface-active: rgb(111 161 255 / 0.14);
+  --surface-active-strong: rgb(111 161 255 / 0.24);
 }
 
 .light {
-  --background: #f7f7f8;
+  --background: #f3f5f8;
   --foreground: #111827;
   --card: #ffffff;
   --card-foreground: #111827;
@@ -56,16 +65,25 @@
   --popover-foreground: #111827;
   --primary: oklch(0.73 0.12 234);
   --primary-foreground: #f8fbff;
-  --secondary: #e8ecf3;
+  --secondary: #e6ebf4;
   --secondary-foreground: #1f2937;
-  --muted: #eceff4;
+  --muted: #e9edf4;
   --muted-foreground: #5f6673;
-  --accent: #edf0f4;
+  --accent: #eef2f7;
   --accent-foreground: #111827;
   --destructive: oklch(0.64 0.19 25);
-  --border: #d4dae3;
-  --input: #d4dae3;
+  --border: #d8dee8;
+  --input: #d8dee8;
   --ring: oklch(0.73 0.12 234 / 45%);
+  --surface-canvas: #eef2f6;
+  --surface-panel: rgb(255 255 255 / 88%);
+  --surface-panel-strong: #ffffff;
+  --surface-panel-soft: rgb(148 163 184 / 0.06);
+  --surface-muted: rgb(148 163 184 / 0.08);
+  --surface-border: rgb(100 116 139 / 0.18);
+  --surface-border-strong: rgb(100 116 139 / 0.28);
+  --surface-active: rgb(59 130 246 / 0.1);
+  --surface-active-strong: rgb(59 130 246 / 0.18);
 }
 
 * {
@@ -75,7 +93,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: var(--background);
+  background-color: var(--surface-canvas);
   color: var(--foreground);
   font-family:
     'IBM Plex Sans',
@@ -91,6 +109,10 @@ body {
 
 #root {
   min-height: 100vh;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--primary) 26%, transparent);
 }
 
 .drag-region {

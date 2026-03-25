@@ -21,12 +21,14 @@ import {
   TooltipTrigger
 } from '../../../components/ui/tooltip'
 import { useTranslation } from '../../../i18n/use-app-translation'
+import { cn } from '../../../lib/utils'
 import type { ClawRecord } from '../claws-query'
 
 interface ClawCardProps {
   claw: ClawRecord
   providerLabel: string
   isSubmitting: boolean
+  featured?: boolean
   onToggleEnabled: () => void
   onEdit: () => void
   onDelete: () => void
@@ -39,6 +41,7 @@ export function ClawCard({
   claw,
   providerLabel,
   isSubmitting,
+  featured = false,
   onToggleEnabled,
   onEdit,
   onDelete,
@@ -55,25 +58,37 @@ export function ClawCard({
       claw.channel?.type === 'wechat')
 
   return (
-    <Card className="gap-3">
+    <Card
+      className={cn(
+        'gap-0 overflow-hidden border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] shadow-none',
+        featured ? 'xl:col-span-2' : ''
+      )}
+    >
       <CardHeader className="pb-0">
         <div className="flex items-start justify-between gap-4 overflow-hidden">
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-2">
-              <CardTitle className="min-w-0 truncate">{claw.name}</CardTitle>
+              <CardTitle
+                className={cn(
+                  'min-w-0 truncate tracking-[-0.02em]',
+                  featured ? 'text-[1.6rem]' : 'text-lg'
+                )}
+              >
+                {claw.name}
+              </CardTitle>
               {claw.channel && (
                 <span
-                  className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
+                  className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
                     claw.enabled
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                      : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                      ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300'
+                      : 'bg-muted text-muted-foreground'
                   }`}
                 >
                   {claw.enabled ? t('claws.card.statusEnabled') : t('claws.card.statusDisabled')}
                 </span>
               )}
             </div>
-            <CardDescription className="min-w-0 truncate">
+            <CardDescription className={cn('min-w-0 pt-2', featured ? 'text-sm' : 'truncate')}>
               {claw.description || '\u00A0'}
             </CardDescription>
           </div>
@@ -85,6 +100,7 @@ export function ClawCard({
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="rounded-full"
                       disabled={isSubmitting}
                       onClick={onViewHeartbeat}
                     >
@@ -103,6 +119,7 @@ export function ClawCard({
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="rounded-full"
                       disabled={isSubmitting}
                       onClick={onViewCron}
                     >
@@ -118,7 +135,12 @@ export function ClawCard({
             </TooltipProvider>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" disabled={isSubmitting}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full"
+                  disabled={isSubmitting}
+                >
                   <MoreVertical className="size-4" />
                   <span className="sr-only">Actions</span>
                 </Button>
@@ -146,65 +168,72 @@ export function ClawCard({
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Provider
-            </p>
-            <p className="text-sm">{providerLabel}</p>
-          </div>
+      <CardContent
+        className={cn(
+          'grid gap-4 border-t border-border/70 border-[color:var(--surface-border)] py-5',
+          featured ? 'lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]' : 'sm:grid-cols-2'
+        )}
+      >
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Provider
+          </p>
+          <p className="text-sm font-medium">{providerLabel}</p>
+        </div>
 
+        <div className="space-y-3">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Channel
             </p>
             {claw.channel ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Link2 className="size-3.5 text-muted-foreground flex-shrink-0" />
-                  <span className="text-sm truncate">{claw.channel.name}</span>
+              <div className="rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] px-4 py-3">
+                <div className="mb-3 flex items-center gap-2">
+                  <Link2 className="size-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate text-sm">{claw.channel.name}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
                   <span
-                    className={`text-xs px-1.5 py-0.5 rounded ${
+                    className={`rounded-full px-2 py-1 text-xs font-medium ${
                       claw.channel.status === 'connected'
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300'
                         : claw.channel.status === 'error'
-                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                          : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                          ? 'bg-red-500/12 text-red-700 dark:text-red-300'
+                          : 'bg-muted text-muted-foreground'
                     }`}
                   >
                     {claw.channel.status}
                   </span>
-                </div>
-                {showManageAccess ? (
-                  <div className="space-y-1">
-                    {claw.channel?.type === 'telegram' || claw.channel?.type === 'whatsapp' ? (
-                      <p className="text-xs text-muted-foreground">
-                        {t('claws.telegram.pairingSummary', {
-                          pairedCount: claw.channel.pairedCount ?? 0,
-                          pendingCount: claw.channel.pendingPairingCount ?? 0
-                        })}
-                      </p>
-                    ) : null}
+                  {showManageAccess ? (
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       disabled={isSubmitting}
                       onClick={onManagePairings}
-                      className="h-7 text-xs"
+                      className="h-8 rounded-full text-xs"
                     >
                       {claw.channel?.type === 'wechat'
                         ? t('claws.wechat.manageSetupButton')
                         : t('claws.telegram.managePairingsButton')}
                     </Button>
-                  </div>
+                  ) : null}
+                </div>
+
+                {showManageAccess &&
+                (claw.channel?.type === 'telegram' || claw.channel?.type === 'whatsapp') ? (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {t('claws.telegram.pairingSummary', {
+                      pairedCount: claw.channel.pairedCount ?? 0,
+                      pendingCount: claw.channel.pendingPairingCount ?? 0
+                    })}
+                  </p>
                 ) : null}
               </div>
             ) : (
-              <span className="text-sm text-amber-600 dark:text-amber-500">
+              <div className="rounded-[1rem] border border-dashed border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] px-4 py-3 text-sm text-muted-foreground">
                 {t('claws.card.configureChannelFirst')}
-              </span>
+              </div>
             )}
           </div>
         </div>

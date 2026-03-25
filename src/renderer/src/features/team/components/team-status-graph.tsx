@@ -15,10 +15,12 @@ type TeamStatusGraphProps = {
 type StatusState = 'idle' | 'running' | 'done' | 'error'
 
 const statusStyles: Record<StatusState, string> = {
-  idle: 'border-border/70 bg-background/95 text-foreground',
-  running: 'border-blue-500/60 bg-blue-500/10 text-blue-200 shadow-blue-500/10',
-  done: 'border-emerald-500/60 bg-emerald-500/10 text-emerald-200 shadow-emerald-500/10',
-  error: 'border-red-500/60 bg-red-500/10 text-red-200 shadow-red-500/10'
+  idle: 'border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] text-foreground',
+  running:
+    'border-blue-500/60 bg-blue-500/10 text-blue-700 shadow-[0_0_0_1px_rgba(59,130,246,0.12)] dark:text-blue-200',
+  done: 'border-emerald-500/60 bg-emerald-500/10 text-emerald-700 shadow-[0_0_0_1px_rgba(16,185,129,0.12)] dark:text-emerald-200',
+  error:
+    'border-red-500/60 bg-red-500/10 text-red-700 shadow-[0_0_0_1px_rgba(239,68,68,0.12)] dark:text-red-200'
 }
 
 function formatEventText(event: TeamStatusEvent, assistantNames: Map<string, string>): string {
@@ -54,7 +56,7 @@ function renderNodeLabel(label: string, state: StatusState): React.JSX.Element {
     <div
       data-state={state}
       className={cn(
-        'rounded-lg border px-3 py-2 text-center text-sm shadow-sm transition-colors',
+        'rounded-[1rem] border px-3 py-2.5 text-center text-sm font-medium shadow-sm transition-colors backdrop-blur-sm',
         statusStyles[state]
       )}
     >
@@ -154,14 +156,14 @@ export function TeamStatusGraph({
   }, [assistantNames, events])
 
   return (
-    <Card className="flex h-full min-h-0 flex-col border-border/80 bg-card/78">
-      <CardHeader className="border-b border-border/70">
+    <Card className="flex h-full min-h-0 flex-col border-0 bg-[color:var(--surface-panel-strong)] shadow-none">
+      <CardHeader className="border-b border-border/70 border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)]">
         <CardTitle className="text-base">{t('team.status.title')}</CardTitle>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-4 py-4">
         <div
           className={cn(
-            'overflow-hidden rounded-lg border border-border/70 bg-muted/15',
+            'overflow-hidden rounded-[1.25rem] border border-border/70 border-[color:var(--surface-border)] bg-[color:var(--surface-muted)]',
             showEventLog ? 'h-72' : 'min-h-0 flex-1'
           )}
         >
@@ -181,13 +183,13 @@ export function TeamStatusGraph({
             panActivationKeyCode={null}
             attributionPosition="bottom-left"
           >
-            <Background />
+            <Background color="rgba(148, 163, 184, 0.16)" gap={18} size={1.2} />
             <Controls showInteractive={false} />
           </ReactFlow>
         </div>
 
         {showEventLog ? (
-          <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-border/70 bg-muted/15 p-3">
+          <div className="flex min-h-0 flex-1 flex-col rounded-[1.25rem] border border-border/70 border-[color:var(--surface-border)] bg-[color:var(--surface-muted)] p-3">
             <h3 className="mb-2 text-sm font-medium">{t('team.status.eventLogTitle')}</h3>
             {eventLog.length === 0 ? (
               <p className="text-muted-foreground text-sm">{t('team.status.emptyEventLog')}</p>
