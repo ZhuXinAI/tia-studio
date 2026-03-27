@@ -167,7 +167,8 @@ describe('resolveModel', () => {
       },
       factories,
       {
-        acpWorkingDirectory: '/tmp/project'
+        acpWorkingDirectory: '/tmp/project',
+        acpHomeDirectory: '/tmp/acp-home'
       }
     )
 
@@ -175,6 +176,9 @@ describe('resolveModel', () => {
     expect(factories.acpProviderFactory).toHaveBeenCalledWith(
       expect.objectContaining({
         command: 'codex-acp',
+        env: expect.objectContaining({
+          CODEX_HOME: '/tmp/acp-home'
+        }),
         persistSession: true,
         session: {
           cwd: '/tmp/project',

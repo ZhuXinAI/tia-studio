@@ -317,6 +317,7 @@ async function startLocalApiServer(): Promise<void> {
     usageRepo: threadUsageRepo
   })
   const threadMessageEventsStore = new ThreadMessageEventsStore()
+  const acpHomeRootPath = join(app.getPath('userData'), 'acp-homes')
   const assistantRuntime = new AssistantRuntimeService({
     mastra,
     assistantsRepo,
@@ -333,7 +334,8 @@ async function startLocalApiServer(): Promise<void> {
     cronJobService: assistantCronJobsService,
     managedRuntimeResolver: managedRuntimeService,
     builtInBrowserManager: resolveBuiltInBrowserManager(),
-    tiaBrowserToolManager: resolveTiaBrowserToolManager()
+    tiaBrowserToolManager: resolveTiaBrowserToolManager(),
+    acpHomeRootPath
   })
   const teamRunStatusStore = new TeamRunStatusStore()
   const teamRuntime = new TeamRuntimeService({
@@ -343,7 +345,8 @@ async function startLocalApiServer(): Promise<void> {
     teamWorkspacesRepo,
     teamThreadsRepo,
     statusStore: teamRunStatusStore,
-    builtInBrowserManager: resolveBuiltInBrowserManager()
+    builtInBrowserManager: resolveBuiltInBrowserManager(),
+    acpHomeRootPath
   })
   channelService = new ChannelService({
     channelsRepo,

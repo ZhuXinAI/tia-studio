@@ -243,6 +243,7 @@ type AssistantRuntimeServiceOptions = {
   }
   builtInBrowserManager?: BuiltInBrowserController
   tiaBrowserToolManager?: TiaBrowserToolController
+  acpHomeRootPath?: string
   threadUsageRepo?: {
     recordMessageUsage(input: {
       messageId: string
@@ -1122,9 +1123,11 @@ ${input.prompt}`
         selectedModel: input.provider.selectedModel
       },
       {},
-      {
-        acpWorkingDirectory: input.workspaceRootPath
-      }
+      this.buildResolveModelOptions({
+        provider: input.provider,
+        acpWorkingDirectory: input.workspaceRootPath,
+        acpScopeId: 'thread-compaction-summary'
+      })
     ) as unknown as LanguageModel
 
     const result = await generateText({
@@ -1596,9 +1599,11 @@ ${input.prompt}`
         selectedModel: provider.selectedModel
       },
       {},
-      {
-        acpWorkingDirectory: workspaceRootPath
-      }
+      this.buildResolveModelOptions({
+        provider,
+        acpWorkingDirectory: workspaceRootPath,
+        acpScopeId: assistant.id
+      })
     )
     const guardrailModel = resolveModel(
       {
@@ -1608,9 +1613,11 @@ ${input.prompt}`
         selectedModel: guardrailConfig.provider.selectedModel
       },
       {},
-      {
-        acpWorkingDirectory: workspaceRootPath
-      }
+      this.buildResolveModelOptions({
+        provider: guardrailConfig.provider,
+        acpWorkingDirectory: workspaceRootPath,
+        acpScopeId: `${assistant.id}:guardrails`
+      })
     )
 
     const storage = this.options.mastra.getStorage()
@@ -1670,20 +1677,19 @@ ${input.prompt}`
             providerOptions: this.buildProviderOptions(provider)
           })
         : {}
-    const codingAgentTools =
-      codingAgents.length > 0
-        ? {
-            useCodingAgent: createCodingAgentDelegateTool({
-              codingAgents: codingAgents.map(({ kind, provider }) => ({
-                target: kind,
-                agentName: this.buildCodingAgentName(assistant.id, kind),
-                providerName: provider.name,
-                providerOptions: this.buildProviderOptions(provider)
-              })),
-              maxSteps: assistant.maxSteps
-            })
-          }
-        : {}
+    const codingAgentTools: ToolsInput = {}
+    if (codingAgents.length > 0) {
+      codingAgentTools.useCodingAgent = createCodingAgentDelegateTool({
+        codingAgents: codingAgents.map(({ kind, provider }) => ({
+          target: kind,
+          agentName: this.buildCodingAgentName(assistant.id, kind),
+          providerName: provider.name,
+          providerOptions: this.buildProviderOptions(provider)
+        })),
+        maxSteps: assistant.maxSteps,
+        workspaceRootPath
+      })
+    }
 
     logger.debug('[AssistantRuntime] Agent tools registered:', {
       hasBuiltInBrowserTools: Boolean(this.options.builtInBrowserManager),
@@ -1809,9 +1815,11 @@ ${input.prompt}`
             selectedModel: codingProvider.selectedModel
           },
           {},
-          {
-            acpWorkingDirectory: workspaceRootPath
-          }
+          this.buildResolveModelOptions({
+            provider: codingProvider,
+            acpWorkingDirectory: workspaceRootPath,
+            acpScopeId: this.buildCodingAgentName(assistant.id, kind)
+          })
         )
         const codingAgentName = this.buildCodingAgentName(assistant.id, kind)
         const codingAgent = createCodingAgent({
@@ -1963,6 +1971,36 @@ ${input.prompt}`
 
   private buildCodingAgentName(assistantId: string, kind: CodingRuntimeKind): string {
     return `${assistantId}:coding-agent:${kind}`
+  }
+
+  private resolveAcpHomeDirectory(
+    provider: {
+      id: string
+      type: string
+    },
+    scopeId: string
+  ): string | null {
+    if (!this.options.acpHomeRootPath || !isAcpProviderType(provider.type)) {
+      return null
+    }
+
+    return path.join(this.options.acpHomeRootPath, provider.id, scopeId)
+  }
+
+  private buildResolveModelOptions(input: {
+    provider: {
+      id: string
+      type: string
+    }
+    acpWorkingDirectory?: string | null
+    acpScopeId: string
+  }) {
+    const acpHomeDirectory = this.resolveAcpHomeDirectory(input.provider, input.acpScopeId)
+
+    return {
+      ...(input.acpWorkingDirectory ? { acpWorkingDirectory: input.acpWorkingDirectory } : {}),
+      ...(acpHomeDirectory ? { acpHomeDirectory } : {})
+    }
   }
 
   private isCodingAgentEnabledFlag(value: unknown): boolean {

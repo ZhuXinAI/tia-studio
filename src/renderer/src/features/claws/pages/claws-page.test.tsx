@@ -449,6 +449,28 @@ describe('ClawsPage', () => {
     expect(container.textContent).toContain('Create Assistant')
   })
 
+  it('uses a dedicated scroll shell so long assistant lists can scroll', async () => {
+    vi.mocked(listClaws).mockResolvedValue({
+      claws: [],
+      configuredChannels: []
+    })
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ClawsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const shell = container.querySelector('[data-claws-page-shell="true"]')
+
+    expect(shell).not.toBeNull()
+    expect(shell?.className).toContain('h-[calc(100vh-3.5rem)]')
+    expect(shell?.className).toContain('overflow-y-auto')
+  })
+
   it('renders existing claw cards', async () => {
     vi.mocked(listClaws).mockResolvedValue({
       claws: [

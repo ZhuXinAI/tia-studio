@@ -53,6 +53,7 @@ type TeamRuntimeServiceOptions = {
   teamThreadsRepo: TeamThreadsRepository
   statusStore: TeamRunStatusStore
   builtInBrowserManager?: BuiltInBrowserController
+  acpHomeRootPath?: string
 }
 
 type JsonObject = Record<string, unknown>
@@ -115,6 +116,39 @@ type TeamCompletionToolResult = {
 
 export class TeamRuntimeService implements TeamRuntime {
   constructor(private readonly options: TeamRuntimeServiceOptions) {}
+
+  private resolveAcpHomeDirectory(
+    provider: {
+      id: string
+      type: string
+    },
+    scopeId: string
+  ): string | null {
+    if (
+      !this.options.acpHomeRootPath ||
+      (provider.type !== 'codex-acp' && provider.type !== 'claude-agent-acp')
+    ) {
+      return null
+    }
+
+    return path.join(this.options.acpHomeRootPath, provider.id, scopeId)
+  }
+
+  private buildResolveModelOptions(input: {
+    provider: {
+      id: string
+      type: string
+    }
+    acpWorkingDirectory?: string | null
+    acpScopeId: string
+  }) {
+    const acpHomeDirectory = this.resolveAcpHomeDirectory(input.provider, input.acpScopeId)
+
+    return {
+      ...(input.acpWorkingDirectory ? { acpWorkingDirectory: input.acpWorkingDirectory } : {}),
+      ...(acpHomeDirectory ? { acpHomeDirectory } : {})
+    }
+  }
 
   async streamTeamChat(
     params: StreamTeamChatParams
@@ -193,9 +227,11 @@ export class TeamRuntimeService implements TeamRuntime {
           selectedModel: supervisorModel
         },
         {},
-        {
-          acpWorkingDirectory: workspace.rootPath
-        }
+        this.buildResolveModelOptions({
+          provider: supervisorProvider,
+          acpWorkingDirectory: workspace.rootPath,
+          acpScopeId: `team-supervisor:${workspace.id}`
+        })
       ) as never,
       tools: supervisorTools,
       memory: sharedMemory as never,
@@ -338,9 +374,11 @@ export class TeamRuntimeService implements TeamRuntime {
               selectedModel: provider.selectedModel
             },
             {},
-            {
-              acpWorkingDirectory: input.teamWorkspaceRootPath
-            }
+            this.buildResolveModelOptions({
+              provider,
+              acpWorkingDirectory: input.teamWorkspaceRootPath,
+              acpScopeId: `team-member:${assistant.id}`
+            })
           ) as never,
           ...(Object.keys(builtInBrowserTools).length > 0 ? { tools: builtInBrowserTools } : {}),
           memory: input.sharedMemory as never,

@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
@@ -43,6 +44,7 @@ export type ModelResolverFactories = {
 
 export type ResolveModelOptions = {
   acpWorkingDirectory?: string | null
+  acpHomeDirectory?: string | null
 }
 
 export type ResolvedModel = MastraLanguageModel | MastraLegacyLanguageModel
@@ -69,6 +71,20 @@ function toACPModelId(selectedModel: string): string | undefined {
   }
 
   return normalized
+}
+
+function buildACPEnvironment(
+  providerType: string,
+  options: ResolveModelOptions
+): Record<string, string> {
+  const env = toStringEnv(process.env)
+  const acpHomeDirectory = options.acpHomeDirectory?.trim()
+
+  if (providerType === 'codex-acp' && acpHomeDirectory) {
+    env.CODEX_HOME = path.resolve(acpHomeDirectory)
+  }
+
+  return env
 }
 
 export function resolveModel(
@@ -138,7 +154,7 @@ export function resolveModel(
   if (provider.type === 'codex-acp' || provider.type === 'claude-agent-acp') {
     const acpProvider = mergedFactories.acpProviderFactory({
       command: provider.type,
-      env: toStringEnv(process.env),
+      env: buildACPEnvironment(provider.type, options),
       session: {
         cwd: options.acpWorkingDirectory?.trim() || process.cwd(),
         mcpServers: []

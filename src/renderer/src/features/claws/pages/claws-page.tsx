@@ -469,7 +469,10 @@ export function ClawsPage(): React.JSX.Element {
   }
 
   return (
-    <section className="min-h-full bg-transparent px-6 py-6">
+    <section
+      data-claws-page-shell="true"
+      className="min-h-0 h-[calc(100vh-3.5rem)] overflow-y-auto bg-transparent px-6 py-6"
+    >
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <div className="flex flex-wrap items-end justify-between gap-4 rounded-[1.75rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-6 py-6 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.55)]">
           <div className="space-y-1">

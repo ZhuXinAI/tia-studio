@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { AgentExecutionOptions } from '@mastra/core/agent'
 import { createTool } from '@mastra/core/tools'
@@ -13,9 +14,13 @@ type CodingAgentTarget = {
 type CodingAgentDelegateToolOptions = {
   codingAgents: CodingAgentTarget[]
   maxSteps?: number | null
+  workspaceRootPath?: string | null
 }
 
 const DEFAULT_CODING_AGENT_DELEGATE_TIMEOUT_MS = 10 * 60 * 1000
+const UNIX_ABSOLUTE_PATH_PATTERN = /(?<![:\w])\/[^\s"'`<>，。！？；：）】]+/g
+const WINDOWS_ABSOLUTE_PATH_PATTERN = /[A-Za-z]:\\[^\s"'`<>，。！？；：）】]+/g
+const TRAILING_PATH_PUNCTUATION_PATTERN = /[.,!?;:)\]}，。！？；：）】]+$/g
 
 function truncateForLog(value: string, maxLength = 160): string {
   if (value.length <= maxLength) {
@@ -23,6 +28,38 @@ function truncateForLog(value: string, maxLength = 160): string {
   }
 
   return `${value.slice(0, maxLength - 3)}...`
+}
+
+function sanitizeMatchedPath(value: string): string {
+  return value.replace(TRAILING_PATH_PUNCTUATION_PATTERN, '')
+}
+
+function extractAbsolutePaths(task: string): string[] {
+  const unixPaths = (task.match(UNIX_ABSOLUTE_PATH_PATTERN) ?? [])
+    .map(sanitizeMatchedPath)
+    .filter((value) => value.length > 0 && !value.startsWith('//') && !value.includes('://'))
+  const windowsPaths = (task.match(WINDOWS_ABSOLUTE_PATH_PATTERN) ?? [])
+    .map(sanitizeMatchedPath)
+    .filter((value) => value.length > 0)
+
+  return [...new Set([...unixPaths, ...windowsPaths])]
+}
+
+function isPathInsideWorkspace(candidatePath: string, workspaceRootPath: string): boolean {
+  const relativePath = path.relative(path.resolve(workspaceRootPath), path.resolve(candidatePath))
+  return (
+    relativePath.length === 0 || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
+  )
+}
+
+function resolveOutsideWorkspacePaths(task: string, workspaceRootPath?: string | null): string[] {
+  if (!workspaceRootPath) {
+    return []
+  }
+
+  return extractAbsolutePaths(task).filter(
+    (candidatePath) => !isPathInsideWorkspace(candidatePath, workspaceRootPath)
+  )
 }
 
 export function createCodingAgentDelegateTool(options: CodingAgentDelegateToolOptions) {
@@ -36,6 +73,7 @@ export function createCodingAgentDelegateTool(options: CodingAgentDelegateToolOp
     description: [
       'Delegate a coding-heavy task to a dedicated coding subagent.',
       'Use this for implementation, debugging, code review, build issues, repo analysis, and test failures.',
+      options.workspaceRootPath ? `Workspace scope: ${options.workspaceRootPath}.` : '',
       supportedTargets.length > 0 ? `Available targets: ${supportedTargets.join(', ')}.` : ''
     ]
       .filter((value) => value.length > 0)
@@ -64,6 +102,19 @@ export function createCodingAgentDelegateTool(options: CodingAgentDelegateToolOp
       subAgentResourceId: z.string()
     }),
     execute: async ({ task, target }, context) => {
+      const outsideWorkspacePaths = resolveOutsideWorkspacePaths(task, options.workspaceRootPath)
+      if (outsideWorkspacePaths.length > 0 && options.workspaceRootPath) {
+        const summarizedPaths = outsideWorkspacePaths.slice(0, 3)
+        const hasMorePaths = outsideWorkspacePaths.length > summarizedPaths.length
+        throw new Error(
+          [
+            `The coding agent is scoped to workspace "${options.workspaceRootPath}".`,
+            `This task references path${outsideWorkspacePaths.length === 1 ? '' : 's'} outside that workspace: ${summarizedPaths.join(', ')}${hasMorePaths ? ', ...' : ''}.`,
+            'Update the assistant workspace or use a workspace that contains those paths before invoking useCodingAgent.'
+          ].join(' ')
+        )
+      }
+
       const resolvedCodingAgent =
         (target ? availableTargets.get(target) : undefined) ?? options.codingAgents.at(0)
       if (!resolvedCodingAgent) {
