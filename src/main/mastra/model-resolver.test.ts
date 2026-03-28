@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { resolveModel } from './model-resolver'
 
@@ -151,7 +154,14 @@ describe('resolveModel', () => {
   })
 
   it('resolves codex-acp models with the workspace cwd', () => {
-    const languageModel = { id: 'codex-acp-model' }
+    const languageModel = {
+      specificationVersion: 'v3' as const,
+      provider: 'acp',
+      modelId: undefined,
+      supportedUrls: {},
+      doGenerate: vi.fn(),
+      doStream: vi.fn()
+    }
     const provider = {
       languageModel: vi.fn(() => languageModel)
     }
@@ -172,7 +182,11 @@ describe('resolveModel', () => {
       }
     )
 
-    expect(result).toBe(languageModel)
+    expect(result).toMatchObject({
+      specificationVersion: 'v3',
+      provider: 'codex-acp',
+      modelId: 'codex-acp/default'
+    })
     expect(factories.acpProviderFactory).toHaveBeenCalledWith(
       expect.objectContaining({
         command: 'codex-acp',
@@ -189,8 +203,70 @@ describe('resolveModel', () => {
     expect(provider.languageModel).toHaveBeenCalledWith(undefined)
   })
 
+  it('creates and bootstraps isolated CODEX_HOME directories for codex-acp', async () => {
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-codex-home-'))
+    const sourceHome = path.join(tempRoot, 'source-home')
+    const isolatedHome = path.join(tempRoot, 'isolated-home')
+    await mkdir(sourceHome, { recursive: true })
+    await writeFile(path.join(sourceHome, 'config.toml'), 'model = "gpt-5.4"\n', 'utf8')
+    await writeFile(path.join(sourceHome, 'auth.json'), '{"token":"test"}\n', 'utf8')
+
+    const previousCodexHome = process.env.CODEX_HOME
+    process.env.CODEX_HOME = sourceHome
+
+    try {
+      const languageModel = {
+        specificationVersion: 'v3' as const,
+        provider: 'acp',
+        modelId: undefined,
+        supportedUrls: {},
+        doGenerate: vi.fn(),
+        doStream: vi.fn()
+      }
+      const provider = {
+        languageModel: vi.fn(() => languageModel)
+      }
+      const factories = {
+        acpProviderFactory: vi.fn(() => provider)
+      }
+
+      resolveModel(
+        {
+          type: 'codex-acp',
+          apiKey: '',
+          selectedModel: 'default'
+        },
+        factories,
+        {
+          acpHomeDirectory: isolatedHome
+        }
+      )
+
+      const copiedConfig = await readFile(path.join(isolatedHome, 'config.toml'), 'utf8')
+      const copiedAuth = await readFile(path.join(isolatedHome, 'auth.json'), 'utf8')
+
+      expect(copiedConfig).toContain('model = "gpt-5.4"')
+      expect(copiedAuth).toContain('"token":"test"')
+    } finally {
+      if (previousCodexHome === undefined) {
+        delete process.env.CODEX_HOME
+      } else {
+        process.env.CODEX_HOME = previousCodexHome
+      }
+
+      await rm(tempRoot, { recursive: true, force: true })
+    }
+  })
+
   it('passes selected models through to claude-agent-acp', () => {
-    const languageModel = { id: 'claude-agent-acp-model' }
+    const languageModel = {
+      specificationVersion: 'v3' as const,
+      provider: 'acp',
+      modelId: 'claude-sonnet-4-5',
+      supportedUrls: {},
+      doGenerate: vi.fn(),
+      doStream: vi.fn()
+    }
     const provider = {
       languageModel: vi.fn(() => languageModel)
     }
@@ -207,7 +283,11 @@ describe('resolveModel', () => {
       factories
     )
 
-    expect(result).toBe(languageModel)
+    expect(result).toMatchObject({
+      specificationVersion: 'v3',
+      provider: 'claude-agent-acp',
+      modelId: 'claude-sonnet-4-5'
+    })
     expect(provider.languageModel).toHaveBeenCalledWith('claude-sonnet-4-5')
   })
 })

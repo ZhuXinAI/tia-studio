@@ -468,7 +468,27 @@ describe('useThreadPageController', () => {
     mockState.sendMessageMock.mockReset()
     mockState.sendMessageMock.mockImplementation((message: unknown) => {
       if (message && typeof message === 'object') {
-        mockState.chatMessages = [...mockState.chatMessages, message as Record<string, unknown>]
+        const payload = message as Record<string, unknown>
+        const replacementMessageId =
+          typeof payload.messageId === 'string' ? payload.messageId : null
+
+        if (replacementMessageId) {
+          const messageIndex = mockState.chatMessages.findIndex(
+            (entry) => entry.id === replacementMessageId
+          )
+
+          if (messageIndex >= 0) {
+            mockState.chatMessages = [
+              ...mockState.chatMessages.slice(0, messageIndex),
+              payload,
+              ...mockState.chatMessages.slice(messageIndex + 1)
+            ]
+          } else {
+            mockState.chatMessages = [...mockState.chatMessages, payload]
+          }
+        } else {
+          mockState.chatMessages = [...mockState.chatMessages, payload]
+        }
       }
       mockState.chatStatus = 'streaming'
       return new Promise<void>((resolve) => {
@@ -540,6 +560,14 @@ describe('useThreadPageController', () => {
       () => mockState.sendMessageMock.mock.calls.length === 1,
       'first send invocation'
     )
+
+    const firstSendPayload = mockState.sendMessageMock.mock.calls[0]?.[0] as
+      | Record<string, unknown>
+      | undefined
+    expect(firstSendPayload?.messageId).toBe(firstSendPayload?.id)
+    expect(
+      mockState.chatMessages.filter((message) => message.id === firstSendPayload?.id)
+    ).toHaveLength(1)
 
     await act(async () => {
       forceRerender?.()
@@ -1041,6 +1069,10 @@ describe('useThreadPageController', () => {
     expect(readMessageText(mockState.sendMessageMock.mock.calls[0]?.[0])).toBe(
       'Ship the first queued message'
     )
+    const queuedSendPayload = mockState.sendMessageMock.mock.calls[0]?.[0] as
+      | Record<string, unknown>
+      | undefined
+    expect(queuedSendPayload?.messageId).toBe(queuedSendPayload?.id)
   })
 
   it('routes /stop through the main-thread command handler instead of sending chat', async () => {

@@ -1,3 +1,5 @@
+import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
@@ -81,10 +83,72 @@ function buildACPEnvironment(
   const acpHomeDirectory = options.acpHomeDirectory?.trim()
 
   if (providerType === 'codex-acp' && acpHomeDirectory) {
-    env.CODEX_HOME = path.resolve(acpHomeDirectory)
+    env.CODEX_HOME = bootstrapCodexHome(acpHomeDirectory)
   }
 
   return env
+}
+
+function resolveSourceCodexHome(): string {
+  const configuredHome = process.env.CODEX_HOME?.trim()
+  if (configuredHome) {
+    return path.resolve(configuredHome)
+  }
+
+  return path.join(os.homedir(), '.codex')
+}
+
+function bootstrapCodexHome(acpHomeDirectory: string): string {
+  const resolvedHome = path.resolve(acpHomeDirectory)
+  mkdirSync(resolvedHome, { recursive: true })
+
+  const sourceHome = resolveSourceCodexHome()
+  if (sourceHome === resolvedHome) {
+    return resolvedHome
+  }
+
+  for (const fileName of ['config.toml', 'auth.json']) {
+    const sourcePath = path.join(sourceHome, fileName)
+    if (!existsSync(sourcePath)) {
+      continue
+    }
+
+    copyFileSync(sourcePath, path.join(resolvedHome, fileName))
+  }
+
+  return resolvedHome
+}
+
+function toExposedACPModelId(providerType: string, selectedModel: string): string {
+  const resolvedModelId = toACPModelId(selectedModel)
+  return resolvedModelId ?? `${providerType}/default`
+}
+
+function wrapACPModelMetadata<T extends object>(
+  model: T,
+  providerType: string,
+  selectedModel: string
+): T {
+  const exposedModelId = toExposedACPModelId(providerType, selectedModel)
+
+  return new Proxy(model, {
+    get(target, property) {
+      if (property === 'provider') {
+        return providerType
+      }
+
+      if (property === 'modelId') {
+        return exposedModelId
+      }
+
+      const value = Reflect.get(target, property, target)
+      if (typeof value === 'function') {
+        return value.bind(target)
+      }
+
+      return value
+    }
+  })
 }
 
 export function resolveModel(
@@ -162,7 +226,13 @@ export function resolveModel(
       persistSession: true
     })
 
-    return acpProvider.languageModel(toACPModelId(provider.selectedModel)) as ResolvedModel
+    const model = acpProvider.languageModel(toACPModelId(provider.selectedModel)) as object
+
+    return wrapACPModelMetadata(
+      model,
+      provider.type,
+      provider.selectedModel
+    ) as unknown as ResolvedModel
   }
 
   throw new Error(`Unsupported provider type: ${provider.type}`)

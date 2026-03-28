@@ -390,6 +390,7 @@ export function useThreadPageController() {
   } = chat
   const setMessagesRef = useRef(setMessages)
   const currentChatMessagesRef = useRef<readonly UIMessage[]>(chatMessages)
+  type SendMessageInput = Exclude<Parameters<typeof sendMessage>[0], undefined>
 
   const isChatStreaming = chatStatus === 'submitted' || chatStatus === 'streaming'
   const canAbortGeneration = isChatStreaming
@@ -426,6 +427,23 @@ export function useThreadPageController() {
     setMessagesRef.current = setMessages
     currentChatMessagesRef.current = chatMessages
   }, [chatMessages, setMessages])
+
+  const sendQueuedPendingUserMessage = useCallback(
+    async (message: UIMessage): Promise<void> => {
+      if (typeof message.id !== 'string' || message.id.length === 0) {
+        await sendMessage(message as SendMessageInput)
+        return
+      }
+
+      // The queued first-message path preloads this message into useChat so it stays visible
+      // while the thread hydrates. Send it as a replacement to avoid duplicating the same id.
+      await sendMessage({
+        ...(message as SendMessageInput),
+        messageId: message.id
+      } as SendMessageInput)
+    },
+    [sendMessage]
+  )
 
   // Load MCP servers on mount
   useEffect(() => {
@@ -1254,7 +1272,7 @@ export function useThreadPageController() {
     setHasPendingMessage(false)
     activePendingUserMessagesRef.current.set(pendingMessage.threadId, messageToSend)
 
-    void sendMessage(messageToSend).catch((error) => {
+    void sendQueuedPendingUserMessage(messageToSend).catch((error) => {
       toast.error(toErrorMessage(error))
     })
   }, [
@@ -1263,7 +1281,7 @@ export function useThreadPageController() {
     isChatStreaming,
     selectedThread,
     chatTransport,
-    sendMessage
+    sendQueuedPendingUserMessage
   ])
 
   const closeAssistantDialog = useCallback(() => {
