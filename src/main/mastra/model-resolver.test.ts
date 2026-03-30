@@ -154,6 +154,8 @@ describe('resolveModel', () => {
   })
 
   it('resolves codex-acp models with the workspace cwd', () => {
+    const acpWorkingDirectory = '/tmp/project'
+    const acpHomeDirectory = '/tmp/acp-home'
     const languageModel = {
       specificationVersion: 'v3' as const,
       provider: 'acp',
@@ -177,8 +179,8 @@ describe('resolveModel', () => {
       },
       factories,
       {
-        acpWorkingDirectory: '/tmp/project',
-        acpHomeDirectory: '/tmp/acp-home'
+        acpWorkingDirectory,
+        acpHomeDirectory
       }
     )
 
@@ -191,11 +193,11 @@ describe('resolveModel', () => {
       expect.objectContaining({
         command: 'codex-acp',
         env: expect.objectContaining({
-          CODEX_HOME: '/tmp/acp-home'
+          CODEX_HOME: path.resolve(acpHomeDirectory)
         }),
         persistSession: true,
         session: {
-          cwd: '/tmp/project',
+          cwd: acpWorkingDirectory,
           mcpServers: []
         }
       })
