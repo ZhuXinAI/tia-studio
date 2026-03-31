@@ -3,7 +3,7 @@
 [中文说明](./README_zh.md)
 
 <p align="center">
-  <img src="claws.png" alt="TIA Studio Claw Overview" width="800">
+  <img src="docs/screenshots/claws-overview.png" alt="TIA Studio assistants and channel bindings overview" width="1100">
 </p>
 
 <div align="center">
@@ -26,28 +26,42 @@ TIA (short for "This Is AI") Studio is an Electron-based desktop app built to ma
 
 At the same time, TIA Studio is a full-featured assistant app. You can chat with a single assistant, coordinate a team of assistants, organize threaded work, and manage channels from one local-first desktop workspace.
 
+It also gives you a dedicated operations layer for model providers, security and privacy guardrails, browsing automation, MCP servers, coding runtimes, cron jobs, and heartbeat-driven follow-up work.
+
 Today, TIA Studio supports Discord, Lark, Telegram, WhatsApp, Wecom, and Wechat-KF channels, with more channels planned next.
 
 ### Channel Support
 
-| Channel | Direct Chat | Group Chat | Group Trigger |
-| ------- | ----------- | ---------- | ------------- |
-| Discord | ✅ | ✅ | Replies only when the bot is `@` mentioned by default |
-| Lark | ✅ | ✅ | Replies only when the bot is `@` mentioned by default |
-| Telegram | ✅ | 🚫 | Group support is currently disabled |
-| WhatsApp | ✅ | ✅ | Replies only when the bot is `@` mentioned by default |
-| Wecom | ✅ | ✅ | Replies only when the bot is `@` mentioned by default |
-| Wechat-KF | ✅ | 🚫 | Not applicable for relay-backed 1:1 customer sessions |
+| Channel   | Direct Chat | Group Chat | Group Trigger                                         |
+| --------- | ----------- | ---------- | ----------------------------------------------------- |
+| Discord   | ✅          | ✅         | Replies only when the bot is `@` mentioned by default |
+| Lark      | ✅          | ✅         | Replies only when the bot is `@` mentioned by default |
+| Telegram  | ✅          | 🚫         | Group support is currently disabled                   |
+| WhatsApp  | ✅          | ✅         | Replies only when the bot is `@` mentioned by default |
+| Wecom     | ✅          | ✅         | Replies only when the bot is `@` mentioned by default |
+| Wechat-KF | ✅          | 🚫         | Not applicable for relay-backed 1:1 customer sessions |
 
 For more, check [CHANNEL.md](./CHANNEL.md).
 
-## Full Assistant Workspace
+## Screenshot Tour
 
-When you want more than channel-connected automation, TIA Studio also gives you the full desktop workspace for assistants, teams, threads, and operations.
+When you want more than channel-connected automation, TIA Studio gives you a full desktop workspace for assistants, teams, threads, and local operations.
+
+### Configure assistants without leaving the workspace
 
 <p align="center">
-  <img src="tia-studio.png" alt="TIA Studio Assistant Workspace" width="800">
+  <img src="docs/screenshots/assistant-coding.png" alt="TIA Studio assistant configuration with coding subagents" width="1100">
 </p>
+
+Configure assistants in-place, including channels, tools, skills, activity, and workspace-backed coding subagents powered by Codex ACP or Claude Agent ACP.
+
+### Security and privacy controls
+
+<p align="center">
+  <img src="docs/screenshots/settings-security.png" alt="TIA Studio security and privacy settings" width="1100">
+</p>
+
+Enable prompt injection detection, PII redaction, and a shared guardrail provider from the desktop settings surface when you need stronger controls around assistant traffic.
 
 ## Architecture
 
@@ -110,16 +124,15 @@ That means adapting an assistant into a claw does **not** fork its identity:
 
 ## Features
 
-- 🦾 Easy-to-run local claws when an assistant is paired with a channel
-- 🤖 Full-featured AI assistant workspace with multiple assistants
-- 👥 Teams for coordinating assistants in one workspace
-- 📡 Channels that connect assistants to real conversations
-- ✅ Discord, Lark, Telegram, WhatsApp, Wecom, and Wechat-KF support available today
-- 🚧 More channels coming soon
-- 💬 Thread-based conversation management
-- 🎨 Clean, dark-themed interface
-- 🔒 Local-first architecture
-- ⚡ Fast, native desktop performance
+- Assistant-first local workspace with thread-based chat, workspace roots, attachments, and in-place configuration
+- Team workspaces with shared threads and live run status
+- Claws surface for assistant creation, channel binding, pairing, setup, activation, heartbeat monitoring, and cron monitoring
+- Channel adapters for Discord, Lark, Telegram, WhatsApp, Wecom, and Wechat-KF
+- Provider management for OpenAI-compatible models, OpenAI Responses, OpenRouter, Gemini, Anthropic, Ollama, Codex ACP, and Claude Agent ACP
+- Workspace-backed coding subagents using Codex ACP and Claude Agent ACP
+- Built-in browser automation controls, browsing settings, and MCP server management
+- Prompt injection detection and PII redaction guardrails with configurable provider selection
+- Local-first Electron desktop app with no required cloud control plane
 
 ## Security
 
