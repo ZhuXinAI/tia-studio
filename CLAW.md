@@ -1,28 +1,28 @@
-# CLAW in TIA Studio
+# CLAW in TIA Studio (Legacy Term)
 
-`CLAW` is TIA Studio’s reader-friendly name for an assistant that has been connected to a real-world channel.
+`CLAW` is the legacy term for what the product now calls a **Channel Binding**: an assistant connected to a real-world channel.
 
-That wording matters because the implementation is intentionally simple: a claw is not a separate runtime type. It is a normal assistant record plus a channel binding, with Mastra powering the assistant side of the system and channel adapters handling transport on the outside.
+The implementation is intentionally simple: a channel binding is not a separate runtime type. It is a normal assistant record plus a channel attachment, with Mastra powering the assistant side of the system and channel adapters handling transport on the outside.
 
 ## The core idea
 
-TIA Studio does **not** create a dedicated `claws` table or a second identity model.
+TIA Studio does **not** create a dedicated `claws` table (or `channel_bindings` table) or a second identity model.
 
 Instead, it keeps the system assistant-first:
 
 - the assistant still owns instructions, provider choice, workspace, tools, memory, cron jobs, and heartbeat behavior,
 - the channel only owns transport concerns such as credentials, adapter startup, remote chat identifiers, and delivery state,
-- the claws UI is a management surface that helps users create and maintain that pairing.
+- the Channel Bindings UI is a management surface that helps users create and maintain that pairing.
 
 This gives the app one consistent identity model. The same assistant can chat in the desktop UI, run scheduled jobs, write work logs, and speak in a channel without being duplicated into a separate “claw runtime”.
 
 ## The building blocks
 
-At a high level, a claw is assembled from five pieces:
+At a high level, a channel binding is assembled from five pieces:
 
 1. **Assistant record** — stored in `app_assistants`, including the `enabled` flag and the assistant’s Mastra-facing configuration.
 2. **Channel record** — stored in `app_channels`, including credentials, channel type, last error state, and the `assistantId` link.
-3. **Claws API** — the HTTP layer that creates, updates, lists, and deletes assistant-plus-channel combinations.
+3. **Claws API (compatibility route)** — the HTTP layer that creates, updates, lists, and deletes assistant-plus-channel combinations.
 4. **Channel runtime** — adapters such as Lark and Telegram that connect TIA Studio to external conversations.
 5. **Mastra runtime** — the assistant execution layer that turns a stored assistant definition into an active agent with memory, tools, workspace access, and streaming replies.
 

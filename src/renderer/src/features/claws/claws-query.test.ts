@@ -66,6 +66,49 @@ describe('claws query api client', () => {
     )
   })
 
+  it('normalizes channelBindings responses to the legacy claws list shape', async () => {
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            channelBindings: [
+              {
+                id: 'assistant-1',
+                name: 'Ops Assistant',
+                description: '',
+                providerId: 'provider-1',
+                enabled: true,
+                workspacePath: '/tmp/workspace-a',
+                channel: null
+              }
+            ],
+            configuredChannels: []
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
+    )
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await expect(listClaws()).resolves.toMatchObject({
+      claws: [
+        expect.objectContaining({
+          id: 'assistant-1',
+          name: 'Ops Assistant'
+        })
+      ],
+      channelBindings: [
+        expect.objectContaining({
+          id: 'assistant-1',
+          name: 'Ops Assistant'
+        })
+      ],
+      configuredChannels: []
+    })
+  })
+
   it('creates a claw through backend api', async () => {
     const fetchSpy = vi.fn(
       async () =>

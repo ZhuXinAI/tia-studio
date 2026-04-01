@@ -34,6 +34,15 @@ function toggleAssistantId(current: string[], assistantId: string): string[] {
   return [...current, assistantId]
 }
 
+function resolveAssistantOriginLabel(
+  assistant: Pick<AssistantRecord, 'origin'>,
+  t: (key: string) => string
+): string {
+  return assistant.origin === 'external-acp'
+    ? t('team.configDialog.origins.acp')
+    : t('team.configDialog.origins.tia')
+}
+
 export function TeamConfigDialog({
   isOpen,
   workspace,
@@ -205,6 +214,9 @@ export function TeamConfigDialog({
                 <legend className="text-sm font-medium">
                   {t('team.configDialog.fields.teamMembers')}
                 </legend>
+                <p className="text-muted-foreground text-xs">
+                  {t('team.configDialog.memberOriginHint')}
+                </p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {sortedAssistants.map((assistant) => (
                     <label
@@ -218,7 +230,10 @@ export function TeamConfigDialog({
                           setAssistantIds((current) => toggleAssistantId(current, assistant.id))
                         }
                       />
-                      <span>{assistant.name}</span>
+                      <span className="min-w-0 flex-1 truncate">{assistant.name}</span>
+                      <span className="rounded-full border border-border/70 bg-muted px-2 py-0.5 text-[11px] leading-4 text-muted-foreground">
+                        {resolveAssistantOriginLabel(assistant, t)}
+                      </span>
                     </label>
                   ))}
                 </div>

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Home, Settings, Users } from 'lucide-react'
+import { Bot, Settings, Users } from 'lucide-react'
 import { useTranslation } from '../../i18n/use-app-translation'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
@@ -18,7 +18,8 @@ export function AppShell(): React.JSX.Element {
   const { t } = useTranslation()
   const { hasDownloadedUpdate, isRestartingToUpdate, restartToUpdate } = useAutoUpdate()
   const location = useLocation()
-  const isChatRoute = location.pathname.startsWith('/chat')
+  const isChatRoute =
+    location.pathname.startsWith('/chat') || location.pathname.startsWith('/agents')
   const isClawsRoute = location.pathname.startsWith('/claws')
   const isChatAreaRoute = isChatRoute || isClawsRoute
   const isTeamRoute = location.pathname.startsWith('/team')
@@ -53,25 +54,13 @@ export function AppShell(): React.JSX.Element {
         className={clsx(
           'drag-region sticky top-0 z-20 border-b border-border/70 border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] pr-3 py-2 shadow-[0_1px_0_0_var(--surface-border)] backdrop-blur-xl',
           {
-            'pl-[80px]': !isWindowsPlatform()
+          'pl-[80px]': !isWindowsPlatform()
           }
         )}
       >
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <div className="flex items-center gap-1 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-1">
-              <Button
-                asChild
-                variant={isChatAreaRoute ? 'secondary' : 'ghost'}
-                size="sm"
-                className="no-drag rounded-full"
-              >
-                <NavLink to="/chat" className="no-drag inline-flex items-center gap-2">
-                  <Home className="size-4" />
-                  <span className="text-sm font-medium">{t('appShell.nav.chats')}</span>
-                </NavLink>
-              </Button>
-
               <Button
                 asChild
                 variant={isTeamRoute ? 'secondary' : 'ghost'}
@@ -81,6 +70,18 @@ export function AppShell(): React.JSX.Element {
                 <NavLink to="/team" className="no-drag inline-flex items-center gap-2">
                   <Users className="size-4" />
                   <span className="text-sm font-medium">{t('appShell.nav.team')}</span>
+                </NavLink>
+              </Button>
+
+              <Button
+                asChild
+                variant={isChatAreaRoute ? 'secondary' : 'ghost'}
+                size="sm"
+                className="no-drag rounded-full"
+              >
+                <NavLink to="/agents" className="no-drag inline-flex items-center gap-2">
+                  <Bot className="size-4" />
+                  <span className="text-sm font-medium">{t('appShell.nav.chats')}</span>
                 </NavLink>
               </Button>
             </div>

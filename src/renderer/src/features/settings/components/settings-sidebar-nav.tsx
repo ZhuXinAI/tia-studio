@@ -31,26 +31,34 @@ type SettingsNavItem = {
   icon: ComponentType<{ className?: string }>
 }
 
-const settingsNavItems: SettingsNavItem[] = [
-  {
-    titleKey: 'settings.sidebar.items.general',
-    icon: Languages,
-    to: '/settings/general'
-  },
+type SettingsNavGroup = {
+  labelKey: string
+  items: SettingsNavItem[]
+}
+
+const setupNavItems: SettingsNavItem[] = [
   {
     titleKey: 'settings.sidebar.items.providers',
     icon: Cloud,
     to: '/settings/providers'
   },
   {
-    titleKey: 'settings.sidebar.items.security',
-    icon: Shield,
-    to: '/settings/security'
+    titleKey: 'settings.sidebar.items.runtimeSetup',
+    icon: Wrench,
+    to: '/settings/runtimes'
   },
   {
     titleKey: 'settings.sidebar.items.channels',
     icon: MessageCircleMore,
     to: '/settings/channels'
+  }
+]
+
+const advancedStudioNavItems: SettingsNavItem[] = [
+  {
+    titleKey: 'settings.sidebar.items.security',
+    icon: Shield,
+    to: '/settings/security'
   },
   {
     titleKey: 'settings.sidebar.items.cronJobs',
@@ -58,14 +66,14 @@ const settingsNavItems: SettingsNavItem[] = [
     to: '/settings/cron-jobs'
   },
   {
-    titleKey: 'settings.sidebar.items.webSearch',
-    icon: Search,
-    to: '/settings/web-search'
-  },
-  {
     titleKey: 'settings.sidebar.items.mcpServers',
     icon: Cable,
     to: '/settings/mcp-servers'
+  },
+  {
+    titleKey: 'settings.sidebar.items.webSearch',
+    icon: Search,
+    to: '/settings/web-search'
   },
   {
     titleKey: 'settings.sidebar.items.coding',
@@ -73,9 +81,9 @@ const settingsNavItems: SettingsNavItem[] = [
     to: '/settings/coding'
   },
   {
-    titleKey: 'settings.sidebar.items.runtimeSetup',
-    icon: Wrench,
-    to: '/settings/runtimes'
+    titleKey: 'settings.sidebar.items.general',
+    icon: Languages,
+    to: '/settings/general'
   },
   {
     titleKey: 'settings.sidebar.items.display',
@@ -86,6 +94,17 @@ const settingsNavItems: SettingsNavItem[] = [
     titleKey: 'settings.sidebar.items.aboutFeedback',
     icon: Info,
     to: '/settings/about'
+  }
+]
+
+const settingsNavGroups: SettingsNavGroup[] = [
+  {
+    labelKey: 'settings.sidebar.groups.acpReuse',
+    items: setupNavItems
+  },
+  {
+    labelKey: 'settings.sidebar.groups.advancedStudio',
+    items: advancedStudioNavItems
   }
 ]
 
@@ -103,24 +122,26 @@ export function SettingsSidebarNav(): React.JSX.Element {
       </SidebarHeader>
 
       <SidebarContent className="py-5">
-        <SidebarGroup>
-          <SidebarGroupLabel>{t('settings.sidebar.categories')}</SidebarGroupLabel>
-          <SidebarMenu>
-            {settingsNavItems.map((item) => {
-              const isActive = location.pathname === item.to
-              return (
-                <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton asChild variant={isActive ? 'active' : 'default'}>
-                    <NavLink to={item.to}>
-                      <item.icon className="size-4" />
-                      <span>{t(item.titleKey)}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )
-            })}
-          </SidebarMenu>
-        </SidebarGroup>
+        {settingsNavGroups.map((group) => (
+          <SidebarGroup key={group.labelKey}>
+            <SidebarGroupLabel>{t(group.labelKey)}</SidebarGroupLabel>
+            <SidebarMenu>
+              {group.items.map((item) => {
+                const isActive = location.pathname === item.to
+                return (
+                  <SidebarMenuItem key={item.to}>
+                    <SidebarMenuButton asChild variant={isActive ? 'active' : 'default'}>
+                      <NavLink to={item.to}>
+                        <item.icon className="size-4" />
+                        <span>{t(item.titleKey)}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
+            </SidebarMenu>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
     </Sidebar>
   )

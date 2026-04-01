@@ -22,6 +22,8 @@ export type ClawRecord = {
   channel: ClawChannelRecord | null
 }
 
+export type ChannelBindingRecord = ClawRecord
+
 export type ConfiguredClawChannelRecord = {
   id: string
   type: string
@@ -37,6 +39,7 @@ export type ConfiguredClawChannelRecord = {
 
 export type ClawsResponse = {
   claws: ClawRecord[]
+  channelBindings?: ChannelBindingRecord[]
   configuredChannels: ConfiguredClawChannelRecord[]
 }
 
@@ -249,7 +252,26 @@ export const clawKeys = {
 }
 
 export async function listClaws(): Promise<ClawsResponse> {
-  return apiClient.get<ClawsResponse>('/v1/claws')
+  const response = await apiClient.get<Partial<ClawsResponse>>('/v1/claws')
+  const claws = Array.isArray(response.claws)
+    ? response.claws
+    : Array.isArray(response.channelBindings)
+      ? response.channelBindings
+      : []
+  const channelBindings = Array.isArray(response.channelBindings) ? response.channelBindings : claws
+  const configuredChannels = Array.isArray(response.configuredChannels)
+    ? response.configuredChannels
+    : []
+
+  return {
+    claws,
+    channelBindings,
+    configuredChannels
+  }
+}
+
+export async function listChannelBindings(): Promise<ClawsResponse> {
+  return listClaws()
 }
 
 export async function createClaw(input: SaveClawInput): Promise<ClawRecord> {

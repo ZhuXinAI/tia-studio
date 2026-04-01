@@ -36,11 +36,23 @@ export const appRoutes: RouteObject[] = [
         element: <ThreadPage />
       },
       {
+        path: 'agents',
+        element: <ThreadPage />
+      },
+      {
         path: 'chat/:assistantId',
         element: <ThreadPage />
       },
       {
+        path: 'agents/:assistantId',
+        element: <ThreadPage />
+      },
+      {
         path: 'chat/:assistantId/:threadId',
+        element: <ThreadPage />
+      },
+      {
+        path: 'agents/:assistantId/:threadId',
         element: <ThreadPage />
       },
       {

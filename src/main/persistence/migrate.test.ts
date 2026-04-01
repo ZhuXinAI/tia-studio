@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { afterEach, expect, it } from 'vitest'
 import { createAppDatabase } from './client'
 import { migrateAppSchema } from './migrate'
+import { AssistantsRepository } from './repos/assistants-repo'
 
 const tempPaths: string[] = []
 
@@ -79,6 +80,8 @@ it('creates core app tables', async () => {
   expect(assistantColumns).toContain('description')
   expect(assistantColumns).toContain('enabled')
   expect(assistantColumns).toContain('max_steps')
+  expect(assistantColumns).toContain('origin')
+  expect(assistantColumns).toContain('studio_features_enabled')
   expect(channelColumns).toContain('assistant_id')
   expect(channelColumns).toContain('config')
   expect(channelColumns).toContain('last_error')
@@ -109,6 +112,109 @@ it('creates core app tables', async () => {
   expect(teamWorkspaceColumns).toContain('team_description')
   expect(teamWorkspaceColumns).toContain('supervisor_provider_id')
   expect(teamWorkspaceColumns).toContain('supervisor_model')
+
+  await db.close()
+})
+
+it('defaults legacy assistants to tia origin and marks built-in legacy assistants', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'tia-assistant-origin-migrate-'))
+  tempPaths.push(tempDir)
+  const dbPath = path.join(tempDir, 'app.db')
+  const legacyDb = createAppDatabase(dbPath)
+
+  await legacyDb.execute('PRAGMA foreign_keys = ON')
+  await legacyDb.execute(`
+    CREATE TABLE IF NOT EXISTS app_assistants (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      instructions TEXT NOT NULL DEFAULT '',
+      enabled INTEGER NOT NULL DEFAULT 0,
+      provider_id TEXT,
+      workspace_config TEXT NOT NULL DEFAULT '{}',
+      skills_config TEXT NOT NULL DEFAULT '{}',
+      mcp_config TEXT NOT NULL DEFAULT '{}',
+      max_steps INTEGER NOT NULL DEFAULT 100,
+      memory_config TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await legacyDb.execute(
+    `
+      INSERT INTO app_assistants (
+        id,
+        name,
+        description,
+        instructions,
+        enabled,
+        provider_id,
+        workspace_config,
+        skills_config,
+        mcp_config,
+        max_steps,
+        memory_config
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      'assistant-legacy-user',
+      'Legacy User Assistant',
+      '',
+      '',
+      1,
+      null,
+      '{}',
+      '{}',
+      '{}',
+      100,
+      null
+    ]
+  )
+  await legacyDb.execute(
+    `
+      INSERT INTO app_assistants (
+        id,
+        name,
+        description,
+        instructions,
+        enabled,
+        provider_id,
+        workspace_config,
+        skills_config,
+        mcp_config,
+        max_steps,
+        memory_config
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      'assistant-legacy-built-in',
+      'Built In Assistant',
+      '',
+      '',
+      1,
+      null,
+      '{}',
+      '{}',
+      '{"__tiaBuiltInDefaultAgent":true}',
+      100,
+      null
+    ]
+  )
+  await legacyDb.close()
+
+  const db = await migrateAppSchema(dbPath)
+  const assistantsRepo = new AssistantsRepository(db)
+
+  await expect(assistantsRepo.getById('assistant-legacy-user')).resolves.toMatchObject({
+    id: 'assistant-legacy-user',
+    origin: 'tia',
+    studioFeaturesEnabled: true
+  })
+  await expect(assistantsRepo.getById('assistant-legacy-built-in')).resolves.toMatchObject({
+    id: 'assistant-legacy-built-in',
+    origin: 'built-in',
+    studioFeaturesEnabled: true
+  })
 
   await db.close()
 })

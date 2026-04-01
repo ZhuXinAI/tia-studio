@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { AppDatabase } from '../client'
 import { migrateAppSchema } from '../migrate'
+import {
+  createAssistantSchema,
+  updateAssistantSchema
+} from '../../server/validators/assistants-validator'
 import { AssistantsRepository } from './assistants-repo'
 import { ProvidersRepository } from './providers-repo'
 
@@ -85,5 +89,64 @@ describe('AssistantsRepository', () => {
         rootPath: '/tmp/legacy-workspace'
       }
     })
+  })
+
+  it('round-trips assistant origin and studio feature flags', async () => {
+    const created = await repo.create({
+      name: 'ACP Assistant',
+      providerId,
+      origin: 'external-acp',
+      studioFeaturesEnabled: false
+    })
+
+    expect(created).toMatchObject({
+      origin: 'external-acp',
+      studioFeaturesEnabled: false
+    })
+
+    await expect(repo.getById(created.id)).resolves.toMatchObject({
+      id: created.id,
+      origin: 'external-acp',
+      studioFeaturesEnabled: false
+    })
+
+    const updated = await repo.update(created.id, {
+      origin: 'tia',
+      studioFeaturesEnabled: true
+    })
+
+    expect(updated).toMatchObject({
+      id: created.id,
+      origin: 'tia',
+      studioFeaturesEnabled: true
+    })
+    await expect(repo.list()).resolves.toEqual([
+      expect.objectContaining({
+        id: created.id,
+        origin: 'tia',
+        studioFeaturesEnabled: true
+      })
+    ])
+  })
+
+  it('validates the supported assistant origins', () => {
+    for (const origin of ['tia', 'external-acp', 'built-in'] as const) {
+      expect(
+        createAssistantSchema.safeParse({
+          name: 'Origin Test',
+          providerId: 'provider-1',
+          origin
+        }).success
+      ).toBe(true)
+      expect(updateAssistantSchema.safeParse({ origin }).success).toBe(true)
+    }
+
+    expect(
+      createAssistantSchema.safeParse({
+        name: 'Origin Test',
+        providerId: 'provider-1',
+        origin: 'legacy'
+      }).success
+    ).toBe(false)
   })
 })

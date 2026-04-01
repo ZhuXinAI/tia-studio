@@ -49,7 +49,14 @@ describe('assistant heartbeat route', () => {
     db.close()
   })
 
-  async function createWorkspaceAssistant(name: string, rootPath: string) {
+  async function createWorkspaceAssistant(
+    name: string,
+    rootPath: string,
+    overrides?: {
+      origin?: 'tia' | 'external-acp' | 'built-in'
+      studioFeaturesEnabled?: boolean
+    }
+  ) {
     const provider = await providersRepo.create({
       name: 'OpenAI',
       type: 'openai',
@@ -62,7 +69,8 @@ describe('assistant heartbeat route', () => {
       providerId: provider.id,
       workspaceConfig: {
         rootPath
-      }
+      },
+      ...(overrides ?? {})
     })
   }
 
@@ -190,5 +198,29 @@ describe('assistant heartbeat route', () => {
       error: 'Heartbeat interval must be at least 1 minute'
     })
     expect(schedulerReload).not.toHaveBeenCalled()
+  })
+
+  it('returns a structured error when an external ACP assistant has not enabled studio features', async () => {
+    const assistant = await createWorkspaceAssistant('External ACP', '/tmp/workspace-b', {
+      origin: 'external-acp',
+      studioFeaturesEnabled: false
+    })
+
+    const response = await app.request(`http://localhost/v1/assistants/${assistant.id}/heartbeat`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        enabled: true,
+        intervalMinutes: 30,
+        prompt: 'Review recent work logs and recent conversations.'
+      })
+    })
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      code: 'assistant_studio_features_required',
+      error: 'Assistant studio features are required for heartbeat'
+    })
   })
 })

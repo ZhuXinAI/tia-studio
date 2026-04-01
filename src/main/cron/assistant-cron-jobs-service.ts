@@ -52,6 +52,17 @@ function hasWorkspaceRootPath(workspaceConfig: Record<string, unknown>): boolean
   return typeof workspaceConfig.rootPath === 'string' && workspaceConfig.rootPath.trim().length > 0
 }
 
+function supportsStudioFeatures(assistant: {
+  origin: 'tia' | 'external-acp' | 'built-in'
+  studioFeaturesEnabled: boolean
+}): boolean {
+  return (
+    assistant.origin === 'tia' ||
+    assistant.origin === 'built-in' ||
+    assistant.studioFeaturesEnabled === true
+  )
+}
+
 export class AssistantCronJobsService {
   constructor(private readonly options: AssistantCronJobsServiceOptions) {}
 
@@ -187,6 +198,14 @@ export class AssistantCronJobsService {
         400,
         'assistant_workspace_required',
         'Assistant workspace is required for cron jobs'
+      )
+    }
+
+    if (!supportsStudioFeatures(assistant)) {
+      throw new AssistantCronJobsServiceError(
+        400,
+        'assistant_studio_features_required',
+        'Assistant studio features are required for cron jobs'
       )
     }
   }

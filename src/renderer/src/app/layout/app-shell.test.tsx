@@ -48,4 +48,30 @@ describe('AppShell', () => {
     expect(html).toContain('no-drag')
     expect(html).not.toContain('pl-[80px]')
   })
+
+  it('renders Team as the primary area and labels the secondary area as Agents', () => {
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/',
+          element: <AppShell />,
+          children: [
+            {
+              path: 'team',
+              element: <div>Team Content</div>
+            }
+          ]
+        }
+      ],
+      {
+        initialEntries: ['/team']
+      }
+    )
+
+    const html = renderToString(<RouterProvider router={router} />)
+
+    expect(html).toContain('Team')
+    expect(html).toContain('Agents')
+    expect(html).not.toContain('Chats')
+  })
 })

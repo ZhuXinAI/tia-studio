@@ -13,6 +13,8 @@ describe('createLlmInterruptionDecider', () => {
       description: '',
       instructions: '',
       enabled: true,
+      origin: 'tia',
+      studioFeaturesEnabled: true,
       providerId: 'provider-1',
       workspaceConfig: {},
       skillsConfig: {},

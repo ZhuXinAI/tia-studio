@@ -157,6 +157,15 @@ describe('claws route', () => {
           pairedCount: 0,
           pendingPairingCount: 0
         })
+      ],
+      channelBindings: [
+        expect.objectContaining({
+          id: visibleAssistant.id,
+          name: 'Ops Assistant',
+          channel: expect.objectContaining({
+            name: 'Bound Lark'
+          })
+        })
       ]
     })
   })
@@ -933,6 +942,16 @@ describe('claws route', () => {
           pairedCount: 1,
           pendingPairingCount: 1
         })
+      ],
+      channelBindings: [
+        expect.objectContaining({
+          id: assistant.id,
+          channel: expect.objectContaining({
+            id: channel.id,
+            pairedCount: 1,
+            pendingPairingCount: 1
+          })
+        })
       ]
     })
   })
@@ -1152,6 +1171,16 @@ describe('claws route', () => {
           type: 'whatsapp',
           status: 'connected'
         })
+      ],
+      channelBindings: [
+        expect.objectContaining({
+          id: assistant.id,
+          channel: expect.objectContaining({
+            id: channel.id,
+            type: 'whatsapp',
+            status: 'connected'
+          })
+        })
       ]
     })
   })
@@ -1190,6 +1219,16 @@ describe('claws route', () => {
           id: channel.id,
           type: 'wechat',
           status: 'connected'
+        })
+      ],
+      channelBindings: [
+        expect.objectContaining({
+          id: assistant.id,
+          channel: expect.objectContaining({
+            id: channel.id,
+            type: 'wechat',
+            status: 'connected'
+          })
         })
       ]
     })

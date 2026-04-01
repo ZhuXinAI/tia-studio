@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronDown } from 'lucide-react'
-import type { SaveAssistantInput, AssistantRecord } from './assistants-query'
+import type { AssistantOrigin, SaveAssistantInput, AssistantRecord } from './assistants-query'
 import { AssistantActivityPanel } from './assistant-activity-panel'
 import {
   DEFAULT_ASSISTANT_HEARTBEAT_INTERVAL_MINUTES,
@@ -88,10 +88,16 @@ export type AssistantEditorChannelSetupAction = {
 
 type AssistantEditorTab = 'essential' | 'channels' | 'coding' | 'tools' | 'skills' | 'activity'
 
+export type AssistantEditorDefaultConfig = {
+  origin: AssistantOrigin
+  studioFeaturesEnabled: boolean
+}
+
 type AssistantEditorProps = {
   providers: ProviderRecord[]
   mcpServers: Record<string, McpServerRecord>
   initialValue?: AssistantRecord | null
+  defaultConfig?: AssistantEditorDefaultConfig
   isSubmitting?: boolean
   channels?: AssistantEditorChannelsProps
   channelSetupAction?: AssistantEditorChannelSetupAction | null
@@ -378,6 +384,7 @@ export function AssistantEditor({
   providers,
   mcpServers,
   initialValue,
+  defaultConfig,
   isSubmitting,
   channels,
   channelSetupAction,
@@ -387,10 +394,16 @@ export function AssistantEditor({
   onSubmit
 }: AssistantEditorProps): React.JSX.Element {
   const { t } = useTranslation()
+  const assistantOrigin = initialValue?.origin ?? defaultConfig?.origin ?? 'tia'
   const [values, setValues] = useState<AssistantEditorValues>(() =>
     toInitialValues(initialValue, mcpServers, providers)
   )
   const [activeTab, setActiveTab] = useState<AssistantEditorTab>('essential')
+  const [studioFeaturesEnabled, setStudioFeaturesEnabled] = useState<boolean>(
+    initialValue?.studioFeaturesEnabled ??
+      defaultConfig?.studioFeaturesEnabled ??
+      assistantOrigin !== 'external-acp'
+  )
   const [error, setError] = useState<string | null>(null)
   const [isSelectingWorkspacePath, setIsSelectingWorkspacePath] = useState(false)
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false)
@@ -407,6 +420,17 @@ export function AssistantEditor({
   )
   const [isHeartbeatLoading, setIsHeartbeatLoading] = useState(false)
   const [heartbeatError, setHeartbeatError] = useState<string | null>(null)
+  const supportsStudioFeatures =
+    assistantOrigin !== 'external-acp' || studioFeaturesEnabled === true
+  const showStudioUpgrade = assistantOrigin === 'external-acp' && !supportsStudioFeatures
+
+  useEffect(() => {
+    setStudioFeaturesEnabled(
+      initialValue?.studioFeaturesEnabled ??
+        defaultConfig?.studioFeaturesEnabled ??
+        assistantOrigin !== 'external-acp'
+    )
+  }, [assistantOrigin, defaultConfig?.studioFeaturesEnabled, initialValue?.studioFeaturesEnabled])
 
   useEffect(() => {
     if (activeTab === 'channels' && !channels) {
@@ -414,10 +438,15 @@ export function AssistantEditor({
       return
     }
 
+    if (!supportsStudioFeatures && activeTab !== 'essential' && activeTab !== 'channels') {
+      setActiveTab('essential')
+      return
+    }
+
     if (activeTab === 'activity' && (!showActivityTab || !initialValue)) {
       setActiveTab('essential')
     }
-  }, [activeTab, channels, initialValue, showActivityTab])
+  }, [activeTab, channels, initialValue, showActivityTab, supportsStudioFeatures])
 
   const title = useMemo(() => {
     return initialValue ? t('assistants.editor.editTitle') : t('assistants.editor.createTitle')
@@ -720,6 +749,8 @@ export function AssistantEditor({
         name: values.name.trim(),
         description: values.description.trim(),
         instructions: values.instructions.trim(),
+        origin: assistantOrigin,
+        studioFeaturesEnabled,
         providerId: values.providerId,
         workspaceConfig:
           workspacePath.length > 0
@@ -821,43 +852,47 @@ export function AssistantEditor({
               {t('assistants.editor.tabs.channels')}
             </button>
           ) : null}
-          <button
-            type="button"
-            className={cn(
-              'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
-              activeTab === 'coding'
-                ? 'bg-secondary text-secondary-foreground'
-                : 'hover:bg-accent/40'
-            )}
-            onClick={() => setActiveTab('coding')}
-          >
-            {t('assistants.editor.tabs.coding')}
-          </button>
-          <button
-            type="button"
-            className={cn(
-              'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
-              activeTab === 'tools'
-                ? 'bg-secondary text-secondary-foreground'
-                : 'hover:bg-accent/40'
-            )}
-            onClick={() => setActiveTab('tools')}
-          >
-            {t('assistants.editor.tabs.tools')}
-          </button>
-          <button
-            type="button"
-            className={cn(
-              'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
-              activeTab === 'skills'
-                ? 'bg-secondary text-secondary-foreground'
-                : 'hover:bg-accent/40'
-            )}
-            onClick={() => setActiveTab('skills')}
-          >
-            {t('assistants.editor.tabs.skills')}
-          </button>
-          {showActivityTab && initialValue ? (
+          {supportsStudioFeatures ? (
+            <>
+              <button
+                type="button"
+                className={cn(
+                  'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
+                  activeTab === 'coding'
+                    ? 'bg-secondary text-secondary-foreground'
+                    : 'hover:bg-accent/40'
+                )}
+                onClick={() => setActiveTab('coding')}
+              >
+                {t('assistants.editor.tabs.coding')}
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
+                  activeTab === 'tools'
+                    ? 'bg-secondary text-secondary-foreground'
+                    : 'hover:bg-accent/40'
+                )}
+                onClick={() => setActiveTab('tools')}
+              >
+                {t('assistants.editor.tabs.tools')}
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
+                  activeTab === 'skills'
+                    ? 'bg-secondary text-secondary-foreground'
+                    : 'hover:bg-accent/40'
+                )}
+                onClick={() => setActiveTab('skills')}
+              >
+                {t('assistants.editor.tabs.skills')}
+              </button>
+            </>
+          ) : null}
+          {supportsStudioFeatures && showActivityTab && initialValue ? (
             <button
               type="button"
               className={cn(
@@ -978,7 +1013,30 @@ export function AssistantEditor({
                 />
               </Field>
 
-              {initialValue ? (
+              {showStudioUpgrade ? (
+                <section className="space-y-3 rounded-xl border border-border/70 bg-card/50 p-4">
+                  <div className="space-y-1">
+                    <h3 className="text-base font-medium">
+                      {t('assistants.editor.studioUpgrade.title')}
+                    </h3>
+                    <p className="text-muted-foreground text-sm">
+                      {t('assistants.editor.studioUpgrade.description')}
+                    </p>
+                  </div>
+
+                  <Button
+                    id="assistant-enable-studio-features"
+                    type="button"
+                    variant="outline"
+                    disabled={isSubmitting}
+                    onClick={() => setStudioFeaturesEnabled(true)}
+                  >
+                    {t('assistants.editor.studioUpgrade.enableButton')}
+                  </Button>
+                </section>
+              ) : null}
+
+              {initialValue && supportsStudioFeatures ? (
                 <section className="space-y-3 rounded-xl border border-border/70 bg-card/50 p-4">
                   <div className="space-y-1">
                     <h3 className="text-base font-medium">

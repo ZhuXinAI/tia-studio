@@ -35,7 +35,14 @@ describe('AssistantCronJobsService', () => {
     db.close()
   })
 
-  async function createWorkspaceAssistant(name: string, rootPath: string) {
+  async function createWorkspaceAssistant(
+    name: string,
+    rootPath: string,
+    overrides?: {
+      origin?: 'tia' | 'external-acp' | 'built-in'
+      studioFeaturesEnabled?: boolean
+    }
+  ) {
     const provider = await providersRepo.create({
       name: 'OpenAI',
       type: 'openai',
@@ -48,7 +55,8 @@ describe('AssistantCronJobsService', () => {
       providerId: provider.id,
       workspaceConfig: {
         rootPath
-      }
+      },
+      ...(overrides ?? {})
     })
   }
 
@@ -107,5 +115,47 @@ describe('AssistantCronJobsService', () => {
     await expect(service.removeAssistantCronJob(firstAssistant.id, firstJob.id)).resolves.toBe(true)
     await expect(cronJobsRepo.getById(firstJob.id)).resolves.toBeNull()
     await expect(threadsRepo.getById(firstJob.threadId ?? '')).resolves.toBeNull()
+  })
+
+  it('rejects cron jobs for external ACP assistants without studio features', async () => {
+    const assistant = await createWorkspaceAssistant('External ACP', '/tmp/workspace-c', {
+      origin: 'external-acp',
+      studioFeaturesEnabled: false
+    })
+
+    await expect(
+      service.createCronJob({
+        assistantId: assistant.id,
+        name: 'Morning summary',
+        prompt: 'Summarize workspace C.',
+        cronExpression: '0 9 * * 1-5'
+      })
+    ).rejects.toMatchObject({
+      code: 'assistant_studio_features_required',
+      message: 'Assistant studio features are required for cron jobs'
+    })
+  })
+
+  it('allows cron jobs after studio features are enabled for external ACP assistants', async () => {
+    const assistant = await createWorkspaceAssistant('External ACP', '/tmp/workspace-d', {
+      origin: 'external-acp',
+      studioFeaturesEnabled: true
+    })
+
+    const created = await service.createCronJob({
+      assistantId: assistant.id,
+      name: 'Morning summary',
+      prompt: 'Summarize workspace D.',
+      cronExpression: '0 9 * * 1-5'
+    })
+
+    expect(created).toMatchObject({
+      assistantId: assistant.id,
+      name: 'Morning summary',
+      prompt: 'Summarize workspace D.',
+      cronExpression: '0 9 * * 1-5',
+      threadId: expect.any(String)
+    })
+    expect(reloadScheduler).toHaveBeenCalledTimes(1)
   })
 })

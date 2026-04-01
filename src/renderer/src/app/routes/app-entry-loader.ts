@@ -4,5 +4,13 @@ import { readStoredAppMode } from '../navigation/app-mode-state'
 export function appEntryLoader() {
   const lastMode = readStoredAppMode()
 
-  return redirect(lastMode === 'team' ? '/team' : '/chat')
+  if (lastMode === 'team') {
+    return redirect('/team')
+  }
+
+  if (lastMode === 'chat') {
+    return redirect('/agents')
+  }
+
+  return redirect('/team')
 }

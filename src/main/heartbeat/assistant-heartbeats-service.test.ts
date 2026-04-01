@@ -38,7 +38,14 @@ describe('AssistantHeartbeatsService', () => {
     db.close()
   })
 
-  async function createAssistant(name: string, workspaceConfig?: Record<string, unknown>) {
+  async function createAssistant(
+    name: string,
+    workspaceConfig?: Record<string, unknown>,
+    overrides?: {
+      origin?: 'tia' | 'external-acp' | 'built-in'
+      studioFeaturesEnabled?: boolean
+    }
+  ) {
     const provider = await providersRepo.create({
       name: 'OpenAI',
       type: 'openai',
@@ -49,7 +56,8 @@ describe('AssistantHeartbeatsService', () => {
     return assistantsRepo.create({
       name,
       providerId: provider.id,
-      workspaceConfig
+      workspaceConfig,
+      ...(overrides ?? {})
     })
   }
 
@@ -132,6 +140,64 @@ describe('AssistantHeartbeatsService', () => {
       )
     )
     expect(reloadScheduler).not.toHaveBeenCalled()
+  })
+
+  it('rejects heartbeat config for external ACP assistants without studio features', async () => {
+    const assistant = await createAssistant(
+      'External ACP Assistant',
+      {
+        rootPath: '/tmp/workspace-c'
+      },
+      {
+        origin: 'external-acp',
+        studioFeaturesEnabled: false
+      }
+    )
+
+    await expect(
+      service.upsertHeartbeat({
+        assistantId: assistant.id,
+        enabled: true,
+        intervalMinutes: 30,
+        prompt: 'Review recent work.'
+      })
+    ).rejects.toEqual(
+      new AssistantHeartbeatsServiceError(
+        400,
+        'assistant_studio_features_required',
+        'Assistant studio features are required for heartbeat'
+      )
+    )
+    expect(reloadScheduler).not.toHaveBeenCalled()
+  })
+
+  it('allows heartbeat config after studio features are enabled for external ACP assistants', async () => {
+    const assistant = await createAssistant(
+      'External ACP Assistant',
+      {
+        rootPath: '/tmp/workspace-d'
+      },
+      {
+        origin: 'external-acp',
+        studioFeaturesEnabled: true
+      }
+    )
+
+    const created = await service.upsertHeartbeat({
+      assistantId: assistant.id,
+      enabled: true,
+      intervalMinutes: 30,
+      prompt: 'Review recent work.'
+    })
+
+    expect(created).toMatchObject({
+      assistantId: assistant.id,
+      enabled: true,
+      intervalMinutes: 30,
+      prompt: 'Review recent work.',
+      threadId: expect.any(String)
+    })
+    expect(reloadScheduler).toHaveBeenCalledTimes(1)
   })
 
   it('repairs the hidden heartbeat thread when the stored thread is missing', async () => {

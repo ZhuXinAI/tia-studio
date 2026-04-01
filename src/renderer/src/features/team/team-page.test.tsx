@@ -13,6 +13,7 @@ describe('TeamPage', () => {
 
     expect(html).toContain('Team Threads')
     expect(html).toContain('Team Chat')
+    expect(html).toContain('Teams can mix ACP Agents and TIA Agents')
     expect(html).toContain('data-team-page-shell="true"')
     expect(html).toContain('h-[calc(100vh-3.5rem)]')
     expect(html).toContain('min-h-[650px]')

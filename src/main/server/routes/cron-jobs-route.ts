@@ -54,6 +54,9 @@ export function registerCronJobsRoute(app: Hono, options: RegisterCronJobsRouteO
       return context.json(cronJob, 201)
     } catch (error) {
       if (isAssistantCronJobsServiceError(error)) {
+        if (error.code === 'assistant_studio_features_required') {
+          return context.json({ ok: false, code: error.code, error: error.message }, error.statusCode)
+        }
         return context.json({ ok: false, error: error.message }, error.statusCode)
       }
 
@@ -85,6 +88,9 @@ export function registerCronJobsRoute(app: Hono, options: RegisterCronJobsRouteO
       return context.json(updatedCronJob)
     } catch (error) {
       if (isAssistantCronJobsServiceError(error)) {
+        if (error.code === 'assistant_studio_features_required') {
+          return context.json({ ok: false, code: error.code, error: error.message }, error.statusCode)
+        }
         return context.json({ ok: false, error: error.message }, error.statusCode)
       }
 

@@ -39,6 +39,7 @@ type ClawEditorDialogProps = {
     saveButton?: string
   }
   onClose: () => void
+  onBack?: () => void
   onSubmit: (input: SaveClawInput) => Promise<void> | void
   onCreateChannel: (
     input: CreateClawChannelInput
@@ -83,6 +84,7 @@ function CreateClawDialog({
   externalErrorMessage,
   copy,
   onClose,
+  onBack,
   onSubmit,
   onCreateChannel,
   onUpdateChannel,
@@ -204,6 +206,11 @@ function CreateClawDialog({
     setErrorMessage(null)
 
     if (currentStep === 0) {
+      if (onBack) {
+        onBack()
+        return
+      }
+
       onClose()
       return
     }

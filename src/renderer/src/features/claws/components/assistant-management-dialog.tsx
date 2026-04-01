@@ -1,7 +1,9 @@
-import { Bot, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Bot, Sparkles, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
   AssistantEditor,
+  type AssistantEditorDefaultConfig,
   type AssistantEditorChannelSetupAction,
   type AssistantEditorChannelsProps
 } from '../../assistants/assistant-editor'
@@ -22,6 +24,7 @@ import { queryClient } from '../../../lib/query-client'
 import { ClawEditorDialog } from './claw-editor-dialog'
 
 export type AssistantManagementDialogMode = 'create' | 'edit'
+type AssistantCreatePath = 'external-acp' | 'tia'
 
 type AssistantManagementDialogProps = {
   mode: AssistantManagementDialogMode
@@ -57,6 +60,16 @@ export function AssistantManagementDialog({
   onSubmit
 }: AssistantManagementDialogProps): React.JSX.Element | null {
   const { t } = useTranslation()
+  const [createPath, setCreatePath] = useState<AssistantCreatePath | null>(null)
+
+  useEffect(() => {
+    if (!isOpen || mode !== 'create') {
+      setCreatePath(null)
+      return
+    }
+
+    setCreatePath(null)
+  }, [isOpen, mode])
 
   async function handleCreateProvider(input: SaveProviderInput): Promise<ProviderRecord> {
     const createdProvider = await createProvider(input)
@@ -81,7 +94,82 @@ export function AssistantManagementDialog({
     return null
   }
 
-  if (mode === 'create' && channels) {
+  if (mode === 'create' && channels && createPath === null) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <button
+          type="button"
+          aria-label={t('threads.assistantDialog.closeCreateAriaLabel')}
+          className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+          onClick={onClose}
+          disabled={isSaving}
+        />
+        <Card
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="claws-assistant-create-path-title"
+          className="relative z-10 w-full max-w-3xl gap-4 py-5"
+        >
+          <CardHeader className="pb-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1">
+                <CardTitle id="claws-assistant-create-path-title">
+                  {t('threads.assistantDialog.createTitle')}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {t('threads.assistantDialog.createPathDescription')}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                disabled={isSaving}
+                aria-label={t('common.actions.close')}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              <button
+                type="button"
+                className="rounded-2xl border border-border/70 bg-card/50 p-5 text-left transition-colors hover:bg-accent/30"
+                onClick={() => setCreatePath('external-acp')}
+              >
+                <Bot className="mb-4 size-5 text-muted-foreground" />
+                <h3 className="text-base font-semibold">
+                  {t('threads.assistantDialog.useExistingAcpTitle')}
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {t('threads.assistantDialog.useExistingAcpDescription')}
+                </p>
+              </button>
+
+              <button
+                type="button"
+                className="rounded-2xl border border-border/70 bg-card/50 p-5 text-left transition-colors hover:bg-accent/30"
+                onClick={() => setCreatePath('tia')}
+              >
+                <Sparkles className="mb-4 size-5 text-muted-foreground" />
+                <h3 className="text-base font-semibold">
+                  {t('threads.assistantDialog.createTiaTitle')}
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {t('threads.assistantDialog.createTiaDescription')}
+                </p>
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (mode === 'create' && channels && createPath === 'external-acp') {
     return (
       <ClawEditorDialog
         isOpen={isOpen}
@@ -91,10 +179,11 @@ export function AssistantManagementDialog({
         isSubmitting={isSaving}
         externalErrorMessage={errorMessage}
         copy={{
-          createTitle: t('threads.assistantDialog.createTitle'),
-          description: t('claws.empty.description'),
-          createButton: t('threads.assistantDialog.createTitle')
+          createTitle: t('threads.assistantDialog.useExistingAcpTitle'),
+          description: t('threads.assistantDialog.useExistingAcpDescription'),
+          createButton: t('threads.assistantDialog.useExistingAcpSubmit')
         }}
+        onBack={() => setCreatePath(null)}
         onClose={onClose}
         onSubmit={async (input) => {
           const assistantName = input.assistant.name?.trim() ?? ''
@@ -109,6 +198,8 @@ export function AssistantManagementDialog({
             {
               name: assistantName,
               providerId,
+              origin: 'external-acp',
+              studioFeaturesEnabled: false,
               enabled: input.assistant.enabled,
               ...(workspacePath.length > 0
                 ? {
@@ -140,6 +231,18 @@ export function AssistantManagementDialog({
     : isCreateMode
       ? t('threads.assistantDialog.createDescription')
       : t('threads.assistantDialog.editDescription')
+  const defaultConfig: AssistantEditorDefaultConfig | undefined =
+    isCreateMode && createPath === 'tia'
+      ? {
+          origin: 'tia',
+          studioFeaturesEnabled: true
+        }
+      : isCreateMode
+        ? {
+            origin: 'tia',
+            studioFeaturesEnabled: true
+          }
+        : undefined
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -165,7 +268,9 @@ export function AssistantManagementDialog({
             <div className="space-y-1">
               <CardTitle id={titleId}>
                 {isCreateMode
-                  ? t('threads.assistantDialog.createTitle')
+                  ? createPath === 'tia'
+                    ? t('threads.assistantDialog.createTiaTitle')
+                    : t('threads.assistantDialog.createTitle')
                   : t('threads.assistantDialog.editTitle', {
                       name: assistant?.name ?? t('threads.chat.defaultAssistantName')
                     })}
@@ -173,6 +278,17 @@ export function AssistantManagementDialog({
               <p className="text-sm text-muted-foreground">{description}</p>
             </div>
             <div className="flex items-center gap-2">
+              {isCreateMode && createPath === 'tia' && channels ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCreatePath(null)}
+                  disabled={isSaving}
+                >
+                  {t('claws.dialog.stepper.actions.back')}
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 variant="ghost"
@@ -215,6 +331,7 @@ export function AssistantManagementDialog({
               providers={providers}
               mcpServers={mcpServers}
               initialValue={isCreateMode ? null : assistant}
+              defaultConfig={defaultConfig}
               isSubmitting={isSaving}
               channels={channels}
               showActivityTab={!isCreateMode}
