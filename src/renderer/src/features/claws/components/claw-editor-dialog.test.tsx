@@ -466,11 +466,7 @@ describe('ClawEditorDialog', () => {
     await flushAsyncWork()
     await clickElement(document.body.querySelector('button[id="claw-channel-selector-apply"]'))
     await flushAsyncWork()
-    await clickElement(
-      Array.from(document.body.querySelectorAll('button')).find((button) =>
-        button.textContent?.includes('Save Claw')
-      )
-    )
+    await clickElement(document.body.querySelector('form button[type="submit"]'))
     await flushAsyncWork()
 
     expect(onSubmit).toHaveBeenCalledWith({
@@ -559,11 +555,7 @@ describe('ClawEditorDialog', () => {
     await flushAsyncWork()
     await clickElement(document.body.querySelector('button[id="claw-channel-selector-apply"]'))
     await flushAsyncWork()
-    await clickElement(
-      Array.from(document.body.querySelectorAll('button')).find((button) =>
-        button.textContent?.includes('Save Claw')
-      )
-    )
+    await clickElement(document.body.querySelector('form button[type="submit"]'))
     await flushAsyncWork()
 
     expect(onSubmit).toHaveBeenCalledWith({

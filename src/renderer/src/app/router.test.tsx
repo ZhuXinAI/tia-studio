@@ -153,7 +153,7 @@ describe('app router', () => {
   it('renders the assistant and channel management route', () => {
     const html = renderRouter(['/claws'])
 
-    expect(html).toContain('Assistants &amp; Channels')
+    expect(html).toContain('Channel Bindings')
     expect(html).toContain('Create your first assistant')
     expect(html).toContain('Create Assistant')
   })
