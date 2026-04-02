@@ -27,7 +27,8 @@
       "searchPlaceholder": "Search assistants...",
       "searchAriaLabel": "Search assistants",
       "empty": "No assistants yet",
-      "createAction": "Create new assistant",
+      "createAcpAction": "Create ACP Agent",
+      "createTiaAction": "Create TIA Agent (Advanced)",
       "manageAction": "Manage assistants & channels"
     },
     "teamSwitcher": {
@@ -526,7 +527,8 @@
     "eyebrow": "Channel Bindings",
     "title": "Channel Bindings",
     "description": "Manage assistants, their channel bindings, and activation without leaving the main chat workspace.",
-    "newButton": "New Assistant",
+    "newButton": "Create ACP Agent",
+    "newTiaButton": "Create TIA Agent (Advanced)",
     "telegram": {
       "description": "Manage assistants, channel bindings, pairings, setup, and activation from one focused surface.",
       "emptyDescription": "Start with one assistant, one provider, and one WhatsApp, Wechat, Telegram, Lark, or Wecom channel, then switch to it from the top bar.",
@@ -551,7 +553,8 @@
       "title": "Create your first assistant",
       "description": "Start with one assistant, one provider, and one WhatsApp, Wechat, Telegram, Lark, or Wecom channel, then switch to it from the top bar.",
       "note": "Assistant identity, heartbeat, and future cron stay assistant-owned.",
-      "createButton": "Create Assistant"
+      "createButton": "Create ACP Agent",
+      "createTiaButton": "Create TIA Agent (Advanced)"
     },
     "card": {
       "noChannelConnected": "No channel connected",
@@ -875,6 +878,9 @@
       "title": "Configure Team",
       "description": "Select a supervisor model and choose which assistants join this team.",
       "memberOriginHint": "Members can mix ACP Agents and TIA Agents.",
+      "createMemberHint": "Need another member?",
+      "createAcpMemberAction": "Create ACP Agent",
+      "createTiaMemberAction": "Create TIA Agent (Advanced)",
       "fields": {
         "supervisorProvider": "Supervisor Provider",
         "teamDescription": "Team Description",

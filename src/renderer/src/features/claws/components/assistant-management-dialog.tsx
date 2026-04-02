@@ -34,6 +34,7 @@ type AssistantManagementDialogProps = {
   mcpServers: Record<string, McpServerRecord>
   channels?: AssistantEditorChannelsProps
   channelSetupAction?: AssistantEditorChannelSetupAction | null
+  initialCreatePath?: AssistantCreatePath
   isSaving: boolean
   errorMessage: string | null
   onClose: () => void
@@ -53,6 +54,7 @@ export function AssistantManagementDialog({
   mcpServers,
   channels,
   channelSetupAction,
+  initialCreatePath = 'external-acp',
   isSaving,
   errorMessage,
   onClose,
@@ -64,12 +66,12 @@ export function AssistantManagementDialog({
 
   useEffect(() => {
     if (!isOpen || mode !== 'create') {
-      setCreatePath('external-acp')
+      setCreatePath(initialCreatePath)
       return
     }
 
-    setCreatePath('external-acp')
-  }, [isOpen, mode])
+    setCreatePath(initialCreatePath)
+  }, [initialCreatePath, isOpen, mode])
 
   async function handleCreateProvider(input: SaveProviderInput): Promise<ProviderRecord> {
     const createdProvider = await createProvider(input)
