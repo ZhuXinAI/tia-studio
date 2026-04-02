@@ -37,6 +37,7 @@ type ClawEditorDialogProps = {
     description?: string
     createButton?: string
     saveButton?: string
+    rootBackButton?: string
   }
   onClose: () => void
   onBack?: () => void
@@ -440,7 +441,9 @@ function CreateClawDialog({
           onClick={handleBack}
           disabled={footerDisabled}
         >
-          {t('claws.dialog.stepper.actions.back')}
+          {currentStep === 0
+            ? (copy?.rootBackButton ?? t('claws.dialog.stepper.actions.back'))
+            : t('claws.dialog.stepper.actions.back')}
         </Button>
         {currentStep < steps.length - 1 ? (
           <Button

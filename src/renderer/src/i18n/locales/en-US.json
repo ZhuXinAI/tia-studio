@@ -994,6 +994,7 @@
       "useExistingAcpTitle": "Use Existing ACP Agent",
       "useExistingAcpDescription": "Reuse a Codex ACP or Claude Agent ACP runtime, choose a workspace, and optionally attach a channel.",
       "useExistingAcpSubmit": "Create ACP Agent",
+      "advancedCreateTiaAction": "Advanced: Create TIA Agent",
       "createTiaTitle": "Create TIA Agent",
       "createTiaDescription": "Start with the full TIA editor, including Studio tools, skills, and activity controls.",
       "editTitle": "Configure {{name}}",

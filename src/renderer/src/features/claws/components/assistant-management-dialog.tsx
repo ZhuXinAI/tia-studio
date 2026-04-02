@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Bot, Sparkles, X } from 'lucide-react'
+import { Bot, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
   AssistantEditor,
@@ -60,15 +60,15 @@ export function AssistantManagementDialog({
   onSubmit
 }: AssistantManagementDialogProps): React.JSX.Element | null {
   const { t } = useTranslation()
-  const [createPath, setCreatePath] = useState<AssistantCreatePath | null>(null)
+  const [createPath, setCreatePath] = useState<AssistantCreatePath>('external-acp')
 
   useEffect(() => {
     if (!isOpen || mode !== 'create') {
-      setCreatePath(null)
+      setCreatePath('external-acp')
       return
     }
 
-    setCreatePath(null)
+    setCreatePath('external-acp')
   }, [isOpen, mode])
 
   async function handleCreateProvider(input: SaveProviderInput): Promise<ProviderRecord> {
@@ -94,81 +94,6 @@ export function AssistantManagementDialog({
     return null
   }
 
-  if (mode === 'create' && channels && createPath === null) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <button
-          type="button"
-          aria-label={t('threads.assistantDialog.closeCreateAriaLabel')}
-          className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-          onClick={onClose}
-          disabled={isSaving}
-        />
-        <Card
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="claws-assistant-create-path-title"
-          className="relative z-10 w-full max-w-3xl gap-4 py-5"
-        >
-          <CardHeader className="pb-0">
-            <div className="flex items-start justify-between gap-2">
-              <div className="space-y-1">
-                <CardTitle id="claws-assistant-create-path-title">
-                  {t('threads.assistantDialog.createTitle')}
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  {t('threads.assistantDialog.createPathDescription')}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onClose}
-                disabled={isSaving}
-                aria-label={t('common.actions.close')}
-              >
-                <X className="size-4" />
-              </Button>
-            </div>
-          </CardHeader>
-
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              <button
-                type="button"
-                className="rounded-2xl border border-border/70 bg-card/50 p-5 text-left transition-colors hover:bg-accent/30"
-                onClick={() => setCreatePath('external-acp')}
-              >
-                <Bot className="mb-4 size-5 text-muted-foreground" />
-                <h3 className="text-base font-semibold">
-                  {t('threads.assistantDialog.useExistingAcpTitle')}
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {t('threads.assistantDialog.useExistingAcpDescription')}
-                </p>
-              </button>
-
-              <button
-                type="button"
-                className="rounded-2xl border border-border/70 bg-card/50 p-5 text-left transition-colors hover:bg-accent/30"
-                onClick={() => setCreatePath('tia')}
-              >
-                <Sparkles className="mb-4 size-5 text-muted-foreground" />
-                <h3 className="text-base font-semibold">
-                  {t('threads.assistantDialog.createTiaTitle')}
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {t('threads.assistantDialog.createTiaDescription')}
-                </p>
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
   if (mode === 'create' && channels && createPath === 'external-acp') {
     return (
       <ClawEditorDialog
@@ -181,9 +106,10 @@ export function AssistantManagementDialog({
         copy={{
           createTitle: t('threads.assistantDialog.useExistingAcpTitle'),
           description: t('threads.assistantDialog.useExistingAcpDescription'),
-          createButton: t('threads.assistantDialog.useExistingAcpSubmit')
+          createButton: t('threads.assistantDialog.useExistingAcpSubmit'),
+          rootBackButton: t('threads.assistantDialog.advancedCreateTiaAction')
         }}
-        onBack={() => setCreatePath(null)}
+        onBack={() => setCreatePath('tia')}
         onClose={onClose}
         onSubmit={async (input) => {
           const assistantName = input.assistant.name?.trim() ?? ''
@@ -226,7 +152,9 @@ export function AssistantManagementDialog({
   const titleId = isCreateMode ? 'claws-assistant-create-title' : 'claws-assistant-edit-title'
   const description = channels
     ? isCreateMode
-      ? t('claws.empty.description')
+      ? createPath === 'tia'
+        ? t('threads.assistantDialog.createTiaDescription')
+        : t('threads.assistantDialog.useExistingAcpDescription')
       : t('claws.description')
     : isCreateMode
       ? t('threads.assistantDialog.createDescription')
@@ -239,8 +167,8 @@ export function AssistantManagementDialog({
         }
       : isCreateMode
         ? {
-            origin: 'tia',
-            studioFeaturesEnabled: true
+            origin: 'external-acp',
+            studioFeaturesEnabled: false
           }
         : undefined
 
@@ -283,10 +211,10 @@ export function AssistantManagementDialog({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setCreatePath(null)}
+                  onClick={() => setCreatePath('external-acp')}
                   disabled={isSaving}
                 >
-                  {t('claws.dialog.stepper.actions.back')}
+                  {t('threads.assistantDialog.useExistingAcpTitle')}
                 </Button>
               ) : null}
               <Button
