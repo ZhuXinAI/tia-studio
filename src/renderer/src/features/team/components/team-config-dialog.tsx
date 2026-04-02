@@ -23,6 +23,8 @@ type TeamConfigDialogProps = {
   isSaving: boolean
   errorMessage: string | null
   onClose: () => void
+  onCreateAcpMember?: () => void
+  onCreateTiaMember?: () => void
   onSubmit: (input: TeamConfigDialogValues) => Promise<void>
 }
 
@@ -52,6 +54,8 @@ export function TeamConfigDialog({
   isSaving,
   errorMessage,
   onClose,
+  onCreateAcpMember,
+  onCreateTiaMember,
   onSubmit
 }: TeamConfigDialogProps): React.JSX.Element | null {
   const { t } = useTranslation()
@@ -217,6 +221,32 @@ export function TeamConfigDialog({
                 <p className="text-muted-foreground text-xs">
                   {t('team.configDialog.memberOriginHint')}
                 </p>
+                {onCreateAcpMember && onCreateTiaMember ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-muted-foreground text-xs">
+                      {t('team.configDialog.createMemberHint')}
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-7 rounded-full px-3"
+                      onClick={onCreateAcpMember}
+                      disabled={isSaving}
+                    >
+                      {t('team.configDialog.createAcpMemberAction')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 rounded-full px-3"
+                      onClick={onCreateTiaMember}
+                      disabled={isSaving}
+                    >
+                      {t('team.configDialog.createTiaMemberAction')}
+                    </Button>
+                  </div>
+                ) : null}
                 <div className="grid gap-2 sm:grid-cols-2">
                   {sortedAssistants.map((assistant) => (
                     <label

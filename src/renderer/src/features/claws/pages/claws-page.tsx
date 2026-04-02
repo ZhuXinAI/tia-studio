@@ -106,6 +106,8 @@ function supportsChannelAccess(channelType: string | null | undefined): boolean 
   return channelType === 'telegram' || channelType === 'whatsapp' || channelType === 'wechat'
 }
 
+type AssistantCreatePath = 'external-acp' | 'tia'
+
 export function ClawsPage(): React.JSX.Element {
   const { t } = useTranslation()
   const location = useLocation()
@@ -118,6 +120,7 @@ export function ClawsPage(): React.JSX.Element {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingClaw, setEditingClaw] = useState<ClawRecord | null>(null)
+  const [dialogCreatePath, setDialogCreatePath] = useState<AssistantCreatePath>('external-acp')
   const [selectedChannelId, setSelectedChannelId] = useState('')
   const [pairingsClaw, setPairingsClaw] = useState<ClawRecord | null>(null)
   const [pairings, setPairings] = useState<ClawPairingRecord[]>([])
@@ -130,6 +133,12 @@ export function ClawsPage(): React.JSX.Element {
   const [heartbeatMonitorClaw, setHeartbeatMonitorClaw] = useState<ClawRecord | null>(null)
   const [cronMonitorClaw, setCronMonitorClaw] = useState<ClawRecord | null>(null)
   const connectedAuthRefreshKeyRef = useRef<string | null>(null)
+  const createTiaEntryLabel = t('claws.newTiaButton', {
+    defaultValue: 'Create TIA Agent (Advanced)'
+  })
+  const createTiaEmptyLabel = t('claws.empty.createTiaButton', {
+    defaultValue: 'Create TIA Agent (Advanced)'
+  })
 
   async function refreshPage(): Promise<ClawsResponse> {
     const [nextClaws, nextProviders, nextAssistants, nextMcpServers] = await Promise.all([
@@ -152,12 +161,17 @@ export function ClawsPage(): React.JSX.Element {
   }, [t])
 
   useEffect(() => {
-    const nextState = location.state as { assistantDialog?: string } | null
+    const nextState = location.state as
+      | { assistantDialog?: string; assistantCreatePath?: AssistantCreatePath }
+      | null
     if (nextState?.assistantDialog !== 'create') {
       return
     }
 
     setEditingClaw(null)
+    setDialogCreatePath(
+      nextState.assistantCreatePath === 'tia' ? nextState.assistantCreatePath : 'external-acp'
+    )
     setSelectedChannelId('')
     setErrorMessage(null)
     setIsDialogOpen(true)
@@ -454,8 +468,9 @@ export function ClawsPage(): React.JSX.Element {
     }
   }, [channelAuthState?.status, pairingsClaw, t])
 
-  function openCreateDialog(): void {
+  function openCreateDialog(path: AssistantCreatePath = 'external-acp'): void {
     setEditingClaw(null)
+    setDialogCreatePath(path)
     setSelectedChannelId('')
     setErrorMessage(null)
     setIsDialogOpen(true)
@@ -463,6 +478,7 @@ export function ClawsPage(): React.JSX.Element {
 
   function openEditDialog(claw: ClawRecord): void {
     setEditingClaw(claw)
+    setDialogCreatePath('external-acp')
     setSelectedChannelId(claw.channel?.id ?? '')
     setErrorMessage(null)
     setIsDialogOpen(true)
@@ -485,10 +501,24 @@ export function ClawsPage(): React.JSX.Element {
             </p>
           </div>
 
-          <Button type="button" className="rounded-full px-5" onClick={openCreateDialog}>
-            <Plus className="size-4" />
-            <span>{t('claws.newButton')}</span>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              className="rounded-full px-5"
+              onClick={() => openCreateDialog('external-acp')}
+            >
+              <Plus className="size-4" />
+              <span>{t('claws.newButton')}</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-full px-5"
+              onClick={() => openCreateDialog('tia')}
+            >
+              <span>{createTiaEntryLabel}</span>
+            </Button>
+          </div>
         </div>
 
         {!hasAnyClaw ? (
@@ -502,9 +532,14 @@ export function ClawsPage(): React.JSX.Element {
                 <Bot className="size-4" />
                 <span>{t('claws.empty.note')}</span>
               </div>
-              <Button type="button" onClick={openCreateDialog}>
-                {t('claws.empty.createButton')}
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" onClick={() => openCreateDialog('external-acp')}>
+                  {t('claws.empty.createButton')}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => openCreateDialog('tia')}>
+                  {createTiaEmptyLabel}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : null}
@@ -535,6 +570,7 @@ export function ClawsPage(): React.JSX.Element {
           assistant={editingAssistant}
           providers={providers}
           mcpServers={mcpServers}
+          initialCreatePath={dialogCreatePath}
           channels={{
             currentAssistantId: editingClaw?.id ?? null,
             channels: data.configuredChannels,

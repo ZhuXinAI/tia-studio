@@ -155,7 +155,8 @@ describe('app router', () => {
 
     expect(html).toContain('Channel Bindings')
     expect(html).toContain('Create your first assistant')
-    expect(html).toContain('Create Assistant')
+    expect(html).toContain('Create ACP Agent')
+    expect(html).toContain('Create TIA Agent (Advanced)')
   })
 
   it('renders cron jobs settings route', () => {

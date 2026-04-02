@@ -27,7 +27,8 @@
       "searchPlaceholder": "Search assistants...",
       "searchAriaLabel": "Search assistants",
       "empty": "No assistants yet",
-      "createAction": "Create new assistant",
+      "createAcpAction": "Create ACP Agent",
+      "createTiaAction": "Create TIA Agent (Advanced)",
       "manageAction": "Manage assistants & channels"
     },
     "teamSwitcher": {
@@ -526,7 +527,8 @@
     "eyebrow": "频道绑定",
     "title": "频道绑定",
     "description": "将助手连接到外部 WhatsApp、Telegram、Lark 或企业微信频道，无需翻查原始设置。",
-    "newButton": "新建绑定",
+    "newButton": "创建 ACP 智能体",
+    "newTiaButton": "创建 TIA 智能体（高级）",
     "telegram": {
       "description": "将助手连接到外部 WhatsApp、Telegram、Lark 或企业微信频道，无需翻查原始设置。",
       "emptyDescription": "从一个助手、一个提供商和一个 WhatsApp、Telegram、Lark 或企业微信频道开始，是最快的接入方式。",
@@ -551,7 +553,8 @@
       "title": "设置你的第一个绑定",
       "description": "从一个助手、一个提供商和一个 WhatsApp、Telegram、Lark 或企业微信频道开始，是最快的接入方式。",
       "note": "助手身份、心跳以及后续 cron 仍由助手自身管理。",
-      "createButton": "创建第一个绑定"
+      "createButton": "创建 ACP 智能体",
+      "createTiaButton": "创建 TIA 智能体（高级）"
     },
     "card": {
       "noChannelConnected": "未连接频道",
@@ -875,6 +878,9 @@
       "title": "配置 Team",
       "description": "选择主管模型，并决定哪些助手加入此团队。",
       "memberOriginHint": "成员可以混合使用 ACP 智能体和 TIA 智能体。",
+      "createMemberHint": "需要新增成员？",
+      "createAcpMemberAction": "创建 ACP 智能体",
+      "createTiaMemberAction": "创建 TIA 智能体（高级）",
       "fields": {
         "supervisorProvider": "主管提供商",
         "teamDescription": "Team 描述",
@@ -994,6 +1000,7 @@
       "useExistingAcpTitle": "使用现有 ACP 智能体",
       "useExistingAcpDescription": "复用 Codex ACP 或 Claude Agent ACP 运行时，选择工作区，并按需绑定频道。",
       "useExistingAcpSubmit": "创建 ACP 智能体",
+      "advancedCreateTiaAction": "高级：创建 TIA 智能体",
       "createTiaTitle": "创建 TIA 智能体",
       "createTiaDescription": "使用完整的 TIA 编辑器开始，包含 Studio 工具、技能和活动控制。",
       "editTitle": "配置 {{name}}",

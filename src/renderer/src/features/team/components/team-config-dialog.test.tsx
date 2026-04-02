@@ -265,6 +265,74 @@ describe('TeamConfigDialog', () => {
     expect(container.textContent).toContain('Members can mix ACP Agents and TIA Agents')
   })
 
+  it('shows ACP-first member creation actions when callbacks are provided', async () => {
+    await act(async () => {
+      root.render(
+        <TeamConfigDialog
+          isOpen
+          workspace={{
+            id: 'workspace-1',
+            name: 'Docs Workspace',
+            rootPath: '/Users/demo/project',
+            teamDescription: '',
+            supervisorProviderId: 'provider-1',
+            supervisorModel: 'gpt-5',
+            createdAt: '2026-03-07T00:00:00.000Z',
+            updatedAt: '2026-03-07T00:00:00.000Z'
+          }}
+          providers={[
+            {
+              id: 'provider-1',
+              name: 'OpenAI',
+              type: 'openai',
+              apiKey: 'secret',
+              apiHost: null,
+              selectedModel: 'gpt-5',
+              providerModels: null,
+              enabled: true,
+              supportsVision: false,
+              isBuiltIn: false,
+              icon: null,
+              officialSite: null,
+              createdAt: '2026-03-07T00:00:00.000Z',
+              updatedAt: '2026-03-07T00:00:00.000Z'
+            }
+          ]}
+          assistants={[
+            {
+              id: 'assistant-acp',
+              name: 'ACP Analyst',
+              description: '',
+              instructions: '',
+              enabled: true,
+              origin: 'external-acp',
+              studioFeaturesEnabled: false,
+              providerId: 'provider-1',
+              workspaceConfig: {},
+              skillsConfig: {},
+              mcpConfig: {},
+              maxSteps: 100,
+              memoryConfig: null,
+              createdAt: '2026-03-07T00:00:00.000Z',
+              updatedAt: '2026-03-07T00:00:00.000Z'
+            }
+          ]}
+          selectedAssistantIds={['assistant-acp']}
+          isSaving={false}
+          errorMessage={null}
+          onClose={() => undefined}
+          onCreateAcpMember={() => undefined}
+          onCreateTiaMember={() => undefined}
+          onSubmit={vi.fn(async () => undefined)}
+        />
+      )
+    })
+
+    expect(container.textContent).toContain('Need another member?')
+    expect(container.textContent).toContain('Create ACP Agent')
+    expect(container.textContent).toContain('Create TIA Agent (Advanced)')
+  })
+
   it('skips manual member selection for the built-in default team', async () => {
     const onSubmit = vi.fn(async () => undefined)
 

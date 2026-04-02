@@ -107,6 +107,12 @@ export function ChatContextSwitcher(): React.JSX.Element {
       : assistants.filter((assistant) =>
           normalizeSearchValue(assistant.name).includes(normalizedAssistantSearchQuery)
         )
+  const createAcpActionLabel = t('appShell.chatSwitcher.createAcpAction', {
+    defaultValue: 'Create ACP Agent'
+  })
+  const createTiaActionLabel = t('appShell.chatSwitcher.createTiaAction', {
+    defaultValue: 'Create TIA Agent (Advanced)'
+  })
 
   return (
     <div ref={containerRef} className="relative min-w-0 max-w-md flex-1">
@@ -253,12 +259,30 @@ export function ChatContextSwitcher(): React.JSX.Element {
                   setIsOpen(false)
                   navigate('/claws', {
                     state: {
-                      assistantDialog: 'create'
+                      assistantDialog: 'create',
+                      assistantCreatePath: 'external-acp'
                     }
                   })
                 }}
               >
-                {t('appShell.chatSwitcher.createAction')}
+                {createAcpActionLabel}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full justify-start rounded-xl"
+                onClick={() => {
+                  setIsOpen(false)
+                  navigate('/claws', {
+                    state: {
+                      assistantDialog: 'create',
+                      assistantCreatePath: 'tia'
+                    }
+                  })
+                }}
+              >
+                {createTiaActionLabel}
               </Button>
               <Button
                 type="button"

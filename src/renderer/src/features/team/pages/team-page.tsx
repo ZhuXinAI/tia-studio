@@ -112,6 +112,24 @@ export function TeamPage(): React.JSX.Element {
         isSaving={controller.isSavingConfig}
         errorMessage={controller.configError}
         onClose={controller.closeConfigDialog}
+        onCreateAcpMember={() => {
+          controller.closeConfigDialog()
+          navigate('/claws', {
+            state: {
+              assistantDialog: 'create',
+              assistantCreatePath: 'external-acp'
+            }
+          })
+        }}
+        onCreateTiaMember={() => {
+          controller.closeConfigDialog()
+          navigate('/claws', {
+            state: {
+              assistantDialog: 'create',
+              assistantCreatePath: 'tia'
+            }
+          })
+        }}
         onSubmit={controller.handleSubmitConfig}
       />
     </>
