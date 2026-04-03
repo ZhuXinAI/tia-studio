@@ -27,7 +27,8 @@
       "searchPlaceholder": "Search assistants...",
       "searchAriaLabel": "Search assistants",
       "empty": "No assistants yet",
-      "createAction": "Create new assistant",
+      "createAcpAction": "Create ACP Agent",
+      "createTiaAction": "Create TIA Agent (Advanced)",
       "manageAction": "Manage assistants & channels"
     },
     "teamSwitcher": {
@@ -75,6 +76,10 @@
       "title": "Paramètres",
       "subtitle": "Configuration",
       "categories": "Catégories",
+      "groups": {
+        "acpReuse": "ACP Reuse",
+        "advancedStudio": "Advanced Studio"
+      },
       "items": {
         "general": "Général",
         "providers": "Fournisseur de modèles",
@@ -86,7 +91,8 @@
         "coding": "Coding",
         "runtimeSetup": "Configuration du runtime",
         "display": "Affichage",
-        "aboutFeedback": "À propos et retours"
+        "aboutFeedback": "À propos et retours",
+        "agents": "Agents"
       }
     },
     "general": {
@@ -400,6 +406,7 @@
         "unexpectedError": "Erreur de requête inattendue"
       },
       "typeLabels": {
+        "acp": "Local ACP Agent",
         "openai": "Compatible OpenAI",
         "openai-response": "OpenAI Responses",
         "openrouter": "OpenRouter",
@@ -410,6 +417,7 @@
         "claude-agent-acp": "Claude Agent ACP"
       },
       "typeDescriptions": {
+        "acp": "Runs a locally installed ACP-compatible agent command such as Codex, Claude, Gemini, Qwen Code, or OpenClaw.",
         "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
         "openai-response": "For services using OpenAI response format. Use this for third-party APIs that return OpenAI-compatible responses.",
         "openrouter": "For OpenRouter's native AI SDK provider integration. This type is intended for built-in OpenRouter templates.",
@@ -523,6 +531,7 @@
     "title": "Claws",
     "description": "Connectez des assistants à des canaux Lark externes sans fouiller dans des paramètres bruts.",
     "newButton": "Nouveau Claw",
+    "newTiaButton": "Create TIA Agent (Advanced)",
     "telegram": {
       "description": "Connectez des assistants à des canaux Telegram ou Lark externes sans fouiller dans des réglages bruts.",
       "emptyDescription": "Commencez avec un assistant, un fournisseur et un canal Telegram ou Lark pour une prise en main plus rapide.",
@@ -547,7 +556,8 @@
       "title": "Configurez votre premier Claw",
       "description": "Commencez avec un assistant, un fournisseur et un canal Lark pour la prise en main la plus rapide.",
       "note": "L’identité de l’assistant, son heartbeat et ses futurs cron restent gérés par l’assistant.",
-      "createButton": "Créer votre premier Claw"
+      "createButton": "Créer votre premier Claw",
+      "createTiaButton": "Create TIA Agent (Advanced)"
     },
     "card": {
       "noChannelConnected": "Aucun canal connecté",
@@ -863,17 +873,26 @@
         "helperSelected": "Les messages passent par le superviseur Team et les membres sélectionnés.",
         "helperEmpty": "Choisissez d’abord un espace de travail puis créez un fil Team.",
         "openStatus": "Ouvrir le statut Team"
-      }
+      },
+      "mixedMembersHint": "Teams can mix ACP Agents and TIA Agents."
     },
     "configDialog": {
       "closeAriaLabel": "Close team config dialog",
       "title": "Configurer Team",
       "description": "Sélectionnez un modèle superviseur et choisissez quels assistants rejoignent cette équipe.",
+      "memberOriginHint": "Members can mix ACP Agents and TIA Agents.",
+      "createMemberHint": "Need another member?",
+      "createAcpMemberAction": "Create ACP Agent",
+      "createTiaMemberAction": "Create TIA Agent (Advanced)",
       "fields": {
         "supervisorProvider": "Fournisseur superviseur",
         "teamDescription": "Description du Team",
         "supervisorModel": "Modèle superviseur",
         "teamMembers": "Membres du Team"
+      },
+      "origins": {
+        "acp": "ACP Agent",
+        "tia": "TIA Agent"
       },
       "validation": {
         "supervisorProvider": "Sélectionnez un fournisseur superviseur.",
@@ -980,6 +999,13 @@
       "closeCreateAriaLabel": "Close create assistant dialog",
       "closeEditAriaLabel": "Close assistant config dialog",
       "createTitle": "Créer un assistant",
+      "createPathDescription": "Start with an existing ACP agent for the lightweight path, or create a full TIA-managed agent.",
+      "useExistingAcpTitle": "Use Existing ACP Agent",
+      "useExistingAcpDescription": "Reuse a Codex ACP or Claude Agent ACP runtime, choose a workspace, and optionally attach a channel.",
+      "useExistingAcpSubmit": "Create ACP Agent",
+      "advancedCreateTiaAction": "Advanced: Create TIA Agent",
+      "createTiaTitle": "Create TIA Agent",
+      "createTiaDescription": "Start with the full TIA editor, including Studio tools, skills, and activity controls.",
       "editTitle": "Configurer {{name}}",
       "createDescription": "Configurez le chemin du workspace et le fournisseur avant de démarrer le chat.",
       "editDescription": "Mettez à jour le fournisseur, le workspace et le prompt sans quitter le chat.",
@@ -1013,6 +1039,7 @@
       "createTitle": "Créer un assistant",
       "tabs": {
         "essential": "Paramètres essentiels",
+        "coding": "Coding",
         "tools": "Outils",
         "skills": "Skills",
         "channels": "Channels",
@@ -1042,6 +1069,11 @@
           "intervalInvalid": "Heartbeat interval must be a positive whole number",
           "promptRequired": "Heartbeat prompt is required"
         }
+      },
+      "studioUpgrade": {
+        "title": "Upgrade to TIA Agent",
+        "description": "Enable Studio Features to unlock heartbeat, coding subagents, MCP tools, workspace skills, and activity controls for this ACP agent.",
+        "enableButton": "Enable Studio Features"
       },
       "activity": {
         "description": "Review assistant heartbeat health and recent cron executions.",
@@ -1075,12 +1107,24 @@
       "descriptionHelp": "Aide le superviseur Team à choisir cet assistant pour la bonne tâche.",
       "workspacePathHelp": "Pour permettre à l’agent d’exécuter des tâches plus complexes, sélectionnez un workspace.",
       "openingButton": "Ouverture...",
+      "channels": {
+        "title": "Channel Setup",
+        "description": "Choose the channel this assistant owns and keep setup actions close to the selection flow.",
+        "empty": "No channel is currently selected for this assistant.",
+        "openSetupDescription": "Open setup here to manage pairings, QR login, or other channel-specific onboarding."
+      },
       "codingAgent": {
-        "title": "Coding Agent",
         "description": "Delegate coding-heavy tasks to a dedicated Codex or Claude Agent ACP subagent.",
-        "toggleAriaLabel": "Enable coding agent",
+        "toggleForAriaLabel": "Enable {{kind}}",
         "providerLabel": "Coding provider",
         "selectProvider": "Select coding provider",
+        "availableStatus": "Installed",
+        "missingStatus": "Not installed",
+        "cwdPrefix": "This coding subagent will use this workspace as cwd:",
+        "runtimeDescriptions": {
+          "codex-acp": "Use Codex ACP for implementation-focused coding tasks inside the assistant workspace.",
+          "claude-agent-acp": "Use Claude Agent ACP for coding tasks inside the assistant workspace."
+        },
         "workspaceRequired": "Set a workspace path before enabling the coding agent.",
         "runtimeMissingPrefix": "The selected coding provider needs its ACP binary. Finish setup in",
         "codingLinkLabel": "Coding",
@@ -1088,6 +1132,7 @@
         "providersLinkLabel": "Model Provider",
         "noProvidersSuffix": "and make sure its ACP binary is ready in Coding."
       },
+      "toolsDescription": "Control the MCP servers and runtime-backed tools that this assistant can use.",
       "runtimeNoteTitle": "Certains outils MCP utilisent des runtimes gérés.",
       "runtimeNotePrefix": "Terminez la configuration dans",
       "runtimeNoteLinkLabel": "Runtime Setup",

@@ -34,6 +34,10 @@ function isAcpProviderType(type: ProviderType): type is 'codex-acp' | 'claude-ag
   return type === 'codex-acp' || type === 'claude-agent-acp'
 }
 
+function isLocalAcpProviderType(type: ProviderType): type is 'acp' {
+  return type === 'acp'
+}
+
 function getAcpManagedRuntimeKind(type: ProviderType): ManagedRuntimeKind | null {
   if (type === 'codex-acp' || type === 'claude-agent-acp') {
     return type
@@ -80,20 +84,22 @@ function toProviderPayload(
   values: ProviderFormValues,
   showProviderModels: boolean
 ): SaveProviderInput {
-  const isAcpProvider = isAcpProviderType(values.type)
+  const isManagedAcpProvider = isAcpProviderType(values.type)
+  const isLocalAcpProvider = isLocalAcpProviderType(values.type)
+  const shouldUseDefaultModel = isManagedAcpProvider || isLocalAcpProvider
 
   return {
     name: values.name.trim(),
     type: values.type,
     apiKey: values.apiKey.trim(),
     apiHost: values.apiHost.trim() || undefined,
-    selectedModel: isAcpProvider
+    selectedModel: shouldUseDefaultModel
       ? values.selectedModel.trim() || 'default'
       : values.selectedModel.trim(),
     providerModels: showProviderModels
       ? parseProviderModelsInput(values.providerModelsText)
       : undefined,
-    supportsVision: isAcpProvider ? true : values.supportsVision,
+    supportsVision: shouldUseDefaultModel ? true : values.supportsVision,
     enabled: values.enabled
   }
 }
@@ -115,7 +121,10 @@ export function ProvidersForm({
     apiHost: initialValue?.apiHost ?? '',
     selectedModel:
       initialValue?.selectedModel ??
-      (initialValue?.type && isAcpProviderType(initialValue.type) ? 'default' : ''),
+      (initialValue?.type &&
+      (isAcpProviderType(initialValue.type) || isLocalAcpProviderType(initialValue.type))
+        ? 'default'
+        : ''),
     providerModelsText: initialValue?.providerModelsText ?? '',
     supportsVision: initialValue?.supportsVision ?? false,
     enabled: initialValue?.enabled ?? true
@@ -162,16 +171,17 @@ export function ProvidersForm({
   const updateValue = (key: keyof ProviderFormValues, value: string) => {
     setValues((prev) => {
       if (key === 'type') {
-        const nextType = value as ProviderType
-        return {
-          ...prev,
-          type: nextType,
-          selectedModel:
-            isAcpProviderType(nextType) && prev.selectedModel.trim().length === 0
-              ? 'default'
-              : prev.selectedModel
+          const nextType = value as ProviderType
+          return {
+            ...prev,
+            type: nextType,
+            selectedModel:
+              (isAcpProviderType(nextType) || isLocalAcpProviderType(nextType)) &&
+              prev.selectedModel.trim().length === 0
+                ? 'default'
+                : prev.selectedModel
+          }
         }
-      }
 
       return {
         ...prev,

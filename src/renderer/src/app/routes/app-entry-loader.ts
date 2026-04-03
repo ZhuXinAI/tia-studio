@@ -12,5 +12,5 @@ export function appEntryLoader() {
     return redirect('/agents')
   }
 
-  return redirect('/team')
+  return redirect('/agents')
 }

@@ -43,6 +43,12 @@ type ManagedRuntimeRecord = {
 }
 type ManagedRuntimesState = Record<ManagedRuntimeKind, ManagedRuntimeRecord>
 type RecommendedSkillId = 'agent-browser' | 'find-skills'
+type InstalledLocalAcpAgentRecord = {
+  key: 'codex' | 'claude' | 'gemini' | 'qwen-code' | 'openclaw'
+  label: string
+  resolvedCommand: string
+  binaryPath: string
+}
 type UiConfig = {
   transparent?: boolean
   language?: string | null
@@ -96,6 +102,10 @@ const tiaDesktop = {
       RecommendedSkillId[]
     >,
   pickDirectory: () => ipcRenderer.invoke('tia:pick-directory') as Promise<string | null>,
+  listInstalledLocalAcpAgents: () =>
+    ipcRenderer.invoke('tia:list-installed-local-acp-agents') as Promise<
+      InstalledLocalAcpAgentRecord[]
+    >,
   listAssistantSkills: (workspaceRootPath: string) =>
     ipcRenderer.invoke('tia:list-assistant-skills', workspaceRootPath) as Promise<
       Array<{

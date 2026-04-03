@@ -27,7 +27,8 @@
       "searchPlaceholder": "Search assistants...",
       "searchAriaLabel": "Search assistants",
       "empty": "No assistants yet",
-      "createAction": "Create new assistant",
+      "createAcpAction": "Create ACP Agent",
+      "createTiaAction": "Create TIA Agent (Advanced)",
       "manageAction": "Manage assistants & channels"
     },
     "teamSwitcher": {
@@ -75,6 +76,10 @@
       "title": "Ρυθμίσεις",
       "subtitle": "Διαμόρφωση",
       "categories": "Κατηγορίες",
+      "groups": {
+        "acpReuse": "ACP Reuse",
+        "advancedStudio": "Advanced Studio"
+      },
       "items": {
         "general": "Γενικά",
         "providers": "Πάροχος μοντέλων",
@@ -86,7 +91,8 @@
         "coding": "Coding",
         "runtimeSetup": "Ρύθμιση runtime",
         "display": "Εμφάνιση",
-        "aboutFeedback": "Πληροφορίες & σχόλια"
+        "aboutFeedback": "Πληροφορίες & σχόλια",
+        "agents": "Agents"
       }
     },
     "general": {
@@ -400,6 +406,7 @@
         "unexpectedError": "Απροσδόκητο σφάλμα αιτήματος"
       },
       "typeLabels": {
+        "acp": "Local ACP Agent",
         "openai": "Συμβατό με OpenAI",
         "openai-response": "OpenAI Responses",
         "openrouter": "OpenRouter",
@@ -410,6 +417,7 @@
         "claude-agent-acp": "Claude Agent ACP"
       },
       "typeDescriptions": {
+        "acp": "Runs a locally installed ACP-compatible agent command such as Codex, Claude, Gemini, Qwen Code, or OpenClaw.",
         "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
         "openai-response": "For services using OpenAI response format. Use this for third-party APIs that return OpenAI-compatible responses.",
         "openrouter": "For OpenRouter's native AI SDK provider integration. This type is intended for built-in OpenRouter templates.",
@@ -523,6 +531,7 @@
     "title": "Claws",
     "description": "Συνδέστε βοηθούς με εξωτερικά κανάλια Lark χωρίς να ψάχνετε ακατέργαστες ρυθμίσεις.",
     "newButton": "Νέο Claw",
+    "newTiaButton": "Create TIA Agent (Advanced)",
     "telegram": {
       "description": "Συνδέστε βοηθούς με εξωτερικά κανάλια Telegram ή Lark χωρίς να ψάχνετε στις ακατέργαστες ρυθμίσεις.",
       "emptyDescription": "Ξεκινήστε με έναν βοηθό, έναν πάροχο και ένα κανάλι Telegram ή Lark για την πιο γρήγορη αρχική ρύθμιση.",
@@ -547,7 +556,8 @@
       "title": "Ρυθμίστε το πρώτο σας Claw",
       "description": "Ξεκινήστε με έναν βοηθό, έναν πάροχο και ένα κανάλι Lark για την πιο γρήγορη εισαγωγή.",
       "note": "Η ταυτότητα του βοηθού, το heartbeat και τα μελλοντικά cron παραμένουν στον βοηθό.",
-      "createButton": "Δημιουργία πρώτου Claw"
+      "createButton": "Δημιουργία πρώτου Claw",
+      "createTiaButton": "Create TIA Agent (Advanced)"
     },
     "card": {
       "noChannelConnected": "Δεν υπάρχει συνδεδεμένο κανάλι",
@@ -863,17 +873,26 @@
         "helperSelected": "Τα μηνύματα περνούν από τον επόπτη Team και τα επιλεγμένα μέλη.",
         "helperEmpty": "Επιλέξτε πρώτα χώρο εργασίας και δημιουργήστε νήμα Team.",
         "openStatus": "Άνοιγμα κατάστασης Team"
-      }
+      },
+      "mixedMembersHint": "Teams can mix ACP Agents and TIA Agents."
     },
     "configDialog": {
       "closeAriaLabel": "Close team config dialog",
       "title": "Ρύθμιση Team",
       "description": "Επιλέξτε μοντέλο επόπτη και ποιοι βοηθοί θα συμμετέχουν σε αυτήν την ομάδα.",
+      "memberOriginHint": "Members can mix ACP Agents and TIA Agents.",
+      "createMemberHint": "Need another member?",
+      "createAcpMemberAction": "Create ACP Agent",
+      "createTiaMemberAction": "Create TIA Agent (Advanced)",
       "fields": {
         "supervisorProvider": "Πάροχος επόπτη",
         "teamDescription": "Περιγραφή Team",
         "supervisorModel": "Μοντέλο επόπτη",
         "teamMembers": "Μέλη Team"
+      },
+      "origins": {
+        "acp": "ACP Agent",
+        "tia": "TIA Agent"
       },
       "validation": {
         "supervisorProvider": "Επιλέξτε πάροχο επόπτη.",
@@ -980,6 +999,13 @@
       "closeCreateAriaLabel": "Close create assistant dialog",
       "closeEditAriaLabel": "Close assistant config dialog",
       "createTitle": "Δημιουργία βοηθού",
+      "createPathDescription": "Start with an existing ACP agent for the lightweight path, or create a full TIA-managed agent.",
+      "useExistingAcpTitle": "Use Existing ACP Agent",
+      "useExistingAcpDescription": "Reuse a Codex ACP or Claude Agent ACP runtime, choose a workspace, and optionally attach a channel.",
+      "useExistingAcpSubmit": "Create ACP Agent",
+      "advancedCreateTiaAction": "Advanced: Create TIA Agent",
+      "createTiaTitle": "Create TIA Agent",
+      "createTiaDescription": "Start with the full TIA editor, including Studio tools, skills, and activity controls.",
       "editTitle": "Ρύθμιση {{name}}",
       "createDescription": "Ρυθμίστε διαδρομή workspace και πάροχο πριν ξεκινήσετε τη συνομιλία.",
       "editDescription": "Ενημερώστε πάροχο, workspace και prompt χωρίς να φύγετε από τη συνομιλία.",
@@ -1013,6 +1039,7 @@
       "createTitle": "Δημιουργία βοηθού",
       "tabs": {
         "essential": "Βασικές ρυθμίσεις",
+        "coding": "Coding",
         "tools": "Εργαλεία",
         "skills": "Skills",
         "channels": "Channels",
@@ -1042,6 +1069,11 @@
           "intervalInvalid": "Heartbeat interval must be a positive whole number",
           "promptRequired": "Heartbeat prompt is required"
         }
+      },
+      "studioUpgrade": {
+        "title": "Upgrade to TIA Agent",
+        "description": "Enable Studio Features to unlock heartbeat, coding subagents, MCP tools, workspace skills, and activity controls for this ACP agent.",
+        "enableButton": "Enable Studio Features"
       },
       "activity": {
         "description": "Review assistant heartbeat health and recent cron executions.",
@@ -1075,12 +1107,24 @@
       "descriptionHelp": "Βοηθά τον επόπτη Team να επιλέγει αυτόν τον βοηθό για τη σωστή εργασία.",
       "workspacePathHelp": "Για να εκτελεί ο agent πιο σύνθετες εργασίες, επιλέξτε ένα workspace.",
       "openingButton": "Άνοιγμα...",
+      "channels": {
+        "title": "Channel Setup",
+        "description": "Choose the channel this assistant owns and keep setup actions close to the selection flow.",
+        "empty": "No channel is currently selected for this assistant.",
+        "openSetupDescription": "Open setup here to manage pairings, QR login, or other channel-specific onboarding."
+      },
       "codingAgent": {
-        "title": "Coding Agent",
         "description": "Delegate coding-heavy tasks to a dedicated Codex or Claude Agent ACP subagent.",
-        "toggleAriaLabel": "Enable coding agent",
+        "toggleForAriaLabel": "Enable {{kind}}",
         "providerLabel": "Coding provider",
         "selectProvider": "Select coding provider",
+        "availableStatus": "Installed",
+        "missingStatus": "Not installed",
+        "cwdPrefix": "This coding subagent will use this workspace as cwd:",
+        "runtimeDescriptions": {
+          "codex-acp": "Use Codex ACP for implementation-focused coding tasks inside the assistant workspace.",
+          "claude-agent-acp": "Use Claude Agent ACP for coding tasks inside the assistant workspace."
+        },
         "workspaceRequired": "Set a workspace path before enabling the coding agent.",
         "runtimeMissingPrefix": "The selected coding provider needs its ACP binary. Finish setup in",
         "codingLinkLabel": "Coding",
@@ -1088,6 +1132,7 @@
         "providersLinkLabel": "Model Provider",
         "noProvidersSuffix": "and make sure its ACP binary is ready in Coding."
       },
+      "toolsDescription": "Control the MCP servers and runtime-backed tools that this assistant can use.",
       "runtimeNoteTitle": "Ορισμένα εργαλεία MCP χρησιμοποιούν διαχειριζόμενα runtimes.",
       "runtimeNotePrefix": "Ολοκληρώστε τη ρύθμιση στο",
       "runtimeNoteLinkLabel": "Runtime Setup",

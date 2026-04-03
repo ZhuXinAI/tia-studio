@@ -92,6 +92,14 @@ declare global {
         }) => void
       ) => () => void
       pickDirectory: () => Promise<string | null>
+      listInstalledLocalAcpAgents?: () => Promise<
+        Array<{
+          key: 'codex' | 'claude' | 'gemini' | 'qwen-code' | 'openclaw'
+          label: string
+          resolvedCommand: string
+          binaryPath: string
+        }>
+      >
     }
   }
 }

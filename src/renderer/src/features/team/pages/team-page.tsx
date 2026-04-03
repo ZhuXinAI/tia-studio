@@ -114,12 +114,7 @@ export function TeamPage(): React.JSX.Element {
         onClose={controller.closeConfigDialog}
         onCreateAcpMember={() => {
           controller.closeConfigDialog()
-          navigate('/claws', {
-            state: {
-              assistantDialog: 'create',
-              assistantCreatePath: 'external-acp'
-            }
-          })
+          navigate('/agents')
         }}
         onCreateTiaMember={() => {
           controller.closeConfigDialog()

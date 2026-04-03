@@ -2033,7 +2033,10 @@ ${input.prompt}`
     },
     scopeId: string
   ): string | null {
-    if (!this.options.acpHomeRootPath || !isAcpProviderType(provider.type)) {
+    if (
+      !this.options.acpHomeRootPath ||
+      (provider.type !== 'acp' && !isAcpProviderType(provider.type))
+    ) {
       return null
     }
 

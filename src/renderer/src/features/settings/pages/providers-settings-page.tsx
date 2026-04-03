@@ -40,6 +40,8 @@ type ProviderFormInitialValue = {
 
 function toProviderTypeLabel(type: ProviderRecord['type'], t: (key: string) => string): string {
   switch (type) {
+    case 'acp':
+      return t('settings.providers.typeLabels.acp')
     case 'openai':
       return t('settings.providers.typeLabels.openai')
     case 'openai-response':

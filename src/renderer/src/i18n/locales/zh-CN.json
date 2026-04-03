@@ -91,7 +91,8 @@
         "coding": "Coding",
         "runtimeSetup": "ACP 与运行时",
         "display": "显示",
-        "aboutFeedback": "关于与反馈"
+        "aboutFeedback": "关于与反馈",
+        "agents": "智能体"
       }
     },
     "general": {
@@ -405,6 +406,7 @@
         "unexpectedError": "请求发生意外错误"
       },
       "typeLabels": {
+        "acp": "Local ACP Agent",
         "openai": "OpenAI 兼容",
         "openai-response": "OpenAI Responses",
         "openrouter": "OpenRouter",
@@ -415,6 +417,7 @@
         "claude-agent-acp": "Claude Agent ACP"
       },
       "typeDescriptions": {
+        "acp": "Runs a locally installed ACP-compatible agent command such as Codex, Claude, Gemini, Qwen Code, or OpenClaw.",
         "openai": "适用于 OpenAI API 及兼容服务（DeepSeek、Groq 等）。需要 API 密钥，支持自定义端点。",
         "openai-response": "适用于使用 OpenAI 响应格式的服务。用于返回 OpenAI 兼容响应的第三方 API。",
         "openrouter": "适用于 OpenRouter 原生 AI SDK provider 集成。这个类型主要用于内置的 OpenRouter 模板。",
@@ -926,17 +929,17 @@
     "sidebar": {
       "eyebrow": "主聊天",
       "title": "会话",
-      "creatingThread": "正在创建线程...",
-      "newThread": "新建线程",
-      "assistants": "助手",
+      "creatingThread": "正在创建对话...",
+      "newThread": "新对话",
+      "assistants": "智能体",
       "createAssistantAriaLabel": "创建助手",
       "assistantActionsAriaLabel": "助手 {{name}} 的操作",
       "assistantSwitcherAriaLabel": "Switch assistants",
       "backToAssistantsAriaLabel": "Back to assistants",
       "currentAssistant": "Current assistant",
       "deleteAssistantAriaLabel": "删除助手 {{name}}",
-      "loadingAssistants": "正在加载助手...",
-      "emptyAssistants": "还没有助手。请先在 Assistants 中创建一个。",
+      "loadingAssistants": "正在加载智能体...",
+      "emptyAssistants": "还没有智能体。请前往设置添加。",
       "emptyAssistantSearch": "No assistants match this search.",
       "loadingThreads": "正在加载线程...",
       "emptyThreads": "还没有线程。",

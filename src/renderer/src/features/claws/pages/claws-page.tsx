@@ -108,7 +108,11 @@ function supportsChannelAccess(channelType: string | null | undefined): boolean 
 
 type AssistantCreatePath = 'external-acp' | 'tia'
 
-export function ClawsPage(): React.JSX.Element {
+type ClawsPageProps = {
+  surface?: 'standalone' | 'settings'
+}
+
+export function ClawsPage({ surface = 'standalone' }: ClawsPageProps): React.JSX.Element {
   const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
@@ -139,6 +143,7 @@ export function ClawsPage(): React.JSX.Element {
   const createTiaEmptyLabel = t('claws.empty.createTiaButton', {
     defaultValue: 'Create TIA Agent (Advanced)'
   })
+  const isSettingsSurface = surface === 'settings'
 
   async function refreshPage(): Promise<ClawsResponse> {
     const [nextClaws, nextProviders, nextAssistants, nextMcpServers] = await Promise.all([
@@ -487,17 +492,31 @@ export function ClawsPage(): React.JSX.Element {
   return (
     <section
       data-claws-page-shell="true"
-      className="min-h-0 h-[calc(100vh-3.5rem)] overflow-y-auto bg-transparent px-6 py-6"
+      className={
+        isSettingsSurface
+          ? 'min-h-0 overflow-y-auto bg-transparent py-4'
+          : 'min-h-0 h-[calc(100vh-3.5rem)] overflow-y-auto bg-transparent px-6 py-6'
+      }
     >
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-        <div className="flex flex-wrap items-end justify-between gap-4 rounded-[1.75rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-6 py-6 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.55)]">
+      <div className={isSettingsSurface ? 'flex w-full flex-col gap-6' : 'mx-auto flex w-full max-w-6xl flex-col gap-6'}>
+        <div
+          className={
+            isSettingsSurface
+              ? 'flex flex-wrap items-end justify-between gap-4'
+              : 'flex flex-wrap items-end justify-between gap-4 rounded-[1.75rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-6 py-6 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.55)]'
+          }
+        >
           <div className="space-y-1">
             <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
-              {t('claws.eyebrow')}
+              {isSettingsSurface ? 'Agent Setup' : t('claws.eyebrow')}
             </p>
-            <h1 className="text-3xl font-semibold tracking-[-0.03em]">{t('claws.title')}</h1>
+            <h1 className="text-3xl font-semibold tracking-[-0.03em]">
+              {isSettingsSurface ? 'Agents & Channels' : t('claws.title')}
+            </h1>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              {t('claws.telegram.description')}
+              {isSettingsSurface
+                ? 'Manage ACP agents, keep custom TIA harnesses available, and attach channels only when you need them.'
+                : t('claws.telegram.description')}
             </p>
           </div>
 
@@ -546,14 +565,14 @@ export function ClawsPage(): React.JSX.Element {
 
         {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
 
-        <div className="grid auto-rows-fr gap-4 xl:grid-cols-2">
+        <div className={isSettingsSurface ? 'grid auto-rows-fr gap-4' : 'grid auto-rows-fr gap-4 xl:grid-cols-2'}>
           {data.claws.map((claw, index) => (
             <ClawCard
               key={claw.id}
               claw={claw}
               providerLabel={providerLabel(claw.providerId)}
               isSubmitting={isSubmitting || isPairingsSubmitting}
-              featured={index === 0 && data.claws.length > 1}
+              featured={!isSettingsSurface && index === 0 && data.claws.length > 1}
               onToggleEnabled={() => void handleToggleEnabled(claw)}
               onEdit={() => openEditDialog(claw)}
               onDelete={() => setClawPendingDelete(claw)}

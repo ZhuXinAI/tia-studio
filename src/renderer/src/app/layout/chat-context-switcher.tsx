@@ -5,10 +5,23 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { useTranslation } from '../../i18n/use-app-translation'
 import { cn } from '../../lib/utils'
-import { listAssistants, type AssistantRecord } from '../../features/assistants/assistants-query'
+import {
+  useAssistants,
+  type AssistantRecord
+} from '../../features/assistants/assistants-query'
+import { listInstalledLocalAcpAgents } from '../../features/threads/local-acp-agents-query'
+
+const AUTO_LOCAL_ACP_AGENT_KEY = '__tiaAutoLocalAcpAgentKey'
 
 function normalizeSearchValue(value: string): string {
   return value.trim().toLocaleLowerCase()
+}
+
+function readAutoLocalAcpAgentKey(
+  workspaceConfig: Record<string, unknown> | null | undefined
+): string | null {
+  const value = workspaceConfig?.[AUTO_LOCAL_ACP_AGENT_KEY]
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }
 
 function getAssistantSecondaryText(assistant: AssistantRecord | null): string | null {
@@ -24,10 +37,12 @@ export function ChatContextSwitcher(): React.JSX.Element {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const params = useParams()
-  const [assistants, setAssistants] = useState<AssistantRecord[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { data: assistants = [], isLoading } = useAssistants()
   const [isOpen, setIsOpen] = useState(false)
   const [assistantSearchQuery, setAssistantSearchQuery] = useState('')
+  const [installedLocalAcpAgentKeys, setInstalledLocalAcpAgentKeys] = useState<Set<string>>(
+    () => new Set<string>()
+  )
   const containerRef = useRef<HTMLDivElement | null>(null)
   const deferredAssistantSearchQuery = useDeferredValue(assistantSearchQuery)
   const normalizedAssistantSearchQuery = normalizeSearchValue(deferredAssistantSearchQuery)
@@ -35,26 +50,13 @@ export function ChatContextSwitcher(): React.JSX.Element {
   useEffect(() => {
     let active = true
 
-    void listAssistants()
-      .then((nextAssistants) => {
-        if (!active) {
-          return
-        }
-
-        setAssistants(nextAssistants)
-      })
-      .catch(() => {
-        if (!active) {
-          return
-        }
-
-        setAssistants([])
-      })
-      .finally(() => {
+    void listInstalledLocalAcpAgents()
+      .then((nextAgents) => {
         if (active) {
-          setIsLoading(false)
+          setInstalledLocalAcpAgentKeys(new Set(nextAgents.map((agent) => agent.key)))
         }
       })
+      .catch(() => undefined)
 
     return () => {
       active = false
@@ -96,15 +98,19 @@ export function ChatContextSwitcher(): React.JSX.Element {
     }
   }, [isOpen])
 
+  const visibleAssistants = assistants.filter((assistant) => {
+    const autoLocalAcpAgentKey = readAutoLocalAcpAgentKey(assistant.workspaceConfig)
+    return !autoLocalAcpAgentKey || installedLocalAcpAgentKeys.has(autoLocalAcpAgentKey)
+  })
   const selectedAssistant =
-    assistants.find((assistant) => assistant.id === params.assistantId) ?? null
+    visibleAssistants.find((assistant) => assistant.id === params.assistantId) ?? null
   const selectedAssistantLabel = selectedAssistant?.name?.trim()
   const selectedAssistantSecondaryText = getAssistantSecondaryText(selectedAssistant)
 
   const filteredAssistants =
     normalizedAssistantSearchQuery.length === 0
-      ? assistants
-      : assistants.filter((assistant) =>
+      ? visibleAssistants
+      : visibleAssistants.filter((assistant) =>
           normalizeSearchValue(assistant.name).includes(normalizedAssistantSearchQuery)
         )
   const createAcpActionLabel = t('appShell.chatSwitcher.createAcpAction', {
@@ -257,12 +263,7 @@ export function ChatContextSwitcher(): React.JSX.Element {
                 className="w-full justify-start rounded-xl"
                 onClick={() => {
                   setIsOpen(false)
-                  navigate('/claws', {
-                    state: {
-                      assistantDialog: 'create',
-                      assistantCreatePath: 'external-acp'
-                    }
-                  })
+                  navigate('/agents')
                 }}
               >
                 {createAcpActionLabel}
@@ -291,7 +292,7 @@ export function ChatContextSwitcher(): React.JSX.Element {
                 className="w-full justify-start rounded-xl"
                 onClick={() => {
                   setIsOpen(false)
-                  navigate('/claws')
+                  navigate('/settings/agents')
                 }}
               >
                 {t('appShell.chatSwitcher.manageAction')}

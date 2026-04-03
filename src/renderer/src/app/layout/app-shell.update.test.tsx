@@ -135,10 +135,10 @@ describe('AppShell update button', () => {
     expect(restartToUpdate).toHaveBeenCalledTimes(1)
   })
 
-  it('defaults first-run entry to /team when no app mode has been stored', () => {
+  it('defaults first-run entry to /agents when no app mode has been stored', () => {
     const response = appEntryLoader()
 
     expect(response.status).toBe(302)
-    expect(response.headers.get('Location')).toBe('/team')
+    expect(response.headers.get('Location')).toBe('/agents')
   })
 })

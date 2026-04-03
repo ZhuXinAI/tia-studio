@@ -91,7 +91,8 @@
         "coding": "Coding",
         "runtimeSetup": "ACP / Runtimes",
         "display": "Display",
-        "aboutFeedback": "About & Feedback"
+        "aboutFeedback": "About & Feedback",
+        "agents": "Agents"
       }
     },
     "general": {
@@ -405,6 +406,7 @@
         "unexpectedError": "Unexpected request error"
       },
       "typeLabels": {
+        "acp": "Local ACP Agent",
         "openai": "OpenAI Compatible",
         "openai-response": "OpenAI Responses",
         "openrouter": "OpenRouter",
@@ -415,6 +417,7 @@
         "claude-agent-acp": "Claude Agent ACP"
       },
       "typeDescriptions": {
+        "acp": "Runs a locally installed ACP-compatible agent command such as Codex, Claude, Gemini, Qwen Code, or OpenClaw.",
         "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
         "openai-response": "For services using OpenAI response format. Use this for third-party APIs that return OpenAI-compatible responses.",
         "openrouter": "For OpenRouter's native AI SDK provider integration. This type is intended for built-in OpenRouter templates.",
@@ -926,17 +929,17 @@
     "sidebar": {
       "eyebrow": "Main Chat",
       "title": "Conversations",
-      "creatingThread": "Creating thread...",
-      "newThread": "New Thread",
-      "assistants": "Assistants",
+      "creatingThread": "Creating chat...",
+      "newThread": "New chat",
+      "assistants": "Agents",
       "createAssistantAriaLabel": "Create assistant",
       "assistantActionsAriaLabel": "Assistant actions for {{name}}",
       "assistantSwitcherAriaLabel": "Switch assistants",
       "backToAssistantsAriaLabel": "Back to assistants",
       "currentAssistant": "Current assistant",
       "deleteAssistantAriaLabel": "Delete assistant {{name}}",
-      "loadingAssistants": "Loading assistants...",
-      "emptyAssistants": "No assistants yet. Create one in Assistants.",
+      "loadingAssistants": "Loading agents...",
+      "emptyAssistants": "No agents yet. Open Settings to add one.",
       "emptyAssistantSearch": "No assistants match this search.",
       "loadingThreads": "Loading threads...",
       "emptyThreads": "No threads yet.",

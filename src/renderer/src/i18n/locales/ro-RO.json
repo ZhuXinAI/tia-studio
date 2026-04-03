@@ -27,7 +27,8 @@
       "searchPlaceholder": "Search assistants...",
       "searchAriaLabel": "Search assistants",
       "empty": "No assistants yet",
-      "createAction": "Create new assistant",
+      "createAcpAction": "Create ACP Agent",
+      "createTiaAction": "Create TIA Agent (Advanced)",
       "manageAction": "Manage assistants & channels"
     },
     "teamSwitcher": {
@@ -75,6 +76,10 @@
       "title": "Setări",
       "subtitle": "Configurare",
       "categories": "Categorii",
+      "groups": {
+        "acpReuse": "ACP Reuse",
+        "advancedStudio": "Advanced Studio"
+      },
       "items": {
         "general": "General",
         "providers": "Furnizor de modele",
@@ -86,7 +91,8 @@
         "coding": "Coding",
         "runtimeSetup": "Configurare runtime",
         "display": "Afișare",
-        "aboutFeedback": "Despre și feedback"
+        "aboutFeedback": "Despre și feedback",
+        "agents": "Agents"
       }
     },
     "general": {
@@ -400,6 +406,7 @@
         "unexpectedError": "Unexpected request error"
       },
       "typeLabels": {
+        "acp": "Local ACP Agent",
         "openai": "OpenAI Compatible",
         "openai-response": "OpenAI Responses",
         "openrouter": "OpenRouter",
@@ -410,6 +417,7 @@
         "claude-agent-acp": "Claude Agent ACP"
       },
       "typeDescriptions": {
+        "acp": "Runs a locally installed ACP-compatible agent command such as Codex, Claude, Gemini, Qwen Code, or OpenClaw.",
         "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
         "openai-response": "For services using OpenAI response format. Use this for third-party APIs that return OpenAI-compatible responses.",
         "openrouter": "For OpenRouter's native AI SDK provider integration. This type is intended for built-in OpenRouter templates.",
@@ -523,6 +531,7 @@
     "title": "Claws",
     "description": "Conectează asistenți la canale externe Lark fără să cauți prin setări brute.",
     "newButton": "Claw nou",
+    "newTiaButton": "Create TIA Agent (Advanced)",
     "telegram": {
       "description": "Conectează asistenți la canale externe Telegram sau Lark fără să cauți prin setări brute.",
       "emptyDescription": "Începe cu un asistent, un furnizor și un canal Telegram sau Lark pentru cea mai rapidă configurare.",
@@ -547,7 +556,8 @@
       "title": "Configurează primul tău Claw",
       "description": "Începe cu un asistent, un furnizor și un canal Lark pentru onboarding rapid.",
       "note": "Identitatea asistentului, heartbeat-ul și cron-urile viitoare rămân gestionate de asistent.",
-      "createButton": "Creează primul tău Claw"
+      "createButton": "Creează primul tău Claw",
+      "createTiaButton": "Create TIA Agent (Advanced)"
     },
     "card": {
       "noChannelConnected": "Niciun canal conectat",
@@ -863,17 +873,26 @@
         "helperSelected": "Mesajele trec prin supervisorul Team și membrii selectați.",
         "helperEmpty": "Alege mai întâi un workspace și creează un thread Team.",
         "openStatus": "Deschide starea Team"
-      }
+      },
+      "mixedMembersHint": "Teams can mix ACP Agents and TIA Agents."
     },
     "configDialog": {
       "closeAriaLabel": "Close team config dialog",
       "title": "Configurează Team",
       "description": "Selectează un model pentru supervisor și alege ce asistenți intră în această echipă.",
+      "memberOriginHint": "Members can mix ACP Agents and TIA Agents.",
+      "createMemberHint": "Need another member?",
+      "createAcpMemberAction": "Create ACP Agent",
+      "createTiaMemberAction": "Create TIA Agent (Advanced)",
       "fields": {
         "supervisorProvider": "Furnizor supervisor",
         "teamDescription": "Descriere Team",
         "supervisorModel": "Model supervisor",
         "teamMembers": "Membri Team"
+      },
+      "origins": {
+        "acp": "ACP Agent",
+        "tia": "TIA Agent"
       },
       "validation": {
         "supervisorProvider": "Selectează un furnizor pentru supervisor.",
@@ -980,6 +999,13 @@
       "closeCreateAriaLabel": "Close create assistant dialog",
       "closeEditAriaLabel": "Close assistant config dialog",
       "createTitle": "Creează asistent",
+      "createPathDescription": "Start with an existing ACP agent for the lightweight path, or create a full TIA-managed agent.",
+      "useExistingAcpTitle": "Use Existing ACP Agent",
+      "useExistingAcpDescription": "Reuse a Codex ACP or Claude Agent ACP runtime, choose a workspace, and optionally attach a channel.",
+      "useExistingAcpSubmit": "Create ACP Agent",
+      "advancedCreateTiaAction": "Advanced: Create TIA Agent",
+      "createTiaTitle": "Create TIA Agent",
+      "createTiaDescription": "Start with the full TIA editor, including Studio tools, skills, and activity controls.",
       "editTitle": "Configurează {{name}}",
       "createDescription": "Configurează calea workspace-ului și furnizorul înainte de a începe chatul.",
       "editDescription": "Actualizează furnizorul, workspace-ul și promptul fără să părăsești chatul.",
@@ -1013,6 +1039,7 @@
       "createTitle": "Creează asistent",
       "tabs": {
         "essential": "Setări esențiale",
+        "coding": "Coding",
         "tools": "Instrumente",
         "skills": "Skills",
         "channels": "Channels",
@@ -1042,6 +1069,11 @@
           "intervalInvalid": "Heartbeat interval must be a positive whole number",
           "promptRequired": "Heartbeat prompt is required"
         }
+      },
+      "studioUpgrade": {
+        "title": "Upgrade to TIA Agent",
+        "description": "Enable Studio Features to unlock heartbeat, coding subagents, MCP tools, workspace skills, and activity controls for this ACP agent.",
+        "enableButton": "Enable Studio Features"
       },
       "activity": {
         "description": "Review assistant heartbeat health and recent cron executions.",
@@ -1075,12 +1107,24 @@
       "descriptionHelp": "Îl ajută pe supervisorul Team să aleagă acest asistent pentru sarcina potrivită.",
       "workspacePathHelp": "Pentru a permite agentului să execute sarcini mai complexe, selectează un workspace.",
       "openingButton": "Se deschide...",
+      "channels": {
+        "title": "Channel Setup",
+        "description": "Choose the channel this assistant owns and keep setup actions close to the selection flow.",
+        "empty": "No channel is currently selected for this assistant.",
+        "openSetupDescription": "Open setup here to manage pairings, QR login, or other channel-specific onboarding."
+      },
       "codingAgent": {
-        "title": "Coding Agent",
         "description": "Delegate coding-heavy tasks to a dedicated Codex or Claude Agent ACP subagent.",
-        "toggleAriaLabel": "Enable coding agent",
+        "toggleForAriaLabel": "Enable {{kind}}",
         "providerLabel": "Coding provider",
         "selectProvider": "Select coding provider",
+        "availableStatus": "Installed",
+        "missingStatus": "Not installed",
+        "cwdPrefix": "This coding subagent will use this workspace as cwd:",
+        "runtimeDescriptions": {
+          "codex-acp": "Use Codex ACP for implementation-focused coding tasks inside the assistant workspace.",
+          "claude-agent-acp": "Use Claude Agent ACP for coding tasks inside the assistant workspace."
+        },
         "workspaceRequired": "Set a workspace path before enabling the coding agent.",
         "runtimeMissingPrefix": "The selected coding provider needs its ACP binary. Finish setup in",
         "codingLinkLabel": "Coding",
@@ -1088,6 +1132,7 @@
         "providersLinkLabel": "Model Provider",
         "noProvidersSuffix": "and make sure its ACP binary is ready in Coding."
       },
+      "toolsDescription": "Control the MCP servers and runtime-backed tools that this assistant can use.",
       "runtimeNoteTitle": "Unele unelte MCP folosesc runtime-uri gestionate.",
       "runtimeNotePrefix": "Finalizează configurarea în",
       "runtimeNoteLinkLabel": "Runtime Setup",

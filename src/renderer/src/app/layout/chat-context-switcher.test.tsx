@@ -6,11 +6,21 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockState = vi.hoisted(() => ({
-  listAssistantsMock: vi.fn()
+  assistantsData: [] as Array<Record<string, unknown>>,
+  listInstalledLocalAcpAgentsMock: vi.fn()
 }))
 
 vi.mock('../../features/assistants/assistants-query', () => ({
-  listAssistants: (...args: unknown[]) => mockState.listAssistantsMock(...args)
+  useAssistants: () => ({
+    data: mockState.assistantsData,
+    isLoading: false,
+    error: null
+  })
+}))
+
+vi.mock('../../features/threads/local-acp-agents-query', () => ({
+  listInstalledLocalAcpAgents: (...args: unknown[]) =>
+    mockState.listInstalledLocalAcpAgentsMock(...args)
 }))
 
 import { ChatContextSwitcher } from './chat-context-switcher'
@@ -32,8 +42,9 @@ describe('ChatContextSwitcher', () => {
 
   beforeEach(() => {
     ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
-    mockState.listAssistantsMock.mockReset()
-    mockState.listAssistantsMock.mockResolvedValue([
+    mockState.listInstalledLocalAcpAgentsMock.mockReset()
+    mockState.listInstalledLocalAcpAgentsMock.mockResolvedValue([])
+    mockState.assistantsData = [
       {
         id: 'assistant-1',
         name: 'Planner',
@@ -64,7 +75,7 @@ describe('ChatContextSwitcher', () => {
         createdAt: '2026-03-01T00:00:00.000Z',
         updatedAt: '2026-03-01T00:00:00.000Z'
       }
-    ])
+    ]
 
     container = document.createElement('div')
     document.body.appendChild(container)
@@ -90,6 +101,24 @@ describe('ChatContextSwitcher', () => {
               element={
                 <>
                   <ChatContextSwitcher />
+                  <LocationDisplay />
+                </>
+              }
+            />
+            <Route
+              path="/agents"
+              element={
+                <>
+                  <div>Agents</div>
+                  <LocationDisplay />
+                </>
+              }
+            />
+            <Route
+              path="/settings/agents"
+              element={
+                <>
+                  <div>Agents Settings</div>
                   <LocationDisplay />
                 </>
               }
@@ -159,7 +188,9 @@ describe('ChatContextSwitcher', () => {
       manageButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    expect(container.querySelector('[data-testid="location-display"]')?.textContent).toBe('/claws')
+    expect(container.querySelector('[data-testid="location-display"]')?.textContent).toBe(
+      '/settings/agents'
+    )
   })
 
   it('opens the ACP create flow from the dropdown action', async () => {
@@ -181,10 +212,7 @@ describe('ChatContextSwitcher', () => {
       createButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    expect(container.querySelector('[data-testid="location-display"]')?.textContent).toBe('/claws')
-    expect(container.querySelector('[data-testid="location-state"]')?.textContent).toContain(
-      '"assistantCreatePath":"external-acp"'
-    )
+    expect(container.querySelector('[data-testid="location-display"]')?.textContent).toBe('/agents')
   })
 
   it('opens the TIA create flow from the secondary dropdown action', async () => {

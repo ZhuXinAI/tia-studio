@@ -1,5 +1,6 @@
 import {
   AlarmClock,
+  Bot,
   Cable,
   Cloud,
   Info,
@@ -37,6 +38,11 @@ type SettingsNavGroup = {
 }
 
 const setupNavItems: SettingsNavItem[] = [
+  {
+    titleKey: 'settings.sidebar.items.agents',
+    icon: Bot,
+    to: '/settings/agents'
+  },
   {
     titleKey: 'settings.sidebar.items.providers',
     icon: Cloud,

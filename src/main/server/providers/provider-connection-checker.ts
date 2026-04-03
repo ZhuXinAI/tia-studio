@@ -1,6 +1,7 @@
 const defaultTimeoutMs = 8000
 
 type ProviderType =
+  | 'acp'
   | 'openai'
   | 'openai-response'
   | 'openrouter'
@@ -61,7 +62,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function parseModelIds(providerType: ProviderType, payload: unknown): string[] {
-  if (providerType === 'codex-acp' || providerType === 'claude-agent-acp') {
+  if (
+    providerType === 'acp' ||
+    providerType === 'codex-acp' ||
+    providerType === 'claude-agent-acp'
+  ) {
     return []
   }
 
@@ -127,7 +132,7 @@ function extractErrorMessage(payload: unknown): string | null {
 }
 
 function buildConnectionRequest(input: ProviderConnectionInput): ConnectionRequest {
-  if (input.type === 'codex-acp' || input.type === 'claude-agent-acp') {
+  if (input.type === 'acp' || input.type === 'codex-acp' || input.type === 'claude-agent-acp') {
     return {
       url: 'about:blank'
     }
@@ -217,7 +222,7 @@ export async function testProviderConnection(
   input: ProviderConnectionInput,
   options: TestProviderConnectionOptions = {}
 ): Promise<void> {
-  if (input.type === 'codex-acp' || input.type === 'claude-agent-acp') {
+  if (input.type === 'acp' || input.type === 'codex-acp' || input.type === 'claude-agent-acp') {
     return
   }
 

@@ -44,6 +44,7 @@ import { TiaBrowserToolManager } from './tia-browser-tool-manager'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
 import { createMastraInstance } from './mastra/store'
 import { TeamRuntimeService } from './mastra/team-runtime'
+import { detectInstalledLocalAcpAgents } from './local-acp-agents'
 import { migrateAppSchema } from './persistence/migrate'
 import { AssistantHeartbeatRunsRepository } from './persistence/repos/assistant-heartbeat-runs-repo'
 import { AssistantHeartbeatsRepository } from './persistence/repos/assistant-heartbeats-repo'
@@ -884,6 +885,9 @@ if (hasSingleInstanceLock) {
       }
 
       return result.filePaths[0]
+    })
+    ipcMain.handle('tia:list-installed-local-acp-agents', async () => {
+      return detectInstalledLocalAcpAgents()
     })
     ipcMain.handle('tia:list-assistant-skills', async (_event, workspaceRootPath) => {
       if (typeof workspaceRootPath !== 'string') {
