@@ -38,12 +38,17 @@ describe('providers form helpers', () => {
   })
 
   it('keeps openrouter out of manual provider options unless already selected', () => {
-    expect(getVisibleProviderTypeOptions()).not.toContain('openrouter')
-    expect(getVisibleProviderTypeOptions('openrouter')).toContain('openrouter')
+    expect(getVisibleProviderTypeOptions('models')).not.toContain('openrouter')
+    expect(getVisibleProviderTypeOptions('models', 'openrouter')).toContain('openrouter')
   })
 
-  it('includes ACP providers in the visible manual provider options', () => {
-    expect(getVisibleProviderTypeOptions()).toContain('codex-acp')
-    expect(getVisibleProviderTypeOptions()).toContain('claude-agent-acp')
+  it('keeps ACP harnesses out of model provider options', () => {
+    expect(getVisibleProviderTypeOptions('models')).not.toContain('codex-acp')
+    expect(getVisibleProviderTypeOptions('models')).not.toContain('claude-agent-acp')
+  })
+
+  it('shows ACP harness types on the ACP settings scope', () => {
+    expect(getVisibleProviderTypeOptions('acp')).toContain('codex-acp')
+    expect(getVisibleProviderTypeOptions('acp')).toContain('claude-agent-acp')
   })
 })

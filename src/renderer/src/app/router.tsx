@@ -3,7 +3,10 @@ import '../i18n'
 import { AppShell } from './layout/app-shell'
 import { ThreadPage } from '../features/threads/pages/thread-page'
 import { ClawsPage } from '../features/claws/pages/claws-page'
-import { ProvidersSettingsPage } from '../features/settings/pages/providers-settings-page'
+import {
+  AcpSettingsPage,
+  ProvidersSettingsPage
+} from '../features/settings/pages/providers-settings-page'
 import { CronJobsSettingsPage } from '../features/settings/pages/cron-jobs-settings-page'
 import { WebSearchSettingsPage } from '../features/settings/pages/web-search-settings-page'
 import { McpServersSettingsPage } from '../features/settings/pages/mcp-servers-settings-page'
@@ -75,6 +78,10 @@ export const appRoutes: RouteObject[] = [
           {
             path: 'agents',
             element: <AgentsSettingsPage />
+          },
+          {
+            path: 'acp',
+            element: <AcpSettingsPage />
           },
           {
             path: 'general',

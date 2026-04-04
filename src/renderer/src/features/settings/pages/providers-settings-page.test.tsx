@@ -4,7 +4,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ProvidersSettingsPage } from './providers-settings-page'
+import { AcpSettingsPage, ProvidersSettingsPage } from './providers-settings-page'
 import {
   createProvider,
   deleteProvider,
@@ -192,6 +192,67 @@ describe('providers settings page', () => {
     expect(container.textContent).not.toContain(
       'Your credentials are saved locally on your device for security. We never see your API keys.'
     )
+  })
+
+  it('separates model providers from ACP harnesses across the two settings pages', async () => {
+    vi.mocked(listProviders).mockResolvedValue([
+      {
+        id: 'provider-1',
+        name: 'OpenAI',
+        type: 'openai',
+        apiKey: 'secret',
+        apiHost: 'https://api.openai.com/v1',
+        selectedModel: 'gpt-5',
+        providerModels: null,
+        enabled: true,
+        supportsVision: false,
+        isBuiltIn: false,
+        icon: null,
+        officialSite: null,
+        createdAt: '2026-03-02T00:00:00.000Z',
+        updatedAt: '2026-03-02T00:00:00.000Z'
+      },
+      {
+        id: 'provider-2',
+        name: 'Codex ACP',
+        type: 'codex-acp',
+        apiKey: 'secret-2',
+        apiHost: 'http://127.0.0.1:4318',
+        selectedModel: 'default',
+        providerModels: null,
+        enabled: true,
+        supportsVision: false,
+        isBuiltIn: false,
+        icon: null,
+        officialSite: null,
+        createdAt: '2026-03-02T00:00:00.000Z',
+        updatedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ProvidersSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    expect(container.textContent).toContain('OpenAI')
+    expect(container.textContent).not.toContain('Codex ACP')
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <AcpSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    expect(container.textContent).toContain('Codex ACP')
+    expect(container.textContent).not.toContain('OpenAI')
   })
 
   it('shows save success as a floating toast', async () => {

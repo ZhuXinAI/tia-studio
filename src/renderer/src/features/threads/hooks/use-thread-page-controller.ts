@@ -5,8 +5,6 @@ import { toast } from 'sonner'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import {
   assistantKeys,
-  createAssistant as createAssistantRecord,
-  updateAssistant as updateAssistantRecord,
   useAssistants,
   useCreateAssistant,
   useUpdateAssistant,
@@ -14,6 +12,10 @@ import {
   type AssistantRecord,
   type SaveAssistantInput
 } from '../../assistants/assistants-query'
+import {
+  readAutoLocalAcpAgentKey,
+  syncInstalledLocalAcpAgents
+} from '../../assistants/local-acp-assistant-sync'
 import {
   updateAssistantHeartbeat,
   type SaveAssistantHeartbeatInput
@@ -45,7 +47,6 @@ import {
   type McpServerRecord
 } from '../../settings/mcp-servers/mcp-servers-query'
 import {
-  createProvider as createProviderRecord,
   providerKeys,
   useProviders
 } from '../../settings/providers/providers-query'
@@ -86,25 +87,11 @@ type PendingThreadMessage = {
 }
 
 const BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__tiaBuiltInDefaultAgent'
-const AUTO_LOCAL_ACP_AGENT_KEY = '__tiaAutoLocalAcpAgentKey'
-const AUTO_LOCAL_ACP_AGENT_COMMAND = '__tiaAutoLocalAcpAgentCommand'
-
 function emptyClawsResponse(): ClawsResponse {
   return {
     claws: [],
     configuredChannels: []
   }
-}
-
-function encodeLocalAcpApiHost(command: string): string {
-  return `acp://${encodeURIComponent(command.trim())}`
-}
-
-function readAutoLocalAcpAgentKey(
-  workspaceConfig: Record<string, unknown> | null | undefined
-): string | null {
-  const value = workspaceConfig?.[AUTO_LOCAL_ACP_AGENT_KEY]
-  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }
 
 function buildChannelPayload(
@@ -552,19 +539,7 @@ export function useThreadPageController() {
       return
     }
 
-    const missingTargets = installedLocalAcpAgents.some((installedAgent) => {
-      const targetApiHost = encodeLocalAcpApiHost(installedAgent.resolvedCommand)
-      const matchingProvider = allProviders.find(
-        (provider) => provider.type === 'acp' && provider.apiHost === targetApiHost
-      )
-      const matchingAssistant = assistants.find(
-        (assistant) => readAutoLocalAcpAgentKey(assistant.workspaceConfig) === installedAgent.key
-      )
-
-      return !matchingProvider || !matchingAssistant
-    })
-
-    if (!missingTargets) {
+    if (installedLocalAcpAgents.length === 0) {
       return
     }
 
@@ -572,64 +547,12 @@ export function useThreadPageController() {
     setIsSyncingInstalledLocalAcpTargets(true)
 
     void (async () => {
-      let nextProviders = [...allProviders]
-      let nextAssistants = [...assistants]
-      let didMutate = false
-
-      for (const installedAgent of installedLocalAcpAgents) {
-        const targetApiHost = encodeLocalAcpApiHost(installedAgent.resolvedCommand)
-        let provider =
-          nextProviders.find(
-            (candidate) => candidate.type === 'acp' && candidate.apiHost === targetApiHost
-          ) ?? null
-
-        if (!provider) {
-          provider = await createProviderRecord({
-            name: installedAgent.label,
-            type: 'acp',
-            apiKey: '',
-            apiHost: targetApiHost,
-            selectedModel: 'default',
-            supportsVision: true,
-            enabled: true
-          })
-          nextProviders = [provider, ...nextProviders]
-          didMutate = true
-        }
-
-        const existingAssistant =
-          nextAssistants.find(
-            (assistant) => readAutoLocalAcpAgentKey(assistant.workspaceConfig) === installedAgent.key
-          ) ?? null
-
-        if (!existingAssistant) {
-          const createdAssistant = await createAssistantRecord({
-            name: installedAgent.label,
-            description: `${installedAgent.label} detected from your local ACP tools.`,
-            providerId: provider.id,
-            enabled: true,
-            origin: 'external-acp',
-            studioFeaturesEnabled: false,
-            workspaceConfig: {
-              [AUTO_LOCAL_ACP_AGENT_KEY]: installedAgent.key,
-              [AUTO_LOCAL_ACP_AGENT_COMMAND]: installedAgent.resolvedCommand
-            }
-          })
-          nextAssistants = [createdAssistant, ...nextAssistants]
-          didMutate = true
-          continue
-        }
-
-        if (existingAssistant.providerId !== provider.id) {
-          const updatedAssistant = await updateAssistantRecord(existingAssistant.id, {
-            providerId: provider.id
-          })
-          nextAssistants = nextAssistants.map((assistant) =>
-            assistant.id === updatedAssistant.id ? updatedAssistant : assistant
-          )
-          didMutate = true
-        }
-      }
+      const { assistants: nextAssistants, didMutate, providers: nextProviders } =
+        await syncInstalledLocalAcpAgents({
+          installedAgents: installedLocalAcpAgents,
+          providers: allProviders,
+          assistants
+        })
 
       if (didMutate) {
         queryClient.setQueryData(assistantKeys.lists(), nextAssistants)

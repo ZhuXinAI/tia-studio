@@ -34,9 +34,11 @@ describe('settings page layout', () => {
     expect(html).toContain('border-r border-border/70')
     expect(html).toContain('Model Provider Settings')
     expect(html).toContain('Providers')
+    expect(html).toContain('ACP')
     expect(html).toContain('ACP / Runtimes')
     expect(html).toContain('Channels')
-    expect(html).toContain('Advanced Studio')
+    expect(html).not.toContain('ACP Reuse')
+    expect(html).not.toContain('Advanced Studio')
   })
 
   it('renders translated sidebar labels from the active locale', async () => {
@@ -63,10 +65,11 @@ describe('settings page layout', () => {
     const html = renderToString(<RouterProvider router={router} />)
 
     expect(html).toContain('设置')
-    expect(html).toContain('ACP 复用')
+    expect(html).toContain('ACP')
     expect(html).toContain('ACP 与运行时')
     expect(html).toContain('频道')
-    expect(html).toContain('高级 Studio')
+    expect(html).not.toContain('ACP 复用')
+    expect(html).not.toContain('高级 Studio')
     expect(html).toContain('显示')
   })
 })

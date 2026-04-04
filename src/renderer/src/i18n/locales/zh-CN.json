@@ -27,9 +27,9 @@
       "searchPlaceholder": "Search assistants...",
       "searchAriaLabel": "Search assistants",
       "empty": "No assistants yet",
-      "createAcpAction": "Create ACP Agent",
-      "createTiaAction": "Create TIA Agent (Advanced)",
-      "manageAction": "Manage assistants & channels"
+      "createAcpAction": "打开 ACP 智能体",
+      "createTiaAction": "创建 TIA 智能体",
+      "manageAction": "管理智能体"
     },
     "teamSwitcher": {
       "label": "Current team",
@@ -82,6 +82,7 @@
       },
       "items": {
         "general": "常规",
+        "acp": "ACP",
         "providers": "模型提供商",
         "security": "Security & Privacy",
         "channels": "频道",

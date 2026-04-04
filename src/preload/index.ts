@@ -102,6 +102,8 @@ const tiaDesktop = {
       RecommendedSkillId[]
     >,
   pickDirectory: () => ipcRenderer.invoke('tia:pick-directory') as Promise<string | null>,
+  resolveDefaultAssistantWorkspacePath: (assistantName: string) =>
+    ipcRenderer.invoke('tia:resolve-default-assistant-workspace-path', assistantName) as Promise<string>,
   listInstalledLocalAcpAgents: () =>
     ipcRenderer.invoke('tia:list-installed-local-acp-agents') as Promise<
       InstalledLocalAcpAgentRecord[]

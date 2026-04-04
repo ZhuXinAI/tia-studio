@@ -13,7 +13,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '../../../components/ui/button'
 import { useTranslation } from '../../../i18n/use-app-translation'
+import { cn } from '../../../lib/utils'
 import type { AssistantRecord } from '../../assistants/assistants-query'
+import { getAssistantCollectionTab, type AssistantCollectionTab } from '../../assistants/assistant-origin'
 import type { AssistantReadiness } from '../thread-page-helpers'
 import { getThreadDisplayTitle } from '../thread-page-routing'
 import type { ThreadRecord } from '../threads-query'
@@ -391,10 +393,56 @@ function AgentSelector({
   ThreadChatCardProps,
   'assistantOptions' | 'selectedAssistant' | 'onSelectAssistant' | 'onOpenAgentSettings'
 >) {
+  const selectedTab = selectedAssistant ? getAssistantCollectionTab(selectedAssistant) : null
+  const [activeTab, setActiveTab] = useState<AssistantCollectionTab>(selectedTab ?? 'acp')
+  const acpAssistants = assistantOptions.filter((assistant) => getAssistantCollectionTab(assistant) === 'acp')
+  const tiaAssistants = assistantOptions.filter((assistant) => getAssistantCollectionTab(assistant) === 'tia')
+  const visibleAssistants = activeTab === 'acp' ? acpAssistants : tiaAssistants
+
+  useEffect(() => {
+    if (activeTab === 'acp' && acpAssistants.length > 0) {
+      return
+    }
+
+    if (activeTab === 'tia' && tiaAssistants.length > 0) {
+      return
+    }
+
+    setActiveTab(selectedTab ?? (acpAssistants.length > 0 ? 'acp' : 'tia'))
+  }, [acpAssistants.length, activeTab, selectedTab, tiaAssistants.length])
+
   return (
     <div className="rounded-[2rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] p-3 shadow-[0_22px_60px_-44px_rgba(15,23,42,0.82)]">
+      <div className="mb-3 flex items-center gap-2 rounded-2xl bg-[color:var(--surface-panel-soft)] p-1">
+        {([
+          { id: 'acp' as const, count: acpAssistants.length, label: 'ACP Agents' },
+          { id: 'tia' as const, count: tiaAssistants.length, label: 'TIA Agents' }
+        ] satisfies Array<{
+          id: AssistantCollectionTab
+          count: number
+          label: string
+        }>).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={cn(
+              'flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors',
+              activeTab === tab.id
+                ? 'bg-[color:var(--surface-panel)] text-foreground shadow-[0_12px_24px_-20px_rgba(15,23,42,0.45)]'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            <span>{tab.label}</span>
+            <span className="rounded-full bg-[color:var(--surface-panel-strong)] px-2 py-0.5 text-[11px]">
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-        {assistantOptions.map((assistant) => {
+        {visibleAssistants.map((assistant) => {
           const isSelected = selectedAssistant?.id === assistant.id
           const description = assistant.description.trim()
           return (
@@ -426,11 +474,12 @@ function AgentSelector({
         })}
       </div>
 
-      {assistantOptions.length === 0 ? (
+      {visibleAssistants.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-[1.5rem] border border-dashed border-[color:var(--surface-border)] px-5 py-8 text-center">
           <p className="max-w-md text-sm leading-6 text-muted-foreground">
-            No chat agents are ready yet. Install a local ACP agent or configure a TIA agent to
-            start here.
+            {activeTab === 'acp'
+              ? 'No ACP agents are available yet. Install a local ACP agent to start here.'
+              : 'No TIA agents are ready yet. Create one in Settings to start here.'}
           </p>
           <Button type="button" variant="outline" className="rounded-full" onClick={onOpenAgentSettings}>
             Open settings

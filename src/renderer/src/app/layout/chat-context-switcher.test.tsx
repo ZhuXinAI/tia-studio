@@ -181,7 +181,7 @@ describe('ChatContextSwitcher', () => {
     })
 
     const manageButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Manage assistants & channels')
+      button.textContent?.includes('Manage Agents')
     )
 
     act(() => {
@@ -205,14 +205,19 @@ describe('ChatContextSwitcher', () => {
     })
 
     const createButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Create ACP Agent')
+      button.textContent?.includes('Open ACP Agents')
     )
 
     act(() => {
       createButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    expect(container.querySelector('[data-testid="location-display"]')?.textContent).toBe('/agents')
+    expect(container.querySelector('[data-testid="location-display"]')?.textContent).toBe(
+      '/settings/agents'
+    )
+    expect(container.querySelector('[data-testid="location-state"]')?.textContent).toContain(
+      '"assistantTab":"acp"'
+    )
   })
 
   it('opens the TIA create flow from the secondary dropdown action', async () => {
@@ -227,16 +232,21 @@ describe('ChatContextSwitcher', () => {
     })
 
     const createButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Create TIA Agent (Advanced)')
+      button.textContent?.includes('Create TIA Agent')
     )
 
     act(() => {
       createButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    expect(container.querySelector('[data-testid="location-display"]')?.textContent).toBe('/claws')
+    expect(container.querySelector('[data-testid="location-display"]')?.textContent).toBe(
+      '/settings/agents'
+    )
     expect(container.querySelector('[data-testid="location-state"]')?.textContent).toContain(
-      '"assistantCreatePath":"tia"'
+      '"assistantDialog":"create"'
+    )
+    expect(container.querySelector('[data-testid="location-state"]')?.textContent).toContain(
+      '"assistantTab":"tia"'
     )
   })
 })

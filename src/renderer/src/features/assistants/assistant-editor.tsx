@@ -26,12 +26,14 @@ import { Field, FieldLabel } from '../../components/ui/field'
 import { cn } from '../../lib/utils'
 import { useTranslation } from '../../i18n/use-app-translation'
 import { ModelPickerDialog } from './model-picker-dialog'
+import { isAcpAssistantOrigin } from './assistant-origin'
 import {
   getManagedRuntimeStatus,
   getRequiredManagedRuntimeKind,
   isManagedRuntimeReady,
   type ManagedRuntimesState
 } from '../settings/runtimes/managed-runtimes-query'
+import { isModelProviderType } from '../settings/providers/provider-type-options'
 import {
   listAssistantSkills,
   removeAssistantWorkspaceSkill,
@@ -395,15 +397,12 @@ export function AssistantEditor({
 }: AssistantEditorProps): React.JSX.Element {
   const { t } = useTranslation()
   const assistantOrigin = initialValue?.origin ?? defaultConfig?.origin ?? 'tia'
+  const isAcpAssistant = isAcpAssistantOrigin(assistantOrigin)
   const [values, setValues] = useState<AssistantEditorValues>(() =>
     toInitialValues(initialValue, mcpServers, providers)
   )
   const [activeTab, setActiveTab] = useState<AssistantEditorTab>('essential')
-  const [studioFeaturesEnabled, setStudioFeaturesEnabled] = useState<boolean>(
-    initialValue?.studioFeaturesEnabled ??
-      defaultConfig?.studioFeaturesEnabled ??
-      assistantOrigin !== 'external-acp'
-  )
+  const studioFeaturesEnabled = !isAcpAssistant
   const [error, setError] = useState<string | null>(null)
   const [isSelectingWorkspacePath, setIsSelectingWorkspacePath] = useState(false)
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false)
@@ -420,17 +419,7 @@ export function AssistantEditor({
   )
   const [isHeartbeatLoading, setIsHeartbeatLoading] = useState(false)
   const [heartbeatError, setHeartbeatError] = useState<string | null>(null)
-  const supportsStudioFeatures =
-    assistantOrigin !== 'external-acp' || studioFeaturesEnabled === true
-  const showStudioUpgrade = assistantOrigin === 'external-acp' && !supportsStudioFeatures
-
-  useEffect(() => {
-    setStudioFeaturesEnabled(
-      initialValue?.studioFeaturesEnabled ??
-        defaultConfig?.studioFeaturesEnabled ??
-        assistantOrigin !== 'external-acp'
-    )
-  }, [assistantOrigin, defaultConfig?.studioFeaturesEnabled, initialValue?.studioFeaturesEnabled])
+  const supportsStudioFeatures = studioFeaturesEnabled
 
   useEffect(() => {
     if (activeTab === 'channels' && !channels) {
@@ -455,6 +444,10 @@ export function AssistantEditor({
   const selectedProvider = useMemo(() => {
     return providers.find((provider) => provider.id === values.providerId) ?? null
   }, [providers, values.providerId])
+  const modelProviders = useMemo(
+    () => providers.filter((provider) => isModelProviderType(provider.type)),
+    [providers]
+  )
   const codingProvidersByKind = useMemo(() => {
     return Object.fromEntries(
       CODING_RUNTIME_KINDS.map((kind) => [
@@ -927,19 +920,27 @@ export function AssistantEditor({
                 <FieldLabel htmlFor="assistant-provider">
                   {t('assistants.editor.fields.provider')}
                 </FieldLabel>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full justify-between h-9 font-normal"
-                  onClick={() => setIsModelPickerOpen(true)}
-                >
-                  <span className="truncate">
+                {isAcpAssistant ? (
+                  <div className="border-input flex h-9 items-center rounded-md border bg-transparent px-3 text-sm text-muted-foreground">
                     {selectedProvider
                       ? `${selectedProvider.name} (${selectedProvider.selectedModel})`
                       : t('assistants.editor.selectProvider')}
-                  </span>
-                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-between h-9 font-normal"
+                    onClick={() => setIsModelPickerOpen(true)}
+                  >
+                    <span className="truncate">
+                      {selectedProvider
+                        ? `${selectedProvider.name} (${selectedProvider.selectedModel})`
+                        : t('assistants.editor.selectProvider')}
+                    </span>
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                )}
               </Field>
 
               <Field>
@@ -1012,29 +1013,6 @@ export function AssistantEditor({
                   placeholder={t('assistants.editor.placeholders.maxSteps')}
                 />
               </Field>
-
-              {showStudioUpgrade ? (
-                <section className="space-y-3 rounded-xl border border-border/70 bg-card/50 p-4">
-                  <div className="space-y-1">
-                    <h3 className="text-base font-medium">
-                      {t('assistants.editor.studioUpgrade.title')}
-                    </h3>
-                    <p className="text-muted-foreground text-sm">
-                      {t('assistants.editor.studioUpgrade.description')}
-                    </p>
-                  </div>
-
-                  <Button
-                    id="assistant-enable-studio-features"
-                    type="button"
-                    variant="outline"
-                    disabled={isSubmitting}
-                    onClick={() => setStudioFeaturesEnabled(true)}
-                  >
-                    {t('assistants.editor.studioUpgrade.enableButton')}
-                  </Button>
-                </section>
-              ) : null}
 
               {initialValue && supportsStudioFeatures ? (
                 <section className="space-y-3 rounded-xl border border-border/70 bg-card/50 p-4">
@@ -1525,7 +1503,7 @@ export function AssistantEditor({
 
       <ModelPickerDialog
         open={isModelPickerOpen}
-        providers={providers}
+        providers={modelProviders}
         selectedProviderId={values.providerId}
         onSelect={(providerId) => handleInput('providerId', providerId)}
         onOpenChange={setIsModelPickerOpen}

@@ -129,6 +129,7 @@ interface TiaDesktopAPI {
   getRuntimeOnboardingSkillsStatus?: () => Promise<RecommendedSkillId[]>
   installRuntimeOnboardingSkills?: (skillIds: RecommendedSkillId[]) => Promise<RecommendedSkillId[]>
   pickDirectory: () => Promise<string | null>
+  resolveDefaultAssistantWorkspacePath?: (assistantName: string) => Promise<string>
   listInstalledLocalAcpAgents?: () => Promise<InstalledLocalAcpAgentRecord[]>
 }
 

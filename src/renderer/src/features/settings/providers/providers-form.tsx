@@ -72,6 +72,7 @@ export function shouldShowProviderModelsField(isPrebuilt: boolean): boolean {
 
 type ProvidersFormProps = {
   initialValue?: Partial<ProviderFormValues>
+  typeScope?: 'models' | 'acp'
   isSubmitting?: boolean
   isTestingConnection?: boolean
   isPrebuilt?: boolean
@@ -106,6 +107,7 @@ function toProviderPayload(
 
 export function ProvidersForm({
   initialValue,
+  typeScope = 'models',
   isSubmitting,
   isTestingConnection,
   isPrebuilt = false,
@@ -139,8 +141,8 @@ export function ProvidersForm({
     return shouldShowProviderModelsField(hasProviderModels)
   }, [hasProviderModels])
   const providerTypeOptions = useMemo(
-    () => getVisibleProviderTypeOptions(values.type),
-    [values.type]
+    () => getVisibleProviderTypeOptions(typeScope, values.type),
+    [typeScope, values.type]
   )
   const acpRuntimeKind = useMemo(() => getAcpManagedRuntimeKind(values.type), [values.type])
   const isAcpProvider = acpRuntimeKind !== null

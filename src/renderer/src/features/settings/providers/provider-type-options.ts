@@ -1,20 +1,34 @@
 import type { ProviderType } from './providers-query'
 
-export const manualProviderTypes = [
+export const manualModelProviderTypes = [
   'openai',
   'openai-response',
   'gemini',
   'anthropic',
-  'ollama',
+  'ollama'
+] as const satisfies readonly ProviderType[]
+
+export const manualAcpProviderTypes = [
   'codex-acp',
   'claude-agent-acp'
 ] as const satisfies readonly ProviderType[]
 
-export function getVisibleProviderTypeOptions(currentType?: ProviderType): ProviderType[] {
-  if (
-    !currentType ||
-    manualProviderTypes.includes(currentType as (typeof manualProviderTypes)[number])
-  ) {
+export function isHarnessProviderType(type: ProviderType): boolean {
+  return type === 'acp' || type === 'codex-acp' || type === 'claude-agent-acp'
+}
+
+export function isModelProviderType(type: ProviderType): boolean {
+  return !isHarnessProviderType(type)
+}
+
+export function getVisibleProviderTypeOptions(
+  scope: 'models' | 'acp',
+  currentType?: ProviderType
+): ProviderType[] {
+  const manualProviderTypes: ProviderType[] =
+    scope === 'acp' ? [...manualAcpProviderTypes] : [...manualModelProviderTypes]
+
+  if (!currentType || manualProviderTypes.includes(currentType)) {
     return [...manualProviderTypes]
   }
 

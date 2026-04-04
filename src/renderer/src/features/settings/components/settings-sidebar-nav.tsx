@@ -32,16 +32,16 @@ type SettingsNavItem = {
   icon: ComponentType<{ className?: string }>
 }
 
-type SettingsNavGroup = {
-  labelKey: string
-  items: SettingsNavItem[]
-}
-
-const setupNavItems: SettingsNavItem[] = [
+const settingsNavItems: SettingsNavItem[] = [
   {
     titleKey: 'settings.sidebar.items.agents',
     icon: Bot,
     to: '/settings/agents'
+  },
+  {
+    titleKey: 'settings.sidebar.items.acp',
+    icon: Wrench,
+    to: '/settings/acp'
   },
   {
     titleKey: 'settings.sidebar.items.providers',
@@ -57,10 +57,7 @@ const setupNavItems: SettingsNavItem[] = [
     titleKey: 'settings.sidebar.items.channels',
     icon: MessageCircleMore,
     to: '/settings/channels'
-  }
-]
-
-const advancedStudioNavItems: SettingsNavItem[] = [
+  },
   {
     titleKey: 'settings.sidebar.items.security',
     icon: Shield,
@@ -103,17 +100,6 @@ const advancedStudioNavItems: SettingsNavItem[] = [
   }
 ]
 
-const settingsNavGroups: SettingsNavGroup[] = [
-  {
-    labelKey: 'settings.sidebar.groups.acpReuse',
-    items: setupNavItems
-  },
-  {
-    labelKey: 'settings.sidebar.groups.advancedStudio',
-    items: advancedStudioNavItems
-  }
-]
-
 export function SettingsSidebarNav(): React.JSX.Element {
   const location = useLocation()
   const { t } = useTranslation()
@@ -128,26 +114,24 @@ export function SettingsSidebarNav(): React.JSX.Element {
       </SidebarHeader>
 
       <SidebarContent className="py-5">
-        {settingsNavGroups.map((group) => (
-          <SidebarGroup key={group.labelKey}>
-            <SidebarGroupLabel>{t(group.labelKey)}</SidebarGroupLabel>
-            <SidebarMenu>
-              {group.items.map((item) => {
-                const isActive = location.pathname === item.to
-                return (
-                  <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton asChild variant={isActive ? 'active' : 'default'}>
-                      <NavLink to={item.to}>
-                        <item.icon className="size-4" />
-                        <span>{t(item.titleKey)}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
-            </SidebarMenu>
-          </SidebarGroup>
-        ))}
+        <SidebarGroup>
+          <SidebarGroupLabel>{t('settings.sidebar.categories')}</SidebarGroupLabel>
+          <SidebarMenu>
+            {settingsNavItems.map((item) => {
+              const isActive = location.pathname === item.to
+              return (
+                <SidebarMenuItem key={item.to}>
+                  <SidebarMenuButton asChild variant={isActive ? 'active' : 'default'}>
+                    <NavLink to={item.to}>
+                      <item.icon className="size-4" />
+                      <span>{t(item.titleKey)}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )
+            })}
+          </SidebarMenu>
+        </SidebarGroup>
       </SidebarContent>
     </Sidebar>
   )

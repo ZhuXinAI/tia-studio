@@ -26,6 +26,9 @@ import openaiLogo from '../../../assets/providers/openai.png'
 import anthropicLogo from '../../../assets/providers/anthropic.png'
 import geminiLogo from '../../../assets/providers/gemini.png'
 import kimiLogo from '../../../assets/providers/kimi.png'
+import { isModelProviderType } from '../providers/provider-type-options'
+
+type ProviderSettingsPageMode = 'models' | 'acp'
 
 type ProviderFormInitialValue = {
   name: string
@@ -133,7 +136,69 @@ function toInitialFormValue(provider: ProviderRecord | null): ProviderFormInitia
   }
 }
 
-export function ProvidersSettingsPage(): React.JSX.Element {
+function isVisibleProviderForMode(
+  provider: ProviderRecord,
+  mode: ProviderSettingsPageMode
+): boolean {
+  if (mode === 'acp') {
+    return provider.type === 'codex-acp' || provider.type === 'claude-agent-acp'
+  }
+
+  return isModelProviderType(provider.type)
+}
+
+function getPageCopy(
+  mode: ProviderSettingsPageMode,
+  t: (key: string, options?: Record<string, unknown>) => string
+): {
+  sidebarTitle: string
+  newButton: string
+  searchPlaceholder: string
+  loading: string
+  empty: string
+  emptySearch: string
+  selectPrompt: string
+  createDialogTitle: string
+  createDialogDescription: string
+  closeCreateAriaLabel: string
+  closeCreateButtonAriaLabel: string
+} {
+  if (mode === 'acp') {
+    return {
+      sidebarTitle: 'ACP',
+      newButton: '+ New',
+      searchPlaceholder: 'Search ACP...',
+      loading: 'Loading ACP harnesses...',
+      empty: 'No ACP harnesses yet. Add Codex ACP or Claude Agent ACP to get started.',
+      emptySearch: 'No ACP harnesses match your search.',
+      selectPrompt: 'Select an ACP harness to edit.',
+      createDialogTitle: 'New ACP Harness',
+      createDialogDescription: 'Configure Codex ACP or Claude Agent ACP outside the model provider list.',
+      closeCreateAriaLabel: 'Close create ACP dialog',
+      closeCreateButtonAriaLabel: 'Close create ACP dialog'
+    }
+  }
+
+  return {
+    sidebarTitle: t('settings.providers.sidebarTitle'),
+    newButton: t('settings.providers.newButton'),
+    searchPlaceholder: t('settings.providers.searchPlaceholder'),
+    loading: t('settings.providers.loading'),
+    empty: t('settings.providers.empty'),
+    emptySearch: t('settings.providers.emptySearch'),
+    selectPrompt: t('settings.providers.selectPrompt'),
+    createDialogTitle: t('settings.providers.createDialog.title'),
+    createDialogDescription: t('settings.providers.createDialog.description'),
+    closeCreateAriaLabel: t('settings.providers.createDialog.closeAriaLabel'),
+    closeCreateButtonAriaLabel: t('settings.providers.createDialog.closeButtonAriaLabel')
+  }
+}
+
+function ProvidersSettingsWorkspace({
+  mode
+}: {
+  mode: ProviderSettingsPageMode
+}): React.JSX.Element {
   const { t } = useTranslation()
   const [providers, setProviders] = useState<ProviderRecord[]>([])
   const [providerSearchQuery, setProviderSearchQuery] = useState('')
@@ -143,21 +208,26 @@ export function ProvidersSettingsPage(): React.JSX.Element {
   const [isTestingConnection, setIsTestingConnection] = useState(false)
   const [isDeletingProviderId, setIsDeletingProviderId] = useState<string | null>(null)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const pageCopy = useMemo(() => getPageCopy(mode, t), [mode, t])
+  const visibleProviders = useMemo(
+    () => providers.filter((provider) => isVisibleProviderForMode(provider, mode)),
+    [mode, providers]
+  )
 
   const selectedProvider = useMemo(() => {
     if (!selectedProviderId) {
       return null
     }
 
-    return providers.find((provider) => provider.id === selectedProviderId) ?? null
-  }, [providers, selectedProviderId])
+    return visibleProviders.find((provider) => provider.id === selectedProviderId) ?? null
+  }, [selectedProviderId, visibleProviders])
 
   const filteredProviders = useMemo(() => {
     const query = providerSearchQuery.trim().toLowerCase()
-    let filtered = providers
+    let filtered = visibleProviders
 
     if (query.length > 0) {
-      filtered = providers.filter((provider) => {
+      filtered = visibleProviders.filter((provider) => {
         return [provider.name, provider.selectedModel, toProviderTypeLabel(provider.type, t)].some(
           (value) => value.toLowerCase().includes(query)
         )
@@ -171,7 +241,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
       }
       return a.name.localeCompare(b.name)
     })
-  }, [providerSearchQuery, providers, t])
+  }, [providerSearchQuery, t, visibleProviders])
 
   const refreshProviders = useCallback(async () => {
     setIsLoading(true)
@@ -180,19 +250,22 @@ export function ProvidersSettingsPage(): React.JSX.Element {
       queryClient.setQueryData(providerKeys.lists(), nextProviders)
       setProviders(nextProviders)
       setSelectedProviderId((currentProviderId) => {
+        const nextVisibleProviders = nextProviders.filter((provider) =>
+          isVisibleProviderForMode(provider, mode)
+        )
         if (
           currentProviderId &&
-          nextProviders.some((provider) => provider.id === currentProviderId)
+          nextVisibleProviders.some((provider) => provider.id === currentProviderId)
         ) {
           return currentProviderId
         }
 
-        return nextProviders.at(0)?.id ?? null
+        return nextVisibleProviders.at(0)?.id ?? null
       })
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [mode])
 
   useEffect(() => {
     void refreshProviders()
@@ -319,7 +392,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
           <aside className="flex h-full min-h-0 w-[360px] flex-col overflow-hidden border-r border-r-border/70 bg-card shadow-xs">
             <div className="border-r-border/70 flex items-center justify-between px-4 py-3">
               <h2 className="text-muted-foreground text-xs font-semibold tracking-[0.2em] uppercase">
-                {t('settings.providers.sidebarTitle')}
+                {pageCopy.sidebarTitle}
               </h2>
               <Button
                 type="button"
@@ -330,7 +403,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                   setIsCreateDialogOpen(true)
                 }}
               >
-                {t('settings.providers.newButton')}
+                {pageCopy.newButton}
               </Button>
             </div>
 
@@ -339,7 +412,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                 <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                 <Input
                   data-provider-search-input
-                  placeholder={t('settings.providers.searchPlaceholder')}
+                  placeholder={pageCopy.searchPlaceholder}
                   className="h-9 pl-9"
                   value={providerSearchQuery}
                   onChange={(event) => setProviderSearchQuery(event.target.value)}
@@ -349,19 +422,13 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
             <div className="min-h-0 flex-1 overflow-y-auto">
               {isLoading ? (
-                <p className="text-muted-foreground px-4 py-3 text-sm">
-                  {t('settings.providers.loading')}
-                </p>
+                <p className="text-muted-foreground px-4 py-3 text-sm">{pageCopy.loading}</p>
               ) : null}
-              {!isLoading && providers.length === 0 ? (
-                <p className="text-muted-foreground px-4 py-3 text-sm">
-                  {t('settings.providers.empty')}
-                </p>
+              {!isLoading && visibleProviders.length === 0 ? (
+                <p className="text-muted-foreground px-4 py-3 text-sm">{pageCopy.empty}</p>
               ) : null}
-              {!isLoading && providers.length > 0 && filteredProviders.length === 0 ? (
-                <p className="text-muted-foreground px-4 py-3 text-sm">
-                  {t('settings.providers.emptySearch')}
-                </p>
+              {!isLoading && visibleProviders.length > 0 && filteredProviders.length === 0 ? (
+                <p className="text-muted-foreground px-4 py-3 text-sm">{pageCopy.emptySearch}</p>
               ) : null}
 
               {filteredProviders.map((provider, index) => {
@@ -429,6 +496,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                   <ProvidersForm
                     key={selectedProvider.id}
                     initialValue={toInitialFormValue(selectedProvider)}
+                    typeScope={mode}
                     isPrebuilt={Boolean(selectedProvider.providerModels?.length)}
                     isBuiltIn={selectedProvider.isBuiltIn}
                     isSubmitting={isSubmitting}
@@ -463,7 +531,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                 </div>
               ) : (
                 <p className="text-muted-foreground text-sm">
-                  {t('settings.providers.selectPrompt')}
+                  {pageCopy.selectPrompt}
                 </p>
               )}
             </CardContent>
@@ -475,7 +543,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button
             type="button"
-            aria-label={t('settings.providers.createDialog.closeAriaLabel')}
+            aria-label={pageCopy.closeCreateAriaLabel}
             className="bg-background/80 absolute inset-0 backdrop-blur-sm"
             onClick={closeCreateDialog}
             disabled={isSubmitting || isTestingConnection}
@@ -489,12 +557,8 @@ export function ProvidersSettingsPage(): React.JSX.Element {
             <CardHeader className="pb-0">
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-1">
-                  <CardTitle id="create-provider-title">
-                    {t('settings.providers.createDialog.title')}
-                  </CardTitle>
-                  <p className="text-muted-foreground text-sm">
-                    {t('settings.providers.createDialog.description')}
-                  </p>
+                  <CardTitle id="create-provider-title">{pageCopy.createDialogTitle}</CardTitle>
+                  <p className="text-muted-foreground text-sm">{pageCopy.createDialogDescription}</p>
                 </div>
                 <Button
                   type="button"
@@ -502,7 +566,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                   size="icon"
                   onClick={closeCreateDialog}
                   disabled={isSubmitting || isTestingConnection}
-                  aria-label={t('settings.providers.createDialog.closeButtonAriaLabel')}
+                  aria-label={pageCopy.closeCreateButtonAriaLabel}
                 >
                   <X className="size-4" />
                 </Button>
@@ -511,6 +575,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
             <CardContent>
               <ProvidersForm
                 key="new-provider"
+                typeScope={mode}
                 isSubmitting={isSubmitting}
                 isTestingConnection={isTestingConnection}
                 onSubmit={handleCreateProvider}
@@ -522,4 +587,12 @@ export function ProvidersSettingsPage(): React.JSX.Element {
       ) : null}
     </>
   )
+}
+
+export function ProvidersSettingsPage(): React.JSX.Element {
+  return <ProvidersSettingsWorkspace mode="models" />
+}
+
+export function AcpSettingsPage(): React.JSX.Element {
+  return <ProvidersSettingsWorkspace mode="acp" />
 }

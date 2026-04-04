@@ -342,7 +342,7 @@ describe('assistant editor', () => {
     )
   })
 
-  it('hides studio-only tabs for ACP agents until the user upgrades them', async () => {
+  it('keeps studio-only tabs hidden for ACP agents', async () => {
     const onSubmit = vi.fn(async () => undefined)
 
     await act(async () => {
@@ -376,23 +376,12 @@ describe('assistant editor', () => {
     })
     await flushAsyncWork()
 
-    expect(container.textContent).toContain('Upgrade to TIA Agent')
+    expect(container.textContent).not.toContain('Upgrade to TIA Agent')
     expect(container.textContent).not.toContain('Coding')
     expect(container.textContent).not.toContain('Tools')
     expect(container.textContent).not.toContain('Skills')
     expect(container.textContent).not.toContain('Activity')
     expect(container.textContent).not.toContain('Enable heartbeat')
-
-    const upgradeButton = findButtonByText(container, 'Enable Studio Features')
-    await act(async () => {
-      upgradeButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    expect(container.textContent).toContain('Coding')
-    expect(container.textContent).toContain('Tools')
-    expect(container.textContent).toContain('Skills')
-    expect(container.textContent).toContain('Activity')
-    expect(container.textContent).toContain('Enable heartbeat')
 
     const submitButton = findButtonByText(container, 'Update Assistant')
     await act(async () => {
@@ -402,7 +391,7 @@ describe('assistant editor', () => {
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         origin: 'external-acp',
-        studioFeaturesEnabled: true
+        studioFeaturesEnabled: false
       }),
       null
     )

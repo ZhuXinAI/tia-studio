@@ -9,6 +9,10 @@ import {
   useAssistants,
   type AssistantRecord
 } from '../../features/assistants/assistants-query'
+import {
+  getAssistantCollectionTab,
+  type AssistantCollectionTab
+} from '../../features/assistants/assistant-origin'
 import { listInstalledLocalAcpAgents } from '../../features/threads/local-acp-agents-query'
 
 const AUTO_LOCAL_ACP_AGENT_KEY = '__tiaAutoLocalAcpAgentKey'
@@ -40,6 +44,7 @@ export function ChatContextSwitcher(): React.JSX.Element {
   const { data: assistants = [], isLoading } = useAssistants()
   const [isOpen, setIsOpen] = useState(false)
   const [assistantSearchQuery, setAssistantSearchQuery] = useState('')
+  const [activeAssistantTab, setActiveAssistantTab] = useState<AssistantCollectionTab>('acp')
   const [installedLocalAcpAgentKeys, setInstalledLocalAcpAgentKeys] = useState<Set<string>>(
     () => new Set<string>()
   )
@@ -106,18 +111,45 @@ export function ChatContextSwitcher(): React.JSX.Element {
     visibleAssistants.find((assistant) => assistant.id === params.assistantId) ?? null
   const selectedAssistantLabel = selectedAssistant?.name?.trim()
   const selectedAssistantSecondaryText = getAssistantSecondaryText(selectedAssistant)
+  const selectedAssistantTab = selectedAssistant ? getAssistantCollectionTab(selectedAssistant) : null
+  const acpAssistants = visibleAssistants.filter(
+    (assistant) => getAssistantCollectionTab(assistant) === 'acp'
+  )
+  const tiaAssistants = visibleAssistants.filter(
+    (assistant) => getAssistantCollectionTab(assistant) === 'tia'
+  )
+
+  useEffect(() => {
+    if (!isOpen && selectedAssistantTab) {
+      setActiveAssistantTab(selectedAssistantTab)
+      return
+    }
+
+    if (activeAssistantTab === 'acp' && acpAssistants.length > 0) {
+      return
+    }
+
+    if (activeAssistantTab === 'tia' && tiaAssistants.length > 0) {
+      return
+    }
+
+    setActiveAssistantTab(acpAssistants.length > 0 ? 'acp' : 'tia')
+  }, [acpAssistants.length, activeAssistantTab, isOpen, selectedAssistantTab, tiaAssistants.length])
 
   const filteredAssistants =
     normalizedAssistantSearchQuery.length === 0
-      ? visibleAssistants
-      : visibleAssistants.filter((assistant) =>
+      ? (activeAssistantTab === 'acp' ? acpAssistants : tiaAssistants)
+      : (activeAssistantTab === 'acp' ? acpAssistants : tiaAssistants).filter((assistant) =>
           normalizeSearchValue(assistant.name).includes(normalizedAssistantSearchQuery)
         )
-  const createAcpActionLabel = t('appShell.chatSwitcher.createAcpAction', {
-    defaultValue: 'Create ACP Agent'
+  const openAcpActionLabel = t('appShell.chatSwitcher.createAcpAction', {
+    defaultValue: 'Open ACP Agents'
   })
   const createTiaActionLabel = t('appShell.chatSwitcher.createTiaAction', {
-    defaultValue: 'Create TIA Agent (Advanced)'
+    defaultValue: 'Create TIA Agent'
+  })
+  const manageActionLabel = t('appShell.chatSwitcher.manageAction', {
+    defaultValue: 'Manage Agents'
   })
 
   return (
@@ -202,10 +234,48 @@ export function ChatContextSwitcher(): React.JSX.Element {
               />
             </div>
 
+            <div className="flex items-center gap-2 rounded-2xl bg-[color:var(--surface-panel-soft)] p-1">
+              {([
+                {
+                  id: 'acp' as const,
+                  count: acpAssistants.length,
+                  label: 'ACP Agents'
+                },
+                {
+                  id: 'tia' as const,
+                  count: tiaAssistants.length,
+                  label: 'TIA Agents'
+                }
+              ] satisfies Array<{
+                id: AssistantCollectionTab
+                count: number
+                label: string
+              }>).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={cn(
+                    'flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors',
+                    activeAssistantTab === tab.id
+                      ? 'bg-[color:var(--surface-panel)] text-foreground shadow-[0_12px_24px_-20px_rgba(15,23,42,0.45)]'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                  onClick={() => setActiveAssistantTab(tab.id)}
+                >
+                  <span>{tab.label}</span>
+                  <span className="rounded-full bg-[color:var(--surface-panel-strong)] px-2 py-0.5 text-[11px]">
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
             <div className="max-h-72 space-y-1 overflow-y-auto rounded-2xl bg-[color:var(--surface-panel-soft)] p-1.5">
               {filteredAssistants.length === 0 ? (
                 <p className="text-muted-foreground px-3 py-4 text-xs">
-                  {t('appShell.chatSwitcher.empty')}
+                  {activeAssistantTab === 'acp'
+                    ? 'No ACP agents are available right now.'
+                    : t('appShell.chatSwitcher.empty')}
                 </p>
               ) : (
                 filteredAssistants.map((assistant) => {
@@ -263,10 +333,14 @@ export function ChatContextSwitcher(): React.JSX.Element {
                 className="w-full justify-start rounded-xl"
                 onClick={() => {
                   setIsOpen(false)
-                  navigate('/agents')
+                  navigate('/settings/agents', {
+                    state: {
+                      assistantTab: 'acp'
+                    }
+                  })
                 }}
               >
-                {createAcpActionLabel}
+                {openAcpActionLabel}
               </Button>
               <Button
                 type="button"
@@ -275,10 +349,10 @@ export function ChatContextSwitcher(): React.JSX.Element {
                 className="w-full justify-start rounded-xl"
                 onClick={() => {
                   setIsOpen(false)
-                  navigate('/claws', {
+                  navigate('/settings/agents', {
                     state: {
                       assistantDialog: 'create',
-                      assistantCreatePath: 'tia'
+                      assistantTab: 'tia'
                     }
                   })
                 }}
@@ -295,7 +369,7 @@ export function ChatContextSwitcher(): React.JSX.Element {
                   navigate('/settings/agents')
                 }}
               >
-                {t('appShell.chatSwitcher.manageAction')}
+                {manageActionLabel}
               </Button>
             </div>
           </div>

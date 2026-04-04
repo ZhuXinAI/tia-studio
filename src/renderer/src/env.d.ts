@@ -92,6 +92,7 @@ declare global {
         }) => void
       ) => () => void
       pickDirectory: () => Promise<string | null>
+      resolveDefaultAssistantWorkspacePath?: (assistantName: string) => Promise<string>
       listInstalledLocalAcpAgents?: () => Promise<
         Array<{
           key: 'codex' | 'claude' | 'gemini' | 'qwen-code' | 'openclaw'

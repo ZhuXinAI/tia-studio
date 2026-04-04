@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { i18n } from '../../../i18n'
 import { listAssistants, type AssistantRecord } from '../../assistants/assistants-query'
 import { listProviders, type ProviderRecord } from '../../settings/providers/providers-query'
+import { isModelProviderType } from '../../settings/providers/provider-type-options'
 import { getActiveResourceId } from '../../threads/threads-query'
 import { toErrorMessage } from '../../threads/thread-page-routing'
 import { createTeamChatTransport, listTeamThreadMessages } from '../team-chat-query'
@@ -253,7 +254,7 @@ export function useTeamPageController() {
 
         setWorkspaces(workspacesResult)
         setAssistants(assistantsResult)
-        setProviders(providersResult)
+        setProviders(providersResult.filter((provider) => isModelProviderType(provider.type)))
       } catch (error) {
         setLoadError(toErrorMessage(error))
       } finally {

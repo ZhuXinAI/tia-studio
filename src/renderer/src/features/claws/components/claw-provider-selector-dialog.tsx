@@ -22,7 +22,10 @@ import type {
   ProviderType,
   SaveProviderInput
 } from '../../settings/providers/providers-query'
-import { getVisibleProviderTypeOptions } from '../../settings/providers/provider-type-options'
+import {
+  getVisibleProviderTypeOptions,
+  isModelProviderType
+} from '../../settings/providers/provider-type-options'
 import minimaxLogo from '../../../assets/providers/minimax.png'
 import glmLogo from '../../../assets/providers/glm.png'
 import ollamaLogo from '../../../assets/providers/ollama.png'
@@ -197,14 +200,18 @@ export function ClawProviderSelectorDialog({
   const [formState, setFormState] = useState<ProviderFormState>(emptyFormState)
   const [formError, setFormError] = useState<string | null>(null)
   const [isFormSubmitting, setIsFormSubmitting] = useState(false)
-
-  const builtInProviders = useMemo(
-    () => localProviders.filter((p) => p.isBuiltIn && !p.apiKey),
+  const selectableProviders = useMemo(
+    () => localProviders.filter((provider) => isModelProviderType(provider.type)),
     [localProviders]
   )
+
+  const builtInProviders = useMemo(
+    () => selectableProviders.filter((provider) => provider.isBuiltIn && !provider.apiKey),
+    [selectableProviders]
+  )
   const configuredProviders = useMemo(
-    () => localProviders.filter((p) => !p.isBuiltIn || p.apiKey),
-    [localProviders]
+    () => selectableProviders.filter((provider) => !provider.isBuiltIn || provider.apiKey),
+    [selectableProviders]
   )
 
   useEffect(() => {
@@ -237,8 +244,8 @@ export function ClawProviderSelectorDialog({
   }, [isFormDialogOpen, isInline, isTemplateDialogOpen, onInlineFlowChange])
 
   const selectedProvider = useMemo(
-    () => localProviders.find((provider) => provider.id === localSelectedProviderId) ?? null,
-    [localProviders, localSelectedProviderId]
+    () => selectableProviders.find((provider) => provider.id === localSelectedProviderId) ?? null,
+    [localSelectedProviderId, selectableProviders]
   )
 
   function resetForm(): void {
@@ -380,7 +387,7 @@ export function ClawProviderSelectorDialog({
         ? t('claws.providerSelector.create.description')
         : t('claws.providerSelector.edit.description')
   const providerTypeOptions = useMemo(
-    () => getVisibleProviderTypeOptions(formState.type),
+    () => getVisibleProviderTypeOptions('models', formState.type),
     [formState.type]
   )
   const selectorBody = (
