@@ -66,6 +66,9 @@ type CreateAppOptions = {
   channelService?: {
     reload(): Promise<void>
   }
+  channelSetupRecovery?: {
+    recover(channel: { id: string; type: string }): Promise<void>
+  }
   whatsAppAuthStateStore?: WhatsAppAuthStateStore
   wechatAuthStateStore?: WechatAuthStateStore
   cronSchedulerService?: {
@@ -127,6 +130,7 @@ export function createApp(options: CreateAppOptions): Hono {
         channelsRepo: options.repositories.channels,
         pairingsRepo: options.repositories.pairings,
         channelService: options.channelService,
+        channelSetupRecovery: options.channelSetupRecovery,
         whatsAppAuthStateStore: options.whatsAppAuthStateStore,
         wechatAuthStateStore: options.wechatAuthStateStore,
         cronSchedulerService: options.cronSchedulerService,

@@ -660,6 +660,7 @@
       "actions": {
         "add": "Add Channel",
         "edit": "Edit Channel",
+        "retrySetup": "Retry Setup",
         "remove": "Remove Channel",
         "clear": "Clear Selection",
         "cancel": "Cancel",
@@ -706,7 +707,8 @@
         "wechatKfCredentialsRequired": "Server URL and server key are required for Wechat-KF channels",
         "createFailed": "Failed to create channel",
         "updateFailed": "Failed to update channel",
-        "deleteFailed": "Failed to delete channel"
+        "deleteFailed": "Failed to delete channel",
+        "recoverFailed": "Failed to restart channel setup"
       }
     },
     "providerSelector": {
@@ -808,7 +810,8 @@
       "actions": {
         "approve": "Approve",
         "reject": "Reject",
-        "revoke": "Revoke"
+        "revoke": "Revoke",
+        "retrySetup": "Retry Setup"
       },
       "errors": {
         "loadFailed": "Failed to load pairings",

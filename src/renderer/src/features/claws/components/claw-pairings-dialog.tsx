@@ -21,6 +21,7 @@ type ClawPairingsDialogProps = {
   isSubmitting: boolean
   errorMessage: string | null
   onClose: () => void
+  onRecoverSetup?: () => Promise<void> | void
   onApprove: (pairingId: string) => Promise<void> | void
   onReject: (pairingId: string) => Promise<void> | void
   onRevoke: (pairingId: string) => Promise<void> | void
@@ -99,6 +100,7 @@ export function ClawPairingsDialog({
   isSubmitting,
   errorMessage,
   onClose,
+  onRecoverSetup,
   onApprove,
   onReject,
   onRevoke
@@ -108,6 +110,13 @@ export function ClawPairingsDialog({
   const isWechat = channelType === 'wechat'
   const showsAuth = isWhatsApp || isWechat
   const showsPairings = channelType === 'telegram' || channelType === 'whatsapp'
+  const canRecoverSetup =
+    typeof onRecoverSetup === 'function' &&
+    Boolean(
+      errorMessage ||
+        channelAuthState?.status === 'error' ||
+        channelAuthState?.errorMessage
+    )
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -254,6 +263,16 @@ export function ClawPairingsDialog({
         {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
 
         <DialogFooter>
+          {canRecoverSetup ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void onRecoverSetup?.()}
+              disabled={isSubmitting}
+            >
+              {t('claws.pairings.actions.retrySetup')}
+            </Button>
+          ) : null}
           <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
             {t('common.actions.close')}
           </Button>

@@ -10,6 +10,7 @@ import {
   type OpenDialogOptions,
   nativeImage
 } from 'electron'
+import { rm } from 'node:fs/promises'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { serve, type ServerType } from '@hono/node-server'
@@ -557,6 +558,26 @@ async function startLocalApiServer(): Promise<void> {
     teamRunStatusStore,
     threadMessageEventsStore,
     channelService,
+    channelSetupRecovery: {
+      async recover(channel) {
+        if (channel.type === 'whatsapp') {
+          whatsAppAuthStateStore.clear(channel.id)
+          await rm(join(app.getPath('userData'), 'channels', 'whatsapp', channel.id), {
+            recursive: true,
+            force: true
+          })
+          return
+        }
+
+        if (channel.type === 'wechat') {
+          wechatAuthStateStore.clear(channel.id)
+          await rm(join(app.getPath('userData'), 'channels', 'wechat', channel.id), {
+            recursive: true,
+            force: true
+          })
+        }
+      }
+    },
     cronSchedulerService,
     heartbeatSchedulerService,
     whatsAppAuthStateStore,

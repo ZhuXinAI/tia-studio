@@ -95,6 +95,7 @@ describe('ClawChannelSelectorDialog', () => {
           onApply={() => undefined}
           onCreateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onRecoverChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onDeleteChannel={vi.fn(async () => undefined)}
         />
       )
@@ -136,6 +137,7 @@ describe('ClawChannelSelectorDialog', () => {
           onApply={() => undefined}
           onCreateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onRecoverChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onDeleteChannel={vi.fn(async () => undefined)}
         />
       )
@@ -172,6 +174,7 @@ describe('ClawChannelSelectorDialog', () => {
           onApply={onApply}
           onCreateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onRecoverChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onDeleteChannel={vi.fn(async () => undefined)}
         />
       )
@@ -220,6 +223,7 @@ describe('ClawChannelSelectorDialog', () => {
           onApply={() => undefined}
           onCreateChannel={onCreateChannel}
           onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onRecoverChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onDeleteChannel={vi.fn(async () => undefined)}
         />
       )
@@ -312,6 +316,7 @@ describe('ClawChannelSelectorDialog', () => {
           onApply={() => undefined}
           onCreateChannel={onCreateChannel}
           onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onRecoverChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onDeleteChannel={vi.fn(async () => undefined)}
         />
       )
@@ -400,6 +405,7 @@ describe('ClawChannelSelectorDialog', () => {
           onApply={() => undefined}
           onCreateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onUpdateChannel={onUpdateChannel}
+          onRecoverChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onDeleteChannel={vi.fn(async () => undefined)}
         />
       )
@@ -476,6 +482,7 @@ describe('ClawChannelSelectorDialog', () => {
           onApply={() => undefined}
           onCreateChannel={onCreateChannel}
           onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onRecoverChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onDeleteChannel={vi.fn(async () => undefined)}
         />
       )
@@ -541,6 +548,7 @@ describe('ClawChannelSelectorDialog', () => {
           onApply={() => undefined}
           onCreateChannel={onCreateChannel}
           onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onRecoverChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onDeleteChannel={vi.fn(async () => undefined)}
         />
       )
@@ -616,6 +624,7 @@ describe('ClawChannelSelectorDialog', () => {
           onApply={() => undefined}
           onCreateChannel={onCreateChannel}
           onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onRecoverChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onDeleteChannel={vi.fn(async () => undefined)}
         />
       )
@@ -706,6 +715,7 @@ describe('ClawChannelSelectorDialog', () => {
           onApply={() => undefined}
           onCreateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onUpdateChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
+          onRecoverChannel={vi.fn(async () => buildChannel({ id: 'unused' }))}
           onDeleteChannel={onDeleteChannel}
         />
       )

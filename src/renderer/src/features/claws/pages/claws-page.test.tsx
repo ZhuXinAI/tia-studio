@@ -21,6 +21,7 @@ import {
   getClawChannelAuthState,
   listClawPairings,
   listClaws,
+  recoverClawChannelSetup,
   rejectClawPairing,
   revokeClawPairing,
   updateClaw
@@ -64,6 +65,7 @@ vi.mock('../claws-query', () => ({
   deleteClawChannel: vi.fn(),
   listClawPairings: vi.fn(),
   getClawChannelAuthState: vi.fn(),
+  recoverClawChannelSetup: vi.fn(),
   approveClawPairing: vi.fn(),
   rejectClawPairing: vi.fn(),
   revokeClawPairing: vi.fn()
@@ -316,6 +318,17 @@ describe('ClawsPage', () => {
     })
     vi.mocked(deleteClaw).mockResolvedValue(undefined)
     vi.mocked(deleteClawChannel).mockResolvedValue(undefined)
+    vi.mocked(recoverClawChannelSetup).mockResolvedValue({
+      id: 'channel-1',
+      type: 'wechat',
+      name: 'Wechat Device',
+      assistantId: 'assistant-1',
+      assistantName: 'Ops Assistant',
+      status: 'disconnected',
+      errorMessage: null,
+      pairedCount: 0,
+      pendingPairingCount: 0
+    })
     vi.mocked(listClawPairings).mockResolvedValue({
       pairings: [
         {

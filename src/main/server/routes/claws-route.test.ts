@@ -28,6 +28,9 @@ describe('claws route', () => {
   let wechatAuthStateStore: WechatAuthStateStore
   let channelReloadMock: ReturnType<typeof vi.fn<() => Promise<void>>>
   let cronReloadMock: ReturnType<typeof vi.fn<() => Promise<void>>>
+  let recoverChannelMock: ReturnType<
+    typeof vi.fn<(channel: { id: string; type: string }) => Promise<void>>
+  >
   let providerId: string
 
   beforeEach(async () => {
@@ -44,6 +47,7 @@ describe('claws route', () => {
     })
     channelReloadMock = vi.fn(async () => undefined)
     cronReloadMock = vi.fn(async () => undefined)
+    recoverChannelMock = vi.fn(async () => undefined)
     app = new Hono()
 
     const provider = await providersRepo.create({
@@ -63,6 +67,9 @@ describe('claws route', () => {
       wechatAuthStateStore,
       channelService: {
         reload: channelReloadMock
+      },
+      channelSetupRecovery: {
+        recover: recoverChannelMock
       },
       cronSchedulerService: {
         reload: cronReloadMock
@@ -1094,6 +1101,36 @@ describe('claws route', () => {
       errorMessage: null,
       updatedAt: expect.any(String)
     })
+  })
+
+  it('restarts channel setup for a configured channel', async () => {
+    const channel = await channelsRepo.create({
+      type: 'wechat',
+      name: 'Wechat Device',
+      assistantId: null,
+      enabled: true,
+      lastError: 'Wechat getupdates failed: errcode=-14 errmsg=session timeout',
+      config: {}
+    })
+
+    const response = await app.request(`http://localhost/v1/claws/channels/${channel.id}/recover`, {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      id: channel.id,
+      status: 'disconnected',
+      errorMessage: null
+    })
+    expect(recoverChannelMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: channel.id,
+        type: 'wechat'
+      })
+    )
+    expect(channelReloadMock).toHaveBeenCalledOnce()
+    expect(cronReloadMock).toHaveBeenCalledOnce()
   })
 
   it('returns 404 when auth state is requested for a non-auth claw', async () => {

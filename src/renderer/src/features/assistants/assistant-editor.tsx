@@ -78,6 +78,9 @@ export type AssistantEditorChannelsProps = {
     channelId: string,
     input: UpdateClawChannelInput
   ) => Promise<ConfiguredClawChannelRecord> | ConfiguredClawChannelRecord
+  onRecoverChannel: (
+    channelId: string
+  ) => Promise<ConfiguredClawChannelRecord> | ConfiguredClawChannelRecord
   onDeleteChannel: (channelId: string) => Promise<void> | void
 }
 
@@ -1134,6 +1137,7 @@ export function AssistantEditor({
                 onApply={channels.onSelectedChannelChange}
                 onCreateChannel={channels.onCreateChannel}
                 onUpdateChannel={channels.onUpdateChannel}
+                onRecoverChannel={channels.onRecoverChannel}
                 onDeleteChannel={channels.onDeleteChannel}
               />
             </div>

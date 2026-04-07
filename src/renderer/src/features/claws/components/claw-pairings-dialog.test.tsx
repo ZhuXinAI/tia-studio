@@ -150,4 +150,51 @@ describe('ClawPairingsDialog', () => {
 
     expect(onApprove).toHaveBeenCalledWith('pairing-pending')
   })
+
+  it('shows retry setup when the channel needs recovery', async () => {
+    const onRecoverSetup = vi.fn()
+
+    await act(async () => {
+      root.render(
+        <ClawPairingsDialog
+          isOpen
+          clawName="Wechat Assistant"
+          channelType="wechat"
+          pairings={[]}
+          isLoading={false}
+          channelAuthState={{
+            channelId: 'channel-wechat',
+            channelType: 'wechat',
+            status: 'error',
+            qrCodeDataUrl: null,
+            qrCodeValue: null,
+            phoneNumber: null,
+            accountId: null,
+            errorMessage: 'Wechat getupdates failed: errcode=-14 errmsg=session timeout',
+            updatedAt: '2026-04-07T00:00:00.000Z'
+          }}
+          isChannelAuthLoading={false}
+          isSubmitting={false}
+          errorMessage={null}
+          onClose={() => undefined}
+          onRecoverSetup={onRecoverSetup}
+          onApprove={() => undefined}
+          onReject={() => undefined}
+          onRevoke={() => undefined}
+        />
+      )
+    })
+
+    const retryButton = Array.from(document.body.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Retry Setup')
+    )
+
+    expect(retryButton).toBeDefined()
+
+    await act(async () => {
+      retryButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(onRecoverSetup).toHaveBeenCalledOnce()
+  })
 })

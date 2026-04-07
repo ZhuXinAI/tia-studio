@@ -34,6 +34,12 @@ type CronSchedulerServiceLike = {
   reload(): Promise<void>
 }
 
+type ChannelSetupRecoveryLike = {
+  recover(
+    channel: Pick<AppChannel, 'id' | 'type'>
+  ): Promise<void>
+}
+
 type RegisterClawsRouteOptions = {
   assistantsRepo: AssistantsRepository
   providersRepo: ProvidersRepository
@@ -49,6 +55,7 @@ type RegisterClawsRouteOptions = {
     | 'revoke'
   >
   channelService: ChannelServiceLike
+  channelSetupRecovery?: ChannelSetupRecoveryLike
   whatsAppAuthStateStore?: Pick<WhatsAppAuthStateStore, 'get'>
   wechatAuthStateStore?: Pick<WechatAuthStateStore, 'get'>
   cronSchedulerService?: CronSchedulerServiceLike
@@ -356,6 +363,27 @@ async function toConfiguredChannelResponse(
     pairedCount: counts.pairedCount,
     pendingPairingCount: counts.pendingPairingCount
   }
+}
+
+async function loadVisibleConfiguredChannelById(
+  channelId: string,
+  options: RegisterClawsRouteOptions
+): Promise<AppChannel | null> {
+  const channel = await options.channelsRepo.getById(channelId)
+  if (!channel) {
+    return null
+  }
+
+  if (!channel.assistantId) {
+    return channel
+  }
+
+  const assistant = await options.assistantsRepo.getById(channel.assistantId)
+  if (!assistant || isBuiltInAssistant(assistant)) {
+    return null
+  }
+
+  return channel
 }
 
 async function listVisibleClaws(options: RegisterClawsRouteOptions): Promise<ClawResponse[]> {
@@ -775,6 +803,30 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
     }
 
     return context.json(response, 201)
+  })
+
+  app.post('/v1/claws/channels/:channelId/recover', async (context) => {
+    const channelId = context.req.param('channelId')
+    const channel = await loadVisibleConfiguredChannelById(channelId, options)
+    if (!channel) {
+      return context.json({ ok: false, error: 'Channel not found' }, 404)
+    }
+
+    await options.channelSetupRecovery?.recover(channel)
+    await options.channelsRepo.setLastError(channel.id, null)
+    await reloadClawServices(options)
+
+    const refreshedChannel = await options.channelsRepo.getById(channel.id)
+    if (!refreshedChannel) {
+      return context.json({ ok: false, error: 'Channel not found' }, 404)
+    }
+
+    const response = await toConfiguredChannelResponse(refreshedChannel, options)
+    if (!response) {
+      return context.json({ ok: false, error: 'Channel not found' }, 404)
+    }
+
+    return context.json(response)
   })
 
   app.patch('/v1/claws/channels/:channelId', async (context) => {

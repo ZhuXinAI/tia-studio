@@ -8,7 +8,8 @@ import {
   deleteClawChannel,
   getClawChannelAuthState,
   listClawPairings,
-  listClaws
+  listClaws,
+  recoverClawChannelSetup
 } from './claws-query'
 
 describe('claws query api client', () => {
@@ -227,6 +228,42 @@ describe('claws query api client', () => {
       'http://127.0.0.1:4769/v1/claws/assistant-1/channel-auth',
       expect.objectContaining({
         method: 'GET',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer test-token'
+        })
+      })
+    )
+  })
+
+  it('restarts channel setup through backend api', async () => {
+    const fetchSpy = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            id: 'channel-1',
+            type: 'wechat',
+            name: 'Wechat Device',
+            assistantId: null,
+            assistantName: null,
+            status: 'disconnected',
+            errorMessage: null,
+            pairedCount: 0,
+            pendingPairingCount: 0
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
+    )
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await recoverClawChannelSetup('channel-1')
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'http://127.0.0.1:4769/v1/claws/channels/channel-1/recover',
+      expect.objectContaining({
+        method: 'POST',
         headers: expect.objectContaining({
           Authorization: 'Bearer test-token'
         })

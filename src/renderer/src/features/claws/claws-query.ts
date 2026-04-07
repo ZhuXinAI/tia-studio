@@ -289,6 +289,12 @@ export async function getClawChannelAuthState(assistantId: string): Promise<Claw
   return apiClient.get<ClawChannelAuthRecord>(`/v1/claws/${assistantId}/channel-auth`)
 }
 
+export async function recoverClawChannelSetup(
+  channelId: string
+): Promise<ConfiguredClawChannelRecord> {
+  return apiClient.post<ConfiguredClawChannelRecord>(`/v1/claws/channels/${channelId}/recover`)
+}
+
 export async function approveClawPairing(
   assistantId: string,
   pairingId: string

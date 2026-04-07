@@ -660,6 +660,7 @@
       "actions": {
         "add": "Add Channel",
         "edit": "Editează canalul",
+        "retrySetup": "Retry Setup",
         "remove": "Remove Channel",
         "clear": "Clear Selection",
         "cancel": "Cancel",
@@ -706,7 +707,8 @@
         "wechatKfCredentialsRequired": "Server URL and server key are required for Wechat-KF channels",
         "createFailed": "Failed to create channel",
         "updateFailed": "Nu s-a putut actualiza canalul",
-        "deleteFailed": "Failed to delete channel"
+        "deleteFailed": "Failed to delete channel",
+        "recoverFailed": "Failed to restart channel setup"
       }
     },
     "providerSelector": {
@@ -808,7 +810,8 @@
       "actions": {
         "approve": "Aprobă",
         "reject": "Respinge",
-        "revoke": "Revocă"
+        "revoke": "Revocă",
+        "retrySetup": "Retry Setup"
       },
       "errors": {
         "loadFailed": "Nu s-au putut încărca asocierile",
@@ -1013,6 +1016,7 @@
       "createTitle": "Creează asistent",
       "tabs": {
         "essential": "Setări esențiale",
+        "coding": "Coding",
         "tools": "Instrumente",
         "skills": "Skills",
         "channels": "Channels",
@@ -1075,12 +1079,24 @@
       "descriptionHelp": "Îl ajută pe supervisorul Team să aleagă acest asistent pentru sarcina potrivită.",
       "workspacePathHelp": "Pentru a permite agentului să execute sarcini mai complexe, selectează un workspace.",
       "openingButton": "Se deschide...",
+      "channels": {
+        "title": "Channel Setup",
+        "description": "Choose the channel this assistant owns and keep setup actions close to the selection flow.",
+        "empty": "No channel is currently selected for this assistant.",
+        "openSetupDescription": "Open setup here to manage pairings, QR login, or other channel-specific onboarding."
+      },
       "codingAgent": {
-        "title": "Coding Agent",
         "description": "Delegate coding-heavy tasks to a dedicated Codex or Claude Agent ACP subagent.",
-        "toggleAriaLabel": "Enable coding agent",
+        "toggleForAriaLabel": "Enable {{kind}}",
         "providerLabel": "Coding provider",
         "selectProvider": "Select coding provider",
+        "availableStatus": "Installed",
+        "missingStatus": "Not installed",
+        "cwdPrefix": "This coding subagent will use this workspace as cwd:",
+        "runtimeDescriptions": {
+          "codex-acp": "Use Codex ACP for implementation-focused coding tasks inside the assistant workspace.",
+          "claude-agent-acp": "Use Claude Agent ACP for coding tasks inside the assistant workspace."
+        },
         "workspaceRequired": "Set a workspace path before enabling the coding agent.",
         "runtimeMissingPrefix": "The selected coding provider needs its ACP binary. Finish setup in",
         "codingLinkLabel": "Coding",
@@ -1088,6 +1104,7 @@
         "providersLinkLabel": "Model Provider",
         "noProvidersSuffix": "and make sure its ACP binary is ready in Coding."
       },
+      "toolsDescription": "Control the MCP servers and runtime-backed tools that this assistant can use.",
       "runtimeNoteTitle": "Unele unelte MCP folosesc runtime-uri gestionate.",
       "runtimeNotePrefix": "Finalizează configurarea în",
       "runtimeNoteLinkLabel": "Runtime Setup",

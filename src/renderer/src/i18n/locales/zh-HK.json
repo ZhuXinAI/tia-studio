@@ -660,6 +660,7 @@
       "actions": {
         "add": "新增頻道",
         "edit": "編輯頻道",
+        "retrySetup": "Retry Setup",
         "remove": "移除頻道",
         "clear": "清除選擇",
         "cancel": "取消",
@@ -706,7 +707,8 @@
         "wechatKfCredentialsRequired": "Server URL and server key are required for Wechat-KF channels",
         "createFailed": "建立頻道失敗",
         "updateFailed": "更新頻道失敗",
-        "deleteFailed": "刪除頻道失敗"
+        "deleteFailed": "刪除頻道失敗",
+        "recoverFailed": "Failed to restart channel setup"
       }
     },
     "providerSelector": {
@@ -808,7 +810,8 @@
       "actions": {
         "approve": "批准",
         "reject": "拒絕",
-        "revoke": "撤銷"
+        "revoke": "撤銷",
+        "retrySetup": "Retry Setup"
       },
       "errors": {
         "loadFailed": "載入配對失敗",

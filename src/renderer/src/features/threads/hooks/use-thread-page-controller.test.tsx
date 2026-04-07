@@ -39,6 +39,7 @@ const mockState = vi.hoisted(() => {
     updateClawMock: vi.fn(),
     createClawChannelMock: vi.fn(),
     updateClawChannelMock: vi.fn(),
+    recoverClawChannelSetupMock: vi.fn(),
     deleteClawChannelMock: vi.fn(),
     listThreadsMock: vi.fn(),
     createThreadMock: vi.fn(),
@@ -121,6 +122,7 @@ vi.mock('../../claws/claws-query', () => ({
   updateClaw: (...args: unknown[]) => mockState.updateClawMock(...args),
   createClawChannel: (...args: unknown[]) => mockState.createClawChannelMock(...args),
   updateClawChannel: (...args: unknown[]) => mockState.updateClawChannelMock(...args),
+  recoverClawChannelSetup: (...args: unknown[]) => mockState.recoverClawChannelSetupMock(...args),
   deleteClawChannel: (...args: unknown[]) => mockState.deleteClawChannelMock(...args)
 }))
 
@@ -411,6 +413,18 @@ describe('useThreadPageController', () => {
     })
     mockState.createClawChannelMock.mockReset()
     mockState.updateClawChannelMock.mockReset()
+    mockState.recoverClawChannelSetupMock.mockReset()
+    mockState.recoverClawChannelSetupMock.mockResolvedValue({
+      id: 'channel-1',
+      type: 'wechat',
+      name: 'Wechat Device',
+      assistantId: 'assistant-1',
+      assistantName: 'Planner',
+      status: 'disconnected',
+      errorMessage: null,
+      pairedCount: 0,
+      pendingPairingCount: 0
+    })
     mockState.deleteClawChannelMock.mockReset()
 
     mockState.listThreadsMock.mockReset()

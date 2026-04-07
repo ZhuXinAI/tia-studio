@@ -660,6 +660,7 @@
       "actions": {
         "add": "Add Channel",
         "edit": "チャンネルを編集",
+        "retrySetup": "Retry Setup",
         "remove": "Remove Channel",
         "clear": "Clear Selection",
         "cancel": "Cancel",
@@ -706,7 +707,8 @@
         "wechatKfCredentialsRequired": "Server URL and server key are required for Wechat-KF channels",
         "createFailed": "Failed to create channel",
         "updateFailed": "チャンネルの更新に失敗しました",
-        "deleteFailed": "Failed to delete channel"
+        "deleteFailed": "Failed to delete channel",
+        "recoverFailed": "Failed to restart channel setup"
       }
     },
     "providerSelector": {
@@ -808,7 +810,8 @@
       "actions": {
         "approve": "承認",
         "reject": "拒否",
-        "revoke": "取り消し"
+        "revoke": "取り消し",
+        "retrySetup": "Retry Setup"
       },
       "errors": {
         "loadFailed": "ペアリングの読み込みに失敗しました",
@@ -1013,6 +1016,7 @@
       "createTitle": "アシスタントを作成",
       "tabs": {
         "essential": "基本設定",
+        "coding": "Coding",
         "tools": "ツール",
         "skills": "Skills",
         "channels": "Channels",
@@ -1075,12 +1079,24 @@
       "descriptionHelp": "Team スーパーバイザが適切なタスクにこのアシスタントを選べるようにします。",
       "workspacePathHelp": "より複雑な作業を行わせる場合は、ワークスペースを選択してください。",
       "openingButton": "開いています...",
+      "channels": {
+        "title": "Channel Setup",
+        "description": "Choose the channel this assistant owns and keep setup actions close to the selection flow.",
+        "empty": "No channel is currently selected for this assistant.",
+        "openSetupDescription": "Open setup here to manage pairings, QR login, or other channel-specific onboarding."
+      },
       "codingAgent": {
-        "title": "Coding Agent",
         "description": "Delegate coding-heavy tasks to a dedicated Codex or Claude Agent ACP subagent.",
-        "toggleAriaLabel": "Enable coding agent",
+        "toggleForAriaLabel": "Enable {{kind}}",
         "providerLabel": "Coding provider",
         "selectProvider": "Select coding provider",
+        "availableStatus": "Installed",
+        "missingStatus": "Not installed",
+        "cwdPrefix": "This coding subagent will use this workspace as cwd:",
+        "runtimeDescriptions": {
+          "codex-acp": "Use Codex ACP for implementation-focused coding tasks inside the assistant workspace.",
+          "claude-agent-acp": "Use Claude Agent ACP for coding tasks inside the assistant workspace."
+        },
         "workspaceRequired": "Set a workspace path before enabling the coding agent.",
         "runtimeMissingPrefix": "The selected coding provider needs its ACP binary. Finish setup in",
         "codingLinkLabel": "Coding",
@@ -1088,6 +1104,7 @@
         "providersLinkLabel": "Model Provider",
         "noProvidersSuffix": "and make sure its ACP binary is ready in Coding."
       },
+      "toolsDescription": "Control the MCP servers and runtime-backed tools that this assistant can use.",
       "runtimeNoteTitle": "一部の MCP ツールは管理ランタイムを使用します。",
       "runtimeNotePrefix": "必要に応じて",
       "runtimeNoteLinkLabel": "ランタイム設定",

@@ -660,6 +660,7 @@
       "actions": {
         "add": "Προσθήκη καναλιού",
         "edit": "Επεξεργασία καναλιού",
+        "retrySetup": "Retry Setup",
         "remove": "Αφαίρεση καναλιού",
         "clear": "Εκκαθάριση επιλογής",
         "cancel": "Ακύρωση",
@@ -706,7 +707,8 @@
         "wechatKfCredentialsRequired": "Server URL and server key are required for Wechat-KF channels",
         "createFailed": "Αποτυχία δημιουργίας καναλιού",
         "updateFailed": "Αποτυχία ενημέρωσης καναλιού",
-        "deleteFailed": "Αποτυχία διαγραφής καναλιού"
+        "deleteFailed": "Αποτυχία διαγραφής καναλιού",
+        "recoverFailed": "Failed to restart channel setup"
       }
     },
     "providerSelector": {
@@ -808,7 +810,8 @@
       "actions": {
         "approve": "Έγκριση",
         "reject": "Απόρριψη",
-        "revoke": "Ανάκληση"
+        "revoke": "Ανάκληση",
+        "retrySetup": "Retry Setup"
       },
       "errors": {
         "loadFailed": "Αποτυχία φόρτωσης ζευγοποιήσεων",
@@ -1013,6 +1016,7 @@
       "createTitle": "Δημιουργία βοηθού",
       "tabs": {
         "essential": "Βασικές ρυθμίσεις",
+        "coding": "Coding",
         "tools": "Εργαλεία",
         "skills": "Skills",
         "channels": "Channels",
@@ -1075,12 +1079,24 @@
       "descriptionHelp": "Βοηθά τον επόπτη Team να επιλέγει αυτόν τον βοηθό για τη σωστή εργασία.",
       "workspacePathHelp": "Για να εκτελεί ο agent πιο σύνθετες εργασίες, επιλέξτε ένα workspace.",
       "openingButton": "Άνοιγμα...",
+      "channels": {
+        "title": "Channel Setup",
+        "description": "Choose the channel this assistant owns and keep setup actions close to the selection flow.",
+        "empty": "No channel is currently selected for this assistant.",
+        "openSetupDescription": "Open setup here to manage pairings, QR login, or other channel-specific onboarding."
+      },
       "codingAgent": {
-        "title": "Coding Agent",
         "description": "Delegate coding-heavy tasks to a dedicated Codex or Claude Agent ACP subagent.",
-        "toggleAriaLabel": "Enable coding agent",
+        "toggleForAriaLabel": "Enable {{kind}}",
         "providerLabel": "Coding provider",
         "selectProvider": "Select coding provider",
+        "availableStatus": "Installed",
+        "missingStatus": "Not installed",
+        "cwdPrefix": "This coding subagent will use this workspace as cwd:",
+        "runtimeDescriptions": {
+          "codex-acp": "Use Codex ACP for implementation-focused coding tasks inside the assistant workspace.",
+          "claude-agent-acp": "Use Claude Agent ACP for coding tasks inside the assistant workspace."
+        },
         "workspaceRequired": "Set a workspace path before enabling the coding agent.",
         "runtimeMissingPrefix": "The selected coding provider needs its ACP binary. Finish setup in",
         "codingLinkLabel": "Coding",
@@ -1088,6 +1104,7 @@
         "providersLinkLabel": "Model Provider",
         "noProvidersSuffix": "and make sure its ACP binary is ready in Coding."
       },
+      "toolsDescription": "Control the MCP servers and runtime-backed tools that this assistant can use.",
       "runtimeNoteTitle": "Ορισμένα εργαλεία MCP χρησιμοποιούν διαχειριζόμενα runtimes.",
       "runtimeNotePrefix": "Ολοκληρώστε τη ρύθμιση στο",
       "runtimeNoteLinkLabel": "Runtime Setup",

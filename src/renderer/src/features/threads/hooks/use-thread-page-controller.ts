@@ -24,6 +24,7 @@ import {
   getClawChannelAuthState,
   listClawPairings,
   listClaws,
+  recoverClawChannelSetup,
   rejectClawPairing,
   revokeClawPairing,
   updateClaw,
@@ -930,6 +931,27 @@ export function useThreadPageController() {
     [invalidateClawsCache, t]
   )
 
+  const handleRecoverChannel = useCallback(
+    async (channelId: string): Promise<ConfiguredClawChannelRecord> => {
+      setIsAssistantChannelMutating(true)
+      setAssistantDialogError(null)
+
+      try {
+        const recoveredChannel = await recoverClawChannelSetup(channelId)
+        await invalidateClawsCache()
+        return recoveredChannel
+      } catch (error) {
+        const resolvedError =
+          error instanceof Error ? error : new Error(t('claws.errors.updateFailed'))
+        setAssistantDialogError(resolvedError.message)
+        throw resolvedError
+      } finally {
+        setIsAssistantChannelMutating(false)
+      }
+    },
+    [invalidateClawsCache, t]
+  )
+
   const handleSubmitAssistantDialog = async (
     input: SaveAssistantInput,
     heartbeatInput?: SaveAssistantHeartbeatInput | null,
@@ -1083,6 +1105,42 @@ export function useThreadPageController() {
       window.clearInterval(intervalId)
     }
   }, [channelAccessClaw, channelAuthState?.status, refreshChannelAccessAuthState, t])
+
+  const handleRecoverChannelAccessSetup = useCallback(async (): Promise<void> => {
+    const channelId = channelAccessClaw?.channel?.id
+    if (!channelAccessClaw || !channelId) {
+      return
+    }
+
+    setIsChannelAccessSubmitting(true)
+    setChannelAccessError(null)
+
+    try {
+      await handleRecoverChannel(channelId)
+      await Promise.all([
+        channelAccessClaw.channel?.type === 'telegram' || channelAccessClaw.channel?.type === 'whatsapp'
+          ? refreshChannelAccessPairings(channelAccessClaw.id)
+          : Promise.resolve(),
+        channelAccessClaw.channel?.type === 'whatsapp' || channelAccessClaw.channel?.type === 'wechat'
+          ? refreshChannelAccessAuthState(channelAccessClaw.id)
+          : Promise.resolve(),
+        refreshClawsData()
+      ])
+    } catch (error) {
+      setChannelAccessError(
+        error instanceof Error ? error.message : t('claws.pairings.errors.updateFailed')
+      )
+    } finally {
+      setIsChannelAccessSubmitting(false)
+    }
+  }, [
+    channelAccessClaw,
+    handleRecoverChannel,
+    refreshChannelAccessAuthState,
+    refreshChannelAccessPairings,
+    refreshClawsData,
+    t
+  ])
 
   const handleDeleteAssistant = useCallback(
     async (assistantId: string): Promise<void> => {
@@ -1378,6 +1436,7 @@ export function useThreadPageController() {
           onSelectedChannelChange: setAssistantDialogChannelIdOverride,
           onCreateChannel: handleCreateChannel,
           onUpdateChannel: handleUpdateChannel,
+          onRecoverChannel: handleRecoverChannel,
           onDeleteChannel: handleDeleteChannel
         }
       : undefined
@@ -1483,6 +1542,9 @@ export function useThreadPageController() {
     },
     onRevokeChannelAccessPairing: (pairingId: string) => {
       void handleChannelAccessAction(revokeClawPairing, pairingId)
+    },
+    onRecoverChannelAccessSetup: () => {
+      void handleRecoverChannelAccessSetup()
     },
     onSelectWorkspacePath: selectWorkspacePath,
     onSubmitAssistantDialog: handleSubmitAssistantDialog

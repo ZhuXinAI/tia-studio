@@ -75,6 +75,7 @@ export function ThreadPage(): React.JSX.Element {
         isSubmitting={controller.isChannelAccessSubmitting}
         errorMessage={controller.channelAccessError}
         onClose={controller.onCloseChannelAccessDialog}
+        onRecoverSetup={controller.onRecoverChannelAccessSetup}
         onApprove={controller.onApproveChannelAccessPairing}
         onReject={controller.onRejectChannelAccessPairing}
         onRevoke={controller.onRevokeChannelAccessPairing}

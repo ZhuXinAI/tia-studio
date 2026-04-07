@@ -44,6 +44,7 @@ import {
   getClawChannelAuthState,
   listClawPairings,
   listClaws,
+  recoverClawChannelSetup,
   rejectClawPairing,
   revokeClawPairing,
   updateClaw,
@@ -302,6 +303,29 @@ export function ClawsPage(): React.JSX.Element {
     }
   }
 
+  async function handleRecoverChannel(channelId: string): Promise<ConfiguredClawChannelRecord> {
+    setIsSubmitting(true)
+    setErrorMessage(null)
+
+    try {
+      const recoveredChannel = await recoverClawChannelSetup(channelId)
+      setData((current) => ({
+        ...current,
+        configuredChannels: current.configuredChannels.map((channel) =>
+          channel.id === recoveredChannel.id ? recoveredChannel : channel
+        )
+      }))
+      return recoveredChannel
+    } catch (error) {
+      const resolvedError =
+        error instanceof Error ? error : new Error(t('claws.errors.updateFailed'))
+      setErrorMessage(resolvedError.message)
+      throw resolvedError
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   async function setClawEnabled(claw: ClawRecord, enabled: boolean): Promise<void> {
     setIsSubmitting(true)
     setErrorMessage(null)
@@ -544,6 +568,7 @@ export function ClawsPage(): React.JSX.Element {
             onSelectedChannelChange: setSelectedChannelId,
             onCreateChannel: handleCreateChannel,
             onUpdateChannel: handleUpdateChannel,
+            onRecoverChannel: handleRecoverChannel,
             onDeleteChannel: handleDeleteChannel
           }}
           channelSetupAction={
@@ -601,6 +626,40 @@ export function ClawsPage(): React.JSX.Element {
             setChannelAuthState(null)
             setIsChannelAuthLoading(false)
             setPairingsErrorMessage(null)
+          }}
+          onRecoverSetup={() => {
+            const channelId = pairingsClaw?.channel?.id
+            if (!channelId || isPairingsSubmitting) {
+              return
+            }
+
+            void (async () => {
+              setIsPairingsSubmitting(true)
+              setPairingsErrorMessage(null)
+
+              try {
+                await handleRecoverChannel(channelId)
+                if (!pairingsClaw) {
+                  return
+                }
+
+                await Promise.all([
+                  pairingsClaw.channel?.type === 'telegram' || pairingsClaw.channel?.type === 'whatsapp'
+                    ? refreshPairings(pairingsClaw.id)
+                    : Promise.resolve(),
+                  pairingsClaw.channel?.type === 'whatsapp' || pairingsClaw.channel?.type === 'wechat'
+                    ? refreshChannelAuthState(pairingsClaw.id)
+                    : Promise.resolve(),
+                  refreshPage()
+                ])
+              } catch (error) {
+                setPairingsErrorMessage(
+                  error instanceof Error ? error.message : t('claws.pairings.errors.updateFailed')
+                )
+              } finally {
+                setIsPairingsSubmitting(false)
+              }
+            })()
           }}
           onApprove={(pairingId) => handlePairingAction(approveClawPairing, pairingId)}
           onReject={(pairingId) => handlePairingAction(rejectClawPairing, pairingId)}

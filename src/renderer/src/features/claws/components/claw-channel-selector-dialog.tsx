@@ -38,6 +38,9 @@ type ClawChannelSelectorDialogProps = {
     channelId: string,
     input: UpdateClawChannelInput
   ) => Promise<ConfiguredClawChannelRecord> | ConfiguredClawChannelRecord
+  onRecoverChannel: (
+    channelId: string
+  ) => Promise<ConfiguredClawChannelRecord> | ConfiguredClawChannelRecord
   onDeleteChannel: (channelId: string) => Promise<void> | void
 }
 
@@ -252,6 +255,7 @@ export function ClawChannelSelectorDialog({
   onApply,
   onCreateChannel,
   onUpdateChannel,
+  onRecoverChannel,
   onDeleteChannel
 }: ClawChannelSelectorDialogProps): React.JSX.Element {
   const { t } = useTranslation()
@@ -452,6 +456,27 @@ export function ClawChannelSelectorDialog({
     }
   }
 
+  async function handleRecoverChannel(): Promise<void> {
+    if (!selectedChannel) {
+      return
+    }
+
+    setIsFormSubmitting(true)
+    setFormError(null)
+
+    try {
+      const recoveredChannel = await onRecoverChannel(selectedChannel.id)
+      replaceLocalChannel(recoveredChannel)
+      updateSelectedChannel(recoveredChannel.id)
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : t('claws.channelSelector.errors.recoverFailed')
+      )
+    } finally {
+      setIsFormSubmitting(false)
+    }
+  }
+
   const isBusy = isMutating || isFormSubmitting || isDeleteSubmitting
   const channelNameInputId =
     formMode === 'create' ? 'claw-channel-create-name' : 'claw-channel-form-name'
@@ -475,6 +500,9 @@ export function ClawChannelSelectorDialog({
   const selectorBody = (
     <div className="space-y-3">
       {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
+      {!errorMessage && !isFormDialogOpen && formError ? (
+        <p className="text-sm text-destructive">{formError}</p>
+      ) : null}
 
       {localChannels.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('claws.channelSelector.empty')}</p>
@@ -541,6 +569,15 @@ export function ClawChannelSelectorDialog({
         >
           <Pencil className="size-4" />
           {t('claws.channelSelector.actions.edit')}
+        </Button>
+        <Button
+          id="claw-channel-selector-recover"
+          type="button"
+          variant="outline"
+          disabled={selectedChannel?.status !== 'error' || isBusy}
+          onClick={() => void handleRecoverChannel()}
+        >
+          {t('claws.channelSelector.actions.retrySetup')}
         </Button>
         <Button
           id="claw-channel-selector-remove"

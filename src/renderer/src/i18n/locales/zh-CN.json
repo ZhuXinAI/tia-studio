@@ -660,6 +660,7 @@
       "actions": {
         "add": "添加频道",
         "edit": "编辑频道",
+        "retrySetup": "Retry Setup",
         "remove": "移除频道",
         "clear": "清除选择",
         "cancel": "取消",
@@ -706,7 +707,8 @@
         "wechatKfCredentialsRequired": "微信客服频道必须填写服务地址和服务密钥",
         "createFailed": "创建频道失败",
         "updateFailed": "更新频道失败",
-        "deleteFailed": "删除频道失败"
+        "deleteFailed": "删除频道失败",
+        "recoverFailed": "Failed to restart channel setup"
       }
     },
     "providerSelector": {
@@ -808,7 +810,8 @@
       "actions": {
         "approve": "批准",
         "reject": "拒绝",
-        "revoke": "撤销"
+        "revoke": "撤销",
+        "retrySetup": "Retry Setup"
       },
       "errors": {
         "loadFailed": "加载配对失败",

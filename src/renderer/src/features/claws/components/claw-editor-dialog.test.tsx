@@ -149,6 +149,9 @@ describe('ClawEditorDialog', () => {
           onUpdateChannel={vi.fn(async () => {
             throw new Error('not used')
           })}
+          onRecoverChannel={vi.fn(async () => {
+            throw new Error('not used')
+          })}
           onDeleteChannel={vi.fn(async () => undefined)}
           onCreateProvider={vi.fn(async () => {
             throw new Error('not used')
@@ -249,6 +252,9 @@ describe('ClawEditorDialog', () => {
           onUpdateChannel={vi.fn(async () => {
             throw new Error('not used')
           })}
+          onRecoverChannel={vi.fn(async () => {
+            throw new Error('not used')
+          })}
           onDeleteChannel={vi.fn(async () => undefined)}
           onCreateProvider={vi.fn(async () => {
             throw new Error('not used')
@@ -311,6 +317,9 @@ describe('ClawEditorDialog', () => {
           onUpdateChannel={vi.fn(async () => {
             throw new Error('not used')
           })}
+          onRecoverChannel={vi.fn(async () => {
+            throw new Error('not used')
+          })}
           onDeleteChannel={vi.fn(async () => undefined)}
           onCreateProvider={vi.fn(async () => {
             throw new Error('not used')
@@ -370,6 +379,9 @@ describe('ClawEditorDialog', () => {
             throw new Error('not used')
           })}
           onUpdateChannel={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onRecoverChannel={vi.fn(async () => {
             throw new Error('not used')
           })}
           onDeleteChannel={vi.fn(async () => undefined)}
@@ -446,6 +458,9 @@ describe('ClawEditorDialog', () => {
             throw new Error('not used')
           })}
           onUpdateChannel={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onRecoverChannel={vi.fn(async () => {
             throw new Error('not used')
           })}
           onDeleteChannel={vi.fn(async () => undefined)}
@@ -539,6 +554,9 @@ describe('ClawEditorDialog', () => {
             throw new Error('not used')
           })}
           onUpdateChannel={vi.fn(async () => {
+            throw new Error('not used')
+          })}
+          onRecoverChannel={vi.fn(async () => {
             throw new Error('not used')
           })}
           onDeleteChannel={vi.fn(async () => undefined)}

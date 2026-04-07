@@ -47,6 +47,9 @@ type ClawEditorDialogProps = {
     channelId: string,
     input: UpdateClawChannelInput
   ) => Promise<ConfiguredClawChannelRecord> | ConfiguredClawChannelRecord
+  onRecoverChannel: (
+    channelId: string
+  ) => Promise<ConfiguredClawChannelRecord> | ConfiguredClawChannelRecord
   onDeleteChannel: (channelId: string) => Promise<void> | void
   onCreateProvider: (input: SaveProviderInput) => Promise<ProviderRecord> | ProviderRecord
   onUpdateProvider: (
@@ -86,6 +89,7 @@ function CreateClawDialog({
   onSubmit,
   onCreateChannel,
   onUpdateChannel,
+  onRecoverChannel,
   onDeleteChannel,
   onCreateProvider,
   onUpdateProvider
@@ -304,10 +308,11 @@ function CreateClawDialog({
             setSelectedChannelId(channelId)
             setErrorMessage(null)
           }}
-          onCreateChannel={onCreateChannel}
-          onUpdateChannel={onUpdateChannel}
-          onDeleteChannel={onDeleteChannel}
-        />
+        onCreateChannel={onCreateChannel}
+        onUpdateChannel={onUpdateChannel}
+        onRecoverChannel={onRecoverChannel}
+        onDeleteChannel={onDeleteChannel}
+      />
       ) : null}
 
       {currentStep === 2 ? (
@@ -487,6 +492,7 @@ function EditClawDialog({
   onSubmit,
   onCreateChannel,
   onUpdateChannel,
+  onRecoverChannel,
   onDeleteChannel,
   onCreateProvider,
   onUpdateProvider
@@ -737,6 +743,7 @@ function EditClawDialog({
         }}
         onCreateChannel={onCreateChannel}
         onUpdateChannel={onUpdateChannel}
+        onRecoverChannel={onRecoverChannel}
         onDeleteChannel={onDeleteChannel}
       />
     </>

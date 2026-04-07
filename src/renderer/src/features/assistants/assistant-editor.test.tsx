@@ -426,6 +426,7 @@ describe('assistant editor', () => {
               onSelectedChannelChange: vi.fn(),
               onCreateChannel: vi.fn(async () => channels[0]),
               onUpdateChannel: vi.fn(async () => channels[0]),
+              onRecoverChannel: vi.fn(async () => channels[0]),
               onDeleteChannel: vi.fn(async () => undefined)
             }}
             channelSetupAction={{
