@@ -27,7 +27,8 @@
       "searchPlaceholder": "Search assistants...",
       "searchAriaLabel": "Search assistants",
       "empty": "No assistants yet",
-      "createAction": "Create new assistant",
+      "createAcpAction": "Create ACP Agent",
+      "createTiaAction": "Create TIA Agent (Advanced)",
       "manageAction": "Manage assistants & channels"
     },
     "teamSwitcher": {
@@ -75,6 +76,10 @@
       "title": "Configuración",
       "subtitle": "Configuración",
       "categories": "Categorías",
+      "groups": {
+        "acpReuse": "ACP Reuse",
+        "advancedStudio": "Advanced Studio"
+      },
       "items": {
         "general": "General",
         "providers": "Proveedor de modelos",
@@ -86,7 +91,8 @@
         "coding": "Coding",
         "runtimeSetup": "Configuración del runtime",
         "display": "Pantalla",
-        "aboutFeedback": "Acerca de y comentarios"
+        "aboutFeedback": "Acerca de y comentarios",
+        "agents": "Agents"
       }
     },
     "general": {
@@ -400,6 +406,7 @@
         "unexpectedError": "Error inesperado en la solicitud"
       },
       "typeLabels": {
+        "acp": "Local ACP Agent",
         "openai": "Compatible con OpenAI",
         "openai-response": "OpenAI Responses",
         "openrouter": "OpenRouter",
@@ -410,6 +417,7 @@
         "claude-agent-acp": "Claude Agent ACP"
       },
       "typeDescriptions": {
+        "acp": "Runs a locally installed ACP-compatible agent command such as Codex, Claude, Gemini, Qwen Code, or OpenClaw.",
         "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
         "openai-response": "For services using OpenAI response format. Use this for third-party APIs that return OpenAI-compatible responses.",
         "openrouter": "For OpenRouter's native AI SDK provider integration. This type is intended for built-in OpenRouter templates.",
@@ -523,6 +531,7 @@
     "title": "Claws",
     "description": "Conecta asistentes a canales externos de Lark sin rebuscar entre ajustes sin procesar.",
     "newButton": "Nuevo Claw",
+    "newTiaButton": "Create TIA Agent (Advanced)",
     "telegram": {
       "description": "Conecta asistentes a canales externos de Telegram o Lark sin rebuscar en ajustes sin procesar.",
       "emptyDescription": "Empieza con un asistente, un proveedor y un canal de Telegram o Lark para una incorporación más rápida.",
@@ -547,7 +556,8 @@
       "title": "Configura tu primer Claw",
       "description": "Empieza con un asistente, un proveedor y un canal de Lark para una incorporación más rápida.",
       "note": "La identidad del asistente, el latido y los futuros cron siguen siendo responsabilidad del asistente.",
-      "createButton": "Crear tu primer Claw"
+      "createButton": "Crear tu primer Claw",
+      "createTiaButton": "Create TIA Agent (Advanced)"
     },
     "card": {
       "noChannelConnected": "No hay canal conectado",
@@ -866,17 +876,26 @@
         "helperSelected": "Los mensajes pasan por el supervisor Team y los miembros seleccionados.",
         "helperEmpty": "Primero elige un espacio de trabajo y crea un hilo Team.",
         "openStatus": "Abrir estado de Team"
-      }
+      },
+      "mixedMembersHint": "Teams can mix ACP Agents and TIA Agents."
     },
     "configDialog": {
       "closeAriaLabel": "Close team config dialog",
       "title": "Configurar Team",
       "description": "Selecciona un modelo supervisor y elige qué asistentes se unen a este equipo.",
+      "memberOriginHint": "Members can mix ACP Agents and TIA Agents.",
+      "createMemberHint": "Need another member?",
+      "createAcpMemberAction": "Create ACP Agent",
+      "createTiaMemberAction": "Create TIA Agent (Advanced)",
       "fields": {
         "supervisorProvider": "Proveedor supervisor",
         "teamDescription": "Descripción del Team",
         "supervisorModel": "Modelo supervisor",
         "teamMembers": "Miembros del Team"
+      },
+      "origins": {
+        "acp": "ACP Agent",
+        "tia": "TIA Agent"
       },
       "validation": {
         "supervisorProvider": "Selecciona un proveedor supervisor.",
@@ -983,6 +1002,13 @@
       "closeCreateAriaLabel": "Close create assistant dialog",
       "closeEditAriaLabel": "Close assistant config dialog",
       "createTitle": "Crear asistente",
+      "createPathDescription": "Start with an existing ACP agent for the lightweight path, or create a full TIA-managed agent.",
+      "useExistingAcpTitle": "Use Existing ACP Agent",
+      "useExistingAcpDescription": "Reuse a Codex ACP or Claude Agent ACP runtime, choose a workspace, and optionally attach a channel.",
+      "useExistingAcpSubmit": "Create ACP Agent",
+      "advancedCreateTiaAction": "Advanced: Create TIA Agent",
+      "createTiaTitle": "Create TIA Agent",
+      "createTiaDescription": "Start with the full TIA editor, including Studio tools, skills, and activity controls.",
       "editTitle": "Configurar {{name}}",
       "createDescription": "Configura la ruta del espacio de trabajo y el proveedor antes de iniciar el chat.",
       "editDescription": "Actualiza proveedor, espacio de trabajo y prompt sin salir del chat.",
@@ -1046,6 +1072,11 @@
           "intervalInvalid": "Heartbeat interval must be a positive whole number",
           "promptRequired": "Heartbeat prompt is required"
         }
+      },
+      "studioUpgrade": {
+        "title": "Upgrade to TIA Agent",
+        "description": "Enable Studio Features to unlock heartbeat, coding subagents, MCP tools, workspace skills, and activity controls for this ACP agent.",
+        "enableButton": "Enable Studio Features"
       },
       "activity": {
         "description": "Review assistant heartbeat health and recent cron executions.",

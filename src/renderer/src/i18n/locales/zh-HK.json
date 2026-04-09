@@ -27,7 +27,8 @@
       "searchPlaceholder": "Search assistants...",
       "searchAriaLabel": "Search assistants",
       "empty": "No assistants yet",
-      "createAction": "Create new assistant",
+      "createAcpAction": "Create ACP Agent",
+      "createTiaAction": "Create TIA Agent (Advanced)",
       "manageAction": "Manage assistants & channels"
     },
     "teamSwitcher": {
@@ -75,6 +76,10 @@
       "title": "設定",
       "subtitle": "配置",
       "categories": "類別",
+      "groups": {
+        "acpReuse": "ACP Reuse",
+        "advancedStudio": "Advanced Studio"
+      },
       "items": {
         "general": "常規",
         "providers": "模型供應商",
@@ -86,7 +91,8 @@
         "coding": "Coding",
         "runtimeSetup": "執行環境設定",
         "display": "顯示",
-        "aboutFeedback": "關於與回饋"
+        "aboutFeedback": "關於與回饋",
+        "agents": "Agents"
       }
     },
     "general": {
@@ -400,6 +406,7 @@
         "unexpectedError": "要求發生未預期錯誤"
       },
       "typeLabels": {
+        "acp": "Local ACP Agent",
         "openai": "OpenAI 相容",
         "openai-response": "OpenAI Responses",
         "openrouter": "OpenRouter",
@@ -410,6 +417,7 @@
         "claude-agent-acp": "Claude Agent ACP"
       },
       "typeDescriptions": {
+        "acp": "Runs a locally installed ACP-compatible agent command such as Codex, Claude, Gemini, Qwen Code, or OpenClaw.",
         "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
         "openai-response": "For services using OpenAI response format. Use this for third-party APIs that return OpenAI-compatible responses.",
         "openrouter": "For OpenRouter's native AI SDK provider integration. This type is intended for built-in OpenRouter templates.",
@@ -523,6 +531,7 @@
     "title": "Claws",
     "description": "將助手連接到外部 WhatsApp、Telegram、Lark 或企業微信頻道，無需翻查原始設定。",
     "newButton": "新增 Claw",
+    "newTiaButton": "Create TIA Agent (Advanced)",
     "telegram": {
       "description": "將助手連接到外部 WhatsApp、Telegram、Lark 或企業微信頻道，無需翻查原始設定。",
       "emptyDescription": "從一個助手、一個供應商和一個 WhatsApp、Telegram、Lark 或企業微信頻道開始，是最快的接入方式。",
@@ -547,7 +556,8 @@
       "title": "設定你的第一個 Claw",
       "description": "從一個助手、一個供應商和一個 WhatsApp、Telegram、Lark 或企業微信頻道開始，是最快的上手方式。",
       "note": "助手身分、心跳以及後續 cron 仍由助手本身管理。",
-      "createButton": "建立第一個 Claw"
+      "createButton": "建立第一個 Claw",
+      "createTiaButton": "Create TIA Agent (Advanced)"
     },
     "card": {
       "noChannelConnected": "未連接頻道",
@@ -866,17 +876,26 @@
         "helperSelected": "訊息會透過 Team 主管與所選成員流轉。",
         "helperEmpty": "請先選擇工作區並建立一個 Team 執行緒。",
         "openStatus": "開啟 Team 狀態"
-      }
+      },
+      "mixedMembersHint": "Teams can mix ACP Agents and TIA Agents."
     },
     "configDialog": {
       "closeAriaLabel": "關閉 Team 設定對話框",
       "title": "設定 Team",
       "description": "選擇主管模型，並決定哪些助手加入這個團隊。",
+      "memberOriginHint": "Members can mix ACP Agents and TIA Agents.",
+      "createMemberHint": "Need another member?",
+      "createAcpMemberAction": "Create ACP Agent",
+      "createTiaMemberAction": "Create TIA Agent (Advanced)",
       "fields": {
         "supervisorProvider": "主管供應商",
         "teamDescription": "Team 描述",
         "supervisorModel": "主管模型",
         "teamMembers": "Team 成員"
+      },
+      "origins": {
+        "acp": "ACP Agent",
+        "tia": "TIA Agent"
       },
       "validation": {
         "supervisorProvider": "請選擇主管供應商。",
@@ -983,6 +1002,13 @@
       "closeCreateAriaLabel": "關閉建立助手對話框",
       "closeEditAriaLabel": "關閉助手設定對話框",
       "createTitle": "建立助手",
+      "createPathDescription": "Start with an existing ACP agent for the lightweight path, or create a full TIA-managed agent.",
+      "useExistingAcpTitle": "Use Existing ACP Agent",
+      "useExistingAcpDescription": "Reuse a Codex ACP or Claude Agent ACP runtime, choose a workspace, and optionally attach a channel.",
+      "useExistingAcpSubmit": "Create ACP Agent",
+      "advancedCreateTiaAction": "Advanced: Create TIA Agent",
+      "createTiaTitle": "Create TIA Agent",
+      "createTiaDescription": "Start with the full TIA editor, including Studio tools, skills, and activity controls.",
       "editTitle": "設定 {{name}}",
       "createDescription": "開始對話前先設定工作區路徑與供應商。",
       "editDescription": "無需離開對話即可更新供應商、工作區與提示詞。",
@@ -1046,6 +1072,11 @@
           "intervalInvalid": "Heartbeat interval must be a positive whole number",
           "promptRequired": "Heartbeat prompt is required"
         }
+      },
+      "studioUpgrade": {
+        "title": "Upgrade to TIA Agent",
+        "description": "Enable Studio Features to unlock heartbeat, coding subagents, MCP tools, workspace skills, and activity controls for this ACP agent.",
+        "enableButton": "Enable Studio Features"
       },
       "activity": {
         "description": "Review assistant heartbeat health and recent cron executions.",

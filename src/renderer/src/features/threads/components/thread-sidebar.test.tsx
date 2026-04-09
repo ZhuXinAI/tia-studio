@@ -89,6 +89,7 @@ describe('thread sidebar thread navigation', () => {
             isCreatingThread={false}
             canCreateThread
             onCreateThread={input?.onCreateThread ?? (() => undefined)}
+            onSelectAssistant={() => undefined}
             onSelectThread={input?.onSelectThread ?? (() => undefined)}
             onDeleteThread={() => undefined}
           />
@@ -111,8 +112,8 @@ describe('thread sidebar thread navigation', () => {
       isLoadingData: true
     })
 
-    expect(container.textContent).toContain('Conversations')
-    expect(container.textContent).toContain('Loading assistants...')
+    expect(container.textContent).toContain('Agents')
+    expect(container.textContent).toContain('Loading agents...')
   })
 
   it('creates a new thread from the active assistant thread view', () => {
@@ -120,7 +121,7 @@ describe('thread sidebar thread navigation', () => {
     renderSidebar({ onCreateThread })
 
     const createThreadButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('New Thread')
+      button.textContent?.includes('New chat')
     )
     expect(createThreadButton).not.toBeUndefined()
 

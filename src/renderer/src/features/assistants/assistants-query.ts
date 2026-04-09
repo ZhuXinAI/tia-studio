@@ -1,12 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createApiClient } from '../../lib/api-client'
 
+export type AssistantOrigin = 'tia' | 'external-acp' | 'built-in'
+
 export type AssistantRecord = {
   id: string
   name: string
   description: string
   instructions: string
   enabled: boolean
+  origin?: AssistantOrigin
+  studioFeaturesEnabled?: boolean
   providerId: string
   workspaceConfig: Record<string, unknown>
   skillsConfig: Record<string, unknown>
@@ -22,6 +26,8 @@ export type SaveAssistantInput = {
   description?: string
   instructions?: string
   enabled?: boolean
+  origin?: AssistantOrigin
+  studioFeaturesEnabled?: boolean
   providerId: string
   workspaceConfig?: Record<string, unknown>
   skillsConfig?: Record<string, unknown>

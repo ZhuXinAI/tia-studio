@@ -75,6 +75,7 @@ describe('ThreadSidebar delete confirmation', () => {
             isCreatingThread={false}
             canCreateThread
             onCreateThread={() => undefined}
+            onSelectAssistant={() => undefined}
             onSelectThread={() => undefined}
             onDeleteThread={onDeleteThread}
           />

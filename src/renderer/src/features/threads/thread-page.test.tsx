@@ -11,6 +11,8 @@ function createAssistant(overrides?: Partial<AssistantRecord>): AssistantRecord 
     description: '',
     instructions: '',
     enabled: true,
+    origin: 'tia',
+    studioFeaturesEnabled: true,
     providerId: 'provider-1',
     workspaceConfig: { rootPath: '/workspace/a' },
     skillsConfig: {},

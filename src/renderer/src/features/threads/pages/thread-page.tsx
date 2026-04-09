@@ -1,18 +1,20 @@
-import { SidebarInset } from '../../../components/ui/sidebar'
+import { useNavigate } from 'react-router-dom'
 import { AssistantManagementDialog } from '../../claws/components/assistant-management-dialog'
 import { ClawCronMonitorDialog } from '../../claws/components/claw-cron-monitor-dialog'
 import { ClawHeartbeatMonitorDialog } from '../../claws/components/claw-heartbeat-monitor-dialog'
 import { ClawPairingsDialog } from '../../claws/components/claw-pairings-dialog'
 import { ThreadChatCard } from '../components/thread-chat-card'
+import { ThreadSessionSidebar } from '../components/thread-session-sidebar'
 import { ThreadSidebar } from '../components/thread-sidebar'
 import { useThreadPageController } from '../hooks/use-thread-page-controller'
 
 export function ThreadPage(): React.JSX.Element {
   const controller = useThreadPageController()
+  const navigate = useNavigate()
 
   return (
     <>
-      <section className="flex h-[calc(100vh-3.5rem)] min-h-[650px] min-w-[720px] flex-row overflow-hidden rounded-[1.5rem] border border-border/80 border-[color:var(--surface-border)] bg-background/50 bg-[color:var(--surface-panel)] shadow-[0_28px_80px_-60px_rgba(15,23,42,0.65)]">
+      <section className="grid h-[calc(100vh-3.5rem)] min-h-0 bg-[color:var(--surface-canvas)] lg:grid-cols-[288px_minmax(0,1fr)] xl:grid-cols-[288px_minmax(0,1fr)_auto]">
         <ThreadSidebar
           branches={controller.sidebarBranches}
           selectedThreadId={controller.selectedThread?.id ?? null}
@@ -22,31 +24,44 @@ export function ThreadPage(): React.JSX.Element {
           isCreatingThread={controller.isCreatingThread}
           canCreateThread={Boolean(controller.selectedAssistant)}
           onCreateThread={controller.onCreateThread}
+          onSelectAssistant={controller.onSelectAssistant}
           onSelectThread={controller.onSelectThread}
           onDeleteThread={controller.onDeleteThread}
         />
 
-        <SidebarInset className="flex min-h-0 flex-1 flex-col p-0">
-          <ThreadChatCard
-            selectedAssistant={controller.selectedAssistant}
-            selectedThread={controller.selectedThread}
-            chat={controller.chat}
-            readiness={controller.readiness}
-            isLoadingChatHistory={controller.isLoadingChatHistory}
-            isChatStreaming={controller.isChatStreaming}
-            chatError={controller.chatError}
-            loadError={controller.loadError}
-            canAbortGeneration={controller.canAbortGeneration}
-            supportsVision={controller.supportsVision}
-            tokenUsage={controller.tokenUsage}
-            onSubmitMessage={controller.onSubmitMessage}
-            onAbortGeneration={controller.onAbortGeneration}
-            onOpenAssistantConfig={controller.onOpenAssistantConfig}
-            onOpenHeartbeatMonitor={controller.onOpenHeartbeatMonitor}
-            onOpenCronMonitor={controller.onOpenCronMonitor}
-            onCreateThread={controller.onCreateThread}
-          />
-        </SidebarInset>
+        <ThreadChatCard
+          assistantOptions={controller.assistantOptions}
+          selectedAssistant={controller.selectedAssistant}
+          selectedThread={controller.selectedThread}
+          chat={controller.chat}
+          readiness={controller.readiness}
+          isLoadingChatHistory={controller.isLoadingChatHistory}
+          isChatStreaming={controller.isChatStreaming}
+          chatError={controller.chatError}
+          loadError={controller.loadError}
+          canAbortGeneration={controller.canAbortGeneration}
+          supportsVision={controller.supportsVision}
+          tokenUsage={controller.tokenUsage}
+          onSubmitMessage={controller.onSubmitMessage}
+          onAbortGeneration={controller.onAbortGeneration}
+          onSelectAssistant={controller.onSelectAssistant}
+          onOpenAgentSettings={() => {
+            navigate('/settings/agents')
+          }}
+        />
+
+        <ThreadSessionSidebar
+          selectedAssistant={controller.selectedAssistant}
+          selectedThread={controller.selectedThread}
+          readiness={controller.readiness}
+          tokenUsage={controller.tokenUsage}
+          providers={controller.providers}
+          onOpenNewChat={() => {
+            if (controller.selectedAssistant) {
+              controller.onSelectAssistant(controller.selectedAssistant.id)
+            }
+          }}
+        />
       </section>
 
       <AssistantManagementDialog

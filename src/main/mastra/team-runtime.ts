@@ -126,7 +126,9 @@ export class TeamRuntimeService implements TeamRuntime {
   ): string | null {
     if (
       !this.options.acpHomeRootPath ||
-      (provider.type !== 'codex-acp' && provider.type !== 'claude-agent-acp')
+      (provider.type !== 'acp' &&
+        provider.type !== 'codex-acp' &&
+        provider.type !== 'claude-agent-acp')
     ) {
       return null
     }

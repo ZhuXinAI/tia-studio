@@ -6,11 +6,21 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockState = vi.hoisted(() => ({
-  listAssistantsMock: vi.fn()
+  assistantsData: [] as Array<Record<string, unknown>>,
+  listInstalledLocalAcpAgentsMock: vi.fn()
 }))
 
 vi.mock('../../features/assistants/assistants-query', () => ({
-  listAssistants: (...args: unknown[]) => mockState.listAssistantsMock(...args)
+  useAssistants: () => ({
+    data: mockState.assistantsData,
+    isLoading: false,
+    error: null
+  })
+}))
+
+vi.mock('../../features/threads/local-acp-agents-query', () => ({
+  listInstalledLocalAcpAgents: (...args: unknown[]) =>
+    mockState.listInstalledLocalAcpAgentsMock(...args)
 }))
 
 import { ChatContextSwitcher } from './chat-context-switcher'
@@ -18,7 +28,12 @@ import { ChatContextSwitcher } from './chat-context-switcher'
 function LocationDisplay(): React.JSX.Element {
   const location = useLocation()
 
-  return <div data-testid="location-display">{location.pathname}</div>
+  return (
+    <>
+      <div data-testid="location-display">{location.pathname}</div>
+      <div data-testid="location-state">{JSON.stringify(location.state ?? null)}</div>
+    </>
+  )
 }
 
 describe('ChatContextSwitcher', () => {
@@ -27,8 +42,9 @@ describe('ChatContextSwitcher', () => {
 
   beforeEach(() => {
     ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
-    mockState.listAssistantsMock.mockReset()
-    mockState.listAssistantsMock.mockResolvedValue([
+    mockState.listInstalledLocalAcpAgentsMock.mockReset()
+    mockState.listInstalledLocalAcpAgentsMock.mockResolvedValue([])
+    mockState.assistantsData = [
       {
         id: 'assistant-1',
         name: 'Planner',
@@ -59,7 +75,7 @@ describe('ChatContextSwitcher', () => {
         createdAt: '2026-03-01T00:00:00.000Z',
         updatedAt: '2026-03-01T00:00:00.000Z'
       }
-    ])
+    ]
 
     container = document.createElement('div')
     document.body.appendChild(container)
@@ -85,6 +101,24 @@ describe('ChatContextSwitcher', () => {
               element={
                 <>
                   <ChatContextSwitcher />
+                  <LocationDisplay />
+                </>
+              }
+            />
+            <Route
+              path="/agents"
+              element={
+                <>
+                  <div>Agents</div>
+                  <LocationDisplay />
+                </>
+              }
+            />
+            <Route
+              path="/settings/agents"
+              element={
+                <>
+                  <div>Agents Settings</div>
                   <LocationDisplay />
                 </>
               }
@@ -147,17 +181,19 @@ describe('ChatContextSwitcher', () => {
     })
 
     const manageButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Manage assistants & channels')
+      button.textContent?.includes('Manage Agents')
     )
 
     act(() => {
       manageButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    expect(container.querySelector('[data-testid="location-display"]')?.textContent).toBe('/claws')
+    expect(container.querySelector('[data-testid="location-display"]')?.textContent).toBe(
+      '/settings/agents'
+    )
   })
 
-  it('opens the create assistant flow from the dropdown action', async () => {
+  it('opens the ACP create flow from the dropdown action', async () => {
     await renderSwitcher('/chat/assistant-1')
 
     const trigger = container.querySelector(
@@ -169,13 +205,48 @@ describe('ChatContextSwitcher', () => {
     })
 
     const createButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Create new assistant')
+      button.textContent?.includes('Open ACP Agents')
     )
 
     act(() => {
       createButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    expect(container.querySelector('[data-testid="location-display"]')?.textContent).toBe('/claws')
+    expect(container.querySelector('[data-testid="location-display"]')?.textContent).toBe(
+      '/settings/agents'
+    )
+    expect(container.querySelector('[data-testid="location-state"]')?.textContent).toContain(
+      '"assistantTab":"acp"'
+    )
+  })
+
+  it('opens the TIA create flow from the secondary dropdown action', async () => {
+    await renderSwitcher('/chat/assistant-1')
+
+    const trigger = container.querySelector(
+      '[aria-label="Switch active assistant"]'
+    ) as HTMLButtonElement | null
+
+    act(() => {
+      trigger?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    const createButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Create TIA Agent')
+    )
+
+    act(() => {
+      createButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(container.querySelector('[data-testid="location-display"]')?.textContent).toBe(
+      '/settings/agents'
+    )
+    expect(container.querySelector('[data-testid="location-state"]')?.textContent).toContain(
+      '"assistantDialog":"create"'
+    )
+    expect(container.querySelector('[data-testid="location-state"]')?.textContent).toContain(
+      '"assistantTab":"tia"'
+    )
   })
 })

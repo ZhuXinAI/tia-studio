@@ -25,6 +25,12 @@ type ManagedRuntimeRecord = {
 }
 type ManagedRuntimesState = Record<ManagedRuntimeKind, ManagedRuntimeRecord>
 type RecommendedSkillId = 'agent-browser' | 'find-skills'
+type InstalledLocalAcpAgentRecord = {
+  key: 'codex' | 'claude' | 'gemini' | 'qwen-code' | 'openclaw'
+  label: string
+  resolvedCommand: string
+  binaryPath: string
+}
 type UiConfig = {
   transparent?: boolean
   language?: string | null
@@ -123,6 +129,8 @@ interface TiaDesktopAPI {
   getRuntimeOnboardingSkillsStatus?: () => Promise<RecommendedSkillId[]>
   installRuntimeOnboardingSkills?: (skillIds: RecommendedSkillId[]) => Promise<RecommendedSkillId[]>
   pickDirectory: () => Promise<string | null>
+  resolveDefaultAssistantWorkspacePath?: (assistantName: string) => Promise<string>
+  listInstalledLocalAcpAgents?: () => Promise<InstalledLocalAcpAgentRecord[]>
 }
 
 declare global {

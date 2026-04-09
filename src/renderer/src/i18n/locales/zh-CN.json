@@ -1,9 +1,9 @@
 {
   "appShell": {
     "nav": {
-      "chats": "聊天",
+      "chats": "智能体",
       "home": "主页",
-      "claws": "Claws",
+      "claws": "绑定",
       "team": "团队",
       "update": "Update",
       "updating": "Updating...",
@@ -27,8 +27,9 @@
       "searchPlaceholder": "Search assistants...",
       "searchAriaLabel": "Search assistants",
       "empty": "No assistants yet",
-      "createAction": "Create new assistant",
-      "manageAction": "Manage assistants & channels"
+      "createAcpAction": "打开 ACP 智能体",
+      "createTiaAction": "创建 TIA 智能体",
+      "manageAction": "管理智能体"
     },
     "teamSwitcher": {
       "label": "Current team",
@@ -39,7 +40,7 @@
       "createAction": "Create new team"
     },
     "context": {
-      "assistantsChannels": "Assistants & Channels"
+      "assistantsChannels": "智能体与频道"
     }
   },
   "common": {
@@ -75,8 +76,13 @@
       "title": "设置",
       "subtitle": "配置",
       "categories": "分类",
+      "groups": {
+        "acpReuse": "ACP 复用",
+        "advancedStudio": "高级 Studio"
+      },
       "items": {
         "general": "常规",
+        "acp": "ACP",
         "providers": "模型提供商",
         "security": "Security & Privacy",
         "channels": "频道",
@@ -84,9 +90,10 @@
         "webSearch": "Browsing",
         "mcpServers": "MCP 服务器",
         "coding": "Coding",
-        "runtimeSetup": "运行时设置",
+        "runtimeSetup": "ACP 与运行时",
         "display": "显示",
-        "aboutFeedback": "关于与反馈"
+        "aboutFeedback": "关于与反馈",
+        "agents": "智能体"
       }
     },
     "general": {
@@ -400,6 +407,7 @@
         "unexpectedError": "请求发生意外错误"
       },
       "typeLabels": {
+        "acp": "Local ACP Agent",
         "openai": "OpenAI 兼容",
         "openai-response": "OpenAI Responses",
         "openrouter": "OpenRouter",
@@ -410,6 +418,7 @@
         "claude-agent-acp": "Claude Agent ACP"
       },
       "typeDescriptions": {
+        "acp": "Runs a locally installed ACP-compatible agent command such as Codex, Claude, Gemini, Qwen Code, or OpenClaw.",
         "openai": "适用于 OpenAI API 及兼容服务（DeepSeek、Groq 等）。需要 API 密钥，支持自定义端点。",
         "openai-response": "适用于使用 OpenAI 响应格式的服务。用于返回 OpenAI 兼容响应的第三方 API。",
         "openrouter": "适用于 OpenRouter 原生 AI SDK provider 集成。这个类型主要用于内置的 OpenRouter 模板。",
@@ -514,40 +523,42 @@
       "empty": "还没有已配置的频道。",
       "available": "可用",
       "boundTo": "已连接到 {{assistantName}}",
-      "removeDisabled": "请先将此频道从对应的 claw 中解绑后再移除。",
+      "removeDisabled": "请先将此频道从对应的频道绑定中解绑后再移除。",
       "loadFailed": "加载频道失败"
     }
   },
   "claws": {
-    "eyebrow": "Claws",
-    "title": "Claws",
+    "eyebrow": "频道绑定",
+    "title": "频道绑定",
     "description": "将助手连接到外部 WhatsApp、Telegram、Lark 或企业微信频道，无需翻查原始设置。",
-    "newButton": "新建 Claw",
+    "newButton": "创建 ACP 智能体",
+    "newTiaButton": "创建 TIA 智能体（高级）",
     "telegram": {
       "description": "将助手连接到外部 WhatsApp、Telegram、Lark 或企业微信频道，无需翻查原始设置。",
       "emptyDescription": "从一个助手、一个提供商和一个 WhatsApp、Telegram、Lark 或企业微信频道开始，是最快的接入方式。",
       "pairingSummary": "已配对 {{pairedCount}} 个 · 待处理 {{pendingCount}} 个",
       "managePairingsButton": "管理配对",
-      "defaultClawName": "Telegram Claw"
+      "defaultClawName": "Telegram 绑定"
     },
     "wechat": {
       "manageSetupButton": "Open Setup"
     },
     "errors": {
-      "loadFailed": "加载 Claw 失败",
-      "saveFailed": "保存 Claw 失败",
-      "updateFailed": "更新 Claw 失败",
-      "deleteFailed": "删除 Claw 失败"
+      "loadFailed": "加载频道绑定失败",
+      "saveFailed": "保存频道绑定失败",
+      "updateFailed": "更新频道绑定失败",
+      "deleteFailed": "删除频道绑定失败"
     },
     "providers": {
       "noneSelected": "未选择提供商",
       "unknown": "未知提供商"
     },
     "empty": {
-      "title": "设置你的第一个 Claw",
+      "title": "设置你的第一个绑定",
       "description": "从一个助手、一个提供商和一个 WhatsApp、Telegram、Lark 或企业微信频道开始，是最快的接入方式。",
       "note": "助手身份、心跳以及后续 cron 仍由助手自身管理。",
-      "createButton": "创建第一个 Claw"
+      "createButton": "创建 ACP 智能体",
+      "createTiaButton": "创建 TIA 智能体（高级）"
     },
     "card": {
       "noChannelConnected": "未连接频道",
@@ -559,7 +570,7 @@
       "editButton": "编辑",
       "deleteButton": "删除",
       "deleteConfirmPrompt": "删除“{{name}}”？这也会删除它的所有线程。",
-      "deleteConfirmFallbackLabel": "未命名 Claw"
+      "deleteConfirmFallbackLabel": "未命名绑定"
     },
     "deleteDialog": {
       "title": "删除“{{name}}”？",
@@ -571,10 +582,10 @@
       }
     },
     "dialog": {
-      "editTitle": "编辑 Claw",
-      "createTitle": "创建 Claw",
-      "saveButton": "保存 Claw",
-      "createButton": "创建 Claw",
+      "editTitle": "编辑频道绑定",
+      "createTitle": "创建频道绑定",
+      "saveButton": "保存频道绑定",
+      "createButton": "创建频道绑定",
       "description": "通过一个轻量流程把助手连接到 Lark 或企业微信频道。",
       "telegramDescription": "通过一个轻量流程把助手连接到 WhatsApp、Telegram、Lark、企业微信或微信客服频道。",
       "fields": {
@@ -601,7 +612,7 @@
       "workspacePathReadOnly": "工作区路径会自动设置，无法更改",
       "selectProvider": "选择提供商",
       "selectChannel": "选择频道",
-      "enableAfterSaving": "保存后启用此 Claw",
+      "enableAfterSaving": "保存后启用此绑定",
       "defaultAssistantName": "我的第一个助手",
       "stepper": {
         "steps": {
@@ -615,7 +626,7 @@
           "next": "下一步"
         },
         "detailsDescription": "设置助手名称，并可选择一个工作区文件夹。",
-        "setupDescription": "Optionally install bun and a few recommended tools before creating this claw."
+        "setupDescription": "创建频道绑定前，可选安装 bun 和一些推荐工具。"
       },
       "channelTypes": {
         "discord": "Discord",
@@ -650,11 +661,11 @@
     },
     "channelSelector": {
       "title": "选择频道",
-      "description": "从已配置的频道中选择、添加新频道，或让这个 Claw 不绑定任何频道。",
+      "description": "从已配置的频道中选择、添加新频道，或让这个绑定不绑定任何频道。",
       "openButton": "选择频道",
       "empty": "还没有已配置的频道。",
       "available": "可用",
-      "inUseByCurrent": "当前 Claw 正在使用",
+      "inUseByCurrent": "当前绑定正在使用",
       "inUseByOther": "正由 {{assistantName}} 使用",
       "otherAssistantFallback": "其他助手",
       "actions": {
@@ -866,17 +877,26 @@
         "helperSelected": "消息会通过 Team 主管和所选成员流转。",
         "helperEmpty": "请先选择工作区并创建一个 Team 线程。",
         "openStatus": "打开 Team 状态"
-      }
+      },
+      "mixedMembersHint": "团队成员可以混合使用 ACP 智能体和 TIA 智能体。"
     },
     "configDialog": {
       "closeAriaLabel": "关闭 Team 配置对话框",
       "title": "配置 Team",
       "description": "选择主管模型，并决定哪些助手加入此团队。",
+      "memberOriginHint": "成员可以混合使用 ACP 智能体和 TIA 智能体。",
+      "createMemberHint": "需要新增成员？",
+      "createAcpMemberAction": "创建 ACP 智能体",
+      "createTiaMemberAction": "创建 TIA 智能体（高级）",
       "fields": {
         "supervisorProvider": "主管提供商",
         "teamDescription": "Team 描述",
         "supervisorModel": "主管模型",
         "teamMembers": "Team 成员"
+      },
+      "origins": {
+        "acp": "ACP 智能体",
+        "tia": "TIA 智能体"
       },
       "validation": {
         "supervisorProvider": "请选择主管提供商。",
@@ -913,17 +933,17 @@
     "sidebar": {
       "eyebrow": "主聊天",
       "title": "会话",
-      "creatingThread": "正在创建线程...",
-      "newThread": "新建线程",
-      "assistants": "助手",
+      "creatingThread": "正在创建对话...",
+      "newThread": "新对话",
+      "assistants": "智能体",
       "createAssistantAriaLabel": "创建助手",
       "assistantActionsAriaLabel": "助手 {{name}} 的操作",
       "assistantSwitcherAriaLabel": "Switch assistants",
       "backToAssistantsAriaLabel": "Back to assistants",
       "currentAssistant": "Current assistant",
       "deleteAssistantAriaLabel": "删除助手 {{name}}",
-      "loadingAssistants": "正在加载助手...",
-      "emptyAssistants": "还没有助手。请先在 Assistants 中创建一个。",
+      "loadingAssistants": "正在加载智能体...",
+      "emptyAssistants": "还没有智能体。请前往设置添加。",
       "emptyAssistantSearch": "No assistants match this search.",
       "loadingThreads": "正在加载线程...",
       "emptyThreads": "还没有线程。",
@@ -983,6 +1003,13 @@
       "closeCreateAriaLabel": "关闭创建助手对话框",
       "closeEditAriaLabel": "关闭助手配置对话框",
       "createTitle": "创建助手",
+      "createPathDescription": "可以先复用现有 ACP 智能体走轻量路径，或者直接创建完整的 TIA 托管智能体。",
+      "useExistingAcpTitle": "使用现有 ACP 智能体",
+      "useExistingAcpDescription": "复用 Codex ACP 或 Claude Agent ACP 运行时，选择工作区，并按需绑定频道。",
+      "useExistingAcpSubmit": "创建 ACP 智能体",
+      "advancedCreateTiaAction": "高级：创建 TIA 智能体",
+      "createTiaTitle": "创建 TIA 智能体",
+      "createTiaDescription": "使用完整的 TIA 编辑器开始，包含 Studio 工具、技能和活动控制。",
       "editTitle": "配置 {{name}}",
       "createDescription": "开始聊天前先配置工作区路径和提供商。",
       "editDescription": "无需离开聊天即可更新提供商、工作区和提示词。",
@@ -1046,6 +1073,11 @@
           "intervalInvalid": "Heartbeat interval must be a positive whole number",
           "promptRequired": "Heartbeat prompt is required"
         }
+      },
+      "studioUpgrade": {
+        "title": "升级为 TIA 智能体",
+        "description": "启用 Studio 功能后，这个 ACP 智能体即可使用 heartbeat、编码子智能体、MCP 工具、工作区技能和活动控制。",
+        "enableButton": "启用 Studio 功能"
       },
       "activity": {
         "description": "Review assistant heartbeat health and recent cron executions.",

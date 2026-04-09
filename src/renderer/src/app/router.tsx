@@ -3,7 +3,10 @@ import '../i18n'
 import { AppShell } from './layout/app-shell'
 import { ThreadPage } from '../features/threads/pages/thread-page'
 import { ClawsPage } from '../features/claws/pages/claws-page'
-import { ProvidersSettingsPage } from '../features/settings/pages/providers-settings-page'
+import {
+  AcpSettingsPage,
+  ProvidersSettingsPage
+} from '../features/settings/pages/providers-settings-page'
 import { CronJobsSettingsPage } from '../features/settings/pages/cron-jobs-settings-page'
 import { WebSearchSettingsPage } from '../features/settings/pages/web-search-settings-page'
 import { McpServersSettingsPage } from '../features/settings/pages/mcp-servers-settings-page'
@@ -19,6 +22,7 @@ import { TeamPage } from '../features/team/pages/team-page'
 import { ChannelsSettingsPage } from '../features/settings/pages/channels-settings-page'
 import { appEntryLoader } from './routes/app-entry-loader'
 import { AppEntryRoute } from './routes/app-entry-route'
+import { AgentsSettingsPage } from '../features/settings/pages/agents-settings-page'
 
 export const appRoutes: RouteObject[] = [
   {
@@ -36,11 +40,23 @@ export const appRoutes: RouteObject[] = [
         element: <ThreadPage />
       },
       {
+        path: 'agents',
+        element: <ThreadPage />
+      },
+      {
         path: 'chat/:assistantId',
         element: <ThreadPage />
       },
       {
+        path: 'agents/:assistantId',
+        element: <ThreadPage />
+      },
+      {
         path: 'chat/:assistantId/:threadId',
+        element: <ThreadPage />
+      },
+      {
+        path: 'agents/:assistantId/:threadId',
         element: <ThreadPage />
       },
       {
@@ -57,7 +73,15 @@ export const appRoutes: RouteObject[] = [
         children: [
           {
             index: true,
-            loader: () => redirect('/settings/general')
+            loader: () => redirect('/settings/agents')
+          },
+          {
+            path: 'agents',
+            element: <AgentsSettingsPage />
+          },
+          {
+            path: 'acp',
+            element: <AcpSettingsPage />
           },
           {
             path: 'general',

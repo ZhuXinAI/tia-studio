@@ -23,6 +23,8 @@ type TeamConfigDialogProps = {
   isSaving: boolean
   errorMessage: string | null
   onClose: () => void
+  onCreateAcpMember?: () => void
+  onCreateTiaMember?: () => void
   onSubmit: (input: TeamConfigDialogValues) => Promise<void>
 }
 
@@ -34,6 +36,15 @@ function toggleAssistantId(current: string[], assistantId: string): string[] {
   return [...current, assistantId]
 }
 
+function resolveAssistantOriginLabel(
+  assistant: Pick<AssistantRecord, 'origin'>,
+  t: (key: string) => string
+): string {
+  return assistant.origin === 'external-acp'
+    ? t('team.configDialog.origins.acp')
+    : t('team.configDialog.origins.tia')
+}
+
 export function TeamConfigDialog({
   isOpen,
   workspace,
@@ -43,6 +54,8 @@ export function TeamConfigDialog({
   isSaving,
   errorMessage,
   onClose,
+  onCreateAcpMember,
+  onCreateTiaMember,
   onSubmit
 }: TeamConfigDialogProps): React.JSX.Element | null {
   const { t } = useTranslation()
@@ -205,6 +218,35 @@ export function TeamConfigDialog({
                 <legend className="text-sm font-medium">
                   {t('team.configDialog.fields.teamMembers')}
                 </legend>
+                <p className="text-muted-foreground text-xs">
+                  {t('team.configDialog.memberOriginHint')}
+                </p>
+                {onCreateAcpMember && onCreateTiaMember ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-muted-foreground text-xs">
+                      {t('team.configDialog.createMemberHint')}
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-7 rounded-full px-3"
+                      onClick={onCreateAcpMember}
+                      disabled={isSaving}
+                    >
+                      {t('team.configDialog.createAcpMemberAction')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 rounded-full px-3"
+                      onClick={onCreateTiaMember}
+                      disabled={isSaving}
+                    >
+                      {t('team.configDialog.createTiaMemberAction')}
+                    </Button>
+                  </div>
+                ) : null}
                 <div className="grid gap-2 sm:grid-cols-2">
                   {sortedAssistants.map((assistant) => (
                     <label
@@ -218,7 +260,10 @@ export function TeamConfigDialog({
                           setAssistantIds((current) => toggleAssistantId(current, assistant.id))
                         }
                       />
-                      <span>{assistant.name}</span>
+                      <span className="min-w-0 flex-1 truncate">{assistant.name}</span>
+                      <span className="rounded-full border border-border/70 bg-muted px-2 py-0.5 text-[11px] leading-4 text-muted-foreground">
+                        {resolveAssistantOriginLabel(assistant, t)}
+                      </span>
                     </label>
                   ))}
                 </div>

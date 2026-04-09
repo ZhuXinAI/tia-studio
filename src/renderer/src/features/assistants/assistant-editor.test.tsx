@@ -342,6 +342,61 @@ describe('assistant editor', () => {
     )
   })
 
+  it('keeps studio-only tabs hidden for ACP agents', async () => {
+    const onSubmit = vi.fn(async () => undefined)
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <AssistantEditor
+            providers={[provider]}
+            mcpServers={{}}
+            initialValue={{
+              id: 'assistant-acp',
+              name: 'ACP Planner',
+              description: '',
+              instructions: '',
+              enabled: true,
+              origin: 'external-acp',
+              studioFeaturesEnabled: false,
+              providerId: 'provider-1',
+              workspaceConfig: { rootPath: '/Users/windht/Dev/tia-studio' },
+              skillsConfig: {},
+              mcpConfig: {},
+              maxSteps: 100,
+              memoryConfig: null,
+              createdAt: '2026-03-02T00:00:00.000Z',
+              updatedAt: '2026-03-02T00:00:00.000Z'
+            }}
+            showActivityTab
+            onSubmit={onSubmit}
+          />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    expect(container.textContent).not.toContain('Upgrade to TIA Agent')
+    expect(container.textContent).not.toContain('Coding')
+    expect(container.textContent).not.toContain('Tools')
+    expect(container.textContent).not.toContain('Skills')
+    expect(container.textContent).not.toContain('Activity')
+    expect(container.textContent).not.toContain('Enable heartbeat')
+
+    const submitButton = findButtonByText(container, 'Update Assistant')
+    await act(async () => {
+      submitButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        origin: 'external-acp',
+        studioFeaturesEnabled: false
+      }),
+      null
+    )
+  })
+
   it('shows configured MCP servers when the tools tab opens', async () => {
     await act(async () => {
       root.render(

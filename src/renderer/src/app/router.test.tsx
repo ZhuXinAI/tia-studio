@@ -31,21 +31,21 @@ describe('app router', () => {
     window.localStorage.clear()
   })
 
-  it('redirects root route to /chat when no app mode has been stored', async () => {
+  it('redirects root route to /agents when no app mode has been stored', async () => {
     const router = createAppMemoryRouter(['/'])
 
     await router.navigate('/')
-    expect(router.state.location.pathname).toBe('/chat')
+    expect(router.state.location.pathname).toBe('/agents')
   })
 
-  it('redirects root route to /chat when chat mode was the last active mode', async () => {
+  it('redirects root route to /agents when chat mode was the last active mode', async () => {
     window.localStorage.setItem('tia.app.last-mode', JSON.stringify({ mode: 'chat' }))
 
     const router = createAppMemoryRouter(['/'])
 
     await router.navigate('/')
 
-    expect(router.state.location.pathname).toBe('/chat')
+    expect(router.state.location.pathname).toBe('/agents')
   })
 
   it('redirects root route to /team when team mode was the last active mode', async () => {
@@ -58,11 +58,11 @@ describe('app router', () => {
     expect(router.state.location.pathname).toBe('/team')
   })
 
-  it('redirects settings index route to /settings/general', async () => {
+  it('redirects settings index route to /settings/agents', async () => {
     const router = createAppMemoryRouter(['/settings'])
 
     await router.navigate('/settings')
-    expect(router.state.location.pathname).toBe('/settings/general')
+    expect(router.state.location.pathname).toBe('/settings/agents')
   })
 
   it('renders general settings route with settings sidebar', () => {
@@ -71,7 +71,16 @@ describe('app router', () => {
     expect(html).toContain('General Settings')
     expect(html).toContain('Language')
     expect(html).toContain('General')
-    expect(html).toContain('Model Provider')
+    expect(html).toContain('Agents')
+    expect(html).toContain('Providers')
+  })
+
+  it('renders agents settings route', () => {
+    const html = renderRouter(['/settings/agents'])
+
+    expect(html).toContain('ACP agents now live in the workspace selector')
+    expect(html).toContain('Open Agents Workspace')
+    expect(html).toContain('Create TIA Agent')
   })
 
   it('renders provider settings route', () => {
@@ -79,7 +88,8 @@ describe('app router', () => {
 
     expect(html).toContain('PROVIDERS')
     expect(html).toContain('Search providers...')
-    expect(html).toContain('Model Provider')
+    expect(html).toContain('Agents')
+    expect(html).toContain('Providers')
     expect(html).toContain('Security &amp; Privacy')
     expect(html).toContain('Browsing')
     expect(html).toContain('MCP Servers')
@@ -136,7 +146,7 @@ describe('app router', () => {
     const html = renderRouter(['/settings/display'])
 
     expect(html).toContain('Display Settings')
-    expect(html).toContain('Model Provider')
+    expect(html).toContain('Providers')
     expect(html).toContain('Browsing')
     expect(html).toContain('MCP Servers')
     expect(html).toContain('About &amp; Feedback')
@@ -153,9 +163,10 @@ describe('app router', () => {
   it('renders the assistant and channel management route', () => {
     const html = renderRouter(['/claws'])
 
-    expect(html).toContain('Assistants &amp; Channels')
+    expect(html).toContain('Channel Bindings')
     expect(html).toContain('Create your first assistant')
-    expect(html).toContain('Create Assistant')
+    expect(html).toContain('Create ACP Agent')
+    expect(html).toContain('Create TIA Agent (Advanced)')
   })
 
   it('renders cron jobs settings route', () => {
@@ -171,26 +182,24 @@ describe('app router', () => {
   it('renders chat route with the thread sidebar shell while assistant detail restores', () => {
     const html = renderRouter(['/chat'])
 
-    expect(html).toContain('Conversations')
-    expect(html).toContain('Loading assistants...')
+    expect(html).toContain('New chat')
+    expect(html).toContain('Loading agents...')
   })
 
-  it('renders header nav with chats, team, and the shell context switcher', () => {
+  it('renders the full chat header with team and agents navigation', () => {
     const html = renderRouter(['/chat'])
 
     expect(html).toContain('aria-label="Open settings"')
-    expect(html).toContain('Assistants')
-    expect(html).toContain('Teams')
-    expect(html).toContain('Assistant')
-    expect(html).toContain('aria-label="Switch active assistant"')
-    expect(html).not.toContain('Control Center')
+    expect(html).toContain('Team')
+    expect(html).toContain('Agents')
+    expect(html).not.toContain('ACP Workspace')
   })
 
   it('renders the team route from the top nav', () => {
     const html = renderRouter(['/team'])
 
-    expect(html).toContain('Assistants')
-    expect(html).toContain('Teams')
+    expect(html).toContain('Agents')
+    expect(html).toContain('Team')
     expect(html).toContain('Team Threads')
     expect(html).toContain('Team Chat')
     expect(html).toContain('Team Status')

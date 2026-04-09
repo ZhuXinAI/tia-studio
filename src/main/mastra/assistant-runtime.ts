@@ -338,6 +338,13 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
   async streamChat(params: StreamChatParams): Promise<ReadableStream<UIMessageChunk>> {
     const { assistant, provider } = await this.getAssistantContext(params.assistantId)
+    if (!this.supportsStudioFeatures(assistant)) {
+      throw new ChatRouteError(
+        409,
+        'assistant_studio_features_required',
+        'Assistant studio features are required for cron jobs'
+      )
+    }
     const thread = await this.getThreadForAssistant({
       assistantId: params.assistantId,
       threadId: params.threadId
@@ -521,6 +528,13 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
   async runHeartbeat(params: RunHeartbeatParams): Promise<CronJobRunResult> {
     const { assistant, provider } = await this.getAssistantContext(params.assistantId)
+    if (!this.supportsStudioFeatures(assistant)) {
+      throw new ChatRouteError(
+        409,
+        'assistant_studio_features_required',
+        'Assistant studio features are required for heartbeat'
+      )
+    }
     const thread = await this.getThreadForAssistant({
       assistantId: params.assistantId,
       threadId: params.threadId
@@ -1526,10 +1540,17 @@ ${input.prompt}`
       cronToolsEnabled: true
     }
   ): Promise<void> {
-    const enabledMcpServers = await this.resolveEnabledMcpServers(assistant.mcpConfig ?? {})
+    const studioFeaturesEnabled = this.supportsStudioFeatures(assistant)
+    const enabledMcpServers = studioFeaturesEnabled
+      ? await this.resolveEnabledMcpServers(assistant.mcpConfig ?? {})
+      : {}
     const mcpServersSignature = JSON.stringify(enabledMcpServers)
-    const guardrailConfig = await this.resolveGuardrailConfig(provider)
-    await this.assertAcpProviderReady(guardrailConfig.provider)
+    const guardrailConfig = studioFeaturesEnabled
+      ? await this.resolveGuardrailConfig(provider)
+      : this.buildDisabledGuardrailConfig(provider)
+    if (studioFeaturesEnabled) {
+      await this.assertAcpProviderReady(guardrailConfig.provider)
+    }
     const browserAutomationMode = await this.resolveBrowserAutomationMode()
     const browserAgentName = `${assistant.id}:browser-agent`
     const legacyCodingAgentName = `${assistant.id}:coding-agent`
@@ -1542,6 +1563,8 @@ ${input.prompt}`
       assistant.id,
       assistant.updatedAt,
       assistant.instructions,
+      assistant.origin,
+      assistant.studioFeaturesEnabled ? 'studio:on' : 'studio:off',
       provider.id,
       provider.updatedAt,
       provider.type,
@@ -1629,11 +1652,22 @@ ${input.prompt}`
       }
     })
 
-    const mcpTools = await this.buildMcpTools(assistant.id, enabledMcpServers)
-    const soulMemoryTools = workspaceRootPath ? createSoulMemoryTools({ workspaceRootPath }) : {}
-    const workLogTools = workspaceRootPath ? createWorkLogTools({ workspaceRootPath }) : {}
+    const mcpTools = studioFeaturesEnabled
+      ? await this.buildMcpTools(assistant.id, enabledMcpServers)
+      : {}
+    const soulMemoryTools =
+      studioFeaturesEnabled && workspaceRootPath
+        ? createSoulMemoryTools({ workspaceRootPath })
+        : {}
+    const workLogTools =
+      studioFeaturesEnabled && workspaceRootPath
+        ? createWorkLogTools({ workspaceRootPath })
+        : {}
     const cronTools =
-      workspaceRootPath && this.options.cronJobService && options.cronToolsEnabled !== false
+      studioFeaturesEnabled &&
+      workspaceRootPath &&
+      this.options.cronJobService &&
+      options.cronToolsEnabled !== false
         ? createCronTools({
             assistantId: assistant.id,
             cronJobService: this.options.cronJobService
@@ -1767,10 +1801,9 @@ ${input.prompt}`
         : `\nChannel delivery guidelines:\n- ${CHANNEL_SPLITTER_INSTRUCTION}\n- Keep channel replies short and natural.\n- Do not mention [[BR]] to the user.\n${channelImageGuidance}`
       : ''
     const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${webFetchInstructions}${builtInBrowserInstructions}${tiaBrowserToolInstructions}${builtInBrowserDelegateInstructions}${codingAgentInstructions}${channelInstructions}\n`
-    const workspace = await this.buildWorkspace(
-      assistant.workspaceConfig ?? {},
-      assistant.skillsConfig ?? {}
-    )
+    const workspace = studioFeaturesEnabled
+      ? await this.buildWorkspace(assistant.workspaceConfig ?? {}, assistant.skillsConfig ?? {})
+      : null
     if (this.options.tiaBrowserToolManager && browserAutomationMode === 'tia-browser-tool') {
       const browserAgentMemory = new Memory({
         ...(storage ? { storage } : {}),
@@ -1834,7 +1867,7 @@ ${input.prompt}`
       }
     }
     const inputProcessors = [
-      ...(workspaceRootPath
+      ...(studioFeaturesEnabled && workspaceRootPath
         ? [assistantWorkspaceContextInputProcessor({ workspaceRootPath })]
         : []),
       ...(guardrailConfig.promptInjectionEnabled
@@ -1931,6 +1964,26 @@ ${input.prompt}`
     }
   }
 
+  private buildDisabledGuardrailConfig(
+    assistantProvider: AssistantContext['provider']
+  ): ResolvedGuardrailConfig {
+    return {
+      promptInjectionEnabled: false,
+      piiDetectionEnabled: false,
+      requestedProviderId: null,
+      provider: assistantProvider,
+      source: 'assistant'
+    }
+  }
+
+  private supportsStudioFeatures(assistant: AssistantContext['assistant']): boolean {
+    return (
+      assistant.origin === 'tia' ||
+      assistant.origin === 'built-in' ||
+      assistant.studioFeaturesEnabled === true
+    )
+  }
+
   private isUsableGuardrailProvider(provider: AppProvider | null): provider is AppProvider {
     return Boolean(provider && provider.enabled && provider.selectedModel.trim().length > 0)
   }
@@ -1980,7 +2033,10 @@ ${input.prompt}`
     },
     scopeId: string
   ): string | null {
-    if (!this.options.acpHomeRootPath || !isAcpProviderType(provider.type)) {
+    if (
+      !this.options.acpHomeRootPath ||
+      (provider.type !== 'acp' && !isAcpProviderType(provider.type))
+    ) {
       return null
     }
 

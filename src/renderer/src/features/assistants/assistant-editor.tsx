@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronDown } from 'lucide-react'
-import type { SaveAssistantInput, AssistantRecord } from './assistants-query'
+import type { AssistantOrigin, SaveAssistantInput, AssistantRecord } from './assistants-query'
 import { AssistantActivityPanel } from './assistant-activity-panel'
 import {
   DEFAULT_ASSISTANT_HEARTBEAT_INTERVAL_MINUTES,
@@ -26,12 +26,14 @@ import { Field, FieldLabel } from '../../components/ui/field'
 import { cn } from '../../lib/utils'
 import { useTranslation } from '../../i18n/use-app-translation'
 import { ModelPickerDialog } from './model-picker-dialog'
+import { isAcpAssistantOrigin } from './assistant-origin'
 import {
   getManagedRuntimeStatus,
   getRequiredManagedRuntimeKind,
   isManagedRuntimeReady,
   type ManagedRuntimesState
 } from '../settings/runtimes/managed-runtimes-query'
+import { isModelProviderType } from '../settings/providers/provider-type-options'
 import {
   listAssistantSkills,
   removeAssistantWorkspaceSkill,
@@ -91,10 +93,16 @@ export type AssistantEditorChannelSetupAction = {
 
 type AssistantEditorTab = 'essential' | 'channels' | 'coding' | 'tools' | 'skills' | 'activity'
 
+export type AssistantEditorDefaultConfig = {
+  origin: AssistantOrigin
+  studioFeaturesEnabled: boolean
+}
+
 type AssistantEditorProps = {
   providers: ProviderRecord[]
   mcpServers: Record<string, McpServerRecord>
   initialValue?: AssistantRecord | null
+  defaultConfig?: AssistantEditorDefaultConfig
   isSubmitting?: boolean
   channels?: AssistantEditorChannelsProps
   channelSetupAction?: AssistantEditorChannelSetupAction | null
@@ -381,6 +389,7 @@ export function AssistantEditor({
   providers,
   mcpServers,
   initialValue,
+  defaultConfig,
   isSubmitting,
   channels,
   channelSetupAction,
@@ -390,10 +399,13 @@ export function AssistantEditor({
   onSubmit
 }: AssistantEditorProps): React.JSX.Element {
   const { t } = useTranslation()
+  const assistantOrigin = initialValue?.origin ?? defaultConfig?.origin ?? 'tia'
+  const isAcpAssistant = isAcpAssistantOrigin(assistantOrigin)
   const [values, setValues] = useState<AssistantEditorValues>(() =>
     toInitialValues(initialValue, mcpServers, providers)
   )
   const [activeTab, setActiveTab] = useState<AssistantEditorTab>('essential')
+  const studioFeaturesEnabled = !isAcpAssistant
   const [error, setError] = useState<string | null>(null)
   const [isSelectingWorkspacePath, setIsSelectingWorkspacePath] = useState(false)
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false)
@@ -410,6 +422,7 @@ export function AssistantEditor({
   )
   const [isHeartbeatLoading, setIsHeartbeatLoading] = useState(false)
   const [heartbeatError, setHeartbeatError] = useState<string | null>(null)
+  const supportsStudioFeatures = studioFeaturesEnabled
 
   useEffect(() => {
     if (activeTab === 'channels' && !channels) {
@@ -417,10 +430,15 @@ export function AssistantEditor({
       return
     }
 
+    if (!supportsStudioFeatures && activeTab !== 'essential' && activeTab !== 'channels') {
+      setActiveTab('essential')
+      return
+    }
+
     if (activeTab === 'activity' && (!showActivityTab || !initialValue)) {
       setActiveTab('essential')
     }
-  }, [activeTab, channels, initialValue, showActivityTab])
+  }, [activeTab, channels, initialValue, showActivityTab, supportsStudioFeatures])
 
   const title = useMemo(() => {
     return initialValue ? t('assistants.editor.editTitle') : t('assistants.editor.createTitle')
@@ -429,6 +447,10 @@ export function AssistantEditor({
   const selectedProvider = useMemo(() => {
     return providers.find((provider) => provider.id === values.providerId) ?? null
   }, [providers, values.providerId])
+  const modelProviders = useMemo(
+    () => providers.filter((provider) => isModelProviderType(provider.type)),
+    [providers]
+  )
   const codingProvidersByKind = useMemo(() => {
     return Object.fromEntries(
       CODING_RUNTIME_KINDS.map((kind) => [
@@ -723,6 +745,8 @@ export function AssistantEditor({
         name: values.name.trim(),
         description: values.description.trim(),
         instructions: values.instructions.trim(),
+        origin: assistantOrigin,
+        studioFeaturesEnabled,
         providerId: values.providerId,
         workspaceConfig:
           workspacePath.length > 0
@@ -824,43 +848,47 @@ export function AssistantEditor({
               {t('assistants.editor.tabs.channels')}
             </button>
           ) : null}
-          <button
-            type="button"
-            className={cn(
-              'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
-              activeTab === 'coding'
-                ? 'bg-secondary text-secondary-foreground'
-                : 'hover:bg-accent/40'
-            )}
-            onClick={() => setActiveTab('coding')}
-          >
-            {t('assistants.editor.tabs.coding')}
-          </button>
-          <button
-            type="button"
-            className={cn(
-              'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
-              activeTab === 'tools'
-                ? 'bg-secondary text-secondary-foreground'
-                : 'hover:bg-accent/40'
-            )}
-            onClick={() => setActiveTab('tools')}
-          >
-            {t('assistants.editor.tabs.tools')}
-          </button>
-          <button
-            type="button"
-            className={cn(
-              'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
-              activeTab === 'skills'
-                ? 'bg-secondary text-secondary-foreground'
-                : 'hover:bg-accent/40'
-            )}
-            onClick={() => setActiveTab('skills')}
-          >
-            {t('assistants.editor.tabs.skills')}
-          </button>
-          {showActivityTab && initialValue ? (
+          {supportsStudioFeatures ? (
+            <>
+              <button
+                type="button"
+                className={cn(
+                  'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
+                  activeTab === 'coding'
+                    ? 'bg-secondary text-secondary-foreground'
+                    : 'hover:bg-accent/40'
+                )}
+                onClick={() => setActiveTab('coding')}
+              >
+                {t('assistants.editor.tabs.coding')}
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
+                  activeTab === 'tools'
+                    ? 'bg-secondary text-secondary-foreground'
+                    : 'hover:bg-accent/40'
+                )}
+                onClick={() => setActiveTab('tools')}
+              >
+                {t('assistants.editor.tabs.tools')}
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  'w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
+                  activeTab === 'skills'
+                    ? 'bg-secondary text-secondary-foreground'
+                    : 'hover:bg-accent/40'
+                )}
+                onClick={() => setActiveTab('skills')}
+              >
+                {t('assistants.editor.tabs.skills')}
+              </button>
+            </>
+          ) : null}
+          {supportsStudioFeatures && showActivityTab && initialValue ? (
             <button
               type="button"
               className={cn(
@@ -895,19 +923,27 @@ export function AssistantEditor({
                 <FieldLabel htmlFor="assistant-provider">
                   {t('assistants.editor.fields.provider')}
                 </FieldLabel>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full justify-between h-9 font-normal"
-                  onClick={() => setIsModelPickerOpen(true)}
-                >
-                  <span className="truncate">
+                {isAcpAssistant ? (
+                  <div className="border-input flex h-9 items-center rounded-md border bg-transparent px-3 text-sm text-muted-foreground">
                     {selectedProvider
                       ? `${selectedProvider.name} (${selectedProvider.selectedModel})`
                       : t('assistants.editor.selectProvider')}
-                  </span>
-                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-between h-9 font-normal"
+                    onClick={() => setIsModelPickerOpen(true)}
+                  >
+                    <span className="truncate">
+                      {selectedProvider
+                        ? `${selectedProvider.name} (${selectedProvider.selectedModel})`
+                        : t('assistants.editor.selectProvider')}
+                    </span>
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                )}
               </Field>
 
               <Field>
@@ -981,7 +1017,7 @@ export function AssistantEditor({
                 />
               </Field>
 
-              {initialValue ? (
+              {initialValue && supportsStudioFeatures ? (
                 <section className="space-y-3 rounded-xl border border-border/70 bg-card/50 p-4">
                   <div className="space-y-1">
                     <h3 className="text-base font-medium">
@@ -1471,7 +1507,7 @@ export function AssistantEditor({
 
       <ModelPickerDialog
         open={isModelPickerOpen}
-        providers={providers}
+        providers={modelProviders}
         selectedProviderId={values.providerId}
         onSelect={(providerId) => handleInput('providerId', providerId)}
         onOpenChange={setIsModelPickerOpen}

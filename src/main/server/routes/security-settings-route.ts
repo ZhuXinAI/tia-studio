@@ -28,7 +28,14 @@ function parseJsonBodyErrorResponse(): {
 function isEligibleGuardrailProvider(
   provider: AppProvider | null | undefined
 ): provider is AppProvider {
-  return Boolean(provider && provider.enabled && provider.selectedModel.trim().length > 0)
+  return Boolean(
+    provider &&
+      provider.enabled &&
+      provider.selectedModel.trim().length > 0 &&
+      provider.type !== 'acp' &&
+      provider.type !== 'codex-acp' &&
+      provider.type !== 'claude-agent-acp'
+  )
 }
 
 function toProviderOption(provider: AppProvider): SecurityProviderOption {

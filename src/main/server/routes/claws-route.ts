@@ -768,8 +768,10 @@ export function registerClawsRoute(app: Hono, options: RegisterClawsRouteOptions
       : null
 
   app.get('/v1/claws', async (context) => {
+    const claws = await listVisibleClaws(options)
     return context.json({
-      claws: await listVisibleClaws(options),
+      claws,
+      channelBindings: claws,
       configuredChannels: await listConfiguredChannels(options)
     })
   })

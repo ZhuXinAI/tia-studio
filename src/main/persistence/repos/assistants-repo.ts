@@ -2,6 +2,10 @@ import { randomUUID } from 'node:crypto'
 import type { AppDatabase } from '../client'
 
 const DEFAULT_ASSISTANT_MAX_STEPS = 100
+const BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__tiaBuiltInDefaultAgent'
+
+export const assistantOrigins = ['tia', 'external-acp', 'built-in'] as const
+export type AssistantOrigin = (typeof assistantOrigins)[number]
 
 export type AppAssistant = {
   id: string
@@ -9,6 +13,8 @@ export type AppAssistant = {
   description: string
   instructions: string
   enabled: boolean
+  origin: AssistantOrigin
+  studioFeaturesEnabled: boolean
   providerId: string | null
   workspaceConfig: Record<string, unknown>
   skillsConfig: Record<string, unknown>
@@ -24,6 +30,8 @@ export type CreateAssistantInput = {
   description?: string
   instructions?: string
   enabled?: boolean
+  origin?: AssistantOrigin
+  studioFeaturesEnabled?: boolean
   providerId: string | null
   workspaceConfig?: Record<string, unknown>
   skillsConfig?: Record<string, unknown>
@@ -104,12 +112,55 @@ function parseJsonBooleanMap(value: unknown): Record<string, boolean> {
   return Object.fromEntries(entries)
 }
 
+function parseAssistantOrigin(
+  value: unknown,
+  mcpConfig: Record<string, boolean>
+): AssistantOrigin {
+  if (mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] === true) {
+    return 'built-in'
+  }
+
+  if (typeof value === 'string') {
+    const normalizedValue = value.trim()
+    if (normalizedValue === 'tia' || normalizedValue === 'external-acp' || normalizedValue === 'built-in') {
+      return normalizedValue
+    }
+  }
+
+  return 'tia'
+}
+
+function parseBooleanWithDefault(value: unknown, defaultValue: boolean): boolean {
+  if (typeof value === 'boolean') {
+    return value
+  }
+
+  if (typeof value === 'number') {
+    return value !== 0
+  }
+
+  if (typeof value === 'string') {
+    const normalizedValue = value.trim().toLowerCase()
+    if (normalizedValue === '1' || normalizedValue === 'true') {
+      return true
+    }
+
+    if (normalizedValue === '0' || normalizedValue === 'false') {
+      return false
+    }
+  }
+
+  return defaultValue
+}
+
 function parseAssistantRow(row: Record<string, unknown>): AppAssistant {
   const parsedMaxSteps = Number(row.max_steps)
   const maxSteps =
     Number.isInteger(parsedMaxSteps) && parsedMaxSteps > 0
       ? parsedMaxSteps
       : DEFAULT_ASSISTANT_MAX_STEPS
+  const mcpConfig = parseJsonBooleanMap(row.mcp_config)
+  const origin = parseAssistantOrigin(row.origin, mcpConfig)
 
   return {
     id: String(row.id),
@@ -117,10 +168,12 @@ function parseAssistantRow(row: Record<string, unknown>): AppAssistant {
     description: String(row.description ?? ''),
     instructions: String(row.instructions),
     enabled: Number(row.enabled) === 1,
+    origin,
+    studioFeaturesEnabled: parseBooleanWithDefault(row.studio_features_enabled, true),
     providerId: String(row.provider_id),
     workspaceConfig: normalizeWorkspaceConfig(parseJsonObject(row.workspace_config)),
     skillsConfig: parseJsonObject(row.skills_config),
-    mcpConfig: parseJsonBooleanMap(row.mcp_config),
+    mcpConfig,
     maxSteps,
     memoryConfig: row.memory_config ? parseJsonObject(row.memory_config) : null,
     createdAt: String(row.created_at),
@@ -133,7 +186,7 @@ export class AssistantsRepository {
 
   async list(): Promise<AppAssistant[]> {
     const result = await this.db.execute(
-      'SELECT id, name, description, instructions, enabled, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config, created_at, updated_at FROM app_assistants ORDER BY created_at DESC'
+      'SELECT id, name, description, instructions, enabled, origin, studio_features_enabled, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config, created_at, updated_at FROM app_assistants ORDER BY created_at DESC'
     )
 
     return result.rows.map((row) => parseAssistantRow(row as Record<string, unknown>))
@@ -141,7 +194,7 @@ export class AssistantsRepository {
 
   async getById(id: string): Promise<AppAssistant | null> {
     const result = await this.db.execute(
-      'SELECT id, name, description, instructions, enabled, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config, created_at, updated_at FROM app_assistants WHERE id = ? LIMIT 1',
+      'SELECT id, name, description, instructions, enabled, origin, studio_features_enabled, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config, created_at, updated_at FROM app_assistants WHERE id = ? LIMIT 1',
       [id]
     )
     const row = result.rows.at(0)
@@ -169,18 +222,22 @@ export class AssistantsRepository {
   async create(input: CreateAssistantInput): Promise<AppAssistant> {
     const id = randomUUID()
     const workspaceConfig = normalizeWorkspaceConfig(input.workspaceConfig)
+    const mcpConfig = input.mcpConfig ?? {}
+    const origin = parseAssistantOrigin(input.origin, mcpConfig)
     await this.db.execute(
-      'INSERT INTO app_assistants (id, name, description, instructions, enabled, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO app_assistants (id, name, description, instructions, enabled, origin, studio_features_enabled, provider_id, workspace_config, skills_config, mcp_config, max_steps, memory_config) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
         input.name,
         input.description ?? '',
         input.instructions ?? '',
         input.enabled === true ? 1 : 0,
+        origin,
+        input.studioFeaturesEnabled === false ? 0 : 1,
         input.providerId,
         JSON.stringify(workspaceConfig),
         JSON.stringify(input.skillsConfig ?? {}),
-        JSON.stringify(input.mcpConfig ?? {}),
+        JSON.stringify(mcpConfig),
         input.maxSteps ?? DEFAULT_ASSISTANT_MAX_STEPS,
         input.memoryConfig ? JSON.stringify(input.memoryConfig) : null
       ]
@@ -203,18 +260,28 @@ export class AssistantsRepository {
     const workspaceConfig = normalizeWorkspaceConfig(
       input.workspaceConfig ?? existing.workspaceConfig
     )
+    const mcpConfig = input.mcpConfig ?? existing.mcpConfig
+    const origin = parseAssistantOrigin(input.origin ?? existing.origin, mcpConfig)
 
     await this.db.execute(
-      'UPDATE app_assistants SET name = ?, description = ?, instructions = ?, enabled = ?, provider_id = ?, workspace_config = ?, skills_config = ?, mcp_config = ?, max_steps = ?, memory_config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE app_assistants SET name = ?, description = ?, instructions = ?, enabled = ?, origin = ?, studio_features_enabled = ?, provider_id = ?, workspace_config = ?, skills_config = ?, mcp_config = ?, max_steps = ?, memory_config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [
         input.name ?? existing.name,
         input.description ?? existing.description,
         input.instructions ?? existing.instructions,
         input.enabled === undefined ? (existing.enabled ? 1 : 0) : input.enabled ? 1 : 0,
+        origin,
+        input.studioFeaturesEnabled === undefined
+          ? existing.studioFeaturesEnabled
+            ? 1
+            : 0
+          : input.studioFeaturesEnabled
+            ? 1
+            : 0,
         input.providerId ?? existing.providerId,
         JSON.stringify(workspaceConfig),
         JSON.stringify(input.skillsConfig ?? existing.skillsConfig),
-        JSON.stringify(input.mcpConfig ?? existing.mcpConfig),
+        JSON.stringify(mcpConfig),
         input.maxSteps ?? existing.maxSteps,
         input.memoryConfig
           ? JSON.stringify(input.memoryConfig)

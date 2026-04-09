@@ -46,6 +46,17 @@ function hasWorkspaceRootPath(workspaceConfig: Record<string, unknown>): boolean
   return typeof workspaceConfig.rootPath === 'string' && workspaceConfig.rootPath.trim().length > 0
 }
 
+function supportsStudioFeatures(assistant: {
+  origin: 'tia' | 'external-acp' | 'built-in'
+  studioFeaturesEnabled: boolean
+}): boolean {
+  return (
+    assistant.origin === 'tia' ||
+    assistant.origin === 'built-in' ||
+    assistant.studioFeaturesEnabled === true
+  )
+}
+
 export class AssistantHeartbeatsService {
   constructor(private readonly options: AssistantHeartbeatsServiceOptions) {}
 
@@ -124,6 +135,14 @@ export class AssistantHeartbeatsService {
         400,
         'assistant_workspace_required',
         'Assistant workspace is required for heartbeat'
+      )
+    }
+
+    if (!supportsStudioFeatures(assistant)) {
+      throw new AssistantHeartbeatsServiceError(
+        400,
+        'assistant_studio_features_required',
+        'Assistant studio features are required for heartbeat'
       )
     }
   }

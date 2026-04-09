@@ -27,7 +27,8 @@
       "searchPlaceholder": "Search assistants...",
       "searchAriaLabel": "Search assistants",
       "empty": "No assistants yet",
-      "createAction": "Create new assistant",
+      "createAcpAction": "Create ACP Agent",
+      "createTiaAction": "Create TIA Agent (Advanced)",
       "manageAction": "Manage assistants & channels"
     },
     "teamSwitcher": {
@@ -75,6 +76,10 @@
       "title": "設定",
       "subtitle": "構成",
       "categories": "カテゴリ",
+      "groups": {
+        "acpReuse": "ACP Reuse",
+        "advancedStudio": "Advanced Studio"
+      },
       "items": {
         "general": "一般",
         "providers": "モデルプロバイダー",
@@ -86,7 +91,8 @@
         "coding": "Coding",
         "runtimeSetup": "ランタイム設定",
         "display": "表示",
-        "aboutFeedback": "情報とフィードバック"
+        "aboutFeedback": "情報とフィードバック",
+        "agents": "Agents"
       }
     },
     "general": {
@@ -400,6 +406,7 @@
         "unexpectedError": "Unexpected request error"
       },
       "typeLabels": {
+        "acp": "Local ACP Agent",
         "openai": "OpenAI Compatible",
         "openai-response": "OpenAI Responses",
         "openrouter": "OpenRouter",
@@ -410,6 +417,7 @@
         "claude-agent-acp": "Claude Agent ACP"
       },
       "typeDescriptions": {
+        "acp": "Runs a locally installed ACP-compatible agent command such as Codex, Claude, Gemini, Qwen Code, or OpenClaw.",
         "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
         "openai-response": "For services using OpenAI response format. Use this for third-party APIs that return OpenAI-compatible responses.",
         "openrouter": "For OpenRouter's native AI SDK provider integration. This type is intended for built-in OpenRouter templates.",
@@ -523,6 +531,7 @@
     "title": "Claws",
     "description": "生の設定を探し回らずに、アシスタントを外部の Lark チャンネルへ接続します。",
     "newButton": "新しい Claw",
+    "newTiaButton": "Create TIA Agent (Advanced)",
     "telegram": {
       "description": "生の設定を探し回らずに、アシスタントを外部の Telegram または Lark チャンネルへ接続します。",
       "emptyDescription": "最短で使い始めるには、アシスタント 1 つ、プロバイダー 1 つ、Telegram または Lark チャンネル 1 つから始めます。",
@@ -547,7 +556,8 @@
       "title": "最初の Claw を設定",
       "description": "最短で使い始めるには、アシスタント 1 つ、プロバイダー 1 つ、Lark チャンネル 1 つから始めます。",
       "note": "アシスタントの識別情報、ハートビート、今後の cron は引き続きアシスタント側で管理されます。",
-      "createButton": "最初の Claw を作成"
+      "createButton": "最初の Claw を作成",
+      "createTiaButton": "Create TIA Agent (Advanced)"
     },
     "card": {
       "noChannelConnected": "チャンネルが接続されていません",
@@ -866,17 +876,26 @@
         "helperSelected": "メッセージは Team スーパーバイザと選択されたメンバーを通じて処理されます。",
         "helperEmpty": "まずワークスペースを選択し、Team スレッドを作成してください。",
         "openStatus": "Team ステータスを開く"
-      }
+      },
+      "mixedMembersHint": "Teams can mix ACP Agents and TIA Agents."
     },
     "configDialog": {
       "closeAriaLabel": "Close team config dialog",
       "title": "Team を設定",
       "description": "スーパーバイザモデルを選択し、このチームに参加するアシスタントを指定します。",
+      "memberOriginHint": "Members can mix ACP Agents and TIA Agents.",
+      "createMemberHint": "Need another member?",
+      "createAcpMemberAction": "Create ACP Agent",
+      "createTiaMemberAction": "Create TIA Agent (Advanced)",
       "fields": {
         "supervisorProvider": "スーパーバイザ プロバイダー",
         "teamDescription": "Team の説明",
         "supervisorModel": "スーパーバイザ モデル",
         "teamMembers": "Team メンバー"
+      },
+      "origins": {
+        "acp": "ACP Agent",
+        "tia": "TIA Agent"
       },
       "validation": {
         "supervisorProvider": "スーパーバイザのプロバイダーを選択してください。",
@@ -983,6 +1002,13 @@
       "closeCreateAriaLabel": "Close create assistant dialog",
       "closeEditAriaLabel": "Close assistant config dialog",
       "createTitle": "アシスタントを作成",
+      "createPathDescription": "Start with an existing ACP agent for the lightweight path, or create a full TIA-managed agent.",
+      "useExistingAcpTitle": "Use Existing ACP Agent",
+      "useExistingAcpDescription": "Reuse a Codex ACP or Claude Agent ACP runtime, choose a workspace, and optionally attach a channel.",
+      "useExistingAcpSubmit": "Create ACP Agent",
+      "advancedCreateTiaAction": "Advanced: Create TIA Agent",
+      "createTiaTitle": "Create TIA Agent",
+      "createTiaDescription": "Start with the full TIA editor, including Studio tools, skills, and activity controls.",
       "editTitle": "{{name}} を設定",
       "createDescription": "チャットを始める前に、ワークスペースパスとプロバイダーを設定してください。",
       "editDescription": "チャットを離れずに、プロバイダー、ワークスペース、プロンプトを更新できます。",
@@ -1046,6 +1072,11 @@
           "intervalInvalid": "Heartbeat interval must be a positive whole number",
           "promptRequired": "Heartbeat prompt is required"
         }
+      },
+      "studioUpgrade": {
+        "title": "Upgrade to TIA Agent",
+        "description": "Enable Studio Features to unlock heartbeat, coding subagents, MCP tools, workspace skills, and activity controls for this ACP agent.",
+        "enableButton": "Enable Studio Features"
       },
       "activity": {
         "description": "Review assistant heartbeat health and recent cron executions.",

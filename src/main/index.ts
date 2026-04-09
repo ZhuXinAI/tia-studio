@@ -45,6 +45,8 @@ import { TiaBrowserToolManager } from './tia-browser-tool-manager'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
 import { createMastraInstance } from './mastra/store'
 import { TeamRuntimeService } from './mastra/team-runtime'
+import { resolveDefaultAssistantWorkspacePath } from './mastra/workspace-path-resolver'
+import { detectInstalledLocalAcpAgents } from './local-acp-agents'
 import { migrateAppSchema } from './persistence/migrate'
 import { AssistantHeartbeatRunsRepository } from './persistence/repos/assistant-heartbeat-runs-repo'
 import { AssistantHeartbeatsRepository } from './persistence/repos/assistant-heartbeats-repo'
@@ -905,6 +907,16 @@ if (hasSingleInstanceLock) {
       }
 
       return result.filePaths[0]
+    })
+    ipcMain.handle('tia:resolve-default-assistant-workspace-path', async (_event, assistantName) => {
+      if (typeof assistantName !== 'string' || assistantName.trim().length === 0) {
+        throw new Error('Assistant name must be a non-empty string')
+      }
+
+      return resolveDefaultAssistantWorkspacePath(assistantName)
+    })
+    ipcMain.handle('tia:list-installed-local-acp-agents', async () => {
+      return detectInstalledLocalAcpAgents()
     })
     ipcMain.handle('tia:list-assistant-skills', async (_event, workspaceRootPath) => {
       if (typeof workspaceRootPath !== 'string') {

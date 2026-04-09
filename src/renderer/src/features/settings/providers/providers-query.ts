@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createApiClient } from '../../../lib/api-client'
 
 export type ProviderType =
+  | 'acp'
   | 'openai'
   | 'openai-response'
   | 'openrouter'

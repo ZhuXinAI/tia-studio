@@ -81,6 +81,9 @@ export function registerAssistantHeartbeatRoute(
       return context.json(heartbeat)
     } catch (error) {
       if (isAssistantHeartbeatsServiceError(error)) {
+        if (error.code === 'assistant_studio_features_required') {
+          return context.json({ ok: false, code: error.code, error: error.message }, error.statusCode)
+        }
         return context.json({ ok: false, error: error.message }, error.statusCode)
       }
 

@@ -39,7 +39,14 @@ describe('cron jobs route', () => {
     db.close()
   })
 
-  async function createWorkspaceAssistant(name: string, rootPath: string) {
+  async function createWorkspaceAssistant(
+    name: string,
+    rootPath: string,
+    overrides?: {
+      origin?: 'tia' | 'external-acp' | 'built-in'
+      studioFeaturesEnabled?: boolean
+    }
+  ) {
     const provider = await providersRepo.create({
       name: 'OpenAI',
       type: 'openai',
@@ -52,7 +59,8 @@ describe('cron jobs route', () => {
       providerId: provider.id,
       workspaceConfig: {
         rootPath
-      }
+      },
+      ...(overrides ?? {})
     })
   }
 
@@ -199,6 +207,31 @@ describe('cron jobs route', () => {
     await expect(invalidCronResponse.json()).resolves.toEqual({
       ok: false,
       error: 'Invalid cron expression'
+    })
+  })
+
+  it('returns a structured error when an external ACP assistant has not enabled studio features', async () => {
+    const assistant = await createWorkspaceAssistant('External ACP', '/tmp/workspace-c', {
+      origin: 'external-acp',
+      studioFeaturesEnabled: false
+    })
+
+    const response = await app.request('http://localhost/v1/cron-jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assistantId: assistant.id,
+        name: 'Morning summary',
+        prompt: 'Summarize the workspace status.',
+        cronExpression: '0 9 * * 1-5'
+      })
+    })
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      code: 'assistant_studio_features_required',
+      error: 'Assistant studio features are required for cron jobs'
     })
   })
 })

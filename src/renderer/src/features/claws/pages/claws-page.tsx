@@ -107,7 +107,13 @@ function supportsChannelAccess(channelType: string | null | undefined): boolean 
   return channelType === 'telegram' || channelType === 'whatsapp' || channelType === 'wechat'
 }
 
-export function ClawsPage(): React.JSX.Element {
+type AssistantCreatePath = 'external-acp' | 'tia'
+
+type ClawsPageProps = {
+  surface?: 'standalone' | 'settings'
+}
+
+export function ClawsPage({ surface = 'standalone' }: ClawsPageProps): React.JSX.Element {
   const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
@@ -119,6 +125,7 @@ export function ClawsPage(): React.JSX.Element {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingClaw, setEditingClaw] = useState<ClawRecord | null>(null)
+  const [dialogCreatePath, setDialogCreatePath] = useState<AssistantCreatePath>('external-acp')
   const [selectedChannelId, setSelectedChannelId] = useState('')
   const [pairingsClaw, setPairingsClaw] = useState<ClawRecord | null>(null)
   const [pairings, setPairings] = useState<ClawPairingRecord[]>([])
@@ -131,6 +138,13 @@ export function ClawsPage(): React.JSX.Element {
   const [heartbeatMonitorClaw, setHeartbeatMonitorClaw] = useState<ClawRecord | null>(null)
   const [cronMonitorClaw, setCronMonitorClaw] = useState<ClawRecord | null>(null)
   const connectedAuthRefreshKeyRef = useRef<string | null>(null)
+  const createTiaEntryLabel = t('claws.newTiaButton', {
+    defaultValue: 'Create TIA Agent (Advanced)'
+  })
+  const createTiaEmptyLabel = t('claws.empty.createTiaButton', {
+    defaultValue: 'Create TIA Agent (Advanced)'
+  })
+  const isSettingsSurface = surface === 'settings'
 
   async function refreshPage(): Promise<ClawsResponse> {
     const [nextClaws, nextProviders, nextAssistants, nextMcpServers] = await Promise.all([
@@ -153,12 +167,17 @@ export function ClawsPage(): React.JSX.Element {
   }, [t])
 
   useEffect(() => {
-    const nextState = location.state as { assistantDialog?: string } | null
+    const nextState = location.state as
+      | { assistantDialog?: string; assistantCreatePath?: AssistantCreatePath }
+      | null
     if (nextState?.assistantDialog !== 'create') {
       return
     }
 
     setEditingClaw(null)
+    setDialogCreatePath(
+      nextState.assistantCreatePath === 'tia' ? nextState.assistantCreatePath : 'external-acp'
+    )
     setSelectedChannelId('')
     setErrorMessage(null)
     setIsDialogOpen(true)
@@ -478,8 +497,9 @@ export function ClawsPage(): React.JSX.Element {
     }
   }, [channelAuthState?.status, pairingsClaw, t])
 
-  function openCreateDialog(): void {
+  function openCreateDialog(path: AssistantCreatePath = 'external-acp'): void {
     setEditingClaw(null)
+    setDialogCreatePath(path)
     setSelectedChannelId('')
     setErrorMessage(null)
     setIsDialogOpen(true)
@@ -487,6 +507,7 @@ export function ClawsPage(): React.JSX.Element {
 
   function openEditDialog(claw: ClawRecord): void {
     setEditingClaw(claw)
+    setDialogCreatePath('external-acp')
     setSelectedChannelId(claw.channel?.id ?? '')
     setErrorMessage(null)
     setIsDialogOpen(true)
@@ -495,24 +516,52 @@ export function ClawsPage(): React.JSX.Element {
   return (
     <section
       data-claws-page-shell="true"
-      className="min-h-0 h-[calc(100vh-3.5rem)] overflow-y-auto bg-transparent px-6 py-6"
+      className={
+        isSettingsSurface
+          ? 'min-h-0 overflow-y-auto bg-transparent py-4'
+          : 'min-h-0 h-[calc(100vh-3.5rem)] overflow-y-auto bg-transparent px-6 py-6'
+      }
     >
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-        <div className="flex flex-wrap items-end justify-between gap-4 rounded-[1.75rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-6 py-6 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.55)]">
+      <div className={isSettingsSurface ? 'flex w-full flex-col gap-6' : 'mx-auto flex w-full max-w-6xl flex-col gap-6'}>
+        <div
+          className={
+            isSettingsSurface
+              ? 'flex flex-wrap items-end justify-between gap-4'
+              : 'flex flex-wrap items-end justify-between gap-4 rounded-[1.75rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-6 py-6 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.55)]'
+          }
+        >
           <div className="space-y-1">
             <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
-              {t('claws.eyebrow')}
+              {isSettingsSurface ? 'Agent Setup' : t('claws.eyebrow')}
             </p>
-            <h1 className="text-3xl font-semibold tracking-[-0.03em]">{t('claws.title')}</h1>
+            <h1 className="text-3xl font-semibold tracking-[-0.03em]">
+              {isSettingsSurface ? 'Agents & Channels' : t('claws.title')}
+            </h1>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              {t('claws.telegram.description')}
+              {isSettingsSurface
+                ? 'Manage ACP agents, keep custom TIA harnesses available, and attach channels only when you need them.'
+                : t('claws.telegram.description')}
             </p>
           </div>
 
-          <Button type="button" className="rounded-full px-5" onClick={openCreateDialog}>
-            <Plus className="size-4" />
-            <span>{t('claws.newButton')}</span>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              className="rounded-full px-5"
+              onClick={() => openCreateDialog('external-acp')}
+            >
+              <Plus className="size-4" />
+              <span>{t('claws.newButton')}</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-full px-5"
+              onClick={() => openCreateDialog('tia')}
+            >
+              <span>{createTiaEntryLabel}</span>
+            </Button>
+          </div>
         </div>
 
         {!hasAnyClaw ? (
@@ -526,23 +575,28 @@ export function ClawsPage(): React.JSX.Element {
                 <Bot className="size-4" />
                 <span>{t('claws.empty.note')}</span>
               </div>
-              <Button type="button" onClick={openCreateDialog}>
-                {t('claws.empty.createButton')}
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" onClick={() => openCreateDialog('external-acp')}>
+                  {t('claws.empty.createButton')}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => openCreateDialog('tia')}>
+                  {createTiaEmptyLabel}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : null}
 
         {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
 
-        <div className="grid auto-rows-fr gap-4 xl:grid-cols-2">
+        <div className={isSettingsSurface ? 'grid auto-rows-fr gap-4' : 'grid auto-rows-fr gap-4 xl:grid-cols-2'}>
           {data.claws.map((claw, index) => (
             <ClawCard
               key={claw.id}
               claw={claw}
               providerLabel={providerLabel(claw.providerId)}
               isSubmitting={isSubmitting || isPairingsSubmitting}
-              featured={index === 0 && data.claws.length > 1}
+              featured={!isSettingsSurface && index === 0 && data.claws.length > 1}
               onToggleEnabled={() => void handleToggleEnabled(claw)}
               onEdit={() => openEditDialog(claw)}
               onDelete={() => setClawPendingDelete(claw)}
@@ -559,6 +613,7 @@ export function ClawsPage(): React.JSX.Element {
           assistant={editingAssistant}
           providers={providers}
           mcpServers={mcpServers}
+          initialCreatePath={dialogCreatePath}
           channels={{
             currentAssistantId: editingClaw?.id ?? null,
             channels: data.configuredChannels,

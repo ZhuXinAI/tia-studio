@@ -187,6 +187,12 @@ async function openCreateAssistantDialog(buttonText: string): Promise<void> {
   await flushAsyncWork()
 }
 
+async function clickCreateAssistantAction(buttonText: string): Promise<void> {
+  const pathButton = findButtonByText(document.body, buttonText)
+  await clickElement(pathButton)
+  await flushAsyncWork()
+}
+
 async function fillCreateAssistantName(name: string): Promise<void> {
   const nameInput = document.body.querySelector('input[id="claw-name"]') as HTMLInputElement
 
@@ -457,9 +463,11 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    expect(container.textContent).toContain('Assistants & Channels')
+    expect(container.textContent).toContain('Channel Bindings')
+    expect(container.textContent).not.toContain('Claws')
     expect(container.textContent).toContain('Create your first assistant')
-    expect(container.textContent).toContain('Create Assistant')
+    expect(container.textContent).toContain('Create ACP Agent')
+    expect(container.textContent).toContain('Create TIA Agent (Advanced)')
   })
 
   it('uses a dedicated scroll shell so long assistant lists can scroll', async () => {
@@ -519,7 +527,8 @@ describe('ClawsPage', () => {
 
     expect(container.textContent).toContain('Ops Assistant')
     expect(container.textContent).toContain('Ops Lark')
-    expect(container.textContent).toContain('New Assistant')
+    expect(container.textContent).toContain('Create ACP Agent')
+    expect(container.textContent).toContain('Create TIA Agent (Advanced)')
     expect(findButtonByText(findClawCard('Ops Assistant') ?? container, 'Actions')).toBeDefined()
   })
 
@@ -577,7 +586,10 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    await openCreateAssistantDialog('Create Assistant')
+    await openCreateAssistantDialog('Create ACP Agent')
+    expect(document.body.textContent).toContain('Use Existing ACP Agent')
+    expect(document.body.textContent).toContain('Advanced: Create TIA Agent')
+    expect(document.body.textContent).not.toContain('Coding')
 
     const body = document.body
     await chooseProvider('OpenAI')
@@ -640,7 +652,9 @@ describe('ClawsPage', () => {
     expect(createAssistant).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'Ops Assistant',
-        providerId: 'provider-1'
+        providerId: 'provider-1',
+        origin: 'external-acp',
+        studioFeaturesEnabled: false
       })
     )
     expect(updateClaw).toHaveBeenCalledWith('assistant-1', {
@@ -652,6 +666,55 @@ describe('ClawsPage', () => {
         channelId: 'channel-created'
       }
     })
+  })
+
+  it('defaults to ACP creation and exposes TIA creation as a secondary action', async () => {
+    vi.mocked(listClaws).mockResolvedValue({
+      claws: [],
+      configuredChannels: []
+    })
+    vi.mocked(listAssistants).mockResolvedValue([])
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ClawsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    await openCreateAssistantDialog('Create ACP Agent')
+
+    expect(document.body.textContent).toContain('Use Existing ACP Agent')
+    expect(document.body.textContent).toContain('Advanced: Create TIA Agent')
+
+    await clickCreateAssistantAction('Advanced: Create TIA Agent')
+
+    expect(document.body.textContent).toContain('Create TIA Agent')
+    expect(document.body.querySelector('input[id="assistant-name"]')).not.toBeNull()
+  })
+
+  it('opens the TIA editor when the page secondary create action is used', async () => {
+    vi.mocked(listClaws).mockResolvedValue({
+      claws: [],
+      configuredChannels: []
+    })
+    vi.mocked(listAssistants).mockResolvedValue([])
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ClawsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    await openCreateAssistantDialog('Create TIA Agent (Advanced)')
+
+    expect(document.body.textContent).toContain('Create TIA Agent')
+    expect(document.body.querySelector('input[id="assistant-name"]')).not.toBeNull()
   })
 
   it('creates a telegram claw from the onboarding dialog', async () => {
@@ -670,7 +733,7 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    await openCreateAssistantDialog('Create Assistant')
+    await openCreateAssistantDialog('Create ACP Agent')
 
     const body = document.body
     await chooseProvider('OpenAI')
@@ -805,7 +868,7 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    await openCreateAssistantDialog('Create Assistant')
+    await openCreateAssistantDialog('Create ACP Agent')
 
     const body = document.body
     await chooseProvider('OpenAI')
@@ -923,7 +986,7 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    await openCreateAssistantDialog('New Assistant')
+    await openCreateAssistantDialog('Create ACP Agent')
 
     const body = document.body
     await chooseProvider('OpenAI')
@@ -1049,7 +1112,7 @@ describe('ClawsPage', () => {
     })
     await flushAsyncWork()
 
-    await openCreateAssistantDialog('New Assistant')
+    await openCreateAssistantDialog('Create ACP Agent')
 
     const body = document.body
     await chooseProvider('OpenAI')

@@ -13,16 +13,16 @@
 
 </div>
 
-## Claim your Claw in only two steps
+## Create a Channel Binding in only two steps
 
 1. Create or choose an assistant.
 2. Attach a channel and start operating locally.
 
-Run a local claw on your own machine in minutes — and use a full-featured desktop workspace to build, chat with, and operate AI assistants, teams, and channels.
+Run a local channel binding on your own machine in minutes — and use a full-featured desktop workspace to build, chat with, and operate AI assistants, teams, and channels.
 
 ## What is TIA Studio?
 
-TIA (short for "This Is AI") Studio is an Electron-based desktop app built to make local claws easy to run. Connect an assistant to a real-world channel and it becomes an OpenClaw-inspired local operator running close to your tools, your files, and your workflow.
+TIA (short for "This Is AI") Studio is an Electron-based desktop app built to make local channel bindings easy to run. Connect an assistant to a real-world channel and it becomes an OpenClaw-inspired local operator running close to your tools, your files, and your workflow.
 
 At the same time, TIA Studio is a full-featured assistant app. You can chat with a single assistant, coordinate a team of assistants, organize threaded work, and manage channels from one local-first desktop workspace.
 
@@ -82,51 +82,53 @@ We intentionally kept the architecture simple:
 4. **Minimal abstractions** - We use Mastra's primitives directly rather than building custom layers, and Assistant UI handles the chat UX without custom message components
 5. **Local-first** - Everything runs on your machine, with no required cloud dependencies
 
-## Claws
+## Channel Bindings (formerly Claws)
 
-In TIA Studio, a claw is not a separate runtime primitive. A claw is an assistant with a channel attached to it.
+In TIA Studio, a channel binding is not a separate runtime primitive. A channel binding is an assistant with a channel attached to it.
 
-For a longer architecture walkthrough, see [CLAW.md](./CLAW.md).
+For architecture details, see [docs/channel-bindings.md](./docs/channel-bindings.md) and [CLAW.md](./CLAW.md) for legacy terminology.
 
 This keeps the model simple:
 
 - The assistant remains the source of truth for provider selection, instructions, memory, workspace, and lifecycle state
 - The channel is only the transport layer that brings external messages in and sends assistant replies back out
-- The claw UI is a focused management surface for creating that assistant + channel pairing without introducing a second identity model
+- The Channel Bindings UI is a focused management surface for creating that assistant + channel pairing without introducing a second identity model
 
-### How claws are implemented
+### How channel bindings are implemented
 
-Claws are implemented by composing existing assistant and channel records instead of introducing a new database entity:
+Channel bindings are implemented by composing existing assistant and channel records instead of introducing a new database entity:
 
 1. **Assistant-first creation** - `POST /v1/claws` creates a normal assistant, then either creates a new supported channel or attaches an existing unbound channel to that assistant.
-2. **Channel binding as the link** - The claw relationship lives on `channel.assistantId`, which gives each channel a single active assistant owner while keeping detached channels reusable.
-3. **Built-in assistants stay out of the claw list** - The claws route only exposes user-managed assistants, so built-in agents keep their own lifecycle and do not show up as claws.
-4. **Runtime reload on every claw change** - After create, update, or delete, TIA Studio reloads both the channel service and the cron scheduler so routing and schedules immediately reflect the new attachment state.
+2. **Channel binding as the link** - The relationship lives on `channel.assistantId`, which gives each channel a single active assistant owner while keeping detached channels reusable.
+3. **Built-in assistants stay out of the list** - The route only exposes user-managed assistants, so built-in agents keep their own lifecycle and do not show up as bindings.
+4. **Runtime reload on every binding change** - After create, update, or delete, TIA Studio reloads both the channel service and the cron scheduler so routing and schedules immediately reflect the new attachment state.
 5. **One channel conversation becomes one assistant thread** - Incoming channel messages are routed through the event bus, mapped to a thread binding by remote chat, streamed through the assistant runtime, and then published back to the channel adapter as the outgoing reply.
 
-### Claws, cron, heartbeat, and identity
+The first-pass API keeps `/v1/claws` for compatibility while the UI and docs use `Channel Bindings`.
 
-Because a claw is still just an assistant underneath, assistant-owned behavior stays assistant-owned:
+### Channel bindings, cron, heartbeat, and identity
 
-| Concern              | Owner                       | What happens for a claw                                                                                                                                                                 |
+Because a channel binding is still just an assistant underneath, assistant-owned behavior stays assistant-owned:
+
+| Concern              | Owner                       | What happens for a channel binding                                                                                                                                                       |
 | -------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Identity             | Assistant workspace         | `IDENTITY.md`, `SOUL.md`, and `MEMORY.md` are loaded as durable operating context for the same assistant whether you talk to it in the app or through a channel.                        |
 | Heartbeat            | Assistant runtime           | Scheduled runs mark the request as a heartbeat run, which adds `HEARTBEAT.md` on top of the normal identity files only for proactive/scheduled execution.                               |
 | Cron                 | Assistant + hidden thread   | Cron jobs are stored against `assistantId`, require that assistant to have a workspace root, and create a hidden thread so scheduled work stays attached to the same assistant history. |
-| Enable/disable state | Assistant + channel runtime | A disabled claw disables the assistant side of the pairing, so runtime channel delivery and cron scheduling both stop until the assistant is enabled again.                             |
+| Enable/disable state | Assistant + channel runtime | A disabled channel binding disables the assistant side of the pairing, so runtime channel delivery and cron scheduling both stop until the assistant is enabled again.                  |
 
-That means adapting an assistant into a claw does **not** fork its identity:
+That means adapting an assistant into a channel binding does **not** fork its identity:
 
 - Channel chat uses the same assistant instructions, provider, tools, and workspace as direct chat
 - Cron jobs still belong to the assistant, not to the channel, and their outputs are written back to the assistant workspace work logs
 - Heartbeat-specific guidance stays isolated in `HEARTBEAT.md`, so proactive runs can behave differently without mutating the assistant's core identity
-- Future claw capabilities can keep building on assistant primitives instead of introducing a parallel claw-only configuration stack
+- Future channel-binding capabilities can keep building on assistant primitives instead of introducing a parallel binding-only configuration stack
 
 ## Features
 
 - Assistant-first local workspace with thread-based chat, workspace roots, attachments, and in-place configuration
 - Team workspaces with shared threads and live run status
-- Claws surface for assistant creation, channel binding, pairing, setup, activation, heartbeat monitoring, and cron monitoring
+- Channel Bindings surface for assistant creation, channel binding, pairing, setup, activation, heartbeat monitoring, and cron monitoring
 - Channel adapters for Discord, Lark, Telegram, WhatsApp, Wecom, and Wechat-KF
 - Provider management for OpenAI-compatible models, OpenAI Responses, OpenRouter, Gemini, Anthropic, Ollama, Codex ACP, and Claude Agent ACP
 - Workspace-backed coding subagents using Codex ACP and Claude Agent ACP

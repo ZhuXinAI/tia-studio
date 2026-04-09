@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react'
 import { Bot, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
   AssistantEditor,
+  type AssistantEditorDefaultConfig,
   type AssistantEditorChannelSetupAction,
   type AssistantEditorChannelsProps
 } from '../../assistants/assistant-editor'
@@ -22,6 +24,7 @@ import { queryClient } from '../../../lib/query-client'
 import { ClawEditorDialog } from './claw-editor-dialog'
 
 export type AssistantManagementDialogMode = 'create' | 'edit'
+type AssistantCreatePath = 'external-acp' | 'tia'
 
 type AssistantManagementDialogProps = {
   mode: AssistantManagementDialogMode
@@ -31,6 +34,7 @@ type AssistantManagementDialogProps = {
   mcpServers: Record<string, McpServerRecord>
   channels?: AssistantEditorChannelsProps
   channelSetupAction?: AssistantEditorChannelSetupAction | null
+  initialCreatePath?: AssistantCreatePath
   isSaving: boolean
   errorMessage: string | null
   onClose: () => void
@@ -50,6 +54,7 @@ export function AssistantManagementDialog({
   mcpServers,
   channels,
   channelSetupAction,
+  initialCreatePath = 'external-acp',
   isSaving,
   errorMessage,
   onClose,
@@ -57,6 +62,16 @@ export function AssistantManagementDialog({
   onSubmit
 }: AssistantManagementDialogProps): React.JSX.Element | null {
   const { t } = useTranslation()
+  const [createPath, setCreatePath] = useState<AssistantCreatePath>('external-acp')
+
+  useEffect(() => {
+    if (!isOpen || mode !== 'create') {
+      setCreatePath(initialCreatePath)
+      return
+    }
+
+    setCreatePath(initialCreatePath)
+  }, [initialCreatePath, isOpen, mode])
 
   async function handleCreateProvider(input: SaveProviderInput): Promise<ProviderRecord> {
     const createdProvider = await createProvider(input)
@@ -81,7 +96,7 @@ export function AssistantManagementDialog({
     return null
   }
 
-  if (mode === 'create' && channels) {
+  if (mode === 'create' && channels && createPath === 'external-acp') {
     return (
       <ClawEditorDialog
         isOpen={isOpen}
@@ -91,10 +106,12 @@ export function AssistantManagementDialog({
         isSubmitting={isSaving}
         externalErrorMessage={errorMessage}
         copy={{
-          createTitle: t('threads.assistantDialog.createTitle'),
-          description: t('claws.empty.description'),
-          createButton: t('threads.assistantDialog.createTitle')
+          createTitle: t('threads.assistantDialog.useExistingAcpTitle'),
+          description: t('threads.assistantDialog.useExistingAcpDescription'),
+          createButton: t('threads.assistantDialog.useExistingAcpSubmit'),
+          rootBackButton: t('threads.assistantDialog.advancedCreateTiaAction')
         }}
+        onBack={() => setCreatePath('tia')}
         onClose={onClose}
         onSubmit={async (input) => {
           const assistantName = input.assistant.name?.trim() ?? ''
@@ -109,6 +126,8 @@ export function AssistantManagementDialog({
             {
               name: assistantName,
               providerId,
+              origin: 'external-acp',
+              studioFeaturesEnabled: false,
               enabled: input.assistant.enabled,
               ...(workspacePath.length > 0
                 ? {
@@ -135,11 +154,25 @@ export function AssistantManagementDialog({
   const titleId = isCreateMode ? 'claws-assistant-create-title' : 'claws-assistant-edit-title'
   const description = channels
     ? isCreateMode
-      ? t('claws.empty.description')
+      ? createPath === 'tia'
+        ? t('threads.assistantDialog.createTiaDescription')
+        : t('threads.assistantDialog.useExistingAcpDescription')
       : t('claws.description')
     : isCreateMode
       ? t('threads.assistantDialog.createDescription')
       : t('threads.assistantDialog.editDescription')
+  const defaultConfig: AssistantEditorDefaultConfig | undefined =
+    isCreateMode && createPath === 'tia'
+      ? {
+          origin: 'tia',
+          studioFeaturesEnabled: true
+        }
+      : isCreateMode
+        ? {
+            origin: 'external-acp',
+            studioFeaturesEnabled: false
+          }
+        : undefined
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -165,7 +198,9 @@ export function AssistantManagementDialog({
             <div className="space-y-1">
               <CardTitle id={titleId}>
                 {isCreateMode
-                  ? t('threads.assistantDialog.createTitle')
+                  ? createPath === 'tia'
+                    ? t('threads.assistantDialog.createTiaTitle')
+                    : t('threads.assistantDialog.createTitle')
                   : t('threads.assistantDialog.editTitle', {
                       name: assistant?.name ?? t('threads.chat.defaultAssistantName')
                     })}
@@ -173,6 +208,17 @@ export function AssistantManagementDialog({
               <p className="text-sm text-muted-foreground">{description}</p>
             </div>
             <div className="flex items-center gap-2">
+              {isCreateMode && createPath === 'tia' && channels ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCreatePath('external-acp')}
+                  disabled={isSaving}
+                >
+                  {t('threads.assistantDialog.useExistingAcpTitle')}
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 variant="ghost"
@@ -215,6 +261,7 @@ export function AssistantManagementDialog({
               providers={providers}
               mcpServers={mcpServers}
               initialValue={isCreateMode ? null : assistant}
+              defaultConfig={defaultConfig}
               isSubmitting={isSaving}
               channels={channels}
               showActivityTab={!isCreateMode}

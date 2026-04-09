@@ -132,8 +132,9 @@ describe('mcp servers settings page', () => {
     })
     await flushAsyncWork()
 
-    expect(container.textContent).toContain('Runtime Setup')
     expect(container.textContent).toContain('managed runtimes')
+    expect(container.textContent).toContain('Finish bun setup in')
+    expect(container.textContent).toContain('ACP / Runtimes')
   })
 
   it('allows partial environment variable edits and persists them', async () => {

@@ -75,14 +75,24 @@ function toACPModelId(selectedModel: string): string | undefined {
   return normalized
 }
 
+function parseLocalAcpCommand(apiHost: string | null | undefined): string | null {
+  const normalizedHost = apiHost?.trim()
+  if (!normalizedHost || !normalizedHost.startsWith('acp://')) {
+    return null
+  }
+
+  const encodedCommand = normalizedHost.slice('acp://'.length).trim()
+  return encodedCommand.length > 0 ? decodeURIComponent(encodedCommand) : null
+}
+
 function buildACPEnvironment(
-  providerType: string,
+  providerKey: string,
   options: ResolveModelOptions
 ): Record<string, string> {
   const env = toStringEnv(process.env)
   const acpHomeDirectory = options.acpHomeDirectory?.trim()
 
-  if (providerType === 'codex-acp' && acpHomeDirectory) {
+  if ((providerKey === 'codex' || providerKey === 'codex-acp') && acpHomeDirectory) {
     env.CODEX_HOME = bootstrapCodexHome(acpHomeDirectory)
   }
 
@@ -213,6 +223,31 @@ export function resolveModel(
     })
 
     return ollamaProvider(provider.selectedModel) as ResolvedModel
+  }
+
+  if (provider.type === 'acp') {
+    const localCommand = parseLocalAcpCommand(provider.apiHost)
+    if (!localCommand) {
+      throw new Error('ACP provider is missing a local command reference')
+    }
+
+    const acpProvider = mergedFactories.acpProviderFactory({
+      command: localCommand,
+      env: buildACPEnvironment(localCommand, options),
+      session: {
+        cwd: options.acpWorkingDirectory?.trim() || process.cwd(),
+        mcpServers: []
+      },
+      persistSession: true
+    })
+
+    const model = acpProvider.languageModel(toACPModelId(provider.selectedModel)) as object
+
+    return wrapACPModelMetadata(
+      model,
+      localCommand,
+      provider.selectedModel
+    ) as unknown as ResolvedModel
   }
 
   if (provider.type === 'codex-acp' || provider.type === 'claude-agent-acp') {

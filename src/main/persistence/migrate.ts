@@ -58,6 +58,34 @@ async function ensureAssistantEnabledColumn(db: AppDatabase): Promise<void> {
   await db.execute('ALTER TABLE app_assistants ADD COLUMN enabled INTEGER NOT NULL DEFAULT 0')
 }
 
+async function ensureAssistantOriginColumn(db: AppDatabase): Promise<void> {
+  const tableInfo = await db.execute("PRAGMA table_info('app_assistants')")
+  const hasOriginColumn = tableInfo.rows.some((row) => {
+    return String((row as Record<string, unknown>).name) === 'origin'
+  })
+
+  if (hasOriginColumn) {
+    return
+  }
+
+  await db.execute("ALTER TABLE app_assistants ADD COLUMN origin TEXT NOT NULL DEFAULT 'tia'")
+}
+
+async function ensureAssistantStudioFeaturesColumn(db: AppDatabase): Promise<void> {
+  const tableInfo = await db.execute("PRAGMA table_info('app_assistants')")
+  const hasStudioFeaturesColumn = tableInfo.rows.some((row) => {
+    return String((row as Record<string, unknown>).name) === 'studio_features_enabled'
+  })
+
+  if (hasStudioFeaturesColumn) {
+    return
+  }
+
+  await db.execute(
+    'ALTER TABLE app_assistants ADD COLUMN studio_features_enabled INTEGER NOT NULL DEFAULT 1'
+  )
+}
+
 async function ensureProviderSupportsVisionColumn(db: AppDatabase): Promise<void> {
   const tableInfo = await db.execute("PRAGMA table_info('app_providers')")
   const hasSupportsVisionColumn = tableInfo.rows.some((row) => {
@@ -591,6 +619,30 @@ async function backfillAssistantEnabledFromChannels(db: AppDatabase): Promise<vo
   `)
 }
 
+async function normalizeAssistantOrigins(db: AppDatabase): Promise<void> {
+  await db.execute(`
+    UPDATE app_assistants
+    SET origin = CASE
+      WHEN json_extract(mcp_config, '$.__tiaBuiltInDefaultAgent') = 1 THEN 'built-in'
+      WHEN origin IS NULL OR TRIM(origin) = '' THEN 'tia'
+      WHEN origin NOT IN ('tia', 'external-acp', 'built-in') THEN 'tia'
+      ELSE origin
+    END
+    WHERE origin IS NULL
+      OR TRIM(origin) = ''
+      OR origin NOT IN ('tia', 'external-acp', 'built-in')
+      OR json_extract(mcp_config, '$.__tiaBuiltInDefaultAgent') = 1
+  `)
+}
+
+async function normalizeAssistantStudioFeatures(db: AppDatabase): Promise<void> {
+  await db.execute(`
+    UPDATE app_assistants
+    SET studio_features_enabled = 1
+    WHERE studio_features_enabled IS NULL
+  `)
+}
+
 export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> {
   const db = createAppDatabase(pathOrUrl)
 
@@ -623,12 +675,16 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   await ensureAssistantDescriptionColumn(db)
   await ensureAssistantEnabledColumn(db)
   await ensureAssistantMaxStepsColumn(db)
+  await ensureAssistantOriginColumn(db)
+  await ensureAssistantStudioFeaturesColumn(db)
   await ensureProviderSupportsVisionColumn(db)
   await ensureBuiltInProviderColumns(db)
   await ensureTeamTables(db)
   await removeLegacyGroupTables(db)
   await ensureChannelsTables(db)
   await backfillAssistantEnabledFromChannels(db)
+  await normalizeAssistantOrigins(db)
+  await normalizeAssistantStudioFeatures(db)
   await ensureThreadMetadataColumn(db)
   await ensureThreadUsageTables(db)
   await ensureCronTables(db)

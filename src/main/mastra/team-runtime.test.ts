@@ -91,6 +91,8 @@ function buildAssistant(overrides?: Partial<AppAssistant>): AppAssistant {
     description: 'Finds facts, sources, and supporting evidence.',
     instructions: 'Research the problem.',
     enabled: true,
+    origin: 'tia',
+    studioFeaturesEnabled: true,
     providerId: 'provider-member',
     workspaceConfig: {
       rootPath: '/assistant/workspace'
@@ -396,6 +398,65 @@ describe('TeamRuntimeService', () => {
       'When the work is done, call complete instead of replying in natural language'
     )
     expect(supervisorConfig?.instructions).toContain('TIA provides a built-in Electron browser')
+  })
+
+  it('keeps mixed ACP and TIA members runnable in the same team', async () => {
+    const runtime = new TeamRuntimeService({
+      mastra: { getStorage: () => null } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async (assistantId: string) => {
+          if (assistantId === 'assistant-acp') {
+            return buildAssistant({
+              id: 'assistant-acp',
+              name: 'ACP Analyst',
+              origin: 'external-acp',
+              studioFeaturesEnabled: false,
+              description: 'Specialist reusing an existing ACP runtime.'
+            })
+          }
+
+          if (assistantId === 'assistant-tia') {
+            return buildAssistant({
+              id: 'assistant-tia',
+              name: 'TIA Planner',
+              origin: 'tia',
+              studioFeaturesEnabled: true,
+              description: 'Native TIA specialist for planning and orchestration.'
+            })
+          }
+
+          return null
+        })
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async (id: string) => buildProvider({ id }))
+      } as unknown as ProvidersRepository,
+      teamWorkspacesRepo: {
+        getById: vi.fn(async () => buildTeamWorkspace()),
+        listMembers: vi.fn(async () => [
+          buildWorkspaceMember('assistant-acp', { sortOrder: 0 }),
+          buildWorkspaceMember('assistant-tia', { sortOrder: 1 })
+        ])
+      } as unknown as TeamWorkspacesRepository,
+      teamThreadsRepo: {
+        getById: vi.fn(async () => buildTeamThread()),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as TeamThreadsRepository,
+      statusStore: new TeamRunStatusStore()
+    })
+
+    await runtime.streamTeamChat({
+      threadId: 'team-thread-1',
+      profileId: 'default-profile',
+      messages: []
+    })
+
+    const supervisorConfig = agentConfigs.at(-1) as { tools?: Record<string, unknown> } | undefined
+    const toolNames = Object.keys(supervisorConfig?.tools ?? {})
+
+    expect(toolNames).toEqual(
+      expect.arrayContaining(['delegate_to_acp_analyst_1', 'delegate_to_tia_planner_2', 'complete'])
+    )
   })
 
   it('requires supervisor tool usage on each team turn', async () => {

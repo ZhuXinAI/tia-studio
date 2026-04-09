@@ -1,5 +1,6 @@
 import {
   AlarmClock,
+  Bot,
   Cable,
   Cloud,
   Info,
@@ -33,9 +34,14 @@ type SettingsNavItem = {
 
 const settingsNavItems: SettingsNavItem[] = [
   {
-    titleKey: 'settings.sidebar.items.general',
-    icon: Languages,
-    to: '/settings/general'
+    titleKey: 'settings.sidebar.items.agents',
+    icon: Bot,
+    to: '/settings/agents'
+  },
+  {
+    titleKey: 'settings.sidebar.items.acp',
+    icon: Wrench,
+    to: '/settings/acp'
   },
   {
     titleKey: 'settings.sidebar.items.providers',
@@ -43,9 +49,9 @@ const settingsNavItems: SettingsNavItem[] = [
     to: '/settings/providers'
   },
   {
-    titleKey: 'settings.sidebar.items.security',
-    icon: Shield,
-    to: '/settings/security'
+    titleKey: 'settings.sidebar.items.runtimeSetup',
+    icon: Wrench,
+    to: '/settings/runtimes'
   },
   {
     titleKey: 'settings.sidebar.items.channels',
@@ -53,14 +59,14 @@ const settingsNavItems: SettingsNavItem[] = [
     to: '/settings/channels'
   },
   {
+    titleKey: 'settings.sidebar.items.security',
+    icon: Shield,
+    to: '/settings/security'
+  },
+  {
     titleKey: 'settings.sidebar.items.cronJobs',
     icon: AlarmClock,
     to: '/settings/cron-jobs'
-  },
-  {
-    titleKey: 'settings.sidebar.items.webSearch',
-    icon: Search,
-    to: '/settings/web-search'
   },
   {
     titleKey: 'settings.sidebar.items.mcpServers',
@@ -68,14 +74,19 @@ const settingsNavItems: SettingsNavItem[] = [
     to: '/settings/mcp-servers'
   },
   {
+    titleKey: 'settings.sidebar.items.webSearch',
+    icon: Search,
+    to: '/settings/web-search'
+  },
+  {
     titleKey: 'settings.sidebar.items.coding',
     icon: TerminalSquare,
     to: '/settings/coding'
   },
   {
-    titleKey: 'settings.sidebar.items.runtimeSetup',
-    icon: Wrench,
-    to: '/settings/runtimes'
+    titleKey: 'settings.sidebar.items.general',
+    icon: Languages,
+    to: '/settings/general'
   },
   {
     titleKey: 'settings.sidebar.items.display',

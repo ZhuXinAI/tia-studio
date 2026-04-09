@@ -110,6 +110,8 @@ function createAssistant(overrides?: Partial<AppAssistant>): AppAssistant {
       instructions: 'You are helpful.',
       providerId: 'provider-1',
       enabled: true,
+      origin: 'tia',
+      studioFeaturesEnabled: true,
       workspaceConfig: { rootPath: '/tmp/workspace-a' },
       skillsConfig: {},
       mcpConfig: {},

@@ -20,8 +20,10 @@ const mockState = vi.hoisted(() => {
     createAssistantMock: vi.fn(),
     updateAssistantMock: vi.fn(),
     deleteAssistantMock: vi.fn(),
+    createProviderMock: vi.fn(),
     updateAssistantHeartbeatMock: vi.fn(),
     listProvidersMock: vi.fn(),
+    listInstalledLocalAcpAgentsMock: vi.fn(),
     getMcpServersSettingsMock: vi.fn(),
     clawsData: {
       claws: [],
@@ -63,6 +65,9 @@ vi.mock('react-router-dom', () => ({
 }))
 
 vi.mock('../../assistants/assistants-query', () => ({
+  assistantKeys: {
+    lists: () => ['assistants', 'list']
+  },
   useAssistants: () => ({
     data: mockState.assistantsData,
     isLoading: false,
@@ -92,12 +97,16 @@ vi.mock('../../assistants/assistant-heartbeat-query', () => ({
 }))
 
 vi.mock('../../settings/providers/providers-query', () => ({
+  providerKeys: {
+    lists: () => ['providers', 'list']
+  },
   useProviders: () => ({
     data: mockState.providersData,
     isLoading: false,
     error: null
   }),
-  listProviders: (...args: unknown[]) => mockState.listProvidersMock(...args)
+  listProviders: (...args: unknown[]) => mockState.listProvidersMock(...args),
+  createProvider: (...args: unknown[]) => mockState.createProviderMock(...args)
 }))
 
 vi.mock('../../settings/mcp-servers/mcp-servers-query', () => ({
@@ -153,6 +162,11 @@ vi.mock('../chat-query', () => ({
   runThreadCommand: (...args: unknown[]) => mockState.runThreadCommandMock(...args),
   openAssistantMessageEventsStream: (...args: unknown[]) =>
     mockState.openAssistantMessageEventsStreamMock(...args)
+}))
+
+vi.mock('../local-acp-agents-query', () => ({
+  listInstalledLocalAcpAgents: (...args: unknown[]) =>
+    mockState.listInstalledLocalAcpAgentsMock(...args)
 }))
 
 vi.mock('@ai-sdk/react', () => ({
@@ -315,6 +329,23 @@ describe('useThreadPageController', () => {
     })
     mockState.deleteAssistantMock.mockReset()
     mockState.deleteAssistantMock.mockResolvedValue(undefined)
+    mockState.createProviderMock.mockReset()
+    mockState.createProviderMock.mockResolvedValue({
+      id: 'provider-2',
+      name: 'Codex',
+      type: 'acp',
+      apiKey: '',
+      apiHost: 'acp://codex',
+      selectedModel: 'default',
+      providerModels: null,
+      enabled: true,
+      supportsVision: true,
+      isBuiltIn: false,
+      icon: null,
+      officialSite: null,
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-01T00:00:00.000Z'
+    })
     mockState.updateAssistantHeartbeatMock.mockReset()
     mockState.updateAssistantHeartbeatMock.mockResolvedValue({
       id: 'heartbeat-1',
@@ -367,6 +398,8 @@ describe('useThreadPageController', () => {
 
     mockState.getMcpServersSettingsMock.mockReset()
     mockState.getMcpServersSettingsMock.mockResolvedValue({ mcpServers: {} })
+    mockState.listInstalledLocalAcpAgentsMock.mockReset()
+    mockState.listInstalledLocalAcpAgentsMock.mockResolvedValue([])
     mockState.clawsData = {
       claws: [],
       configuredChannels: []
@@ -792,7 +825,7 @@ describe('useThreadPageController', () => {
     )
   })
 
-  it('routes /chat to /claws when there are no assistants to restore', async () => {
+  it('keeps /chat on the empty workspace state when there are no assistants to restore', async () => {
     delete mockState.routeParams.assistantId
     delete mockState.routeParams.threadId
     mockState.assistantsData = []
@@ -811,14 +844,14 @@ describe('useThreadPageController', () => {
       )
     })
 
-    await waitForCondition(
-      () =>
-        mockState.navigateMock.mock.calls.some(
-          ([to, options]) =>
-            to === '/claws' && (options as { replace?: boolean } | undefined)?.replace === true
-        ),
-      'claws fallback route'
-    )
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(
+      mockState.navigateMock.mock.calls.some(([to]) => to === '/claws')
+    ).toBe(false)
   })
 
   it('asks for confirmation before deleting an assistant', async () => {

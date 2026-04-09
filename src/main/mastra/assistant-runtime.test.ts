@@ -56,6 +56,8 @@ function buildAssistant(overrides?: Partial<AppAssistant>): AppAssistant {
     description: 'Handles general assistant requests.',
     instructions: 'You are helpful.',
     enabled: true,
+    origin: 'tia',
+    studioFeaturesEnabled: true,
     providerId: 'provider-1',
     workspaceConfig: { rootPath: '/tmp' },
     skillsConfig: {},
@@ -991,6 +993,185 @@ describe('AssistantRuntimeService', () => {
           'sendFile'
         ])
       )
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('gates studio-only tools and processors for external ACP assistants without studio features', async () => {
+    const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-assistant-runtime-'))
+    const mcpSettingsSpy = vi.fn(async () => ({ mcpServers: {} }))
+
+    try {
+      const assistant = buildAssistant({
+        origin: 'external-acp',
+        studioFeaturesEnabled: false,
+        workspaceConfig: {
+          rootPath: workspaceRoot
+        }
+      })
+      const mastra = await createMastraInstance(':memory:')
+      const runtime = new AssistantRuntimeService({
+        mastra,
+        assistantsRepo: {} as AssistantsRepository,
+        providersRepo: {} as ProvidersRepository,
+        threadsRepo: {
+          hasAnyThreads: vi.fn(async () => true)
+        } as unknown as ThreadsRepository,
+        webSearchSettingsRepo: {
+          getDefaultEngine: vi.fn(async () => 'bing')
+        } as unknown as WebSearchSettingsRepository,
+        securitySettingsRepo: {
+          getSettings: vi.fn(async () => ({
+            promptInjectionEnabled: true,
+            piiDetectionEnabled: true,
+            guardrailProviderId: null
+          }))
+        },
+        mcpServersRepo: {
+          getSettings: mcpSettingsSpy
+        } as never,
+        channelEventBus: new ChannelEventBus(),
+        cronJobService: {
+          createCronJob: vi.fn(),
+          listAssistantCronJobs: vi.fn(async () => []),
+          removeAssistantCronJob: vi.fn(async () => true)
+        } as unknown as Pick<
+          AssistantCronJobsService,
+          'createCronJob' | 'listAssistantCronJobs' | 'removeAssistantCronJob'
+        >
+      })
+
+      await (
+        runtime as unknown as {
+          ensureAgentRegistered: (
+            assistant: AppAssistant,
+            provider: AppProvider,
+            options?: {
+              channelDeliveryEnabled: boolean
+              cronToolsEnabled?: boolean
+            }
+          ) => Promise<void>
+        }
+      ).ensureAgentRegistered(assistant, buildProvider(), {
+        channelDeliveryEnabled: true
+      })
+
+      const agent = mastra.getAgentById(assistant.id)
+      const tools = await agent.listTools()
+
+      expect(Object.keys(tools)).toEqual(
+        expect.arrayContaining(['webFetch', 'sendMessageToChannel', 'sendImage', 'sendFile'])
+      )
+      expect(Object.keys(tools)).not.toEqual(
+        expect.arrayContaining([
+          'readSoulMemory',
+          'updateSoulMemory',
+          'listWorkLogs',
+          'readWorkLog',
+          'searchWorkLogs',
+          'createCronJob',
+          'listCronJobs',
+          'removeCronJob'
+        ])
+      )
+      await expect(agent.resolveProcessorById('assistant-workspace-context')).resolves.toBeNull()
+      await expect(agent.resolveProcessorById('prompt-injection-detector')).resolves.toBeNull()
+      await expect(agent.resolveProcessorById('pii-detector')).resolves.toBeNull()
+      expect(mcpSettingsSpy).not.toHaveBeenCalled()
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('allows studio-only tools and processors for upgraded external ACP assistants', async () => {
+    const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-assistant-runtime-'))
+    const mcpSettingsSpy = vi.fn(async () => ({ mcpServers: {} }))
+
+    try {
+      const assistant = buildAssistant({
+        origin: 'external-acp',
+        studioFeaturesEnabled: true,
+        workspaceConfig: {
+          rootPath: workspaceRoot
+        }
+      })
+      const mastra = await createMastraInstance(':memory:')
+      const runtime = new AssistantRuntimeService({
+        mastra,
+        assistantsRepo: {} as AssistantsRepository,
+        providersRepo: {} as ProvidersRepository,
+        threadsRepo: {
+          hasAnyThreads: vi.fn(async () => true)
+        } as unknown as ThreadsRepository,
+        webSearchSettingsRepo: {
+          getDefaultEngine: vi.fn(async () => 'bing')
+        } as unknown as WebSearchSettingsRepository,
+        securitySettingsRepo: {
+          getSettings: vi.fn(async () => ({
+            promptInjectionEnabled: true,
+            piiDetectionEnabled: true,
+            guardrailProviderId: null
+          }))
+        },
+        mcpServersRepo: {
+          getSettings: mcpSettingsSpy
+        } as never,
+        channelEventBus: new ChannelEventBus(),
+        cronJobService: {
+          createCronJob: vi.fn(),
+          listAssistantCronJobs: vi.fn(async () => []),
+          removeAssistantCronJob: vi.fn(async () => true)
+        } as unknown as Pick<
+          AssistantCronJobsService,
+          'createCronJob' | 'listAssistantCronJobs' | 'removeAssistantCronJob'
+        >
+      })
+
+      await (
+        runtime as unknown as {
+          ensureAgentRegistered: (
+            assistant: AppAssistant,
+            provider: AppProvider,
+            options?: {
+              channelDeliveryEnabled: boolean
+              cronToolsEnabled?: boolean
+            }
+          ) => Promise<void>
+        }
+      ).ensureAgentRegistered(assistant, buildProvider(), {
+        channelDeliveryEnabled: true
+      })
+
+      const agent = mastra.getAgentById(assistant.id)
+      const tools = await agent.listTools()
+
+      expect(Object.keys(tools)).toEqual(
+        expect.arrayContaining([
+          'readSoulMemory',
+          'updateSoulMemory',
+          'listWorkLogs',
+          'readWorkLog',
+          'searchWorkLogs',
+          'createCronJob',
+          'listCronJobs',
+          'removeCronJob'
+        ])
+      )
+      await expect(agent.resolveProcessorById('assistant-workspace-context')).resolves.toMatchObject(
+        {
+          id: 'assistant-workspace-context'
+        }
+      )
+      await expect(agent.resolveProcessorById('prompt-injection-detector')).resolves.toMatchObject(
+        {
+          id: 'prompt-injection-detector'
+        }
+      )
+      await expect(agent.resolveProcessorById('pii-detector')).resolves.toMatchObject({
+        id: 'pii-detector'
+      })
+      expect(mcpSettingsSpy).toHaveBeenCalledTimes(1)
     } finally {
       await rm(workspaceRoot, { recursive: true, force: true })
     }

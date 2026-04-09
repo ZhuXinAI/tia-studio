@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import {
+  assistantKeys,
   useAssistants,
   useCreateAssistant,
   useUpdateAssistant,
@@ -11,6 +12,10 @@ import {
   type AssistantRecord,
   type SaveAssistantInput
 } from '../../assistants/assistants-query'
+import {
+  readAutoLocalAcpAgentKey,
+  syncInstalledLocalAcpAgents
+} from '../../assistants/local-acp-assistant-sync'
 import {
   updateAssistantHeartbeat,
   type SaveAssistantHeartbeatInput
@@ -42,7 +47,10 @@ import {
   getMcpServersSettings,
   type McpServerRecord
 } from '../../settings/mcp-servers/mcp-servers-query'
-import { useProviders } from '../../settings/providers/providers-query'
+import {
+  providerKeys,
+  useProviders
+} from '../../settings/providers/providers-query'
 import {
   useThreads,
   useCreateThread,
@@ -72,6 +80,7 @@ import {
   toErrorMessage
 } from '../thread-page-routing'
 import { queryClient } from '../../../lib/query-client'
+import { listInstalledLocalAcpAgents } from '../local-acp-agents-query'
 
 type PendingThreadMessage = {
   threadId: string
@@ -79,7 +88,6 @@ type PendingThreadMessage = {
 }
 
 const BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__tiaBuiltInDefaultAgent'
-
 function emptyClawsResponse(): ClawsResponse {
   return {
     claws: [],
@@ -203,11 +211,47 @@ export function useThreadPageController() {
   const deleteAssistantMutation = useDeleteAssistant()
   const createThreadMutation = useCreateThread()
   const deleteThreadMutation = useDeleteThread()
+  const [installedLocalAcpAgents, setInstalledLocalAcpAgents] = useState<
+    Awaited<ReturnType<typeof listInstalledLocalAcpAgents>>
+  >([])
+  const [isLoadingInstalledLocalAcpAgents, setIsLoadingInstalledLocalAcpAgents] = useState(true)
+  const [isSyncingInstalledLocalAcpTargets, setIsSyncingInstalledLocalAcpTargets] = useState(false)
 
   // Filter to only show enabled providers
   const providers = useMemo(
     () => allProviders.filter((provider) => provider.enabled),
     [allProviders]
+  )
+  const installedLocalAcpAgentKeys = useMemo(
+    () => new Set<string>(installedLocalAcpAgents.map((agent) => agent.key)),
+    [installedLocalAcpAgents]
+  )
+  const visibleAssistants = useMemo(
+    () =>
+      assistants
+        .filter((assistant) => {
+          const autoLocalAcpAgentKey = readAutoLocalAcpAgentKey(assistant.workspaceConfig)
+          return !autoLocalAcpAgentKey || installedLocalAcpAgentKeys.has(autoLocalAcpAgentKey)
+        })
+        .sort((left, right) => {
+          const leftAutoLocalAcpAgentKey = readAutoLocalAcpAgentKey(left.workspaceConfig)
+          const rightAutoLocalAcpAgentKey = readAutoLocalAcpAgentKey(right.workspaceConfig)
+          const leftInstalledIndex =
+            leftAutoLocalAcpAgentKey === null
+              ? Number.POSITIVE_INFINITY
+              : installedLocalAcpAgents.findIndex((agent) => agent.key === leftAutoLocalAcpAgentKey)
+          const rightInstalledIndex =
+            rightAutoLocalAcpAgentKey === null
+              ? Number.POSITIVE_INFINITY
+              : installedLocalAcpAgents.findIndex((agent) => agent.key === rightAutoLocalAcpAgentKey)
+
+          if (leftInstalledIndex !== rightInstalledIndex) {
+            return leftInstalledIndex - rightInstalledIndex
+          }
+
+          return Date.parse(right.updatedAt) - Date.parse(left.updatedAt)
+        }),
+    [assistants, installedLocalAcpAgentKeys, installedLocalAcpAgents]
   )
 
   // Local state for MCP servers (not yet migrated to TanStack Query)
@@ -217,7 +261,11 @@ export function useThreadPageController() {
   const [threads, setThreads] = useState<ThreadRecord[]>([])
 
   // Derived loading states
-  const isLoadingData = isLoadingAssistants || isLoadingProviders
+  const isLoadingData =
+    isLoadingAssistants ||
+    isLoadingProviders ||
+    isLoadingInstalledLocalAcpAgents ||
+    isSyncingInstalledLocalAcpTargets
   const loadError = assistantsError
     ? toErrorMessage(assistantsError)
     : providersError
@@ -258,8 +306,8 @@ export function useThreadPageController() {
       return null
     }
 
-    return assistants.find((assistant) => assistant.id === assistantId) ?? null
-  }, [assistants, params.assistantId])
+    return visibleAssistants.find((assistant) => assistant.id === assistantId) ?? null
+  }, [params.assistantId, visibleAssistants])
 
   const assistantDialogAssistant = useMemo(() => {
     if (assistantDialogMode !== 'edit') {
@@ -267,11 +315,11 @@ export function useThreadPageController() {
     }
 
     if (assistantDialogAssistantId) {
-      return assistants.find((assistant) => assistant.id === assistantDialogAssistantId) ?? null
+      return visibleAssistants.find((assistant) => assistant.id === assistantDialogAssistantId) ?? null
     }
 
     return selectedAssistant
-  }, [assistantDialogAssistantId, assistantDialogMode, assistants, selectedAssistant])
+  }, [assistantDialogAssistantId, assistantDialogMode, selectedAssistant, visibleAssistants])
 
   const assistantDialogCurrentClaw = useMemo(() => {
     if (assistantDialogMode !== 'edit' || !assistantDialogAssistant) {
@@ -323,11 +371,11 @@ export function useThreadPageController() {
 
   const sidebarBranches = useMemo(() => {
     return buildAssistantThreadBranches({
-      assistants,
+      assistants: visibleAssistants,
       selectedAssistantId: selectedAssistant?.id ?? null,
       threads
     })
-  }, [assistants, selectedAssistant?.id, threads])
+  }, [selectedAssistant?.id, threads, visibleAssistants])
 
   const chatTransport = useMemo(() => {
     if (!selectedAssistant || !selectedThread) {
@@ -458,6 +506,88 @@ export function useThreadPageController() {
   }, [])
 
   useEffect(() => {
+    let active = true
+    setIsLoadingInstalledLocalAcpAgents(true)
+
+    void listInstalledLocalAcpAgents()
+      .then((nextAgents) => {
+        if (!active) {
+          return
+        }
+
+        setInstalledLocalAcpAgents(nextAgents)
+      })
+      .catch(() => {
+        if (!active) {
+          return
+        }
+
+        setInstalledLocalAcpAgents([])
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoadingInstalledLocalAcpAgents(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isLoadingAssistants || isLoadingProviders || isLoadingInstalledLocalAcpAgents) {
+      return
+    }
+
+    if (installedLocalAcpAgents.length === 0) {
+      return
+    }
+
+    let active = true
+    setIsSyncingInstalledLocalAcpTargets(true)
+
+    void (async () => {
+      const { assistants: nextAssistants, didMutate, providers: nextProviders } =
+        await syncInstalledLocalAcpAgents({
+          installedAgents: installedLocalAcpAgents,
+          providers: allProviders,
+          assistants
+        })
+
+      if (didMutate) {
+        queryClient.setQueryData(assistantKeys.lists(), nextAssistants)
+        queryClient.setQueryData(providerKeys.lists(), nextProviders)
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: assistantKeys.lists() }),
+          queryClient.invalidateQueries({ queryKey: providerKeys.lists() })
+        ])
+      }
+    })()
+      .catch((error) => {
+        if (active) {
+          toast.error(toErrorMessage(error))
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setIsSyncingInstalledLocalAcpTargets(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [
+    allProviders,
+    assistants,
+    installedLocalAcpAgents,
+    isLoadingAssistants,
+    isLoadingInstalledLocalAcpAgents,
+    isLoadingProviders
+  ])
+
+  useEffect(() => {
     if (!isAssistantDialogOpen) {
       return
     }
@@ -505,17 +635,14 @@ export function useThreadPageController() {
       return
     }
 
-    if (assistants.length === 0) {
-      if (!params.assistantId) {
-        navigate('/claws', { replace: true })
-      }
+    if (visibleAssistants.length === 0) {
       return
     }
 
     const selectedAssistantId = params.assistantId ?? null
     if (
       selectedAssistantId &&
-      assistants.some((assistant) => assistant.id === selectedAssistantId)
+      visibleAssistants.some((assistant) => assistant.id === selectedAssistantId)
     ) {
       return
     }
@@ -523,7 +650,7 @@ export function useThreadPageController() {
     let active = true
 
     const resolveAssistantRoute = async (): Promise<void> => {
-      const assistantsById = new Set(assistants.map((assistant) => assistant.id))
+      const assistantsById = new Set(visibleAssistants.map((assistant) => assistant.id))
       const storedSelection = readStoredChatSelection()
       const threadsByAssistant: Array<{
         assistantId: string
@@ -566,7 +693,7 @@ export function useThreadPageController() {
         }
 
         await Promise.all(
-          assistants.map(async (assistant) => {
+          visibleAssistants.map(async (assistant) => {
             await readThreads(assistant.id)
           })
         )
@@ -581,7 +708,7 @@ export function useThreadPageController() {
           return
         }
 
-        const fallbackAssistant = assistants[0]
+        const fallbackAssistant = visibleAssistants[0]
         if (fallbackAssistant) {
           if (!active) {
             return
@@ -593,13 +720,10 @@ export function useThreadPageController() {
           return
         }
         toast.error(toErrorMessage(error))
-        const fallbackAssistant = assistants[0]
+        const fallbackAssistant = visibleAssistants[0]
         if (fallbackAssistant) {
           navigate(routeToAssistantThreads(fallbackAssistant.id), { replace: true })
-          return
         }
-
-        navigate('/claws', { replace: true })
       }
     }
 
@@ -608,7 +732,7 @@ export function useThreadPageController() {
     return () => {
       active = false
     }
-  }, [assistants, isLoadingData, navigate, params.assistantId])
+  }, [isLoadingData, navigate, params.assistantId, visibleAssistants])
 
   // Use TanStack Query to fetch threads for the selected assistant
   const { data: threadsData = [], isLoading: isLoadingThreads } = useThreads(
@@ -1180,7 +1304,7 @@ export function useThreadPageController() {
         )
 
         if (params.assistantId === assistantId) {
-          const fallbackAssistant = assistants.find((a) => a.id !== assistantId)
+          const fallbackAssistant = visibleAssistants.find((a) => a.id !== assistantId)
           if (fallbackAssistant) {
             navigate(routeToAssistantThreads(fallbackAssistant.id), { replace: true })
           } else {
@@ -1210,7 +1334,8 @@ export function useThreadPageController() {
       navigate,
       params.assistantId,
       setMessages,
-      t
+      t,
+      visibleAssistants
     ]
   )
 
@@ -1453,7 +1578,13 @@ export function useThreadPageController() {
       : null
 
   return {
-    assistantsCount: assistants.length,
+    assistantsCount: visibleAssistants.length,
+    assistantOptions: visibleAssistants.map((assistant) => ({
+      id: assistant.id,
+      name: assistant.name,
+      description: assistant.description,
+      origin: assistant.origin ?? 'tia'
+    })),
     sidebarBranches,
     selectedAssistant,
     selectedThread,

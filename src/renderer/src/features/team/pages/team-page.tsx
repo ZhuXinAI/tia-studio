@@ -58,6 +58,9 @@ export function TeamPage(): React.JSX.Element {
         />
 
         <SidebarInset className="flex min-h-0 flex-1 flex-col p-0">
+          <div className="border-b border-border/70 px-4 py-2 text-xs text-muted-foreground">
+            {t('team.chat.mixedMembersHint')}
+          </div>
           <div data-team-main-chat="true" className="min-h-0 flex-1">
             <TeamChatCard
               selectedWorkspace={controller.selectedWorkspace}
@@ -109,6 +112,19 @@ export function TeamPage(): React.JSX.Element {
         isSaving={controller.isSavingConfig}
         errorMessage={controller.configError}
         onClose={controller.closeConfigDialog}
+        onCreateAcpMember={() => {
+          controller.closeConfigDialog()
+          navigate('/agents')
+        }}
+        onCreateTiaMember={() => {
+          controller.closeConfigDialog()
+          navigate('/claws', {
+            state: {
+              assistantDialog: 'create',
+              assistantCreatePath: 'tia'
+            }
+          })
+        }}
         onSubmit={controller.handleSubmitConfig}
       />
     </>

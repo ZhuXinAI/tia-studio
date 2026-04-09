@@ -4,6 +4,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { appEntryLoader } from '../routes/app-entry-loader'
 import { AppShell } from './app-shell'
 
 type AutoUpdateState = {
@@ -80,6 +81,7 @@ describe('AppShell update button', () => {
       root.unmount()
     })
     container.remove()
+    window.localStorage.clear()
     delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT
     vi.clearAllMocks()
   })
@@ -131,5 +133,12 @@ describe('AppShell update button', () => {
     })
 
     expect(restartToUpdate).toHaveBeenCalledTimes(1)
+  })
+
+  it('defaults first-run entry to /agents when no app mode has been stored', () => {
+    const response = appEntryLoader()
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get('Location')).toBe('/agents')
   })
 })

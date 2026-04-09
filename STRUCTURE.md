@@ -98,7 +98,7 @@ It includes:
 - the channel message router that converts inbound messages into assistant runs,
 - shared transport types and the abstract channel base.
 
-If a feature touches claws or external messaging, this is one of the first places to inspect.
+If a feature touches channel bindings or external messaging, this is one of the first places to inspect.
 
 #### `src/main/cron`
 
@@ -136,7 +136,7 @@ It makes sure the app has:
 - the built-in default assistant,
 - the metadata needed to distinguish built-in runtime records from user-managed ones.
 
-This helps the product ship with a usable starting state while still allowing user-managed assistants and claws to stay separate.
+This helps the product ship with a usable starting state while still allowing user-managed assistants and channel bindings to stay separate.
 
 #### `src/main/runtimes`
 
@@ -170,7 +170,7 @@ It is organized around app shell concerns, features, reusable UI, and small supp
 
 ### What starts here
 
-This area bootstraps the renderer app, mounts the React tree, initializes i18n, and defines the route structure for chat, team views, claws, and settings.
+This area bootstraps the renderer app, mounts the React tree, initializes i18n, and defines the route structure for chat, team views, channel bindings, and settings.
 
 If `src/main` is the runtime engine, `src/renderer/src` is the control panel.
 
@@ -195,7 +195,7 @@ Feature code is grouped by domain instead of by technical layer, which makes the
 Important feature folders include:
 
 - `assistants` — assistant editing, assistant queries, heartbeat settings, skills-related UI hooks.
-- `claws` — claw list/query logic, editor dialogs, channel selection, pairing flows, and the claw management page.
+- `claws` — channel binding list/query logic, editor dialogs, channel selection, pairing flows, and the channel binding management page.
 - `settings` — providers, cron jobs, MCP servers, runtimes, web search, and general settings pages.
 - `team` — team pages, team chat state, workspace-related queries, and team-specific UI.
 - `threads` — direct chat routes, thread lists, message querying, and chat-page behavior.
@@ -274,7 +274,7 @@ A good way to understand the repo is to follow the path a feature normally takes
 
 That pattern shows up again and again:
 
-- a claw edit starts in the renderer and ends in channel reload + assistant runtime state,
+- a channel binding edit starts in the renderer and ends in channel reload + assistant runtime state,
 - a provider change starts in settings and ends in model resolution,
 - a new team thread starts in the UI and ends in team runtime execution.
 
