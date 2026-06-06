@@ -7,10 +7,18 @@ import {
   CardHeader,
   CardTitle
 } from '../../../components/ui/card'
+import { Switch } from '../../../components/ui/switch'
 import { useTheme, type Theme } from '../../../components/theme-provider'
-import { Moon, Sun, Monitor, type LucideIcon } from 'lucide-react'
+import { Moon, Sun, Monitor, RotateCcw, type LucideIcon } from 'lucide-react'
 import { getUiConfig, setUiConfig } from '../ui-config'
 import { cn } from '../../../lib/utils'
+import { Button } from '../../../components/ui/button'
+import {
+  getAppearanceTokens,
+  resetAppearanceTokens,
+  setAppearanceTokens,
+  type AppearanceTokens
+} from '../appearance-tokens'
 
 function ThemePreview({ theme }: { theme: Theme }): React.JSX.Element {
   if (theme === 'light') {
@@ -83,6 +91,9 @@ export function DisplaySettingsPage(): React.JSX.Element {
   const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
   const [isTransparent, setIsTransparent] = useState(false)
+  const [appearanceTokens, setAppearanceTokensState] = useState<AppearanceTokens>(() =>
+    getAppearanceTokens()
+  )
   const themeOptions: Array<{ value: Theme; label: string; icon: LucideIcon }> = [
     { value: 'light', label: t('settings.display.themeOptions.light'), icon: Sun },
     { value: 'dark', label: t('settings.display.themeOptions.dark'), icon: Moon },
@@ -115,18 +126,42 @@ export function DisplaySettingsPage(): React.JSX.Element {
     })
   }
 
+  const updateAppearanceToken = (key: keyof AppearanceTokens, value: string): void => {
+    const nextTokens = setAppearanceTokens({
+      ...appearanceTokens,
+      [key]: value
+    })
+    setAppearanceTokensState(nextTokens)
+  }
+
+  const handleResetAppearanceTokens = (): void => {
+    setAppearanceTokensState(resetAppearanceTokens())
+  }
+
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 py-6">
-      <Card className="border-border/70 bg-[color:var(--surface-panel)] shadow-none">
+      <header className="space-y-3 border-b border-[color:var(--surface-border)] pb-5">
+        <p className="section-kicker">Theme and transparency</p>
+        <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
+          {t('settings.display.title')}
+        </h1>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          {t('settings.display.description')}
+        </p>
+      </header>
+
+      <Card className="border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_78%,transparent))] shadow-none">
         <CardHeader className="pb-0">
-          <CardTitle className="tracking-[-0.02em]">{t('settings.display.title')}</CardTitle>
+          <p className="section-kicker">Appearance</p>
+          <CardTitle className="font-editorial text-[1.9rem] leading-none tracking-[-0.03em]">
+            {t('settings.display.themeLabel')}
+          </CardTitle>
           <CardDescription className="max-w-2xl">
             {t('settings.display.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6 py-6 xl:grid-cols-[minmax(0,1.25fr)_340px]">
           <div className="space-y-4">
-            <h3 className="text-sm font-medium">{t('settings.display.themeLabel')}</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {themeOptions.map(({ value, label, icon: Icon }) => (
                 <button
@@ -150,6 +185,48 @@ export function DisplaySettingsPage(): React.JSX.Element {
             </div>
           </div>
 
+          <div className="space-y-4 rounded-[1.25rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-5">
+            <div className="space-y-1">
+              <p className="section-kicker text-[0.66rem]">Appearance Tokens</p>
+              <h3 className="text-sm font-medium">Mineral tuning</h3>
+              <p className="text-sm text-muted-foreground">
+                Adjust the accent, background, and foreground colors while keeping the AppV2 visual
+                system intact.
+              </p>
+            </div>
+
+            <div className="grid gap-3">
+              {[
+                ['accentColor', 'Accent'],
+                ['backgroundColor', 'Background'],
+                ['foregroundColor', 'Foreground']
+              ].map(([key, label]) => (
+                <label key={key} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="font-medium">{label}</span>
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={appearanceTokens[key as keyof AppearanceTokens]}
+                      onChange={(event) =>
+                        updateAppearanceToken(key as keyof AppearanceTokens, event.target.value)
+                      }
+                      className="size-9 cursor-pointer rounded-md border border-[color:var(--surface-border)] bg-transparent p-1"
+                      aria-label={`${label} color`}
+                    />
+                    <code className="w-20 rounded-md bg-[color:var(--surface-muted)] px-2 py-1 text-[11px]">
+                      {appearanceTokens[key as keyof AppearanceTokens]}
+                    </code>
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <Button type="button" variant="outline" size="sm" onClick={handleResetAppearanceTokens}>
+              <RotateCcw className="size-4" />
+              Reset to Mineral
+            </Button>
+          </div>
+
           <div className="rounded-[1.25rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-5">
             <div className="flex items-center justify-between gap-4">
               <div className="space-y-0.5">
@@ -158,15 +235,7 @@ export function DisplaySettingsPage(): React.JSX.Element {
                   {t('settings.display.transparentDescription')}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={toggleTransparent}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${isTransparent ? 'bg-primary' : 'bg-input'}`}
-              >
-                <span
-                  className={`pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform ${isTransparent ? 'translate-x-5' : 'translate-x-0'}`}
-                />
-              </button>
+              <Switch checked={isTransparent} onCheckedChange={() => void toggleTransparent()} />
             </div>
           </div>
         </CardContent>

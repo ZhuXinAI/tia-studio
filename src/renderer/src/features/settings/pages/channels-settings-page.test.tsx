@@ -6,19 +6,18 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChannelsSettingsPage } from './channels-settings-page'
 import {
-  createClawChannel,
-  deleteClawChannel,
-  listClaws,
-  updateClawChannel,
-  type ClawsResponse,
-  type ConfiguredClawChannelRecord
-} from '../../claws/claws-query'
+  createChannel,
+  deleteChannel,
+  listChannels,
+  updateChannel,
+  type ConfiguredChannelRecord
+} from '../channels/channels-query'
 
-vi.mock('../../claws/claws-query', () => ({
-  createClawChannel: vi.fn(),
-  deleteClawChannel: vi.fn(),
-  listClaws: vi.fn(),
-  updateClawChannel: vi.fn()
+vi.mock('../channels/channels-query', () => ({
+  createChannel: vi.fn(),
+  deleteChannel: vi.fn(),
+  listChannels: vi.fn(),
+  updateChannel: vi.fn()
 }))
 
 function setElementValue(element: HTMLInputElement | HTMLSelectElement, value: string): void {
@@ -39,8 +38,8 @@ async function flushAsyncWork(): Promise<void> {
 }
 
 function buildChannel(
-  overrides: Partial<ConfiguredClawChannelRecord>
-): ConfiguredClawChannelRecord {
+  overrides: Partial<ConfiguredChannelRecord>
+): ConfiguredChannelRecord {
   return {
     id: 'channel-1',
     type: 'lark',
@@ -56,13 +55,6 @@ function buildChannel(
   }
 }
 
-function buildResponse(channels: ConfiguredClawChannelRecord[]): ClawsResponse {
-  return {
-    claws: [],
-    configuredChannels: channels
-  }
-}
-
 describe('channels settings page', () => {
   let container: HTMLDivElement
   let root: Root
@@ -73,21 +65,21 @@ describe('channels settings page', () => {
     document.body.appendChild(container)
     root = createRoot(container)
 
-    vi.mocked(listClaws).mockResolvedValue(buildResponse([buildChannel({})]))
-    vi.mocked(createClawChannel).mockResolvedValue(
+    vi.mocked(listChannels).mockResolvedValue([buildChannel({})])
+    vi.mocked(createChannel).mockResolvedValue(
       buildChannel({
         id: 'channel-2',
         type: 'telegram',
         name: 'Ops Telegram'
       })
     )
-    vi.mocked(updateClawChannel).mockResolvedValue(
+    vi.mocked(updateChannel).mockResolvedValue(
       buildChannel({
         id: 'channel-1',
         name: 'Renamed Lark'
       })
     )
-    vi.mocked(deleteClawChannel).mockResolvedValue(undefined)
+    vi.mocked(deleteChannel).mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -100,7 +92,7 @@ describe('channels settings page', () => {
     vi.clearAllMocks()
   })
 
-  it('renders configured channels from claws data', async () => {
+  it('renders channel connections from channel settings data', async () => {
     await act(async () => {
       root.render(
         <MemoryRouter>
@@ -110,7 +102,8 @@ describe('channels settings page', () => {
     })
     await flushAsyncWork()
 
-    expect(container.textContent).toContain('Configured Channels')
+    expect(container.textContent).toContain('Channel Connections')
+    expect(container.textContent).not.toContain('Configured Channels')
     expect(container.textContent).toContain('Ops Lark')
     expect(container.textContent).toContain('Add Channel')
   })
@@ -167,7 +160,7 @@ describe('channels settings page', () => {
     })
     await flushAsyncWork()
 
-    expect(createClawChannel).toHaveBeenCalledWith({
+    expect(createChannel).toHaveBeenCalledWith({
       type: 'telegram',
       name: 'Ops Telegram',
       botToken: '123456:test-token'
@@ -176,7 +169,7 @@ describe('channels settings page', () => {
   })
 
   it('creates a configured discord channel with mention gating controls', async () => {
-    vi.mocked(createClawChannel).mockResolvedValueOnce(
+    vi.mocked(createChannel).mockResolvedValueOnce(
       buildChannel({
         id: 'channel-discord',
         type: 'discord',
@@ -236,7 +229,7 @@ describe('channels settings page', () => {
     })
     await flushAsyncWork()
 
-    expect(createClawChannel).toHaveBeenCalledWith({
+    expect(createChannel).toHaveBeenCalledWith({
       type: 'discord',
       name: 'Ops Discord',
       botToken: 'discord-test-token',
@@ -301,7 +294,7 @@ describe('channels settings page', () => {
     })
     await flushAsyncWork()
 
-    expect(createClawChannel).toHaveBeenCalledWith({
+    expect(createChannel).toHaveBeenCalledWith({
       type: 'lark',
       name: 'Lark No Mention',
       appId: 'cli_123',
@@ -311,7 +304,7 @@ describe('channels settings page', () => {
   })
 
   it('creates a configured whatsapp channel without extra credentials', async () => {
-    vi.mocked(createClawChannel).mockResolvedValueOnce(
+    vi.mocked(createChannel).mockResolvedValueOnce(
       buildChannel({
         id: 'channel-whatsapp',
         type: 'whatsapp',
@@ -357,7 +350,7 @@ describe('channels settings page', () => {
     })
     await flushAsyncWork()
 
-    expect(createClawChannel).toHaveBeenCalledWith({
+    expect(createChannel).toHaveBeenCalledWith({
       type: 'whatsapp',
       name: 'Ops WhatsApp',
       groupRequireMention: true
@@ -366,7 +359,7 @@ describe('channels settings page', () => {
   })
 
   it('creates a configured wechat channel without extra credentials', async () => {
-    vi.mocked(createClawChannel).mockResolvedValueOnce(
+    vi.mocked(createChannel).mockResolvedValueOnce(
       buildChannel({
         id: 'channel-wechat',
         type: 'wechat',
@@ -418,7 +411,7 @@ describe('channels settings page', () => {
     })
     await flushAsyncWork()
 
-    expect(createClawChannel).toHaveBeenCalledWith({
+    expect(createChannel).toHaveBeenCalledWith({
       type: 'wechat',
       name: 'Ops Wechat'
     })
@@ -426,7 +419,7 @@ describe('channels settings page', () => {
   })
 
   it('creates a configured wecom channel with bot credentials', async () => {
-    vi.mocked(createClawChannel).mockResolvedValueOnce(
+    vi.mocked(createChannel).mockResolvedValueOnce(
       buildChannel({
         id: 'channel-wecom',
         type: 'wecom',
@@ -480,7 +473,7 @@ describe('channels settings page', () => {
     })
     await flushAsyncWork()
 
-    expect(createClawChannel).toHaveBeenCalledWith({
+    expect(createChannel).toHaveBeenCalledWith({
       type: 'wecom',
       name: 'Ops Wecom',
       botId: 'bot-123',
@@ -491,15 +484,7 @@ describe('channels settings page', () => {
     expect(container.textContent).toContain('Wecom')
   })
 
-  it('creates a configured wechat-kf channel with relay credentials', async () => {
-    vi.mocked(createClawChannel).mockResolvedValueOnce(
-      buildChannel({
-        id: 'channel-wechat-kf',
-        type: 'wechat-kf',
-        name: 'Wechat Support'
-      })
-    )
-
+  it('does not offer wechat-kf in the channel settings create selector', async () => {
     await act(async () => {
       root.render(
         <MemoryRouter>
@@ -521,48 +506,9 @@ describe('channels settings page', () => {
     const typeSelect = document.body.querySelector(
       'select[id="settings-channel-create-type"]'
     ) as HTMLSelectElement
-    const nameInput = document.body.querySelector(
-      'input[id="settings-channel-create-name"]'
-    ) as HTMLInputElement
 
-    await act(async () => {
-      setElementValue(typeSelect, 'wechat-kf')
-    })
-    await flushAsyncWork()
-
-    expect(document.body.textContent).toContain('wechat-kf-relay')
-    expect(
-      document.body.querySelector('button[id="settings-channel-create-group-require-mention"]')
-    ).toBeNull()
-
-    const serverUrlInput = document.body.querySelector(
-      'input[id="settings-channel-create-server-url"]'
-    ) as HTMLInputElement
-    const serverKeyInput = document.body.querySelector(
-      'input[id="settings-channel-create-server-key"]'
-    ) as HTMLInputElement
-    const saveButton = document.body.querySelector(
-      'button[id="settings-channel-create-save"]'
-    ) as HTMLButtonElement
-
-    await act(async () => {
-      setElementValue(nameInput, 'Wechat Support')
-      setElementValue(serverUrlInput, 'ws://127.0.0.1:3000/ws')
-      setElementValue(serverKeyInput, 'relay-key')
-    })
-
-    await act(async () => {
-      saveButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-    await flushAsyncWork()
-
-    expect(createClawChannel).toHaveBeenCalledWith({
-      type: 'wechat-kf',
-      name: 'Wechat Support',
-      serverUrl: 'ws://127.0.0.1:3000/ws',
-      serverKey: 'relay-key'
-    })
-    expect(container.textContent).toContain('Wechat Support')
+    expect(Array.from(typeSelect.options, (option) => option.value)).not.toContain('wechat-kf')
+    expect(document.body.textContent).not.toContain('wechat-kf-relay')
   })
 
   it('edits and removes an unbound configured channel', async () => {
@@ -600,7 +546,7 @@ describe('channels settings page', () => {
     })
     await flushAsyncWork()
 
-    expect(updateClawChannel).toHaveBeenCalledWith('channel-1', {
+    expect(updateChannel).toHaveBeenCalledWith('channel-1', {
       type: 'lark',
       name: 'Renamed Lark',
       groupRequireMention: true
@@ -625,7 +571,7 @@ describe('channels settings page', () => {
     })
     await flushAsyncWork()
 
-    expect(deleteClawChannel).toHaveBeenCalledWith('channel-1')
+    expect(deleteChannel).toHaveBeenCalledWith('channel-1')
     expect(container.textContent).not.toContain('Renamed Lark')
   })
 })

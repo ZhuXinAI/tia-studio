@@ -1,7 +1,6 @@
 import type { RequestContext } from '@mastra/core/request-context'
 
 export const CHANNEL_CONTEXT_KEY = 'channelContext'
-export const HEARTBEAT_RUN_CONTEXT_KEY = 'heartbeatRunId'
 
 export type ChannelExecutionContext = {
   channelId: string
@@ -26,16 +25,6 @@ export function getChannelExecutionContext(
     typeof contextValue.remoteChatId !== 'string' ||
     typeof contextValue.userId !== 'string'
   ) {
-    return null
-  }
-
-  return contextValue
-}
-
-export function getHeartbeatRunId(requestContext: RequestContext | undefined): string | null {
-  const contextValue = requestContext?.get(HEARTBEAT_RUN_CONTEXT_KEY)
-
-  if (typeof contextValue !== 'string' || contextValue.trim().length === 0) {
     return null
   }
 

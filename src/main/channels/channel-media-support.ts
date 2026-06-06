@@ -6,8 +6,7 @@ const KNOWN_CHANNEL_TYPES: ChannelType[] = [
   'telegram',
   'whatsapp',
   'wechat',
-  'wecom',
-  'wechat-kf'
+  'wecom'
 ]
 const IMAGE_CAPABLE_CHANNEL_TYPES = new Set<ChannelType>([
   'discord',
@@ -21,8 +20,7 @@ const CHANNEL_LABELS: Record<ChannelType, string> = {
   telegram: 'Telegram',
   whatsapp: 'WhatsApp',
   wechat: 'Wechat',
-  wecom: 'WeCom',
-  'wechat-kf': 'Wechat-KF'
+  wecom: 'WeCom'
 }
 
 export function isKnownChannelType(value: string | null | undefined): value is ChannelType {
@@ -62,6 +60,6 @@ export function buildChannelImageSupportGuidance(channelType: string | null | un
 
   return [
     '- sendImage is available on Discord, Lark, Telegram, and WhatsApp.',
-    '- Wechat, WeCom, and Wechat-KF do not support sendImage right now.'
+    '- Wechat and WeCom do not support sendImage right now.'
   ]
 }

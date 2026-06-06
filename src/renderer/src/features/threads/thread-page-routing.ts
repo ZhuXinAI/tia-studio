@@ -1,6 +1,15 @@
 import type { ThreadRecord } from './threads-query'
 import { i18n } from '../../i18n'
 
+export type ThreadRouteScope =
+  | {
+      kind: 'chats'
+    }
+  | {
+      kind: 'workspace'
+      workspaceId: string
+    }
+
 export function toErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message
@@ -9,12 +18,20 @@ export function toErrorMessage(error: unknown): string {
   return i18n.t('common.errors.unexpectedRequest')
 }
 
-export function routeToAssistantThreads(assistantId: string, threadId?: string): string {
-  if (threadId) {
-    return `/chat/${assistantId}/${threadId}`
+export function routeToThread(scope: ThreadRouteScope, threadId?: string): string {
+  if (scope.kind === 'chats') {
+    return threadId ? `/chat/${threadId}` : '/chat'
   }
 
-  return `/chat/${assistantId}`
+  return threadId ? `/workspaces/${scope.workspaceId}/threads/${threadId}` : `/workspaces/${scope.workspaceId}`
+}
+
+export function routeToNewThread(scope: ThreadRouteScope): string {
+  if (scope.kind === 'chats') {
+    return '/chat/new'
+  }
+
+  return `/workspaces/${scope.workspaceId}/new`
 }
 
 export function createThreadTitle(): string {
@@ -38,39 +55,34 @@ export function sortThreadsByRecentActivity(threads: ThreadRecord[]): ThreadReco
   })
 }
 
-function resolveThreadActivityTimestamp(thread: ThreadRecord): number {
-  const timestamp = Date.parse(thread.lastMessageAt ?? thread.createdAt)
-  return Number.isFinite(timestamp) ? timestamp : 0
-}
-
 type ChatRouteSelection = {
-  assistantId: string
   threadId: string | null
 }
 
-const chatSelectionStorageKey = 'tia.chat.last-thread-selection'
+function getThreadSelectionStorageKey(scope: ThreadRouteScope): string {
+  if (scope.kind === 'chats') {
+    return 'tia.chat.last-thread-selection'
+  }
 
-export function readStoredChatSelection(): ChatRouteSelection | null {
+  return `tia.workspace.${scope.workspaceId}.last-thread-selection`
+}
+
+export function readStoredThreadSelection(scope: ThreadRouteScope): ChatRouteSelection | null {
   if (typeof window === 'undefined') {
     return null
   }
 
-  const storedValue = window.localStorage.getItem(chatSelectionStorageKey)
+  const storedValue = window.localStorage.getItem(getThreadSelectionStorageKey(scope))
   if (!storedValue) {
     return null
   }
 
   try {
     const parsed = JSON.parse(storedValue) as {
-      assistantId?: unknown
       threadId?: unknown
-    }
-    if (typeof parsed.assistantId !== 'string' || parsed.assistantId.trim().length === 0) {
-      return null
     }
 
     return {
-      assistantId: parsed.assistantId,
       threadId:
         typeof parsed.threadId === 'string' && parsed.threadId.trim().length > 0
           ? parsed.threadId
@@ -81,61 +93,15 @@ export function readStoredChatSelection(): ChatRouteSelection | null {
   }
 }
 
-export function storeChatSelection(selection: ChatRouteSelection): void {
+export function storeThreadSelection(scope: ThreadRouteScope, selection: ChatRouteSelection): void {
   if (typeof window === 'undefined') {
     return
   }
 
-  window.localStorage.setItem(chatSelectionStorageKey, JSON.stringify(selection))
+  window.localStorage.setItem(getThreadSelectionStorageKey(scope), JSON.stringify(selection))
 }
 
-export function findLatestThreadAcrossAssistants(
-  threadsByAssistant: Array<{
-    assistantId: string
-    threads: ThreadRecord[]
-  }>
-): {
-  assistantId: string
-  threadId: string
-} | null {
-  const talkedCandidates = threadsByAssistant.flatMap(({ assistantId, threads }) =>
-    threads
-      .filter((thread) => Boolean(thread.lastMessageAt))
-      .map((thread) => ({
-        assistantId,
-        threadId: thread.id,
-        timestamp: resolveThreadActivityTimestamp(thread)
-      }))
-  )
-
-  const orderedTalkedCandidates = [...talkedCandidates].sort(
-    (left, right) => right.timestamp - left.timestamp
-  )
-  const latestTalked = orderedTalkedCandidates.at(0)
-  if (latestTalked) {
-    return {
-      assistantId: latestTalked.assistantId,
-      threadId: latestTalked.threadId
-    }
-  }
-
-  const fallbackCandidates = threadsByAssistant.flatMap(({ assistantId, threads }) =>
-    threads.map((thread) => ({
-      assistantId,
-      threadId: thread.id,
-      timestamp: resolveThreadActivityTimestamp(thread)
-    }))
-  )
-  const orderedFallbackCandidates = [...fallbackCandidates].sort(
-    (left, right) => right.timestamp - left.timestamp
-  )
-  const latestThread = orderedFallbackCandidates.at(0)
-  if (!latestThread) {
-    return null
-  }
-
-  return {
-    assistantId: latestThread.assistantId,
-    threadId: latestThread.threadId
-  }
+export function findLatestThread(threads: ThreadRecord[]): ThreadRecord | null {
+  const orderedThreads = sortThreadsByRecentActivity(threads)
+  return orderedThreads.at(0) ?? null
 }

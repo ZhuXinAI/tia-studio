@@ -48,14 +48,14 @@ describe('app router', () => {
     expect(router.state.location.pathname).toBe('/chat')
   })
 
-  it('redirects root route to /team when team mode was the last active mode', async () => {
+  it('redirects root route to /chat even when a stale team mode is stored', async () => {
     window.localStorage.setItem('tia.app.last-mode', JSON.stringify({ mode: 'team' }))
 
     const router = createAppMemoryRouter(['/'])
 
     await router.navigate('/')
 
-    expect(router.state.location.pathname).toBe('/team')
+    expect(router.state.location.pathname).toBe('/chat')
   })
 
   it('redirects settings index route to /settings/general', async () => {
@@ -81,9 +81,11 @@ describe('app router', () => {
     expect(html).toContain('Search providers...')
     expect(html).toContain('Model Provider')
     expect(html).toContain('Security &amp; Privacy')
-    expect(html).toContain('Browsing')
     expect(html).toContain('MCP Servers')
     expect(html).toContain('About &amp; Feedback')
+    expect(html).not.toContain('Browsing')
+    expect(html).not.toContain('Coding')
+    expect(html).not.toContain('Runtime Setup')
   })
 
   it('renders security settings route', () => {
@@ -94,34 +96,11 @@ describe('app router', () => {
     expect(html).toContain('Loading security settings...')
   })
 
-  it('renders web search settings route', () => {
-    const html = renderRouter(['/settings/web-search'])
-
-    expect(html).toContain('Browsing')
-    expect(html).toContain('Browser Automation')
-  })
-
   it('renders mcp server settings route', () => {
     const html = renderRouter(['/settings/mcp-servers'])
 
     expect(html).toContain('MCP Server Settings')
     expect(html).toContain('MCP Servers')
-  })
-
-  it('renders runtime setup route', () => {
-    const html = renderRouter(['/settings/runtimes'])
-
-    expect(html).toContain('Runtime Setup')
-    expect(html).toContain('bun')
-    expect(html).toContain('Runtime Setup')
-  })
-
-  it('renders coding settings route', () => {
-    const html = renderRouter(['/settings/coding'])
-
-    expect(html).toContain('Coding')
-    expect(html).toContain('Codex ACP')
-    expect(html).toContain('Claude Agent ACP')
   })
 
   it('renders about settings route', () => {
@@ -137,92 +116,57 @@ describe('app router', () => {
 
     expect(html).toContain('Display Settings')
     expect(html).toContain('Model Provider')
-    expect(html).toContain('Browsing')
     expect(html).toContain('MCP Servers')
     expect(html).toContain('About &amp; Feedback')
+    expect(html).toContain('Appearance Tokens')
+    expect(html).not.toContain('Browsing')
+    expect(html).not.toContain('Runtime Setup')
   })
 
   it('renders channels settings route', () => {
     const html = renderRouter(['/settings/channels'])
 
     expect(html).toContain('Channels')
-    expect(html).toContain('Configured Channels')
+    expect(html).toContain('Channel Connections')
     expect(html).toContain('Add Channel')
   })
 
-  it('renders the assistant and channel management route', () => {
-    const html = renderRouter(['/claws'])
-
-    expect(html).toContain('Assistants &amp; Channels')
-    expect(html).toContain('Create your first assistant')
-    expect(html).toContain('Create Assistant')
-  })
-
-  it('renders cron jobs settings route', () => {
-    const html = renderRouter(['/settings/cron-jobs'])
-
-    expect(html).toContain('Cron Jobs')
-    expect(html).toContain('Scheduled Jobs')
-    expect(html).toContain('Loading cron jobs')
-    expect(html).toContain('Channels')
-    expect(html).toContain('Browsing')
-  })
-
-  it('renders chat route with the thread sidebar shell while assistant detail restores', () => {
+  it('renders chat route with the AppV2 thread canvas while assistant detail restores', () => {
     const html = renderRouter(['/chat'])
 
-    expect(html).toContain('Conversations')
-    expect(html).toContain('Loading assistants...')
+    expect(html).toContain('Chats')
+    expect(html).toContain('Conversation canvas')
+    expect(html).toContain('Thread Details')
   })
 
-  it('renders header nav with chats, team, and the shell context switcher', () => {
+  it('renders the AppV2 shell with sidebar actions and workspace navigation', () => {
     const html = renderRouter(['/chat'])
 
+    expect(html).toContain('New Chat')
+    expect(html).toContain('Skills')
+    expect(html).toContain('Automations')
     expect(html).toContain('aria-label="Open settings"')
-    expect(html).toContain('Assistants')
-    expect(html).toContain('Teams')
-    expect(html).toContain('Assistant')
-    expect(html).toContain('aria-label="Switch active assistant"')
+    expect(html).toContain('Local agent')
+    expect(html).toContain('Create workspace')
+    expect(html).toContain('Workspaces')
+    expect(html).toContain('Workspace')
+    expect(html).toContain('Chats')
     expect(html).not.toContain('Control Center')
   })
 
-  it('renders the team route from the top nav', () => {
-    const html = renderRouter(['/team'])
+  it('renders the dedicated skills route', () => {
+    const html = renderRouter(['/skills'])
 
-    expect(html).toContain('Assistants')
-    expect(html).toContain('Teams')
-    expect(html).toContain('Team Threads')
-    expect(html).toContain('Team Chat')
-    expect(html).toContain('Team Status')
+    expect(html).toContain('Curated skill catalog')
+    expect(html).toContain('Agent Browser')
+    expect(html).toContain('Install recommended skills')
   })
 
-  it('renders a direct team thread route without falling into the route error UI', async () => {
-    const router = createAppMemoryRouter(['/team/workspace-1/thread-1'])
+  it('renders the dedicated automations route', () => {
+    const html = renderRouter(['/automations'])
 
-    await router.navigate('/team/workspace-1/thread-1')
-
-    const html = renderToString(
-      <QueryClientProvider
-        client={
-          new QueryClient({
-            defaultOptions: {
-              queries: {
-                retry: false
-              },
-              mutations: {
-                retry: false
-              }
-            }
-          })
-        }
-      >
-        <RouterProvider router={router} />
-      </QueryClientProvider>
-    )
-
-    expect(router.state.location.pathname).toBe('/team/workspace-1/thread-1')
-    expect(html).toContain('Team Threads')
-    expect(html).not.toContain('Something went wrong')
-    expect(html).not.toContain('Not Found')
+    expect(html).toContain('Time-based workspace runs')
+    expect(html).toContain('Named workspaces')
+    expect(html).toContain('Built-in Chats')
   })
 })

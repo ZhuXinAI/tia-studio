@@ -12,8 +12,8 @@ import { cn } from '../../lib/utils'
 
 const ANIMATION_DURATION = 200
 
-type TeamMemberToolResult = {
-  kind: 'team-member-result'
+type DelegatedAgentToolResult = {
+  kind: 'delegated-agent-result'
   assistantId: string
   assistantName: string
   task: string
@@ -24,14 +24,14 @@ type TeamMemberToolResult = {
   subAgentResourceId: string | null
 }
 
-function isTeamMemberToolResult(value: unknown): value is TeamMemberToolResult {
+function isDelegatedAgentToolResult(value: unknown): value is DelegatedAgentToolResult {
   if (!value || typeof value !== 'object') {
     return false
   }
 
-  const candidate = value as Partial<TeamMemberToolResult>
+  const candidate = value as Partial<DelegatedAgentToolResult>
   return (
-    candidate.kind === 'team-member-result' &&
+    candidate.kind === 'delegated-agent-result' &&
     typeof candidate.assistantId === 'string' &&
     typeof candidate.assistantName === 'string' &&
     typeof candidate.task === 'string' &&
@@ -236,10 +236,10 @@ function ToolFallbackResult({
       className={cn('aui-tool-fallback-result border-t border-dashed px-4 pt-2', className)}
       {...props}
     >
-      {isTeamMemberToolResult(result) ? (
+      {isDelegatedAgentToolResult(result) ? (
         <>
           <p className="aui-tool-fallback-result-header font-semibold">Delegated response:</p>
-          <div className="aui-tool-fallback-team-result mt-2 space-y-3">
+          <div className="aui-tool-fallback-delegated-result mt-2 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-xs font-medium">
                 {result.assistantName}

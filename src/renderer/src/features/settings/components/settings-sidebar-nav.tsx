@@ -1,16 +1,4 @@
-import {
-  AlarmClock,
-  Cable,
-  Cloud,
-  Info,
-  Languages,
-  MessageCircleMore,
-  Monitor,
-  Search,
-  Shield,
-  TerminalSquare,
-  Wrench
-} from 'lucide-react'
+import { Cable, Cloud, Info, Languages, MessageCircleMore, Monitor, Shield } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { NavLink, useLocation } from 'react-router-dom'
@@ -31,12 +19,7 @@ type SettingsNavItem = {
   icon: ComponentType<{ className?: string }>
 }
 
-const settingsNavItems: SettingsNavItem[] = [
-  {
-    titleKey: 'settings.sidebar.items.general',
-    icon: Languages,
-    to: '/settings/general'
-  },
+const configurationItems: SettingsNavItem[] = [
   {
     titleKey: 'settings.sidebar.items.providers',
     icon: Cloud,
@@ -53,29 +36,17 @@ const settingsNavItems: SettingsNavItem[] = [
     to: '/settings/channels'
   },
   {
-    titleKey: 'settings.sidebar.items.cronJobs',
-    icon: AlarmClock,
-    to: '/settings/cron-jobs'
-  },
-  {
-    titleKey: 'settings.sidebar.items.webSearch',
-    icon: Search,
-    to: '/settings/web-search'
-  },
-  {
     titleKey: 'settings.sidebar.items.mcpServers',
     icon: Cable,
     to: '/settings/mcp-servers'
-  },
+  }
+]
+
+const preferenceItems: SettingsNavItem[] = [
   {
-    titleKey: 'settings.sidebar.items.coding',
-    icon: TerminalSquare,
-    to: '/settings/coding'
-  },
-  {
-    titleKey: 'settings.sidebar.items.runtimeSetup',
-    icon: Wrench,
-    to: '/settings/runtimes'
+    titleKey: 'settings.sidebar.items.general',
+    icon: Languages,
+    to: '/settings/general'
   },
   {
     titleKey: 'settings.sidebar.items.display',
@@ -93,33 +64,40 @@ export function SettingsSidebarNav(): React.JSX.Element {
   const location = useLocation()
   const { t } = useTranslation()
 
+  function renderItems(items: SettingsNavItem[]): React.JSX.Element[] {
+    return items.map((item) => {
+      const isActive = location.pathname === item.to
+      return (
+        <SidebarMenuItem key={item.to}>
+          <SidebarMenuButton asChild variant={isActive ? 'active' : 'default'}>
+            <NavLink to={item.to}>
+              <item.icon className="size-4" />
+              <span>{t(item.titleKey)}</span>
+            </NavLink>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      )
+    })
+  }
+
   return (
-    <Sidebar className="h-full border-b-0 border-r border-border/70 bg-transparent backdrop-blur-none">
-      <SidebarHeader className="space-y-2">
-        <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
-          {t('settings.sidebar.title')}
-        </p>
-        <h1 className="text-lg font-semibold">{t('settings.sidebar.subtitle')}</h1>
+    <Sidebar className="h-full border-b-0 border-r border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)]">
+      <SidebarHeader className="space-y-2 border-b border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)]">
+        <p className="section-kicker">{t('settings.sidebar.title')}</p>
+        <h1 className="font-editorial text-[1.55rem] leading-none tracking-[-0.03em]">
+          {t('settings.sidebar.subtitle')}
+        </h1>
       </SidebarHeader>
 
       <SidebarContent className="py-5">
         <SidebarGroup>
-          <SidebarGroupLabel>{t('settings.sidebar.categories')}</SidebarGroupLabel>
-          <SidebarMenu>
-            {settingsNavItems.map((item) => {
-              const isActive = location.pathname === item.to
-              return (
-                <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton asChild variant={isActive ? 'active' : 'default'}>
-                    <NavLink to={item.to}>
-                      <item.icon className="size-4" />
-                      <span>{t(item.titleKey)}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )
-            })}
-          </SidebarMenu>
+          <SidebarGroupLabel>Configuration</SidebarGroupLabel>
+          <SidebarMenu>{renderItems(configurationItems)}</SidebarMenu>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Preferences</SidebarGroupLabel>
+          <SidebarMenu>{renderItems(preferenceItems)}</SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>

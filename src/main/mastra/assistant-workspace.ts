@@ -75,12 +75,6 @@ Use this file for things that should survive the current session:
 * decisions worth remembering later
 
 Keep it concise. Update it when something becomes reliably true, and prune stale or low-value details.
-`,
-  'HEARTBEAT.md': `# HEARTBEAT.md
-
-# Keep this file empty (or with only comments) to skip heartbeat API calls.
-
-# Add tasks below when you want the assistant to check something periodically.
 `
 } as const
 

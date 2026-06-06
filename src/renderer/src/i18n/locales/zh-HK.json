@@ -3,8 +3,6 @@
     "nav": {
       "chats": "聊天",
       "home": "主頁",
-      "claws": "Claws",
-      "team": "團隊",
       "update": "Update",
       "updating": "Updating...",
       "openSettings": "開啟設定"
@@ -15,7 +13,6 @@
       "workspace": "工作區",
       "settings": "設定",
       "chat": "聊天",
-      "team": "團隊",
       "modelProviders": "模型供應商",
       "notes": "TIA Studio 備註"
     },
@@ -29,14 +26,6 @@
       "empty": "No assistants yet",
       "createAction": "Create new assistant",
       "manageAction": "Manage assistants & channels"
-    },
-    "teamSwitcher": {
-      "label": "Current team",
-      "ariaLabel": "Switch active team workspace",
-      "loading": "Loading team...",
-      "fallback": "Team workspace",
-      "empty": "No team workspaces yet",
-      "createAction": "Create new team"
     },
     "context": {
       "assistantsChannels": "Assistants & Channels"
@@ -80,7 +69,6 @@
         "providers": "模型供應商",
         "security": "Security & Privacy",
         "channels": "頻道",
-        "cronJobs": "定時工作",
         "webSearch": "Browsing",
         "mcpServers": "MCP 伺服器",
         "coding": "Coding",
@@ -302,19 +290,9 @@
       "description": "Choose how TIA opens pages and which browser runtime it uses for browsing tasks.",
       "browserAutomation": {
         "title": "Browser Automation",
-        "description": "Pick the browser runtime for interactive browsing and automation.",
+        "description": "Control how browsing windows behave for interactive browsing and automation.",
         "loading": "Loading browser automation settings...",
-        "modeTitle": "Browser Runtime",
-        "modeTiaBrowserToolLabel": "TIA Browser Tool",
-        "modeBuiltInBrowserLabel": "Built-in Browser",
-        "modeTiaBrowserToolDescription": "Uses the in-app TIA Browser Tool runtime for interactive browsing and automation tasks.",
-        "modeBuiltInBrowserDescription": "Uses the standalone built-in browser workflow with the external automation bridge.",
-        "showTiaBrowserToolTitle": "Show TIA Browser Tool Window",
-        "showTiaBrowserToolVisible": "The TIA Browser Tool window stays visible while browsing automation runs.",
-        "showTiaBrowserToolHidden": "The TIA Browser Tool window stays hidden unless a browsing task brings it forward.",
-        "showBuiltInBrowserTitle": "Show Built-in Browser Window",
-        "showBuiltInBrowserVisible": "The built-in browser window stays visible while browsing automation runs.",
-        "showBuiltInBrowserHidden": "The built-in browser window stays hidden unless a browsing task brings it forward."
+        "modeExternalToolsDescription": "Use external browser tools for interactive browsing."
       },
       "fetchWindow": {
         "title": "Page Fetch Window",
@@ -331,44 +309,10 @@
         "keepFetchWindowOpen": "Fetch window reuse is now {{state}}.",
         "keepFetchWindowOpenEnabled": "enabled",
         "keepFetchWindowOpenDisabled": "disabled",
-        "browserAutomationModeUpdated": "Browser automation runtime is now {{mode}}.",
         "fetchWindowVisibility": "Fetch window is now {{state}}.",
-        "builtInBrowserVisibility": "Built-in browser window is now {{state}}.",
-        "tiaBrowserToolVisibility": "TIA Browser Tool window is now {{state}}.",
         "windowVisible": "visible",
         "windowHidden": "hidden",
         "unexpectedError": "Unexpected request error"
-      }
-    },
-    "cronJobs": {
-      "title": "定時工作",
-      "description": "檢視工作區定時工作的排程狀態、下次執行時間，以及最近的執行錯誤。",
-      "cardTitle": "已排程工作",
-      "cardDescription": "隱藏的 cron 討論串不會出現在一般聊天記錄中，但其執行狀態會保存在這裡。",
-      "loading": "正在載入定時工作…",
-      "empty": "尚未設定任何定時工作。請透過 cron job API 建立工作以開始排程執行。",
-      "assistantLabel": "助理：{{assistant}}",
-      "enabled": "已啟用",
-      "disabled": "已停用",
-      "fields": {
-        "cronExpression": "Cron 表達式",
-        "nextRun": "下次執行",
-        "lastStatus": "最近狀態",
-        "lastRun": "最近執行",
-        "lastError": "最近錯誤"
-      },
-      "fallbacks": {
-        "notScheduled": "未排程",
-        "never": "從未",
-        "none": "無"
-      },
-      "status": {
-        "success": "成功",
-        "failed": "失敗",
-        "neverRun": "從未執行"
-      },
-      "toasts": {
-        "unexpectedError": "要求發生未預期錯誤"
       }
     },
     "providers": {
@@ -514,399 +458,8 @@
       "empty": "尚未有已設定的頻道。",
       "available": "可用",
       "boundTo": "已連接到 {{assistantName}}",
-      "removeDisabled": "請先將此頻道從其 claw 解除綁定後再移除。",
+      "removeDisabled": "請先將此頻道從目前的助手解除綁定後再移除。",
       "loadFailed": "載入頻道失敗"
-    }
-  },
-  "claws": {
-    "eyebrow": "Claws",
-    "title": "Claws",
-    "description": "將助手連接到外部 WhatsApp、Telegram、Lark 或企業微信頻道，無需翻查原始設定。",
-    "newButton": "新增 Claw",
-    "telegram": {
-      "description": "將助手連接到外部 WhatsApp、Telegram、Lark 或企業微信頻道，無需翻查原始設定。",
-      "emptyDescription": "從一個助手、一個供應商和一個 WhatsApp、Telegram、Lark 或企業微信頻道開始，是最快的接入方式。",
-      "pairingSummary": "已配對 {{pairedCount}} 個 · 待處理 {{pendingCount}} 個",
-      "managePairingsButton": "管理配對",
-      "defaultClawName": "Telegram Claw"
-    },
-    "wechat": {
-      "manageSetupButton": "Open Setup"
-    },
-    "errors": {
-      "loadFailed": "載入 Claw 失敗",
-      "saveFailed": "儲存 Claw 失敗",
-      "updateFailed": "更新 Claw 失敗",
-      "deleteFailed": "刪除 Claw 失敗"
-    },
-    "providers": {
-      "noneSelected": "未選擇供應商",
-      "unknown": "未知供應商"
-    },
-    "empty": {
-      "title": "設定你的第一個 Claw",
-      "description": "從一個助手、一個供應商和一個 WhatsApp、Telegram、Lark 或企業微信頻道開始，是最快的上手方式。",
-      "note": "助手身分、心跳以及後續 cron 仍由助手本身管理。",
-      "createButton": "建立第一個 Claw"
-    },
-    "card": {
-      "noChannelConnected": "未連接頻道",
-      "configureChannelFirst": "Configure a channel first",
-      "statusEnabled": "Enabled",
-      "statusDisabled": "Disabled",
-      "enableButton": "啟用",
-      "disableButton": "停用",
-      "editButton": "編輯",
-      "deleteButton": "刪除",
-      "deleteConfirmPrompt": "Delete \"{{name}}\"? This will also delete all of its threads.",
-      "deleteConfirmFallbackLabel": "Unnamed claw"
-    },
-    "deleteDialog": {
-      "title": "刪除「{{name}}」？",
-      "description": "這也會刪除所有助理歷史記錄。",
-      "actions": {
-        "cancel": "取消",
-        "disable": "改為停用",
-        "confirmDelete": "確認刪除"
-      }
-    },
-    "dialog": {
-      "editTitle": "編輯 Claw",
-      "createTitle": "建立 Claw",
-      "saveButton": "儲存 Claw",
-      "createButton": "建立 Claw",
-      "description": "透過一個輕量流程把助手連接到 Lark 或企業微信頻道。",
-      "telegramDescription": "透過一個輕量流程把助手連接到 WhatsApp、Telegram、Lark 或企業微信頻道。",
-      "fields": {
-        "assistantName": "助手名稱",
-        "provider": "供應商",
-        "instructions": "指示",
-        "workspacePath": "Workspace Path",
-        "channelAction": "頻道操作",
-        "existingChannel": "現有頻道",
-        "channelType": "頻道類型",
-        "channelName": "頻道名稱",
-        "botToken": "機器人令牌",
-        "botId": "機器人 ID",
-        "secret": "Secret",
-        "serverUrl": "Server URL",
-        "serverKey": "Server Key",
-        "larkChannelName": "Lark 頻道名稱",
-        "appId": "應用程式 ID",
-        "appSecret": "應用程式密鑰"
-      },
-      "pickFolder": "Browse",
-      "workspacePathPlaceholder": "Auto-generated from assistant name",
-      "workspacePathHint": "Leave empty to auto-generate from assistant name, or pick a custom folder",
-      "workspacePathReadOnly": "Workspace path is set automatically and cannot be changed",
-      "selectProvider": "選擇供應商",
-      "selectChannel": "選擇頻道",
-      "enableAfterSaving": "儲存後啟用此 Claw",
-      "defaultAssistantName": "我的第一個助手",
-      "stepper": {
-        "steps": {
-          "provider": "供應商",
-          "channel": "頻道",
-          "details": "名稱和工作區",
-          "setup": "Recommended Setup"
-        },
-        "actions": {
-          "back": "返回",
-          "next": "下一步"
-        },
-        "detailsDescription": "設定助手名稱，並可選擇一個工作區資料夾。",
-        "setupDescription": "Optionally install bun and a few recommended tools before creating this claw."
-      },
-      "channelTypes": {
-        "discord": "Discord",
-        "lark": "Lark",
-        "telegram": "Telegram",
-        "whatsapp": "WhatsApp",
-        "wechat": "Wechat",
-        "wecom": "企業微信",
-        "wechatKf": "Wechat-KF"
-      },
-      "channelActions": {
-        "keep": "保留目前頻道",
-        "create": "建立新的 Lark 頻道",
-        "createGeneric": "建立新頻道",
-        "attach": "綁定現有頻道",
-        "detach": "解除目前頻道"
-      },
-      "errors": {
-        "assistantNameRequired": "助手名稱為必填項",
-        "providerRequired": "供應商為必填項",
-        "channelRequired": "請選擇要綁定的頻道",
-        "channelCredentialsRequired": "Lark 頻道名稱、應用程式 ID 和應用程式密鑰皆為必填項",
-        "discordCredentialsRequired": "Discord channel name and bot token are required",
-        "telegramCredentialsRequired": "Telegram 頻道名稱和 Bot Token 均為必填項",
-        "pickFolderFailed": "Failed to pick folder"
-      }
-    },
-    "channelStatus": {
-      "connected": "Connected",
-      "disconnected": "Disconnected",
-      "error": "Needs attention"
-    },
-    "channelSelector": {
-      "title": "選擇頻道",
-      "description": "從已設定的頻道中選擇、新增頻道，或讓此 claw 不綁定頻道。",
-      "openButton": "選擇頻道",
-      "empty": "尚未有已設定的頻道。",
-      "available": "可用",
-      "inUseByCurrent": "目前由此 claw 使用",
-      "inUseByOther": "正在由 {{assistantName}} 使用",
-      "otherAssistantFallback": "其他助手",
-      "actions": {
-        "add": "新增頻道",
-        "edit": "編輯頻道",
-        "retrySetup": "Retry Setup",
-        "remove": "移除頻道",
-        "clear": "清除選擇",
-        "cancel": "取消",
-        "apply": "套用"
-      },
-      "selectedBadge": "已選取",
-      "create": {
-        "title": "新增頻道",
-        "description": "建立新的 WhatsApp、Telegram、Lark 或企業微信頻道設定。",
-        "whatsappHint": "不需要權杖。儲存後，開啟「管理配對」來掃描 WhatsApp QR 碼。",
-        "wechatHint": "No token is required. After saving, open Wechat Setup to scan the Wechat login QR code.",
-        "wechatKfHintPrefix": "Wechat-KF requires a relay server set up with",
-        "wechatKfHintSuffix": "Follow the README there before entering the server URL and server key.",
-        "save": "新增頻道",
-        "fields": {
-          "type": "頻道類型"
-        }
-      },
-      "edit": {
-        "title": "編輯頻道",
-        "description": "更新此頻道設定。",
-        "save": "儲存變更",
-        "credentialsOptional": "將憑證欄位留空即可保留目前值。",
-        "appIdPlaceholder": "保持不變",
-        "appSecretPlaceholder": "保持不變",
-        "botTokenPlaceholder": "保持不變"
-      },
-      "groupRequireMention": {
-        "label": "Require @mentions in group chats",
-        "description": "When enabled, the assistant only replies in group chats when the bot is mentioned. Direct chats still work normally."
-      },
-      "remove": {
-        "title": "移除頻道",
-        "description": "從已設定頻道中移除 {{channelName}}？",
-        "descriptionFallback": "從已設定頻道中移除此頻道？",
-        "confirm": "移除頻道"
-      },
-      "errors": {
-        "nameRequired": "頻道名稱為必填",
-        "discordCredentialsRequired": "Bot token is required for Discord channels",
-        "larkCredentialsRequired": "Lark 頻道需要應用程式 ID 與應用程式密鑰",
-        "telegramCredentialsRequired": "Telegram 頻道需要 Bot 令牌",
-        "wecomCredentialsRequired": "企業微信頻道需要機器人 ID 與 Secret",
-        "wechatKfCredentialsRequired": "Server URL and server key are required for Wechat-KF channels",
-        "createFailed": "建立頻道失敗",
-        "updateFailed": "更新頻道失敗",
-        "deleteFailed": "刪除頻道失敗",
-        "recoverFailed": "Failed to restart channel setup"
-      }
-    },
-    "providerSelector": {
-      "title": "Select Provider",
-      "description": "Choose from configured providers or add a new one.",
-      "openButton": "Select Provider",
-      "noProviderSelected": "No provider selected",
-      "required": "Provider is required",
-      "empty": "No configured providers yet.",
-      "enabled": "Enabled",
-      "disabled": "Disabled",
-      "actions": {
-        "add": "Add Provider",
-        "addFromTemplate": "Add from Template",
-        "addCustom": "Add Custom Provider",
-        "edit": "Edit Provider",
-        "clear": "Clear Selection",
-        "cancel": "Cancel",
-        "apply": "Apply"
-      },
-      "selectedBadge": "Selected",
-      "templates": {
-        "title": "Choose Provider Template",
-        "description": "Select a prebuilt provider configuration. You'll just need to add your API key.",
-        "empty": "All built-in providers are already configured."
-      },
-      "template": {
-        "title": "Configure Provider",
-        "description": "Add your API key to activate this provider.",
-        "getApiKeyPrompt": "Get your API key from",
-        "apiKeyHint": "Enter your API key to activate this provider.",
-        "save": "Add Provider"
-      },
-      "create": {
-        "title": "Add Provider",
-        "description": "Create a new model provider configuration.",
-        "save": "Add Provider"
-      },
-      "edit": {
-        "title": "Edit Provider",
-        "description": "Update this provider configuration.",
-        "save": "Save Changes",
-        "apiKeyOptional": "Leave API key blank to keep the current value.",
-        "apiKeyPlaceholder": "Leave unchanged"
-      },
-      "errors": {
-        "nameRequired": "Provider name is required",
-        "apiKeyRequired": "API key is required",
-        "createFailed": "Failed to create provider",
-        "updateFailed": "Failed to update provider"
-      }
-    },
-    "pairings": {
-      "title": "管理配對",
-      "wechatTitle": "Wechat Setup",
-      "description": "檢視 {{clawName}} 的 Telegram 配對請求。",
-      "whatsappDescription": "Scan the WhatsApp QR code and review pairing requests for {{clawName}}.",
-      "wechatDescription": "Scan the Wechat QR code to bind {{clawName}}.",
-      "loading": "正在載入配對...",
-      "empty": "還沒有 Telegram 配對。",
-      "senderIds": "傳送者 ID：{{senderId}} · 聊天 ID：{{chatId}}",
-      "approvalCode": "批准碼：{{code}}",
-      "whatsappAuth": {
-        "title": "WhatsApp Login",
-        "description": "Scan this QR code from WhatsApp on your phone to connect the channel.",
-        "loading": "Preparing WhatsApp login...",
-        "scanHint": "Open WhatsApp on your phone, then go to Linked Devices → Link a Device.",
-        "qrAlt": "WhatsApp login QR code",
-        "phoneFallback": "your linked device",
-        "status": {
-          "disconnected": "WhatsApp is disconnected.",
-          "connecting": "Connecting to WhatsApp...",
-          "qrReady": "QR code ready to scan.",
-          "connected": "Connected as {{phoneNumber}}.",
-          "error": "WhatsApp needs attention."
-        }
-      },
-      "wechatAuth": {
-        "title": "Wechat Login",
-        "description": "Scan this QR code in Wechat on your phone to bind the channel.",
-        "loading": "Preparing Wechat login...",
-        "scanHint": "Open Wechat on your phone and scan the QR code to confirm the login.",
-        "qrAlt": "Wechat login QR code",
-        "accountFallback": "your Wechat account",
-        "status": {
-          "disconnected": "Wechat is disconnected.",
-          "connecting": "Connecting to Wechat...",
-          "qrReady": "QR code ready to scan.",
-          "connected": "Connected as {{accountId}}.",
-          "error": "Wechat needs attention."
-        }
-      },
-      "status": {
-        "pending": "待批准",
-        "approved": "已批准",
-        "rejected": "已拒絕",
-        "revoked": "已撤銷"
-      },
-      "actions": {
-        "approve": "批准",
-        "reject": "拒絕",
-        "revoke": "撤銷",
-        "retrySetup": "Retry Setup"
-      },
-      "errors": {
-        "loadFailed": "載入配對失敗",
-        "updateFailed": "更新配對失敗"
-      }
-    }
-  },
-  "team": {
-    "sidebar": {
-      "eyebrow": "Team",
-      "title": "Team 工作區",
-      "emptyTitle": "Team Threads",
-      "currentTeam": "Current Team",
-      "defaultWorkspaceName": "Team 工作區",
-      "createWorkspaceAriaLabel": "建立 Team 工作區",
-      "creatingWorkspace": "正在建立工作區...",
-      "newWorkspace": "新增工作區",
-      "workspaces": "工作區",
-      "createThreadAriaLabel": "建立 Team 執行緒",
-      "creatingThread": "Creating thread...",
-      "newThread": "新增執行緒",
-      "threadsLabel": "Threads",
-      "searchThreadsPlaceholder": "Search team threads",
-      "searchThreadsAriaLabel": "Search team threads",
-      "loadingWorkspaces": "正在載入 Team 工作區...",
-      "emptyWorkspaces": "還沒有工作區。先建立一個，再開始 Team 執行緒。",
-      "loadingThreads": "正在載入 Team 執行緒...",
-      "emptyThreads": "還沒有 Team 執行緒。",
-      "emptyThreadSearch": "No Team threads match that search.",
-      "untitledThread": "未命名 Team 執行緒",
-      "deleteThreadAriaLabel": "刪除 Team 執行緒 {{title}}",
-      "deleteThreadPrompt": "刪除執行緒？",
-      "confirmDeleteThreadAriaLabel": "確認刪除 Team 執行緒 {{title}}",
-      "deletingThread": "正在刪除..."
-    },
-    "chat": {
-      "defaultTitle": "Team 對話",
-      "noWorkspaceSelected": "未選擇工作區",
-      "membersLabel_one": "{{count}} 名成員",
-      "membersLabel_other": "{{count}} 名成員",
-      "newThread": "新增 Team 執行緒",
-      "configureTeam": "設定 Team",
-      "setupIncompleteTitle": "Team 設定尚未完成。",
-      "setupIncompleteDescription": "傳送前請先加入主管供應商/模型，並至少選擇一名成員。",
-      "emptyTitle": "未選擇 Team 執行緒",
-      "emptyDescription": "選擇現有執行緒，或新增一個 Team 執行緒開始協作。",
-      "supervisorName": "Team Supervisor",
-      "composer": {
-        "placeholderSelected": "讓團隊協調完成一項任務...",
-        "placeholderEmpty": "建立或選擇一個 Team 執行緒以開始對話。",
-        "ariaLabel": "Team 訊息輸入框",
-        "helperSelected": "訊息會透過 Team 主管與所選成員流轉。",
-        "helperEmpty": "請先選擇工作區並建立一個 Team 執行緒。",
-        "openStatus": "開啟 Team 狀態"
-      }
-    },
-    "configDialog": {
-      "closeAriaLabel": "關閉 Team 設定對話框",
-      "title": "設定 Team",
-      "description": "選擇主管模型，並決定哪些助手加入這個團隊。",
-      "fields": {
-        "supervisorProvider": "主管供應商",
-        "teamDescription": "Team 描述",
-        "supervisorModel": "主管模型",
-        "teamMembers": "Team 成員"
-      },
-      "validation": {
-        "supervisorProvider": "請選擇主管供應商。",
-        "supervisorModel": "請輸入主管模型。",
-        "members": "請至少選擇一名 Team 成員。"
-      },
-      "selectProvider": "選擇供應商",
-      "saveButton": "儲存 Team"
-    },
-    "status": {
-      "title": "Team 狀態",
-      "supervisor": "主管",
-      "eventLogTitle": "事件記錄",
-      "emptyEventLog": "尚未有狀態事件。",
-      "defaultMember": "某位成員",
-      "events": {
-        "runStarted": "執行已開始。",
-        "delegationStarted": "{{assistant}} 正在執行。",
-        "delegationFinished": "{{assistant}} 已完成。",
-        "iterationComplete": "第 {{iteration}} 輪已完成。",
-        "runFinished": "執行已完成。",
-        "runFailed": "執行失敗。"
-      }
-    },
-    "readiness": {
-      "threadSelected": "已選擇 Team 執行緒",
-      "workspaceConfigured": "已設定工作區路徑",
-      "providerConfigured": "已設定主管供應商",
-      "modelConfigured": "已設定主管模型",
-      "membersSelected": "已至少選擇一名團隊成員"
     }
   },
   "threads": {
@@ -948,16 +501,7 @@
       "remoteBadge": "Remote channel",
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "新增執行緒",
-      "heartbeatButton": "Heartbeat",
-      "cronButton": "Cron",
       "setupIncomplete": "助手設定尚未完成。請先打開「設定」配置供應商與模型，再傳送訊息。",
-      "handoffBanner": {
-        "title": "Human action needed in the built-in browser",
-        "description": "The assistant is waiting for you to finish a step in the built-in browser and click \"Done, continue\" there.",
-        "details": "Requested step: {{message}}",
-        "showBrowser": "Show browser again",
-        "showFailed": "Failed to bring the built-in browser window forward."
-      },
       "composer": {
         "placeholderSelectedThread": "為此執行緒輸入訊息...",
         "placeholderSelectedAssistant": "輸入訊息以建立新執行緒...",
@@ -1030,44 +574,6 @@
         "workspacePath": "工作區路徑（可選）",
         "maxSteps": "最大步數"
       },
-      "heartbeat": {
-        "title": "Heartbeat",
-        "description": "Run a background heartbeat on a hidden assistant thread.",
-        "loading": "Loading heartbeat...",
-        "workspaceRequired": "Save a workspace path to enable heartbeat on this assistant.",
-        "enableLabel": "Enable heartbeat",
-        "enableDescription": "Let this assistant periodically review recent work and conversations.",
-        "toggleAriaLabel": "Enable heartbeat",
-        "intervalLabel": "Interval (minutes)",
-        "intervalPlaceholder": "30",
-        "promptLabel": "Heartbeat Prompt",
-        "promptPlaceholder": "Review recent work logs and recent conversations. Follow up only if needed.",
-        "errors": {
-          "intervalInvalid": "Heartbeat interval must be a positive whole number",
-          "promptRequired": "Heartbeat prompt is required"
-        }
-      },
-      "activity": {
-        "description": "Review assistant heartbeat health and recent cron executions.",
-        "workspaceRequired": "Save a workspace path to review heartbeat and cron activity for this assistant.",
-        "loading": "Loading assistant activity...",
-        "heartbeatTitle": "Heartbeat Activity",
-        "heartbeatDescription": "Track schedule health, the latest runs, and any recent failures.",
-        "cronTitle": "Cron Activity",
-        "cronDescription": "Review recent cron executions owned by this assistant.",
-        "statusLabel": "Status",
-        "intervalLabel": "Interval",
-        "lastRunLabel": "Last run",
-        "nextRunLabel": "Next run",
-        "scheduledLabel": "Scheduled",
-        "durationLabel": "Duration",
-        "outputLabel": "Output",
-        "enabled": "Enabled",
-        "disabled": "Disabled",
-        "never": "Never",
-        "noHeartbeatRuns": "No heartbeat runs yet.",
-        "noCronRuns": "No cron runs yet."
-      },
       "placeholders": {
         "name": "研究副駕",
         "description": "負責檢索事實、尋找來源並驗證結論。",
@@ -1076,7 +582,6 @@
         "maxSteps": "100"
       },
       "selectProvider": "選擇供應商",
-      "descriptionHelp": "幫助 Team 主管為合適的任務挑選這位助手。",
       "workspacePathHelp": "若要讓助手執行更複雜的任務，請選擇一個工作區。",
       "openingButton": "正在開啟...",
       "channels": {

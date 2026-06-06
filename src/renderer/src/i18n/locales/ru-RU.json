@@ -3,8 +3,6 @@
     "nav": {
       "chats": "Чаты",
       "home": "Главная",
-      "claws": "Claws",
-      "team": "Команда",
       "update": "Update",
       "updating": "Updating...",
       "openSettings": "Открыть настройки"
@@ -15,7 +13,6 @@
       "workspace": "Рабочее пространство",
       "settings": "Настройки",
       "chat": "Чат",
-      "team": "Team",
       "modelProviders": "Поставщики моделей",
       "notes": "Заметки TIA Studio"
     },
@@ -29,14 +26,6 @@
       "empty": "No assistants yet",
       "createAction": "Create new assistant",
       "manageAction": "Manage assistants & channels"
-    },
-    "teamSwitcher": {
-      "label": "Current team",
-      "ariaLabel": "Switch active team workspace",
-      "loading": "Loading team...",
-      "fallback": "Team workspace",
-      "empty": "No team workspaces yet",
-      "createAction": "Create new team"
     },
     "context": {
       "assistantsChannels": "Assistants & Channels"
@@ -80,7 +69,6 @@
         "providers": "Поставщики моделей",
         "security": "Security & Privacy",
         "channels": "Каналы",
-        "cronJobs": "Задания Cron",
         "webSearch": "Browsing",
         "mcpServers": "MCP-серверы",
         "coding": "Coding",
@@ -302,19 +290,9 @@
       "description": "Choose how TIA opens pages and which browser runtime it uses for browsing tasks.",
       "browserAutomation": {
         "title": "Browser Automation",
-        "description": "Pick the browser runtime for interactive browsing and automation.",
+        "description": "Control how browsing windows behave for interactive browsing and automation.",
         "loading": "Loading browser automation settings...",
-        "modeTitle": "Browser Runtime",
-        "modeTiaBrowserToolLabel": "TIA Browser Tool",
-        "modeBuiltInBrowserLabel": "Built-in Browser",
-        "modeTiaBrowserToolDescription": "Uses the in-app TIA Browser Tool runtime for interactive browsing and automation tasks.",
-        "modeBuiltInBrowserDescription": "Uses the standalone built-in browser workflow with the external automation bridge.",
-        "showTiaBrowserToolTitle": "Show TIA Browser Tool Window",
-        "showTiaBrowserToolVisible": "The TIA Browser Tool window stays visible while browsing automation runs.",
-        "showTiaBrowserToolHidden": "The TIA Browser Tool window stays hidden unless a browsing task brings it forward.",
-        "showBuiltInBrowserTitle": "Show Built-in Browser Window",
-        "showBuiltInBrowserVisible": "The built-in browser window stays visible while browsing automation runs.",
-        "showBuiltInBrowserHidden": "The built-in browser window stays hidden unless a browsing task brings it forward."
+        "modeExternalToolsDescription": "Use external browser tools for interactive browsing."
       },
       "fetchWindow": {
         "title": "Page Fetch Window",
@@ -331,43 +309,9 @@
         "keepFetchWindowOpen": "Fetch window reuse is now {{state}}.",
         "keepFetchWindowOpenEnabled": "enabled",
         "keepFetchWindowOpenDisabled": "disabled",
-        "browserAutomationModeUpdated": "Browser automation runtime is now {{mode}}.",
         "fetchWindowVisibility": "Fetch window is now {{state}}.",
-        "builtInBrowserVisibility": "Built-in browser window is now {{state}}.",
-        "tiaBrowserToolVisibility": "TIA Browser Tool window is now {{state}}.",
         "windowVisible": "visible",
         "windowHidden": "hidden",
-        "unexpectedError": "Unexpected request error"
-      }
-    },
-    "cronJobs": {
-      "title": "Cron Jobs",
-      "description": "Review scheduler status, next runs, and the latest runtime errors for workspace cron jobs.",
-      "cardTitle": "Scheduled Jobs",
-      "cardDescription": "Hidden cron threads stay out of normal chat history while their runtime status is persisted here.",
-      "loading": "Loading cron jobs…",
-      "empty": "No cron jobs configured yet. Create one through the cron job API to start scheduling runs.",
-      "assistantLabel": "Assistant: {{assistant}}",
-      "enabled": "Enabled",
-      "disabled": "Disabled",
-      "fields": {
-        "cronExpression": "Cron Expression",
-        "nextRun": "Next Run",
-        "lastStatus": "Last Status",
-        "lastRun": "Last Run",
-        "lastError": "Last Error"
-      },
-      "fallbacks": {
-        "notScheduled": "Not scheduled",
-        "never": "Never",
-        "none": "None"
-      },
-      "status": {
-        "success": "success",
-        "failed": "failed",
-        "neverRun": "never run"
-      },
-      "toasts": {
         "unexpectedError": "Unexpected request error"
       }
     },
@@ -514,399 +458,8 @@
       "empty": "Настроенных каналов пока нет.",
       "available": "Доступен",
       "boundTo": "Подключен к {{assistantName}}",
-      "removeDisabled": "Сначала отвяжите этот канал от claw, затем удаляйте его.",
+      "removeDisabled": "Сначала отвяжите этот канал от текущего ассистента, затем удаляйте его.",
       "loadFailed": "Не удалось загрузить каналы"
-    }
-  },
-  "claws": {
-    "eyebrow": "Claws",
-    "title": "Claws",
-    "description": "Подключайте ассистентов к внешним каналам Lark без копания в сырых настройках.",
-    "newButton": "Новый Claw",
-    "telegram": {
-      "description": "Подключайте ассистентов к внешним каналам Telegram или Lark без необходимости разбираться в сырых настройках.",
-      "emptyDescription": "Для самого быстрого старта начните с одного ассистента, одного провайдера и одного канала Telegram или Lark.",
-      "pairingSummary": "{{pairedCount}} сопряжено · {{pendingCount}} ожидает",
-      "managePairingsButton": "Управлять привязками",
-      "defaultClawName": "Telegram Claw"
-    },
-    "wechat": {
-      "manageSetupButton": "Open Setup"
-    },
-    "errors": {
-      "loadFailed": "Не удалось загрузить Claws",
-      "saveFailed": "Не удалось сохранить Claw",
-      "updateFailed": "Не удалось обновить Claw",
-      "deleteFailed": "Не удалось удалить Claw"
-    },
-    "providers": {
-      "noneSelected": "Провайдер не выбран",
-      "unknown": "Неизвестный провайдер"
-    },
-    "empty": {
-      "title": "Настройте свой первый Claw",
-      "description": "Для самого быстрого старта начните с одного ассистента, одного провайдера и одного канала Lark.",
-      "note": "Идентичность ассистента, heartbeat и будущие cron-задачи остаются на стороне ассистента.",
-      "createButton": "Создать первый Claw"
-    },
-    "card": {
-      "noChannelConnected": "Канал не подключён",
-      "configureChannelFirst": "Configure a channel first",
-      "statusEnabled": "Enabled",
-      "statusDisabled": "Disabled",
-      "enableButton": "Включить",
-      "disableButton": "Отключить",
-      "editButton": "Изменить",
-      "deleteButton": "Удалить",
-      "deleteConfirmPrompt": "Delete \"{{name}}\"? This will also delete all of its threads.",
-      "deleteConfirmFallbackLabel": "Unnamed claw"
-    },
-    "deleteDialog": {
-      "title": "Удалить «{{name}}»?",
-      "description": "Это также удалит всю историю ассистента.",
-      "actions": {
-        "cancel": "Отмена",
-        "disable": "Отключить вместо удаления",
-        "confirmDelete": "Подтвердить удаление"
-      }
-    },
-    "dialog": {
-      "editTitle": "Редактировать Claw",
-      "createTitle": "Создать Claw",
-      "saveButton": "Сохранить Claw",
-      "createButton": "Создать Claw",
-      "description": "Подключите ассистента к каналу Lark в одном лёгком процессе.",
-      "telegramDescription": "Подключите ассистента к каналу Telegram или Lark через простой поток настройки.",
-      "fields": {
-        "assistantName": "Имя ассистента",
-        "provider": "Провайдер",
-        "instructions": "Инструкции",
-        "workspacePath": "Workspace Path",
-        "channelAction": "Действие с каналом",
-        "existingChannel": "Существующий канал",
-        "channelType": "Тип канала",
-        "channelName": "Название канала",
-        "botToken": "Токен бота",
-        "botId": "Bot ID",
-        "secret": "Secret",
-        "serverUrl": "Server URL",
-        "serverKey": "Server Key",
-        "larkChannelName": "Название канала Lark",
-        "appId": "ID приложения",
-        "appSecret": "Секрет приложения"
-      },
-      "pickFolder": "Browse",
-      "workspacePathPlaceholder": "Auto-generated from assistant name",
-      "workspacePathHint": "Leave empty to auto-generate from assistant name, or pick a custom folder",
-      "workspacePathReadOnly": "Workspace path is set automatically and cannot be changed",
-      "selectProvider": "Выберите провайдера",
-      "selectChannel": "Выберите канал",
-      "enableAfterSaving": "Включить этот Claw после сохранения",
-      "defaultAssistantName": "Мой первый ассистент",
-      "stepper": {
-        "steps": {
-          "provider": "Провайдер",
-          "channel": "Канал",
-          "details": "Имя и рабочая папка",
-          "setup": "Recommended Setup"
-        },
-        "actions": {
-          "back": "Назад",
-          "next": "Далее"
-        },
-        "detailsDescription": "Укажите имя ассистента и при желании выберите рабочую папку.",
-        "setupDescription": "Optionally install bun and a few recommended tools before creating this claw."
-      },
-      "channelTypes": {
-        "discord": "Discord",
-        "lark": "Lark",
-        "telegram": "Telegram",
-        "whatsapp": "WhatsApp",
-        "wechat": "Wechat",
-        "wecom": "Wecom",
-        "wechatKf": "Wechat-KF"
-      },
-      "channelActions": {
-        "keep": "Оставить текущий канал",
-        "create": "Создать новый канал Lark",
-        "createGeneric": "Создать новый канал",
-        "attach": "Привязать существующий канал",
-        "detach": "Отвязать текущий канал"
-      },
-      "errors": {
-        "assistantNameRequired": "Требуется имя ассистента",
-        "providerRequired": "Требуется провайдер",
-        "channelRequired": "Выберите канал для привязки",
-        "channelCredentialsRequired": "Требуются имя канала Lark, ID приложения и секрет приложения",
-        "discordCredentialsRequired": "Discord channel name and bot token are required",
-        "telegramCredentialsRequired": "Требуются название канала Telegram и токен бота",
-        "pickFolderFailed": "Failed to pick folder"
-      }
-    },
-    "channelStatus": {
-      "connected": "Connected",
-      "disconnected": "Disconnected",
-      "error": "Needs attention"
-    },
-    "channelSelector": {
-      "title": "Select Channel",
-      "description": "Choose from configured channels, add a new one, or leave this claw without a channel.",
-      "openButton": "Select Channel",
-      "empty": "No configured channels yet.",
-      "available": "Available",
-      "inUseByCurrent": "In use by this claw",
-      "inUseByOther": "In use by {{assistantName}}",
-      "otherAssistantFallback": "another assistant",
-      "actions": {
-        "add": "Add Channel",
-        "edit": "Редактировать канал",
-        "retrySetup": "Retry Setup",
-        "remove": "Remove Channel",
-        "clear": "Clear Selection",
-        "cancel": "Cancel",
-        "apply": "Apply"
-      },
-      "selectedBadge": "Выбран",
-      "create": {
-        "title": "Add Channel",
-        "description": "Create a new Telegram or Lark channel configuration.",
-        "whatsappHint": "No token is required. After saving, open Manage Pairings to scan the WhatsApp QR code.",
-        "wechatHint": "No token is required. After saving, open Wechat Setup to scan the Wechat login QR code.",
-        "wechatKfHintPrefix": "Wechat-KF requires a relay server set up with",
-        "wechatKfHintSuffix": "Follow the README there before entering the server URL and server key.",
-        "save": "Add Channel",
-        "fields": {
-          "type": "Channel Type"
-        }
-      },
-      "edit": {
-        "title": "Редактировать канал",
-        "description": "Обновите конфигурацию этого канала.",
-        "save": "Сохранить изменения",
-        "credentialsOptional": "Оставьте поля учётных данных пустыми, чтобы сохранить текущие значения.",
-        "appIdPlaceholder": "Оставить без изменений",
-        "appSecretPlaceholder": "Оставить без изменений",
-        "botTokenPlaceholder": "Оставить без изменений"
-      },
-      "groupRequireMention": {
-        "label": "Требовать @упоминание в группах",
-        "description": "Если включено, ассистент отвечает в групповых чатах только при упоминании бота. Личные чаты работают как обычно."
-      },
-      "remove": {
-        "title": "Remove Channel",
-        "description": "Remove {{channelName}} from configured channels?",
-        "descriptionFallback": "Remove this channel from configured channels?",
-        "confirm": "Remove Channel"
-      },
-      "errors": {
-        "nameRequired": "Channel name is required",
-        "discordCredentialsRequired": "Bot token is required for Discord channels",
-        "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
-        "telegramCredentialsRequired": "Bot token is required for Telegram channels",
-        "wecomCredentialsRequired": "Bot ID and secret are required for Wecom channels",
-        "wechatKfCredentialsRequired": "Server URL and server key are required for Wechat-KF channels",
-        "createFailed": "Failed to create channel",
-        "updateFailed": "Не удалось обновить канал",
-        "deleteFailed": "Failed to delete channel",
-        "recoverFailed": "Failed to restart channel setup"
-      }
-    },
-    "providerSelector": {
-      "title": "Select Provider",
-      "description": "Choose from configured providers or add a new one.",
-      "openButton": "Select Provider",
-      "noProviderSelected": "No provider selected",
-      "required": "Provider is required",
-      "empty": "No configured providers yet.",
-      "enabled": "Enabled",
-      "disabled": "Disabled",
-      "actions": {
-        "add": "Add Provider",
-        "addFromTemplate": "Add from Template",
-        "addCustom": "Add Custom Provider",
-        "edit": "Edit Provider",
-        "clear": "Clear Selection",
-        "cancel": "Cancel",
-        "apply": "Apply"
-      },
-      "selectedBadge": "Selected",
-      "templates": {
-        "title": "Choose Provider Template",
-        "description": "Select a prebuilt provider configuration. You'll just need to add your API key.",
-        "empty": "All built-in providers are already configured."
-      },
-      "template": {
-        "title": "Configure Provider",
-        "description": "Add your API key to activate this provider.",
-        "getApiKeyPrompt": "Get your API key from",
-        "apiKeyHint": "Enter your API key to activate this provider.",
-        "save": "Add Provider"
-      },
-      "create": {
-        "title": "Add Provider",
-        "description": "Create a new model provider configuration.",
-        "save": "Add Provider"
-      },
-      "edit": {
-        "title": "Edit Provider",
-        "description": "Update this provider configuration.",
-        "save": "Save Changes",
-        "apiKeyOptional": "Leave API key blank to keep the current value.",
-        "apiKeyPlaceholder": "Leave unchanged"
-      },
-      "errors": {
-        "nameRequired": "Provider name is required",
-        "apiKeyRequired": "API key is required",
-        "createFailed": "Failed to create provider",
-        "updateFailed": "Failed to update provider"
-      }
-    },
-    "pairings": {
-      "title": "Управлять привязками",
-      "wechatTitle": "Wechat Setup",
-      "description": "Проверьте запросы на привязку Telegram для {{clawName}}.",
-      "whatsappDescription": "Scan the WhatsApp QR code and review pairing requests for {{clawName}}.",
-      "wechatDescription": "Scan the Wechat QR code to bind {{clawName}}.",
-      "loading": "Загрузка привязок...",
-      "empty": "Привязок Telegram пока нет.",
-      "senderIds": "ID отправителя: {{senderId}} · ID чата: {{chatId}}",
-      "approvalCode": "Код подтверждения: {{code}}",
-      "whatsappAuth": {
-        "title": "WhatsApp Login",
-        "description": "Scan this QR code from WhatsApp on your phone to connect the channel.",
-        "loading": "Preparing WhatsApp login...",
-        "scanHint": "Open WhatsApp on your phone, then go to Linked Devices → Link a Device.",
-        "qrAlt": "WhatsApp login QR code",
-        "phoneFallback": "your linked device",
-        "status": {
-          "disconnected": "WhatsApp is disconnected.",
-          "connecting": "Connecting to WhatsApp...",
-          "qrReady": "QR code ready to scan.",
-          "connected": "Connected as {{phoneNumber}}.",
-          "error": "WhatsApp needs attention."
-        }
-      },
-      "wechatAuth": {
-        "title": "Wechat Login",
-        "description": "Scan this QR code in Wechat on your phone to bind the channel.",
-        "loading": "Preparing Wechat login...",
-        "scanHint": "Open Wechat on your phone and scan the QR code to confirm the login.",
-        "qrAlt": "Wechat login QR code",
-        "accountFallback": "your Wechat account",
-        "status": {
-          "disconnected": "Wechat is disconnected.",
-          "connecting": "Connecting to Wechat...",
-          "qrReady": "QR code ready to scan.",
-          "connected": "Connected as {{accountId}}.",
-          "error": "Wechat needs attention."
-        }
-      },
-      "status": {
-        "pending": "Ожидает одобрения",
-        "approved": "Одобрено",
-        "rejected": "Отклонено",
-        "revoked": "Отозвано"
-      },
-      "actions": {
-        "approve": "Одобрить",
-        "reject": "Отклонить",
-        "revoke": "Отозвать",
-        "retrySetup": "Retry Setup"
-      },
-      "errors": {
-        "loadFailed": "Не удалось загрузить привязки",
-        "updateFailed": "Не удалось обновить привязку"
-      }
-    }
-  },
-  "team": {
-    "sidebar": {
-      "eyebrow": "Team",
-      "title": "Рабочие пространства Team",
-      "emptyTitle": "Team Threads",
-      "currentTeam": "Current Team",
-      "defaultWorkspaceName": "Рабочее пространство Team",
-      "createWorkspaceAriaLabel": "Create team workspace",
-      "creatingWorkspace": "Создание рабочего пространства...",
-      "newWorkspace": "Новое рабочее пространство",
-      "workspaces": "Рабочие пространства",
-      "createThreadAriaLabel": "Create team thread",
-      "creatingThread": "Creating thread...",
-      "newThread": "Новый тред",
-      "threadsLabel": "Threads",
-      "searchThreadsPlaceholder": "Search team threads",
-      "searchThreadsAriaLabel": "Search team threads",
-      "loadingWorkspaces": "Загрузка рабочих пространств Team...",
-      "emptyWorkspaces": "Пока нет рабочих пространств. Создайте одно, чтобы начать Team-тред.",
-      "loadingThreads": "Загрузка Team-тредов...",
-      "emptyThreads": "Пока нет Team-тредов.",
-      "emptyThreadSearch": "No Team threads match that search.",
-      "untitledThread": "Безымянный Team-тред",
-      "deleteThreadAriaLabel": "Delete team thread {{title}}",
-      "deleteThreadPrompt": "Удалить тред?",
-      "confirmDeleteThreadAriaLabel": "Confirm delete team thread {{title}}",
-      "deletingThread": "Удаление..."
-    },
-    "chat": {
-      "defaultTitle": "Team-чат",
-      "noWorkspaceSelected": "Рабочее пространство не выбрано",
-      "membersLabel_one": "{{count}} участник",
-      "membersLabel_other": "{{count}} участников",
-      "newThread": "Новый Team-тред",
-      "configureTeam": "Настроить Team",
-      "setupIncompleteTitle": "Настройка Team не завершена.",
-      "setupIncompleteDescription": "Перед отправкой добавьте провайдера/модель супервизора и выберите хотя бы одного участника.",
-      "emptyTitle": "Team-тред не выбран",
-      "emptyDescription": "Выберите существующий тред или создайте новый Team-тред, чтобы начать совместную работу.",
-      "supervisorName": "Team Supervisor",
-      "composer": {
-        "placeholderSelected": "Попросите команду скоординировать задачу...",
-        "placeholderEmpty": "Create or select a Team thread to start chatting.",
-        "ariaLabel": "Team message composer",
-        "helperSelected": "Сообщения проходят через супервизора Team и выбранных участников.",
-        "helperEmpty": "Сначала выберите рабочее пространство и создайте Team-тред.",
-        "openStatus": "Открыть статус Team"
-      }
-    },
-    "configDialog": {
-      "closeAriaLabel": "Close team config dialog",
-      "title": "Настроить Team",
-      "description": "Выберите модель супервизора и укажите, какие ассистенты войдут в эту команду.",
-      "fields": {
-        "supervisorProvider": "Провайдер супервизора",
-        "teamDescription": "Описание Team",
-        "supervisorModel": "Модель супервизора",
-        "teamMembers": "Участники Team"
-      },
-      "validation": {
-        "supervisorProvider": "Выберите провайдера супервизора.",
-        "supervisorModel": "Введите модель супервизора.",
-        "members": "Выберите хотя бы одного участника Team."
-      },
-      "selectProvider": "Выберите провайдера",
-      "saveButton": "Сохранить Team"
-    },
-    "status": {
-      "title": "Статус Team",
-      "supervisor": "Супервизор",
-      "eventLogTitle": "Журнал событий",
-      "emptyEventLog": "Пока нет событий статуса.",
-      "defaultMember": "Участник",
-      "events": {
-        "runStarted": "Запуск начат.",
-        "delegationStarted": "{{assistant}} выполняется.",
-        "delegationFinished": "{{assistant}} завершил работу.",
-        "iterationComplete": "Итерация {{iteration}} завершена.",
-        "runFinished": "Запуск завершён.",
-        "runFailed": "Запуск завершился ошибкой."
-      }
-    },
-    "readiness": {
-      "threadSelected": "Team thread is selected",
-      "workspaceConfigured": "Workspace path is configured",
-      "providerConfigured": "Supervisor provider is configured",
-      "modelConfigured": "Supervisor model is configured",
-      "membersSelected": "At least one live team member is selected"
     }
   },
   "threads": {
@@ -948,16 +501,7 @@
       "remoteBadge": "Remote channel",
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "Новый тред",
-      "heartbeatButton": "Heartbeat",
-      "cronButton": "Cron",
       "setupIncomplete": "Настройка ассистента не завершена. Откройте «Настроить», чтобы указать провайдера и модель перед отправкой сообщений.",
-      "handoffBanner": {
-        "title": "Human action needed in the built-in browser",
-        "description": "The assistant is waiting for you to finish a step in the built-in browser and click \"Done, continue\" there.",
-        "details": "Requested step: {{message}}",
-        "showBrowser": "Show browser again",
-        "showFailed": "Failed to bring the built-in browser window forward."
-      },
       "composer": {
         "placeholderSelectedThread": "Введите сообщение для этого треда...",
         "placeholderSelectedAssistant": "Введите сообщение, чтобы создать новый тред...",
@@ -1030,44 +574,6 @@
         "workspacePath": "Путь к рабочему пространству (необязательно)",
         "maxSteps": "Максимум шагов"
       },
-      "heartbeat": {
-        "title": "Heartbeat",
-        "description": "Run a background heartbeat on a hidden assistant thread.",
-        "loading": "Loading heartbeat...",
-        "workspaceRequired": "Save a workspace path to enable heartbeat on this assistant.",
-        "enableLabel": "Enable heartbeat",
-        "enableDescription": "Let this assistant periodically review recent work and conversations.",
-        "toggleAriaLabel": "Enable heartbeat",
-        "intervalLabel": "Interval (minutes)",
-        "intervalPlaceholder": "30",
-        "promptLabel": "Heartbeat Prompt",
-        "promptPlaceholder": "Review recent work logs and recent conversations. Follow up only if needed.",
-        "errors": {
-          "intervalInvalid": "Heartbeat interval must be a positive whole number",
-          "promptRequired": "Heartbeat prompt is required"
-        }
-      },
-      "activity": {
-        "description": "Review assistant heartbeat health and recent cron executions.",
-        "workspaceRequired": "Save a workspace path to review heartbeat and cron activity for this assistant.",
-        "loading": "Loading assistant activity...",
-        "heartbeatTitle": "Heartbeat Activity",
-        "heartbeatDescription": "Track schedule health, the latest runs, and any recent failures.",
-        "cronTitle": "Cron Activity",
-        "cronDescription": "Review recent cron executions owned by this assistant.",
-        "statusLabel": "Status",
-        "intervalLabel": "Interval",
-        "lastRunLabel": "Last run",
-        "nextRunLabel": "Next run",
-        "scheduledLabel": "Scheduled",
-        "durationLabel": "Duration",
-        "outputLabel": "Output",
-        "enabled": "Enabled",
-        "disabled": "Disabled",
-        "never": "Never",
-        "noHeartbeatRuns": "No heartbeat runs yet.",
-        "noCronRuns": "No cron runs yet."
-      },
       "placeholders": {
         "name": "Research Copilot",
         "description": "Исследует факты, находит источники и проверяет утверждения.",
@@ -1076,7 +582,6 @@
         "maxSteps": "100"
       },
       "selectProvider": "Выберите провайдера",
-      "descriptionHelp": "Помогает супервизору Team выбирать этого ассистента для подходящей задачи.",
       "workspacePathHelp": "Чтобы агент мог выполнять более сложные задачи, выберите рабочее пространство.",
       "openingButton": "Открывается...",
       "channels": {

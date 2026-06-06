@@ -1,10 +1,8 @@
 {
   "appShell": {
     "nav": {
-      "chats": "Assistants",
+      "chats": "Chats",
       "home": "Home",
-      "claws": "Claws",
-      "team": "Teams",
       "update": "Update",
       "updating": "Updating...",
       "openSettings": "Open settings"
@@ -15,7 +13,6 @@
       "workspace": "Workspace",
       "settings": "Settings",
       "chat": "Chat",
-      "team": "Team",
       "modelProviders": "Model Providers",
       "notes": "TIA Studio Notes"
     },
@@ -29,14 +26,6 @@
       "empty": "No assistants yet",
       "createAction": "Create new assistant",
       "manageAction": "Manage assistants & channels"
-    },
-    "teamSwitcher": {
-      "label": "Team",
-      "ariaLabel": "Switch active team workspace",
-      "loading": "Loading team...",
-      "fallback": "Team workspace",
-      "empty": "No team workspaces yet",
-      "createAction": "Create new team"
     },
     "context": {
       "assistantsChannels": "Assistants & Channels"
@@ -73,14 +62,13 @@
   "settings": {
     "sidebar": {
       "title": "Settings",
-      "subtitle": "Configuration",
-      "categories": "Categories",
+      "subtitle": "Workspace Defaults",
+      "categories": "Global Settings",
       "items": {
         "general": "General",
         "providers": "Model Provider",
         "security": "Security & Privacy",
         "channels": "Channels",
-        "cronJobs": "Cron Jobs",
         "webSearch": "Browsing",
         "mcpServers": "MCP Servers",
         "coding": "Coding",
@@ -302,19 +290,9 @@
       "description": "Choose how TIA opens pages and which browser runtime it uses for browsing tasks.",
       "browserAutomation": {
         "title": "Browser Automation",
-        "description": "Pick the browser runtime for interactive browsing and automation.",
+        "description": "Control how browsing windows behave for interactive browsing and automation.",
         "loading": "Loading browser automation settings...",
-        "modeTitle": "Browser Runtime",
-        "modeTiaBrowserToolLabel": "TIA Browser Tool",
-        "modeBuiltInBrowserLabel": "Built-in Browser",
-        "modeTiaBrowserToolDescription": "Uses the in-app TIA Browser Tool runtime for interactive browsing and automation tasks.",
-        "modeBuiltInBrowserDescription": "Uses the standalone built-in browser workflow with the external automation bridge.",
-        "showTiaBrowserToolTitle": "Show TIA Browser Tool Window",
-        "showTiaBrowserToolVisible": "The TIA Browser Tool window stays visible while browsing automation runs.",
-        "showTiaBrowserToolHidden": "The TIA Browser Tool window stays hidden unless a browsing task brings it forward.",
-        "showBuiltInBrowserTitle": "Show Built-in Browser Window",
-        "showBuiltInBrowserVisible": "The built-in browser window stays visible while browsing automation runs.",
-        "showBuiltInBrowserHidden": "The built-in browser window stays hidden unless a browsing task brings it forward."
+        "modeExternalToolsDescription": "Use external browser tools for interactive browsing."
       },
       "fetchWindow": {
         "title": "Page Fetch Window",
@@ -331,43 +309,9 @@
         "keepFetchWindowOpen": "Fetch window reuse is now {{state}}.",
         "keepFetchWindowOpenEnabled": "enabled",
         "keepFetchWindowOpenDisabled": "disabled",
-        "browserAutomationModeUpdated": "Browser automation runtime is now {{mode}}.",
         "fetchWindowVisibility": "Fetch window is now {{state}}.",
-        "builtInBrowserVisibility": "Built-in browser window is now {{state}}.",
-        "tiaBrowserToolVisibility": "TIA Browser Tool window is now {{state}}.",
         "windowVisible": "visible",
         "windowHidden": "hidden",
-        "unexpectedError": "Unexpected request error"
-      }
-    },
-    "cronJobs": {
-      "title": "Cron Jobs",
-      "description": "Review scheduler status, next runs, and the latest runtime errors for workspace cron jobs.",
-      "cardTitle": "Scheduled Jobs",
-      "cardDescription": "Hidden cron threads stay out of normal chat history while their runtime status is persisted here.",
-      "loading": "Loading cron jobs…",
-      "empty": "No cron jobs configured yet. Create one through the cron job API to start scheduling runs.",
-      "assistantLabel": "Assistant: {{assistant}}",
-      "enabled": "Enabled",
-      "disabled": "Disabled",
-      "fields": {
-        "cronExpression": "Cron Expression",
-        "nextRun": "Next Run",
-        "lastStatus": "Last Status",
-        "lastRun": "Last Run",
-        "lastError": "Last Error"
-      },
-      "fallbacks": {
-        "notScheduled": "Not scheduled",
-        "never": "Never",
-        "none": "None"
-      },
-      "status": {
-        "success": "success",
-        "failed": "failed",
-        "neverRun": "never run"
-      },
-      "toasts": {
         "unexpectedError": "Unexpected request error"
       }
     },
@@ -442,7 +386,7 @@
         "acpBinaryMissing": "No ACP binary is currently ready",
         "acpVersion": "Version:",
         "acpVersionMissing": "No version detected",
-        "acpReady": "Binary is ready. You can save this provider and use it in assistants.",
+        "acpReady": "Binary is ready. You can save this provider and use it for new chats.",
         "acpNotReadyPrefix": "Binary is not ready yet.",
         "acpNotReadySuffix": "Install or select the executable there before relying on this provider.",
         "acpOpenCoding": "Open Coding",
@@ -507,190 +451,58 @@
     },
     "channels": {
       "title": "Channels",
-      "description": "Manage configured WhatsApp, Telegram, Lark, and Wecom channels in one place.",
-      "configuredTitle": "Configured Channels",
-      "configuredDescription": "Edit existing channel credentials, review bindings, or remove unused channels.",
-      "loading": "Loading channels...",
-      "empty": "No configured channels yet.",
-      "available": "Available",
-      "boundTo": "Connected to {{assistantName}}",
-      "removeDisabled": "Detach this channel from its claw before removing it.",
-      "loadFailed": "Failed to load channels"
-    }
-  },
-  "claws": {
-    "eyebrow": "Assistant Management",
-    "title": "Assistants & Channels",
-    "description": "Manage assistants, their channel bindings, and activation without leaving the main chat workspace.",
-    "newButton": "New Assistant",
-    "telegram": {
-      "description": "Manage assistants, channel bindings, pairings, setup, and activation from one focused surface.",
-      "emptyDescription": "Start with one assistant, one provider, and one WhatsApp, Wechat, Telegram, Lark, or Wecom channel, then switch to it from the top bar.",
-      "pairingSummary": "{{pairedCount}} paired · {{pendingCount}} pending",
-      "managePairingsButton": "Manage Pairings",
-      "defaultClawName": "Messaging claw"
-    },
-    "wechat": {
-      "manageSetupButton": "Open Setup"
-    },
-    "errors": {
-      "loadFailed": "Failed to load claws",
-      "saveFailed": "Failed to save claw",
-      "updateFailed": "Failed to update claw",
-      "deleteFailed": "Failed to delete claw"
-    },
-    "providers": {
-      "noneSelected": "No provider selected",
-      "unknown": "Unknown provider"
-    },
-    "empty": {
-      "title": "Create your first assistant",
-      "description": "Start with one assistant, one provider, and one WhatsApp, Wechat, Telegram, Lark, or Wecom channel, then switch to it from the top bar.",
-      "note": "Assistant identity, heartbeat, and future cron stay assistant-owned.",
-      "createButton": "Create Assistant"
-    },
-    "card": {
-      "noChannelConnected": "No channel connected",
-      "configureChannelFirst": "Configure a channel first",
-      "statusEnabled": "Enabled",
-      "statusDisabled": "Disabled",
-      "enableButton": "Enable",
-      "disableButton": "Disable",
-      "editButton": "Edit",
-      "deleteButton": "Delete",
-      "deleteConfirmPrompt": "Delete \"{{name}}\"? This will also delete all of its threads.",
-      "deleteConfirmFallbackLabel": "Unnamed claw"
-    },
-    "deleteDialog": {
-      "title": "Delete \"{{name}}\"?",
-      "description": "This will also delete all assistant history.",
-      "actions": {
-        "cancel": "Cancel",
-        "disable": "Disable Instead",
-        "confirmDelete": "Confirm Delete"
-      }
-    },
-    "dialog": {
-      "editTitle": "Edit Claw",
-      "createTitle": "Create Claw",
-      "saveButton": "Save Claw",
-      "createButton": "Create Claw",
-      "description": "Connect an assistant to a Lark or Wecom channel from one lightweight setup flow.",
-      "telegramDescription": "Connect an assistant to a WhatsApp, Wechat, Telegram, Lark, Wecom, or Wechat-KF channel from one lightweight setup flow.",
-      "fields": {
-        "assistantName": "Assistant Name",
-        "provider": "Provider",
-        "instructions": "Instructions",
-        "workspacePath": "Workspace Path",
-        "channelAction": "Channel Action",
-        "existingChannel": "Existing Channel",
-        "channelType": "Channel Type",
-        "channelName": "Channel Name",
-        "botToken": "Bot Token",
-        "botId": "Bot ID",
-        "secret": "Secret",
-        "serverUrl": "Server URL",
-        "serverKey": "Server Key",
-        "larkChannelName": "Lark Channel Name",
-        "appId": "App ID",
-        "appSecret": "App Secret"
-      },
-      "pickFolder": "Browse",
-      "workspacePathPlaceholder": "Auto-generated from assistant name",
-      "workspacePathHint": "Leave empty to auto-generate from assistant name, or pick a custom folder",
-      "workspacePathReadOnly": "Workspace path is set automatically and cannot be changed",
-      "selectProvider": "Select a provider",
-      "selectChannel": "Select a channel",
-      "enableAfterSaving": "Enable this claw after saving",
-      "defaultAssistantName": "My First Assistant",
-      "stepper": {
-        "steps": {
-          "provider": "Provider",
-          "channel": "Channel",
-          "details": "Name & Workspace",
-          "setup": "Recommended Setup"
-        },
-        "actions": {
-          "back": "Back",
-          "next": "Next"
-        },
-        "detailsDescription": "Choose the assistant name and optionally pick a workspace folder.",
-        "setupDescription": "Optionally install bun and a few recommended tools before creating this claw."
-      },
+      "description": "Manage reusable channel connections and credentials from one global settings surface.",
+      "configuredTitle": "Channel Connections",
+      "configuredDescription": "Review connection status, update credentials, or remove channels you no longer need.",
       "channelTypes": {
         "discord": "Discord",
         "lark": "Lark",
         "telegram": "Telegram",
         "whatsapp": "WhatsApp",
         "wechat": "Wechat",
-        "wecom": "Wecom",
-        "wechatKf": "Wechat-KF"
+        "wecom": "Wecom"
       },
-      "channelActions": {
-        "keep": "Keep current channel",
-        "create": "Create new Lark channel",
-        "createGeneric": "Create new channel",
-        "attach": "Attach existing channel",
-        "detach": "Detach current channel"
+      "status": {
+        "connected": "Connected",
+        "disconnected": "Disconnected",
+        "error": "Needs attention"
       },
-      "errors": {
-        "assistantNameRequired": "Assistant name is required",
-        "providerRequired": "Provider is required",
-        "channelRequired": "Pick a channel to attach",
-        "channelCredentialsRequired": "Lark channel name, app ID, and app secret are required",
-        "discordCredentialsRequired": "Discord channel name and bot token are required",
-        "telegramCredentialsRequired": "Telegram channel name and bot token are required",
-        "pickFolderFailed": "Failed to pick folder"
-      }
-    },
-    "channelStatus": {
-      "connected": "Connected",
-      "disconnected": "Disconnected",
-      "error": "Needs attention"
-    },
-    "channelSelector": {
-      "title": "Select Channel",
-      "description": "Choose from configured channels, add a new one, or leave this claw without a channel.",
-      "openButton": "Select Channel",
-      "empty": "No configured channels yet.",
-      "available": "Available",
-      "inUseByCurrent": "In use by this claw",
-      "inUseByOther": "In use by {{assistantName}}",
-      "otherAssistantFallback": "another assistant",
       "actions": {
         "add": "Add Channel",
         "edit": "Edit Channel",
-        "retrySetup": "Retry Setup",
         "remove": "Remove Channel",
-        "clear": "Clear Selection",
-        "cancel": "Cancel",
-        "apply": "Apply"
+        "cancel": "Cancel"
       },
-      "selectedBadge": "Selected",
-      "create": {
-        "title": "Add Channel",
-        "description": "Create a new Discord, WhatsApp, Wechat, Telegram, Lark, Wecom, or Wechat-KF channel configuration.",
-        "whatsappHint": "No token is required. After saving, open Manage Pairings to scan the WhatsApp QR code.",
-        "wechatHint": "No token is required. After saving, open Wechat Setup to scan the Wechat login QR code.",
-        "wechatKfHintPrefix": "Wechat-KF requires a relay server set up with",
-        "wechatKfHintSuffix": "Follow the README there before entering the server URL and server key.",
-        "save": "Add Channel",
-        "fields": {
-          "type": "Channel Type"
-        }
-      },
-      "edit": {
-        "title": "Edit Channel",
-        "description": "Update this channel configuration.",
-        "save": "Save Changes",
+      "loading": "Loading channels...",
+      "empty": "No configured channels yet.",
+      "available": "Ready to assign",
+      "inUse": "Currently assigned",
+      "boundTo": "Assigned to {{assistantName}}",
+      "removeDisabled": "This channel is still assigned. Clear the current assignment before removing it.",
+      "pairingSummary": "Paired {{pairedCount}} · Pending {{pendingCount}}",
+      "loadFailed": "Failed to load channels",
+      "createDescription": "Create a reusable Discord, WhatsApp, Wechat, Telegram, Lark, or Wecom channel connection.",
+      "whatsappHint": "No token is required. Save first, then complete the WhatsApp link flow when you're ready.",
+      "wechatHint": "No token is required. Save first, then scan the Wechat login QR code to finish setup.",
+      "groupRequireMentionDescription": "When enabled, replies in group chats require an @mention. Direct chats still work normally.",
+      "form": {
+        "createTitle": "Add Channel",
+        "editTitle": "Edit Channel",
+        "editDescription": "Update this channel configuration.",
+        "type": "Channel Type",
+        "channelName": "Channel Name",
+        "botToken": "Bot Token",
+        "botId": "Bot ID",
+        "secret": "Secret",
+        "appId": "App ID",
+        "appSecret": "App Secret",
         "credentialsOptional": "Leave credential fields blank to keep the current values.",
+        "botTokenPlaceholder": "Leave unchanged",
         "appIdPlaceholder": "Leave unchanged",
         "appSecretPlaceholder": "Leave unchanged",
-        "botTokenPlaceholder": "Leave unchanged"
-      },
-      "groupRequireMention": {
-        "label": "Require @mentions in group chats",
-        "description": "When enabled, the assistant only replies in group chats when the bot is mentioned. Direct chats still work normally."
+        "groupRequireMentionLabel": "Require @mentions in group chats",
+        "createSave": "Add Channel",
+        "editSave": "Save Changes"
       },
       "remove": {
         "title": "Remove Channel",
@@ -704,209 +516,10 @@
         "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
         "telegramCredentialsRequired": "Bot token is required for Telegram channels",
         "wecomCredentialsRequired": "Bot ID and secret are required for Wecom channels",
-        "wechatKfCredentialsRequired": "Server URL and server key are required for Wechat-KF channels",
         "createFailed": "Failed to create channel",
         "updateFailed": "Failed to update channel",
-        "deleteFailed": "Failed to delete channel",
-        "recoverFailed": "Failed to restart channel setup"
+        "deleteFailed": "Failed to delete channel"
       }
-    },
-    "providerSelector": {
-      "title": "Select Provider",
-      "description": "Choose from configured providers or add a new one.",
-      "openButton": "Select Provider",
-      "noProviderSelected": "No provider selected",
-      "required": "Provider is required",
-      "empty": "No configured providers yet.",
-      "enabled": "Enabled",
-      "disabled": "Disabled",
-      "actions": {
-        "add": "Add Provider",
-        "addFromTemplate": "Add from Template",
-        "addCustom": "Add Custom Provider",
-        "edit": "Edit Provider",
-        "clear": "Clear Selection",
-        "cancel": "Cancel",
-        "apply": "Apply"
-      },
-      "selectedBadge": "Selected",
-      "templates": {
-        "title": "Choose Provider Template",
-        "description": "Select a prebuilt provider configuration. You'll just need to add your API key.",
-        "empty": "All built-in providers are already configured."
-      },
-      "template": {
-        "title": "Configure Provider",
-        "description": "Add your API key to activate this provider.",
-        "getApiKeyPrompt": "Get your API key from",
-        "apiKeyHint": "Enter your API key to activate this provider.",
-        "save": "Add Provider"
-      },
-      "create": {
-        "title": "Add Provider",
-        "description": "Create a new model provider configuration.",
-        "save": "Add Provider"
-      },
-      "edit": {
-        "title": "Edit Provider",
-        "description": "Update this provider configuration.",
-        "save": "Save Changes",
-        "apiKeyOptional": "Leave API key blank to keep the current value.",
-        "apiKeyPlaceholder": "Leave unchanged"
-      },
-      "errors": {
-        "nameRequired": "Provider name is required",
-        "apiKeyRequired": "API key is required",
-        "createFailed": "Failed to create provider",
-        "updateFailed": "Failed to update provider"
-      }
-    },
-    "pairings": {
-      "title": "Manage Pairings",
-      "wechatTitle": "Wechat Setup",
-      "description": "Review pairing requests for {{clawName}}.",
-      "whatsappDescription": "Scan the WhatsApp QR code and review pairing requests for {{clawName}}.",
-      "wechatDescription": "Scan the Wechat QR code to bind {{clawName}}.",
-      "loading": "Loading pairings...",
-      "empty": "No pairing requests yet.",
-      "senderIds": "Sender ID: {{senderId}} · Chat ID: {{chatId}}",
-      "approvalCode": "Approval code: {{code}}",
-      "whatsappAuth": {
-        "title": "WhatsApp Login",
-        "description": "Scan this QR code from WhatsApp on your phone to connect the channel.",
-        "loading": "Preparing WhatsApp login...",
-        "scanHint": "Open WhatsApp on your phone, then go to Linked Devices → Link a Device.",
-        "qrAlt": "WhatsApp login QR code",
-        "phoneFallback": "your linked device",
-        "status": {
-          "disconnected": "WhatsApp is disconnected.",
-          "connecting": "Connecting to WhatsApp...",
-          "qrReady": "QR code ready to scan.",
-          "connected": "Connected as {{phoneNumber}}.",
-          "error": "WhatsApp needs attention."
-        }
-      },
-      "wechatAuth": {
-        "title": "Wechat Login",
-        "description": "Scan this QR code in Wechat on your phone to bind the channel.",
-        "loading": "Preparing Wechat login...",
-        "scanHint": "Open Wechat on your phone and scan the QR code to confirm the login.",
-        "qrAlt": "Wechat login QR code",
-        "accountFallback": "your Wechat account",
-        "status": {
-          "disconnected": "Wechat is disconnected.",
-          "connecting": "Connecting to Wechat...",
-          "qrReady": "QR code ready to scan.",
-          "connected": "Connected as {{accountId}}.",
-          "error": "Wechat needs attention."
-        }
-      },
-      "status": {
-        "pending": "Pending approval",
-        "approved": "Approved",
-        "rejected": "Rejected",
-        "revoked": "Revoked"
-      },
-      "actions": {
-        "approve": "Approve",
-        "reject": "Reject",
-        "revoke": "Revoke",
-        "retrySetup": "Retry Setup"
-      },
-      "errors": {
-        "loadFailed": "Failed to load pairings",
-        "updateFailed": "Failed to update pairing"
-      }
-    }
-  },
-  "team": {
-    "sidebar": {
-      "eyebrow": "Team",
-      "title": "Team Workspaces",
-      "emptyTitle": "Team Threads",
-      "currentTeam": "Current Team",
-      "defaultWorkspaceName": "Team Workspace",
-      "createWorkspaceAriaLabel": "Create team workspace",
-      "creatingWorkspace": "Creating workspace...",
-      "newWorkspace": "New Workspace",
-      "workspaces": "Workspaces",
-      "createThreadAriaLabel": "Create team thread",
-      "creatingThread": "Creating thread...",
-      "newThread": "New Thread",
-      "threadsLabel": "Threads",
-      "searchThreadsPlaceholder": "Search team threads",
-      "searchThreadsAriaLabel": "Search team threads",
-      "loadingWorkspaces": "Loading team workspaces...",
-      "emptyWorkspaces": "No workspaces yet. Create one to start a Team thread.",
-      "loadingThreads": "Loading team threads...",
-      "emptyThreads": "No Team threads yet.",
-      "emptyThreadSearch": "No Team threads match that search.",
-      "untitledThread": "Untitled Team Thread",
-      "deleteThreadAriaLabel": "Delete team thread {{title}}",
-      "deleteThreadPrompt": "Delete thread?",
-      "confirmDeleteThreadAriaLabel": "Confirm delete team thread {{title}}",
-      "deletingThread": "Deleting..."
-    },
-    "chat": {
-      "defaultTitle": "Team Chat",
-      "noWorkspaceSelected": "No workspace selected",
-      "membersLabel_one": "{{count}} member",
-      "membersLabel_other": "{{count}} members",
-      "newThread": "New Team Thread",
-      "configureTeam": "Configure Team",
-      "setupIncompleteTitle": "Team setup is incomplete.",
-      "setupIncompleteDescription": "Add a supervisor provider/model and select at least one member before sending.",
-      "emptyTitle": "No Team thread selected",
-      "emptyDescription": "Choose an existing thread or create a new Team thread to start collaborating.",
-      "supervisorName": "Team Supervisor",
-      "composer": {
-        "placeholderSelected": "Ask the team to coordinate a task...",
-        "placeholderEmpty": "Create or select a Team thread to start chatting.",
-        "ariaLabel": "Team message composer",
-        "helperSelected": "Messages stream through the Team supervisor and selected members.",
-        "helperEmpty": "Pick a workspace and create a Team thread first.",
-        "openStatus": "Open Team Status"
-      }
-    },
-    "configDialog": {
-      "closeAriaLabel": "Close team config dialog",
-      "title": "Configure Team",
-      "description": "Select a supervisor model and choose which assistants join this team.",
-      "fields": {
-        "supervisorProvider": "Supervisor Provider",
-        "teamDescription": "Team Description",
-        "supervisorModel": "Supervisor Model",
-        "teamMembers": "Team Members"
-      },
-      "validation": {
-        "supervisorProvider": "Select a supervisor provider.",
-        "supervisorModel": "Enter a supervisor model.",
-        "members": "Select at least one team member."
-      },
-      "selectProvider": "Select provider",
-      "saveButton": "Save Team"
-    },
-    "status": {
-      "title": "Team Status",
-      "supervisor": "Supervisor",
-      "eventLogTitle": "Event Log",
-      "emptyEventLog": "No status events yet.",
-      "defaultMember": "A member",
-      "events": {
-        "runStarted": "Run started.",
-        "delegationStarted": "{{assistant}} is running.",
-        "delegationFinished": "{{assistant}} finished.",
-        "iterationComplete": "Iteration {{iteration}} complete.",
-        "runFinished": "Run finished.",
-        "runFailed": "Run failed."
-      }
-    },
-    "readiness": {
-      "threadSelected": "Team thread is selected",
-      "workspaceConfigured": "Workspace path is configured",
-      "providerConfigured": "Supervisor provider is configured",
-      "modelConfigured": "Supervisor model is configured",
-      "membersSelected": "At least one live team member is selected"
     }
   },
   "threads": {
@@ -922,7 +535,7 @@
       "backToAssistantsAriaLabel": "Back to assistants",
       "currentAssistant": "Current assistant",
       "deleteAssistantAriaLabel": "Delete assistant {{name}}",
-      "loadingAssistants": "Loading assistants...",
+      "loadingAssistants": "Loading chats...",
       "emptyAssistants": "No assistants yet. Create one in Assistants.",
       "emptyAssistantSearch": "No assistants match this search.",
       "loadingThreads": "Loading threads...",
@@ -932,7 +545,7 @@
       "searchAssistantsPlaceholder": "Search assistants...",
       "searchAssistantsAriaLabel": "Search assistants",
       "searchThreadsPlaceholder": "Search threads...",
-      "searchThreadsAriaLabel": "Search assistant threads",
+      "searchThreadsAriaLabel": "Search threads",
       "untitledThread": "Untitled Thread",
       "deleteThreadAriaLabel": "Delete thread {{title}}",
       "deleteThreadPrompt": "Delete thread?",
@@ -940,7 +553,7 @@
       "confirmDeleteThreadAriaLabel": "Confirm delete thread {{title}}"
     },
     "chat": {
-      "defaultAssistantName": "Assistant",
+      "defaultAssistantName": "TIA",
       "titleWithAssistant": "Chat with {{name}}",
       "tokens": "tokens",
       "tokenInput": "{{value}} in",
@@ -948,23 +561,14 @@
       "remoteBadge": "Remote channel",
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "New thread",
-      "heartbeatButton": "Heartbeat",
-      "cronButton": "Cron",
-      "setupIncomplete": "Assistant setup is incomplete. Open Configure to set provider and model before sending messages.",
-      "handoffBanner": {
-        "title": "Human action needed in the built-in browser",
-        "description": "The assistant is waiting for you to finish a step in the built-in browser and click \"Done, continue\" there.",
-        "details": "Requested step: {{message}}",
-        "showBrowser": "Show browser again",
-        "showFailed": "Failed to bring the built-in browser window forward."
-      },
+      "setupIncomplete": "Chat setup is incomplete. Choose a provider and model before sending messages.",
       "composer": {
         "placeholderSelectedThread": "Type a message for this thread...",
         "placeholderSelectedAssistant": "Type a message to create a new thread...",
-        "placeholderEmpty": "Select an assistant to start chatting.",
-        "helperSelectedThread": "Messages stream from the selected assistant thread.",
-        "helperSelectedAssistant": "No thread selected. Press Enter to create one and send.",
-        "helperEmpty": "Pick an assistant to begin.",
+        "placeholderEmpty": "Open or create a chat to get started.",
+        "helperSelectedThread": "Messages stream in this thread.",
+        "helperSelectedAssistant": "No thread selected. Press Enter to start one and send.",
+        "helperEmpty": "Choose a chat to begin.",
         "ariaLabel": "Message composer"
       }
     },
@@ -1030,44 +634,6 @@
         "workspacePath": "Workspace Path (Optional)",
         "maxSteps": "Max Steps"
       },
-      "heartbeat": {
-        "title": "Heartbeat",
-        "description": "Run a background heartbeat on a hidden assistant thread.",
-        "loading": "Loading heartbeat...",
-        "workspaceRequired": "Save a workspace path to enable heartbeat on this assistant.",
-        "enableLabel": "Enable heartbeat",
-        "enableDescription": "Let this assistant periodically review recent work and conversations.",
-        "toggleAriaLabel": "Enable heartbeat",
-        "intervalLabel": "Interval (minutes)",
-        "intervalPlaceholder": "30",
-        "promptLabel": "Heartbeat Prompt",
-        "promptPlaceholder": "Review recent work logs and recent conversations. Follow up only if needed.",
-        "errors": {
-          "intervalInvalid": "Heartbeat interval must be a positive whole number",
-          "promptRequired": "Heartbeat prompt is required"
-        }
-      },
-      "activity": {
-        "description": "Review assistant heartbeat health and recent cron executions.",
-        "workspaceRequired": "Save a workspace path to review heartbeat and cron activity for this assistant.",
-        "loading": "Loading assistant activity...",
-        "heartbeatTitle": "Heartbeat Activity",
-        "heartbeatDescription": "Track schedule health, the latest runs, and any recent failures.",
-        "cronTitle": "Cron Activity",
-        "cronDescription": "Review recent cron executions owned by this assistant.",
-        "statusLabel": "Status",
-        "intervalLabel": "Interval",
-        "lastRunLabel": "Last run",
-        "nextRunLabel": "Next run",
-        "scheduledLabel": "Scheduled",
-        "durationLabel": "Duration",
-        "outputLabel": "Output",
-        "enabled": "Enabled",
-        "disabled": "Disabled",
-        "never": "Never",
-        "noHeartbeatRuns": "No heartbeat runs yet.",
-        "noCronRuns": "No cron runs yet."
-      },
       "placeholders": {
         "name": "Research Copilot",
         "description": "Researches facts, finds sources, and validates claims.",
@@ -1076,7 +642,6 @@
         "maxSteps": "100"
       },
       "selectProvider": "Select provider",
-      "descriptionHelp": "Helps the team supervisor choose this assistant for the right task.",
       "workspacePathHelp": "To allow the agent to perform more complex tasks, select a workspace.",
       "openingButton": "Opening...",
       "channels": {

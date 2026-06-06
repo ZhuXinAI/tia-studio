@@ -1,5 +1,6 @@
 import type { AssistantRecord } from '../assistants/assistants-query'
 import type { ProviderRecord } from '../settings/providers/providers-query'
+import type { WorkspaceRecord } from '../workspaces/workspaces-query'
 import { i18n } from '../../i18n'
 import type { ThreadRecord } from './threads-query'
 import { sortThreadsByRecentActivity } from './thread-page-routing'
@@ -27,8 +28,83 @@ export type AssistantThreadBranch = {
   threads: ThreadRecord[]
 }
 
+export function isBuiltInDefaultAssistant(assistant: AssistantRecord): boolean {
+  return assistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] === true
+}
+
 function canDeleteAssistant(assistant: AssistantRecord): boolean {
-  return assistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] !== true
+  return !isBuiltInDefaultAssistant(assistant)
+}
+
+export function resolveChatsAssistant(assistants: AssistantRecord[]): AssistantRecord | null {
+  return assistants.find((assistant) => isBuiltInDefaultAssistant(assistant)) ?? assistants[0] ?? null
+}
+
+export function resolveWorkspaceAssistant(input: {
+  assistants: AssistantRecord[]
+  workspace: WorkspaceRecord | null
+}): AssistantRecord | null {
+  if (!input.workspace) {
+    return null
+  }
+
+  if (input.workspace.builtInKind === 'chats') {
+    return resolveChatsAssistant(input.assistants)
+  }
+
+  if (input.workspace.defaultAssistantId) {
+    return (
+      input.assistants.find((assistant) => assistant.id === input.workspace?.defaultAssistantId) ??
+      null
+    )
+  }
+
+  return (
+    input.assistants.find((assistant) => {
+      const rootPath =
+        typeof assistant.workspaceConfig?.rootPath === 'string'
+          ? assistant.workspaceConfig.rootPath.trim()
+          : ''
+      return rootPath.length > 0 && rootPath === input.workspace?.rootPath
+    }) ?? null
+  )
+}
+
+export function buildWorkspaceThreadBranches(input: {
+  assistant: AssistantRecord | null
+  workspaceName: string
+  threads: ThreadRecord[]
+}): AssistantThreadBranch[] {
+  if (!input.assistant) {
+    return []
+  }
+
+  return [
+    {
+      assistantId: input.assistant.id,
+      assistantName: input.workspaceName,
+      canDeleteAssistant: canDeleteAssistant(input.assistant),
+      isSelected: true,
+      threads: input.threads
+    }
+  ]
+}
+
+export function buildAssistantThreadBranches(input: {
+  assistants: AssistantRecord[]
+  selectedAssistantId: string | null
+  threads: ThreadRecord[]
+}): AssistantThreadBranch[] {
+  return input.assistants.map((assistant) => {
+    const isSelected = assistant.id === input.selectedAssistantId
+    return {
+      assistantId: assistant.id,
+      assistantName: assistant.name,
+      canDeleteAssistant: canDeleteAssistant(assistant),
+      isSelected,
+      threads: isSelected ? input.threads : []
+    }
+  })
 }
 
 function areChannelBindingsEquivalent(
@@ -127,32 +203,10 @@ function areThreadsEquivalent(left: ThreadRecord[], right: ThreadRecord[]): bool
 
 export function resolveVisibleThreads(input: {
   currentThreads: ThreadRecord[]
-  selectedAssistantId: string | null
   threads: ThreadRecord[]
 }): ThreadRecord[] {
-  if (!input.selectedAssistantId) {
-    return input.currentThreads.length === 0 ? input.currentThreads : []
-  }
-
   const nextThreads = sortThreadsByRecentActivity(input.threads)
   return areThreadsEquivalent(input.currentThreads, nextThreads)
     ? input.currentThreads
     : nextThreads
-}
-
-export function buildAssistantThreadBranches(input: {
-  assistants: AssistantRecord[]
-  selectedAssistantId: string | null
-  threads: ThreadRecord[]
-}): AssistantThreadBranch[] {
-  return input.assistants.map((assistant) => {
-    const isSelected = assistant.id === input.selectedAssistantId
-    return {
-      assistantId: assistant.id,
-      assistantName: assistant.name,
-      canDeleteAssistant: canDeleteAssistant(assistant),
-      isSelected,
-      threads: isSelected ? input.threads : []
-    }
-  })
 }

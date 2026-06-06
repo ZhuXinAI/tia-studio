@@ -3,8 +3,6 @@
     "nav": {
       "chats": "チャット",
       "home": "ホーム",
-      "claws": "Claws",
-      "team": "チーム",
       "update": "Update",
       "updating": "Updating...",
       "openSettings": "設定を開く"
@@ -15,7 +13,6 @@
       "workspace": "ワークスペース",
       "settings": "設定",
       "chat": "チャット",
-      "team": "Team",
       "modelProviders": "モデルプロバイダー",
       "notes": "TIA Studio メモ"
     },
@@ -29,14 +26,6 @@
       "empty": "No assistants yet",
       "createAction": "Create new assistant",
       "manageAction": "Manage assistants & channels"
-    },
-    "teamSwitcher": {
-      "label": "Current team",
-      "ariaLabel": "Switch active team workspace",
-      "loading": "Loading team...",
-      "fallback": "Team workspace",
-      "empty": "No team workspaces yet",
-      "createAction": "Create new team"
     },
     "context": {
       "assistantsChannels": "Assistants & Channels"
@@ -80,7 +69,6 @@
         "providers": "モデルプロバイダー",
         "security": "Security & Privacy",
         "channels": "チャンネル",
-        "cronJobs": "Cronジョブ",
         "webSearch": "Browsing",
         "mcpServers": "MCPサーバー",
         "coding": "Coding",
@@ -302,19 +290,9 @@
       "description": "Choose how TIA opens pages and which browser runtime it uses for browsing tasks.",
       "browserAutomation": {
         "title": "Browser Automation",
-        "description": "Pick the browser runtime for interactive browsing and automation.",
+        "description": "Control how browsing windows behave for interactive browsing and automation.",
         "loading": "Loading browser automation settings...",
-        "modeTitle": "Browser Runtime",
-        "modeTiaBrowserToolLabel": "TIA Browser Tool",
-        "modeBuiltInBrowserLabel": "Built-in Browser",
-        "modeTiaBrowserToolDescription": "Uses the in-app TIA Browser Tool runtime for interactive browsing and automation tasks.",
-        "modeBuiltInBrowserDescription": "Uses the standalone built-in browser workflow with the external automation bridge.",
-        "showTiaBrowserToolTitle": "Show TIA Browser Tool Window",
-        "showTiaBrowserToolVisible": "The TIA Browser Tool window stays visible while browsing automation runs.",
-        "showTiaBrowserToolHidden": "The TIA Browser Tool window stays hidden unless a browsing task brings it forward.",
-        "showBuiltInBrowserTitle": "Show Built-in Browser Window",
-        "showBuiltInBrowserVisible": "The built-in browser window stays visible while browsing automation runs.",
-        "showBuiltInBrowserHidden": "The built-in browser window stays hidden unless a browsing task brings it forward."
+        "modeExternalToolsDescription": "Use external browser tools for interactive browsing."
       },
       "fetchWindow": {
         "title": "Page Fetch Window",
@@ -331,43 +309,9 @@
         "keepFetchWindowOpen": "Fetch window reuse is now {{state}}.",
         "keepFetchWindowOpenEnabled": "enabled",
         "keepFetchWindowOpenDisabled": "disabled",
-        "browserAutomationModeUpdated": "Browser automation runtime is now {{mode}}.",
         "fetchWindowVisibility": "Fetch window is now {{state}}.",
-        "builtInBrowserVisibility": "Built-in browser window is now {{state}}.",
-        "tiaBrowserToolVisibility": "TIA Browser Tool window is now {{state}}.",
         "windowVisible": "visible",
         "windowHidden": "hidden",
-        "unexpectedError": "Unexpected request error"
-      }
-    },
-    "cronJobs": {
-      "title": "Cron Jobs",
-      "description": "Review scheduler status, next runs, and the latest runtime errors for workspace cron jobs.",
-      "cardTitle": "Scheduled Jobs",
-      "cardDescription": "Hidden cron threads stay out of normal chat history while their runtime status is persisted here.",
-      "loading": "Loading cron jobs…",
-      "empty": "No cron jobs configured yet. Create one through the cron job API to start scheduling runs.",
-      "assistantLabel": "Assistant: {{assistant}}",
-      "enabled": "Enabled",
-      "disabled": "Disabled",
-      "fields": {
-        "cronExpression": "Cron Expression",
-        "nextRun": "Next Run",
-        "lastStatus": "Last Status",
-        "lastRun": "Last Run",
-        "lastError": "Last Error"
-      },
-      "fallbacks": {
-        "notScheduled": "Not scheduled",
-        "never": "Never",
-        "none": "None"
-      },
-      "status": {
-        "success": "success",
-        "failed": "failed",
-        "neverRun": "never run"
-      },
-      "toasts": {
         "unexpectedError": "Unexpected request error"
       }
     },
@@ -514,399 +458,8 @@
       "empty": "設定済みのチャンネルはまだありません。",
       "available": "利用可能",
       "boundTo": "{{assistantName}} に接続済み",
-      "removeDisabled": "削除する前に、このチャンネルを claw から切り離してください。",
+      "removeDisabled": "削除する前に、このチャンネルを現在のアシスタントから切り離してください。",
       "loadFailed": "チャンネルの読み込みに失敗しました"
-    }
-  },
-  "claws": {
-    "eyebrow": "Claws",
-    "title": "Claws",
-    "description": "生の設定を探し回らずに、アシスタントを外部の Lark チャンネルへ接続します。",
-    "newButton": "新しい Claw",
-    "telegram": {
-      "description": "生の設定を探し回らずに、アシスタントを外部の Telegram または Lark チャンネルへ接続します。",
-      "emptyDescription": "最短で使い始めるには、アシスタント 1 つ、プロバイダー 1 つ、Telegram または Lark チャンネル 1 つから始めます。",
-      "pairingSummary": "{{pairedCount}} 件ペア済み · {{pendingCount}} 件保留中",
-      "managePairingsButton": "ペアリングを管理",
-      "defaultClawName": "Telegram Claw"
-    },
-    "wechat": {
-      "manageSetupButton": "Open Setup"
-    },
-    "errors": {
-      "loadFailed": "Claws の読み込みに失敗しました",
-      "saveFailed": "Claw の保存に失敗しました",
-      "updateFailed": "Claw の更新に失敗しました",
-      "deleteFailed": "Claw の削除に失敗しました"
-    },
-    "providers": {
-      "noneSelected": "プロバイダーが選択されていません",
-      "unknown": "不明なプロバイダー"
-    },
-    "empty": {
-      "title": "最初の Claw を設定",
-      "description": "最短で使い始めるには、アシスタント 1 つ、プロバイダー 1 つ、Lark チャンネル 1 つから始めます。",
-      "note": "アシスタントの識別情報、ハートビート、今後の cron は引き続きアシスタント側で管理されます。",
-      "createButton": "最初の Claw を作成"
-    },
-    "card": {
-      "noChannelConnected": "チャンネルが接続されていません",
-      "configureChannelFirst": "Configure a channel first",
-      "statusEnabled": "Enabled",
-      "statusDisabled": "Disabled",
-      "enableButton": "有効化",
-      "disableButton": "無効化",
-      "editButton": "編集",
-      "deleteButton": "削除",
-      "deleteConfirmPrompt": "Delete \"{{name}}\"? This will also delete all of its threads.",
-      "deleteConfirmFallbackLabel": "Unnamed claw"
-    },
-    "deleteDialog": {
-      "title": "「{{name}}」を削除しますか？",
-      "description": "これによりアシスタントの履歴もすべて削除されます。",
-      "actions": {
-        "cancel": "キャンセル",
-        "disable": "代わりに無効化",
-        "confirmDelete": "削除を確定"
-      }
-    },
-    "dialog": {
-      "editTitle": "Claw を編集",
-      "createTitle": "Claw を作成",
-      "saveButton": "Claw を保存",
-      "createButton": "Claw を作成",
-      "description": "シンプルな手順でアシスタントを Lark チャンネルに接続します。",
-      "telegramDescription": "シンプルな手順でアシスタントを Telegram または Lark チャンネルに接続します。",
-      "fields": {
-        "assistantName": "アシスタント名",
-        "provider": "プロバイダー",
-        "instructions": "指示",
-        "workspacePath": "Workspace Path",
-        "channelAction": "チャンネル操作",
-        "existingChannel": "既存チャンネル",
-        "channelType": "チャンネル種別",
-        "channelName": "チャンネル名",
-        "botToken": "Bot トークン",
-        "botId": "Bot ID",
-        "secret": "Secret",
-        "serverUrl": "Server URL",
-        "serverKey": "Server Key",
-        "larkChannelName": "Lark チャンネル名",
-        "appId": "アプリ ID",
-        "appSecret": "アプリシークレット"
-      },
-      "pickFolder": "Browse",
-      "workspacePathPlaceholder": "Auto-generated from assistant name",
-      "workspacePathHint": "Leave empty to auto-generate from assistant name, or pick a custom folder",
-      "workspacePathReadOnly": "Workspace path is set automatically and cannot be changed",
-      "selectProvider": "プロバイダーを選択",
-      "selectChannel": "チャンネルを選択",
-      "enableAfterSaving": "保存後にこの Claw を有効化",
-      "defaultAssistantName": "はじめてのアシスタント",
-      "stepper": {
-        "steps": {
-          "provider": "プロバイダー",
-          "channel": "チャンネル",
-          "details": "名前とワークスペース",
-          "setup": "Recommended Setup"
-        },
-        "actions": {
-          "back": "戻る",
-          "next": "次へ"
-        },
-        "detailsDescription": "アシスタント名を入力し、必要に応じてワークスペースフォルダーを選択します。",
-        "setupDescription": "Optionally install bun and a few recommended tools before creating this claw."
-      },
-      "channelTypes": {
-        "discord": "Discord",
-        "lark": "Lark",
-        "telegram": "Telegram",
-        "whatsapp": "WhatsApp",
-        "wechat": "Wechat",
-        "wecom": "Wecom",
-        "wechatKf": "Wechat-KF"
-      },
-      "channelActions": {
-        "keep": "現在のチャンネルを維持",
-        "create": "新しい Lark チャンネルを作成",
-        "createGeneric": "新しいチャンネルを作成",
-        "attach": "既存チャンネルを接続",
-        "detach": "現在のチャンネルを解除"
-      },
-      "errors": {
-        "assistantNameRequired": "アシスタント名は必須です",
-        "providerRequired": "プロバイダーは必須です",
-        "channelRequired": "接続するチャンネルを選択してください",
-        "channelCredentialsRequired": "Lark チャンネル名、App ID、App Secret が必要です",
-        "discordCredentialsRequired": "Discord channel name and bot token are required",
-        "telegramCredentialsRequired": "Telegram チャンネル名と Bot トークンが必要です",
-        "pickFolderFailed": "Failed to pick folder"
-      }
-    },
-    "channelStatus": {
-      "connected": "Connected",
-      "disconnected": "Disconnected",
-      "error": "Needs attention"
-    },
-    "channelSelector": {
-      "title": "Select Channel",
-      "description": "Choose from configured channels, add a new one, or leave this claw without a channel.",
-      "openButton": "Select Channel",
-      "empty": "No configured channels yet.",
-      "available": "Available",
-      "inUseByCurrent": "In use by this claw",
-      "inUseByOther": "In use by {{assistantName}}",
-      "otherAssistantFallback": "another assistant",
-      "actions": {
-        "add": "Add Channel",
-        "edit": "チャンネルを編集",
-        "retrySetup": "Retry Setup",
-        "remove": "Remove Channel",
-        "clear": "Clear Selection",
-        "cancel": "Cancel",
-        "apply": "Apply"
-      },
-      "selectedBadge": "選択中",
-      "create": {
-        "title": "Add Channel",
-        "description": "Create a new Telegram or Lark channel configuration.",
-        "whatsappHint": "No token is required. After saving, open Manage Pairings to scan the WhatsApp QR code.",
-        "wechatHint": "No token is required. After saving, open Wechat Setup to scan the Wechat login QR code.",
-        "wechatKfHintPrefix": "Wechat-KF requires a relay server set up with",
-        "wechatKfHintSuffix": "Follow the README there before entering the server URL and server key.",
-        "save": "Add Channel",
-        "fields": {
-          "type": "Channel Type"
-        }
-      },
-      "edit": {
-        "title": "チャンネルを編集",
-        "description": "このチャンネル設定を更新します。",
-        "save": "変更を保存",
-        "credentialsOptional": "現在の値を保持するには認証情報欄を空欄のままにしてください。",
-        "appIdPlaceholder": "変更しない",
-        "appSecretPlaceholder": "変更しない",
-        "botTokenPlaceholder": "変更しない"
-      },
-      "groupRequireMention": {
-        "label": "グループでは @メンションを必須にする",
-        "description": "有効にすると、グループチャットではボットがメンションされた場合のみ返信します。ダイレクトチャットは通常どおり動作します。"
-      },
-      "remove": {
-        "title": "Remove Channel",
-        "description": "Remove {{channelName}} from configured channels?",
-        "descriptionFallback": "Remove this channel from configured channels?",
-        "confirm": "Remove Channel"
-      },
-      "errors": {
-        "nameRequired": "Channel name is required",
-        "discordCredentialsRequired": "Bot token is required for Discord channels",
-        "larkCredentialsRequired": "App ID and app secret are required for Lark channels",
-        "telegramCredentialsRequired": "Bot token is required for Telegram channels",
-        "wecomCredentialsRequired": "Bot ID and secret are required for Wecom channels",
-        "wechatKfCredentialsRequired": "Server URL and server key are required for Wechat-KF channels",
-        "createFailed": "Failed to create channel",
-        "updateFailed": "チャンネルの更新に失敗しました",
-        "deleteFailed": "Failed to delete channel",
-        "recoverFailed": "Failed to restart channel setup"
-      }
-    },
-    "providerSelector": {
-      "title": "Select Provider",
-      "description": "Choose from configured providers or add a new one.",
-      "openButton": "Select Provider",
-      "noProviderSelected": "No provider selected",
-      "required": "Provider is required",
-      "empty": "No configured providers yet.",
-      "enabled": "Enabled",
-      "disabled": "Disabled",
-      "actions": {
-        "add": "Add Provider",
-        "addFromTemplate": "Add from Template",
-        "addCustom": "Add Custom Provider",
-        "edit": "Edit Provider",
-        "clear": "Clear Selection",
-        "cancel": "Cancel",
-        "apply": "Apply"
-      },
-      "selectedBadge": "Selected",
-      "templates": {
-        "title": "Choose Provider Template",
-        "description": "Select a prebuilt provider configuration. You'll just need to add your API key.",
-        "empty": "All built-in providers are already configured."
-      },
-      "template": {
-        "title": "Configure Provider",
-        "description": "Add your API key to activate this provider.",
-        "getApiKeyPrompt": "Get your API key from",
-        "apiKeyHint": "Enter your API key to activate this provider.",
-        "save": "Add Provider"
-      },
-      "create": {
-        "title": "Add Provider",
-        "description": "Create a new model provider configuration.",
-        "save": "Add Provider"
-      },
-      "edit": {
-        "title": "Edit Provider",
-        "description": "Update this provider configuration.",
-        "save": "Save Changes",
-        "apiKeyOptional": "Leave API key blank to keep the current value.",
-        "apiKeyPlaceholder": "Leave unchanged"
-      },
-      "errors": {
-        "nameRequired": "Provider name is required",
-        "apiKeyRequired": "API key is required",
-        "createFailed": "Failed to create provider",
-        "updateFailed": "Failed to update provider"
-      }
-    },
-    "pairings": {
-      "title": "ペアリングを管理",
-      "wechatTitle": "Wechat Setup",
-      "description": "{{clawName}} の Telegram ペアリング要求を確認します。",
-      "whatsappDescription": "Scan the WhatsApp QR code and review pairing requests for {{clawName}}.",
-      "wechatDescription": "Scan the Wechat QR code to bind {{clawName}}.",
-      "loading": "ペアリングを読み込み中...",
-      "empty": "Telegram ペアリングはまだありません。",
-      "senderIds": "送信者 ID: {{senderId}} · チャット ID: {{chatId}}",
-      "approvalCode": "承認コード: {{code}}",
-      "whatsappAuth": {
-        "title": "WhatsApp Login",
-        "description": "Scan this QR code from WhatsApp on your phone to connect the channel.",
-        "loading": "Preparing WhatsApp login...",
-        "scanHint": "Open WhatsApp on your phone, then go to Linked Devices → Link a Device.",
-        "qrAlt": "WhatsApp login QR code",
-        "phoneFallback": "your linked device",
-        "status": {
-          "disconnected": "WhatsApp is disconnected.",
-          "connecting": "Connecting to WhatsApp...",
-          "qrReady": "QR code ready to scan.",
-          "connected": "Connected as {{phoneNumber}}.",
-          "error": "WhatsApp needs attention."
-        }
-      },
-      "wechatAuth": {
-        "title": "Wechat Login",
-        "description": "Scan this QR code in Wechat on your phone to bind the channel.",
-        "loading": "Preparing Wechat login...",
-        "scanHint": "Open Wechat on your phone and scan the QR code to confirm the login.",
-        "qrAlt": "Wechat login QR code",
-        "accountFallback": "your Wechat account",
-        "status": {
-          "disconnected": "Wechat is disconnected.",
-          "connecting": "Connecting to Wechat...",
-          "qrReady": "QR code ready to scan.",
-          "connected": "Connected as {{accountId}}.",
-          "error": "Wechat needs attention."
-        }
-      },
-      "status": {
-        "pending": "承認待ち",
-        "approved": "承認済み",
-        "rejected": "拒否済み",
-        "revoked": "取り消し済み"
-      },
-      "actions": {
-        "approve": "承認",
-        "reject": "拒否",
-        "revoke": "取り消し",
-        "retrySetup": "Retry Setup"
-      },
-      "errors": {
-        "loadFailed": "ペアリングの読み込みに失敗しました",
-        "updateFailed": "ペアリングの更新に失敗しました"
-      }
-    }
-  },
-  "team": {
-    "sidebar": {
-      "eyebrow": "Team",
-      "title": "Team ワークスペース",
-      "emptyTitle": "Team Threads",
-      "currentTeam": "Current Team",
-      "defaultWorkspaceName": "Team Workspace",
-      "createWorkspaceAriaLabel": "Create team workspace",
-      "creatingWorkspace": "ワークスペースを作成中...",
-      "newWorkspace": "新しいワークスペース",
-      "workspaces": "ワークスペース",
-      "createThreadAriaLabel": "Create team thread",
-      "creatingThread": "Creating thread...",
-      "newThread": "新しいスレッド",
-      "threadsLabel": "Threads",
-      "searchThreadsPlaceholder": "Search team threads",
-      "searchThreadsAriaLabel": "Search team threads",
-      "loadingWorkspaces": "Team ワークスペースを読み込み中...",
-      "emptyWorkspaces": "ワークスペースがまだありません。まず作成して Team スレッドを開始してください。",
-      "loadingThreads": "Team スレッドを読み込み中...",
-      "emptyThreads": "Team スレッドはまだありません。",
-      "emptyThreadSearch": "No Team threads match that search.",
-      "untitledThread": "無題の Team スレッド",
-      "deleteThreadAriaLabel": "Delete team thread {{title}}",
-      "deleteThreadPrompt": "スレッドを削除しますか？",
-      "confirmDeleteThreadAriaLabel": "Confirm delete team thread {{title}}",
-      "deletingThread": "削除中..."
-    },
-    "chat": {
-      "defaultTitle": "Team チャット",
-      "noWorkspaceSelected": "ワークスペース未選択",
-      "membersLabel_one": "{{count}} 人のメンバー",
-      "membersLabel_other": "{{count}} 人のメンバー",
-      "newThread": "新しい Team スレッド",
-      "configureTeam": "Team を設定",
-      "setupIncompleteTitle": "Team の設定が不完全です。",
-      "setupIncompleteDescription": "送信前に、スーパーバイザのプロバイダー/モデルを設定し、少なくとも 1 人のメンバーを選択してください。",
-      "emptyTitle": "Team スレッドが選択されていません",
-      "emptyDescription": "既存のスレッドを選択するか、新しい Team スレッドを作成して共同作業を始めてください。",
-      "supervisorName": "Team Supervisor",
-      "composer": {
-        "placeholderSelected": "チームにタスクの調整を依頼する...",
-        "placeholderEmpty": "チャットを始めるには Team スレッドを作成または選択してください。",
-        "ariaLabel": "Team message composer",
-        "helperSelected": "メッセージは Team スーパーバイザと選択されたメンバーを通じて処理されます。",
-        "helperEmpty": "まずワークスペースを選択し、Team スレッドを作成してください。",
-        "openStatus": "Team ステータスを開く"
-      }
-    },
-    "configDialog": {
-      "closeAriaLabel": "Close team config dialog",
-      "title": "Team を設定",
-      "description": "スーパーバイザモデルを選択し、このチームに参加するアシスタントを指定します。",
-      "fields": {
-        "supervisorProvider": "スーパーバイザ プロバイダー",
-        "teamDescription": "Team の説明",
-        "supervisorModel": "スーパーバイザ モデル",
-        "teamMembers": "Team メンバー"
-      },
-      "validation": {
-        "supervisorProvider": "スーパーバイザのプロバイダーを選択してください。",
-        "supervisorModel": "スーパーバイザのモデルを入力してください。",
-        "members": "少なくとも 1 人の Team メンバーを選択してください。"
-      },
-      "selectProvider": "プロバイダーを選択",
-      "saveButton": "Team を保存"
-    },
-    "status": {
-      "title": "Team ステータス",
-      "supervisor": "スーパーバイザ",
-      "eventLogTitle": "イベントログ",
-      "emptyEventLog": "ステータスイベントはまだありません。",
-      "defaultMember": "メンバー",
-      "events": {
-        "runStarted": "実行を開始しました。",
-        "delegationStarted": "{{assistant}} が実行中です。",
-        "delegationFinished": "{{assistant}} が完了しました。",
-        "iterationComplete": "反復 {{iteration}} が完了しました。",
-        "runFinished": "実行が完了しました。",
-        "runFailed": "実行に失敗しました。"
-      }
-    },
-    "readiness": {
-      "threadSelected": "Team thread is selected",
-      "workspaceConfigured": "Workspace path is configured",
-      "providerConfigured": "Supervisor provider is configured",
-      "modelConfigured": "Supervisor model is configured",
-      "membersSelected": "At least one live team member is selected"
     }
   },
   "threads": {
@@ -948,16 +501,7 @@
       "remoteBadge": "Remote channel",
       "remoteBadgeTitle": "Linked to a remote channel chat",
       "newThread": "新しいスレッド",
-      "heartbeatButton": "Heartbeat",
-      "cronButton": "Cron",
       "setupIncomplete": "アシスタントの設定が不完全です。メッセージを送る前に「設定」を開いてプロバイダーとモデルを設定してください。",
-      "handoffBanner": {
-        "title": "Human action needed in the built-in browser",
-        "description": "The assistant is waiting for you to finish a step in the built-in browser and click \"Done, continue\" there.",
-        "details": "Requested step: {{message}}",
-        "showBrowser": "Show browser again",
-        "showFailed": "Failed to bring the built-in browser window forward."
-      },
       "composer": {
         "placeholderSelectedThread": "このスレッドにメッセージを入力...",
         "placeholderSelectedAssistant": "新しいスレッドを作成するメッセージを入力...",
@@ -1030,44 +574,6 @@
         "workspacePath": "ワークスペースパス（任意）",
         "maxSteps": "最大ステップ数"
       },
-      "heartbeat": {
-        "title": "Heartbeat",
-        "description": "Run a background heartbeat on a hidden assistant thread.",
-        "loading": "Loading heartbeat...",
-        "workspaceRequired": "Save a workspace path to enable heartbeat on this assistant.",
-        "enableLabel": "Enable heartbeat",
-        "enableDescription": "Let this assistant periodically review recent work and conversations.",
-        "toggleAriaLabel": "Enable heartbeat",
-        "intervalLabel": "Interval (minutes)",
-        "intervalPlaceholder": "30",
-        "promptLabel": "Heartbeat Prompt",
-        "promptPlaceholder": "Review recent work logs and recent conversations. Follow up only if needed.",
-        "errors": {
-          "intervalInvalid": "Heartbeat interval must be a positive whole number",
-          "promptRequired": "Heartbeat prompt is required"
-        }
-      },
-      "activity": {
-        "description": "Review assistant heartbeat health and recent cron executions.",
-        "workspaceRequired": "Save a workspace path to review heartbeat and cron activity for this assistant.",
-        "loading": "Loading assistant activity...",
-        "heartbeatTitle": "Heartbeat Activity",
-        "heartbeatDescription": "Track schedule health, the latest runs, and any recent failures.",
-        "cronTitle": "Cron Activity",
-        "cronDescription": "Review recent cron executions owned by this assistant.",
-        "statusLabel": "Status",
-        "intervalLabel": "Interval",
-        "lastRunLabel": "Last run",
-        "nextRunLabel": "Next run",
-        "scheduledLabel": "Scheduled",
-        "durationLabel": "Duration",
-        "outputLabel": "Output",
-        "enabled": "Enabled",
-        "disabled": "Disabled",
-        "never": "Never",
-        "noHeartbeatRuns": "No heartbeat runs yet.",
-        "noCronRuns": "No cron runs yet."
-      },
       "placeholders": {
         "name": "Research Copilot",
         "description": "事実の調査、ソース検索、主張の検証を行います。",
@@ -1076,7 +582,6 @@
         "maxSteps": "100"
       },
       "selectProvider": "プロバイダーを選択",
-      "descriptionHelp": "Team スーパーバイザが適切なタスクにこのアシスタントを選べるようにします。",
       "workspacePathHelp": "より複雑な作業を行わせる場合は、ワークスペースを選択してください。",
       "openingButton": "開いています...",
       "channels": {

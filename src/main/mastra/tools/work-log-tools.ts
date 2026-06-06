@@ -2,7 +2,6 @@ import path from 'node:path'
 import { readdir, readFile } from 'node:fs/promises'
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
-import { resolveWorkLogsDirectory } from '../../cron/work-log-writer'
 import { createNoArgToolInputSchema } from './tool-schema'
 
 type WorkLogToolsOptions = {
@@ -15,7 +14,7 @@ type WorkLogEntry = {
 }
 
 function getWorkLogsDirectory(workspaceRootPath: string): string {
-  return resolveWorkLogsDirectory(workspaceRootPath)
+  return path.join(workspaceRootPath, '.tia', 'work-logs')
 }
 
 async function listWorkLogEntries(workspaceRootPath: string): Promise<WorkLogEntry[]> {

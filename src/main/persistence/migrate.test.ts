@@ -40,23 +40,10 @@ it('creates core app tables', async () => {
   const channelPairingColumns = channelPairingColumnsResult.rows.map((row) =>
     String((row as Record<string, unknown>).name)
   )
-  const teamWorkspaceColumnsResult = await db.execute("PRAGMA table_info('app_team_workspaces')")
-  const teamWorkspaceColumns = teamWorkspaceColumnsResult.rows.map((row) =>
+  const workspaceColumnsResult = await db.execute("PRAGMA table_info('app_workspaces')")
+  const workspaceColumns = workspaceColumnsResult.rows.map((row) =>
     String((row as Record<string, unknown>).name)
   )
-  const assistantHeartbeatColumnsResult = await db.execute(
-    "PRAGMA table_info('app_assistant_heartbeats')"
-  )
-  const assistantHeartbeatColumns = assistantHeartbeatColumnsResult.rows.map((row) =>
-    String((row as Record<string, unknown>).name)
-  )
-  const assistantHeartbeatRunColumnsResult = await db.execute(
-    "PRAGMA table_info('app_assistant_heartbeat_runs')"
-  )
-  const assistantHeartbeatRunColumns = assistantHeartbeatRunColumnsResult.rows.map((row) =>
-    String((row as Record<string, unknown>).name)
-  )
-
   expect(tableNames).toContain('app_profiles')
   expect(tableNames).toContain('app_providers')
   expect(tableNames).toContain('app_assistants')
@@ -64,10 +51,8 @@ it('creates core app tables', async () => {
   expect(tableNames).toContain('app_channels')
   expect(tableNames).toContain('app_channel_thread_bindings')
   expect(tableNames).toContain('app_channel_pairings')
-  expect(tableNames).toContain('app_assistant_heartbeats')
-  expect(tableNames).toContain('app_assistant_heartbeat_runs')
-  expect(tableNames).toContain('app_team_workspaces')
-  expect(tableNames).toContain('app_team_workspace_members')
+  expect(tableNames).toContain('app_workspaces')
+  expect(tableNames).toContain('app_workspace_members')
   expect(tableNames).toContain('app_thread_message_usage')
   expect(tableNames).toContain('app_thread_usage_totals')
   expect(tableNames).toContain('app_preferences')
@@ -76,6 +61,10 @@ it('creates core app tables', async () => {
   expect(tableNames).not.toContain('app_group_threads')
   expect(tableNames).not.toContain('app_group_thread_messages')
   expect(tableNames).not.toContain('app_group_thread_assistant_threads')
+  expect(tableNames).not.toContain('app_team_workspaces')
+  expect(tableNames).not.toContain('app_team_workspace_members')
+  expect(tableNames).not.toContain('app_team_threads')
+  expect(tableNames).not.toContain('app_team_thread_members')
   expect(assistantColumns).toContain('description')
   expect(assistantColumns).toContain('enabled')
   expect(assistantColumns).toContain('max_steps')
@@ -89,26 +78,9 @@ it('creates core app tables', async () => {
   expect(channelPairingColumns).toContain('code')
   expect(channelPairingColumns).toContain('status')
   expect(channelPairingColumns).toContain('expires_at')
-  expect(assistantHeartbeatColumns).toContain('assistant_id')
-  expect(assistantHeartbeatColumns).toContain('enabled')
-  expect(assistantHeartbeatColumns).toContain('interval_minutes')
-  expect(assistantHeartbeatColumns).toContain('prompt')
-  expect(assistantHeartbeatColumns).toContain('thread_id')
-  expect(assistantHeartbeatColumns).toContain('last_run_at')
-  expect(assistantHeartbeatColumns).toContain('next_run_at')
-  expect(assistantHeartbeatColumns).toContain('last_run_status')
-  expect(assistantHeartbeatColumns).toContain('last_error')
-  expect(assistantHeartbeatRunColumns).toContain('heartbeat_id')
-  expect(assistantHeartbeatRunColumns).toContain('status')
-  expect(assistantHeartbeatRunColumns).toContain('scheduled_for')
-  expect(assistantHeartbeatRunColumns).toContain('started_at')
-  expect(assistantHeartbeatRunColumns).toContain('finished_at')
-  expect(assistantHeartbeatRunColumns).toContain('output_text')
-  expect(assistantHeartbeatRunColumns).toContain('error')
-  expect(assistantHeartbeatRunColumns).toContain('work_log_path')
-  expect(teamWorkspaceColumns).toContain('team_description')
-  expect(teamWorkspaceColumns).toContain('supervisor_provider_id')
-  expect(teamWorkspaceColumns).toContain('supervisor_model')
+  expect(workspaceColumns).toContain('description')
+  expect(workspaceColumns).toContain('supervisor_provider_id')
+  expect(workspaceColumns).toContain('supervisor_model')
 
   await db.close()
 })
@@ -168,7 +140,7 @@ it('removes legacy group tables during migration', async () => {
   await db.close()
 })
 
-it('backfills workspace-owned team config from legacy thread-owned records', async () => {
+it('removes legacy team-owned workspace tables during reset migration', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'tia-team-migrate-'))
   tempPaths.push(tempDir)
   const dbPath = path.join(tempDir, 'app.db')
@@ -264,10 +236,6 @@ it('backfills workspace-owned team config from legacy thread-owned records', asy
     )
   `)
 
-  await legacyDb.execute(
-    'INSERT INTO app_providers (id, name, type, api_key, selected_model) VALUES (?, ?, ?, ?, ?)',
-    ['provider-1', 'OpenAI', 'openai', 'secret', 'gpt-5']
-  )
   await legacyDb.execute('INSERT INTO app_team_workspaces (id, name, root_path) VALUES (?, ?, ?)', [
     'workspace-1',
     'Docs Workspace',
@@ -294,38 +262,19 @@ it('backfills workspace-owned team config from legacy thread-owned records', asy
   await legacyDb.close()
 
   const migratedDb = await migrateAppSchema(dbPath)
-  const assistantColumnsResult = await migratedDb.execute("PRAGMA table_info('app_assistants')")
-  const assistantColumns = assistantColumnsResult.rows.map((row) =>
-    String((row as Record<string, unknown>).name)
-  )
-  const workspaceResult = await migratedDb.execute(
-    'SELECT team_description, supervisor_provider_id, supervisor_model FROM app_team_workspaces WHERE id = ?',
-    ['workspace-1']
-  )
-  const workspaceRow = workspaceResult.rows.at(0) as Record<string, unknown> | undefined
-  const workspaceMembersResult = await migratedDb.execute(
-    'SELECT workspace_id, assistant_id, sort_order FROM app_team_workspace_members WHERE workspace_id = ? ORDER BY sort_order ASC',
-    ['workspace-1']
+  const result = await migratedDb.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
+  const tableNames = result.rows.map((row) => String((row as Record<string, unknown>).name))
+  const preferenceRows = await migratedDb.execute(
+    "SELECT key FROM app_preferences WHERE key = 'built_in_default_team_workspace_id'"
   )
 
-  expect(workspaceRow).toMatchObject({
-    team_description: 'Coordinate docs release',
-    supervisor_provider_id: 'provider-1',
-    supervisor_model: 'gpt-5'
-  })
-  expect(workspaceMembersResult.rows).toEqual([
-    {
-      workspace_id: 'workspace-1',
-      assistant_id: 'assistant-2',
-      sort_order: 0
-    },
-    {
-      workspace_id: 'workspace-1',
-      assistant_id: 'assistant-1',
-      sort_order: 1
-    }
-  ])
-  expect(assistantColumns).toContain('description')
+  expect(tableNames).not.toContain('app_team_workspaces')
+  expect(tableNames).not.toContain('app_team_workspace_members')
+  expect(tableNames).not.toContain('app_team_threads')
+  expect(tableNames).not.toContain('app_team_thread_members')
+  expect(tableNames).toContain('app_workspaces')
+  expect(tableNames).toContain('app_workspace_members')
+  expect(preferenceRows.rows).toEqual([])
 
   await migratedDb.close()
 }, 15_000)

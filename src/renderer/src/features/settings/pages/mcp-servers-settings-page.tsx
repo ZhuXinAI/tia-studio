@@ -1,6 +1,5 @@
 import { Cable, Plus, Save, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { i18n } from '../../../i18n'
@@ -13,10 +12,18 @@ import {
   CardHeader,
   CardTitle
 } from '../../../components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '../../../components/ui/dialog'
 import { Input } from '../../../components/ui/input'
+import { Switch } from '../../../components/ui/switch'
 import { Textarea } from '../../../components/ui/textarea'
 import { Field, FieldLabel } from '../../../components/ui/field'
-import { cn } from '../../../lib/utils'
 import {
   getMcpServersSettings,
   updateMcpServersSettings,
@@ -357,11 +364,16 @@ export function McpServersSettingsPage(): React.JSX.Element {
 
   return (
     <>
-      <div className="py-4 flex flex-col gap-4">
+      <div className="flex flex-col gap-6 py-8">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight">{t('settings.mcp.title')}</h1>
-            <p className="text-muted-foreground text-sm">{t('settings.mcp.description')}</p>
+            <p className="section-kicker">Shared tool plumbing</p>
+            <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
+              {t('settings.mcp.title')}
+            </h1>
+            <p className="max-w-3xl text-sm text-muted-foreground">
+              {t('settings.mcp.description')}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -392,12 +404,15 @@ export function McpServersSettingsPage(): React.JSX.Element {
           </div>
         </header>
 
-        <Card>
+        <Card className="border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_78%,transparent))]">
           <CardHeader className="pb-3">
-            <CardTitle>{t('settings.mcp.cardTitle')}</CardTitle>
+            <p className="section-kicker text-[0.66rem]">Shared registry</p>
+            <CardTitle className="font-editorial text-[1.8rem] leading-none tracking-[-0.03em]">
+              {t('settings.mcp.cardTitle')}
+            </CardTitle>
             <CardDescription>{t('settings.mcp.cardDescription')}</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             {isLoading ? (
               <p className="text-muted-foreground text-sm">{t('settings.mcp.loading')}</p>
             ) : null}
@@ -413,11 +428,12 @@ export function McpServersSettingsPage(): React.JSX.Element {
                 return (
                   <article
                     key={serverId}
-                    className="space-y-3 rounded-xl border border-border/70 bg-card/60 px-4 py-3"
+                    className="space-y-4 rounded-[1.2rem] border border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel-soft)_72%,transparent))] px-5 py-4 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_42%,transparent)]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1">
-                        <h2 className="flex items-center gap-2 text-base font-medium">
+                        <p className="section-kicker text-[0.62rem]">Server entry</p>
+                        <h2 className="flex items-center gap-2 font-editorial text-[1.35rem] leading-none tracking-[-0.02em]">
                           <Cable className="size-4" />
                           {serverId}
                         </h2>
@@ -427,32 +443,17 @@ export function McpServersSettingsPage(): React.JSX.Element {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          role="switch"
+                        <Switch
                           aria-label={t('settings.mcp.toggleAriaLabel', { id: serverId })}
-                          aria-checked={server.isActive}
-                          className={cn(
-                            'relative inline-flex h-6 w-11 items-center rounded-full border transition-colors',
-                            server.isActive
-                              ? 'border-emerald-400/80 bg-emerald-500/30'
-                              : 'border-border/80 bg-background/80'
-                          )}
-                          onClick={() =>
+                          checked={server.isActive}
+                          onCheckedChange={(checked) =>
                             updateServer(serverId, (current) => ({
                               ...current,
-                              isActive: !current.isActive
+                              isActive: checked
                             }))
                           }
                           disabled={isSaving}
-                        >
-                          <span
-                            className={cn(
-                              'inline-block size-4 rounded-full bg-foreground/90 transition-transform',
-                              server.isActive ? 'translate-x-6' : 'translate-x-1'
-                            )}
-                          />
-                        </button>
+                        />
                         <Button
                           type="button"
                           variant="ghost"
@@ -475,10 +476,8 @@ export function McpServersSettingsPage(): React.JSX.Element {
                           {t('settings.mcp.managedRuntimeDescriptionPrefix', {
                             runtime: requiredRuntime
                           })}{' '}
-                          <Link className="underline underline-offset-2" to="/settings/runtimes">
-                            {t('settings.sidebar.items.runtimeSetup')}
-                          </Link>
-                          .
+                          before enabling this server. Runtime setup is no longer a separate AppV2
+                          settings page.
                         </p>
                       </div>
                     ) : null}
@@ -623,23 +622,16 @@ export function McpServersSettingsPage(): React.JSX.Element {
         </Card>
       </div>
 
-      {isJsonDialogOpen ? (
-        <div className="bg-background/70 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="mcp-json-dialog-title"
-            className="w-full max-w-4xl rounded-xl border border-border/80 bg-card shadow-2xl"
-          >
-            <div className="border-border/70 border-b px-5 py-4">
-              <h2 id="mcp-json-dialog-title" className="text-lg font-semibold">
-                {t('settings.mcp.jsonDialog.title')}
-              </h2>
-              <p className="text-muted-foreground mt-1 text-sm">
-                {t('settings.mcp.jsonDialog.description')}
-              </p>
-            </div>
-            <div className="space-y-3 p-5">
+      <Dialog open={isJsonDialogOpen} onOpenChange={setIsJsonDialogOpen}>
+        <DialogContent className="max-w-4xl gap-5">
+          <DialogHeader className="space-y-2">
+            <p className="section-kicker">Raw registry edit</p>
+            <DialogTitle>{t('settings.mcp.jsonDialog.title')}</DialogTitle>
+            <DialogDescription>{t('settings.mcp.jsonDialog.description')}</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 rounded-[1.1rem] border border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel-soft)_70%,transparent))] p-5">
+            <div className="space-y-3">
               <Field>
                 <FieldLabel htmlFor="mcp-json-dialog-textarea">
                   {t('settings.mcp.jsonDialog.fieldLabel')}
@@ -662,18 +654,18 @@ export function McpServersSettingsPage(): React.JSX.Element {
                   {t('settings.mcp.jsonDialog.helper')}
                 </p>
               )}
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={closeJsonDialog}>
-                  {t('settings.mcp.buttons.cancel')}
-                </Button>
-                <Button type="button" onClick={applyJsonDialog}>
-                  {t('settings.mcp.buttons.applyJson')}
-                </Button>
-              </div>
             </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeJsonDialog}>
+                {t('settings.mcp.buttons.cancel')}
+              </Button>
+              <Button type="button" onClick={applyJsonDialog}>
+                {t('settings.mcp.buttons.applyJson')}
+              </Button>
+            </DialogFooter>
           </div>
-        </div>
-      ) : null}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

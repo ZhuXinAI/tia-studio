@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { Switch } from '../../../components/ui/switch'
 import { cn } from '../../../lib/utils'
 import { getDesktopAppInfo, type DesktopAppInfo } from '../../../lib/desktop-app-info'
 import { useAutoUpdate } from '../auto-update/use-auto-update'
@@ -48,25 +49,12 @@ function AboutToggleRow({
         <p className="text-muted-foreground text-xs">{description}</p>
       </div>
 
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={`Toggle ${label}`}
-        onClick={onToggle}
+      <Switch
+        checked={checked}
         disabled={disabled}
-        className={cn(
-          'relative h-6 w-11 rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-60',
-          checked ? 'border-emerald-400/60 bg-emerald-500' : 'border-border/80 bg-muted'
-        )}
-      >
-        <span
-          className={cn(
-            'absolute top-0.5 left-0.5 block size-5 rounded-full bg-white shadow-sm transition-transform',
-            checked ? 'translate-x-5' : 'translate-x-0'
-          )}
-        />
-      </button>
+        aria-label={`Toggle ${label}`}
+        onCheckedChange={() => onToggle()}
+      />
     </div>
   )
 }
@@ -168,10 +156,13 @@ export function AboutSettingsPage(): React.JSX.Element {
   const statusRole = autoUpdateState.status === 'error' ? 'alert' : 'status'
 
   return (
-    <div className="py-4 flex flex-col gap-4">
-      <header className="py-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{t('settings.about.title')}</h1>
-        <p className="text-muted-foreground text-sm">{t('settings.about.description')}</p>
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 py-8">
+      <header className="space-y-3 border-b border-[color:var(--surface-border)] pb-5">
+        <p className="section-kicker">Release and feedback</p>
+        <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
+          {t('settings.about.title')}
+        </h1>
+        <p className="max-w-3xl text-sm text-muted-foreground">{t('settings.about.description')}</p>
       </header>
 
       {autoUpdateState.message ? (
@@ -188,10 +179,12 @@ export function AboutSettingsPage(): React.JSX.Element {
         </p>
       ) : null}
 
-      <Card className="border-border/70 bg-card/80 gap-0 overflow-hidden py-0">
+      <Card className="gap-0 overflow-hidden border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_78%,transparent))] py-0">
         <CardHeader className="border-border/60 border-b py-4">
           <div className="flex items-center justify-between gap-3">
-            <CardTitle>{t('settings.about.cardTitle')}</CardTitle>
+            <CardTitle className="font-editorial text-[1.7rem] leading-none tracking-[-0.03em]">
+              {t('settings.about.cardTitle')}
+            </CardTitle>
             <Button asChild variant="ghost" size="icon">
               <a
                 href="https://github.com/ZhuXinAI/tia-studio"
@@ -208,12 +201,12 @@ export function AboutSettingsPage(): React.JSX.Element {
         <CardContent className="px-0 py-0">
           <div className="border-border/60 flex items-center justify-between gap-4 border-b px-6 py-5">
             <div className="flex min-w-0 items-center gap-4">
-              <div className="from-primary to-primary/70 grid size-20 shrink-0 place-items-center rounded-full bg-gradient-to-br text-2xl font-semibold text-primary-foreground shadow-lg">
+              <div className="from-primary to-[#5f7cc4] grid size-20 shrink-0 place-items-center rounded-[1.25rem] bg-gradient-to-br text-2xl font-semibold text-primary-foreground shadow-lg">
                 TS
               </div>
               <div className="min-w-0 my-2">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <p className="truncate text-3xl font-semibold leading-tight">{appInfo.name}</p>
+                  <p className="font-editorial truncate text-3xl leading-tight tracking-[-0.03em]">{appInfo.name}</p>
                   <span className="border-primary/40 bg-primary/10 text-primary inline-flex rounded-md border px-2 py-1 text-xs font-medium">
                     {versionLabel}
                   </span>
@@ -273,7 +266,7 @@ export function AboutSettingsPage(): React.JSX.Element {
         </CardContent>
       </Card>
 
-      <Card className="border-border/70 bg-card/80 gap-0 overflow-hidden py-0">
+      <Card className="gap-0 overflow-hidden border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] py-0 shadow-none">
         <CardContent className="px-0 py-0">
           {aboutLinks.map((link, index) => (
             <AboutLinkRow key={link.title} {...link} showBorder={index < aboutLinks.length - 1} />

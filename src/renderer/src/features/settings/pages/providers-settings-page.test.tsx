@@ -167,9 +167,9 @@ describe('providers settings page', () => {
     })
     await flushAsyncWork()
 
-    expect(container.textContent).toContain('New Model Provider')
-    expect(container.textContent).toContain('Provider Name')
-    expect(container.textContent).toContain('Save Provider')
+    expect(document.body.textContent).toContain('New Model Provider')
+    expect(document.body.textContent).toContain('Provider Name')
+    expect(document.body.textContent).toContain('Save Provider')
   })
 
   it('shows searchable provider sidebar without legacy heading copy', async () => {
@@ -238,7 +238,7 @@ describe('providers settings page', () => {
     })
     await flushAsyncWork()
 
-    const dialog = container.querySelector('[role="dialog"]') as HTMLElement | null
+    const dialog = document.body.querySelector('[role="dialog"]') as HTMLElement | null
     expect(dialog).not.toBeNull()
 
     const selectedModelInput = Array.from(

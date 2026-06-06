@@ -1,4 +1,4 @@
-export type ThreadMessagesUpdatedSource = 'channel' | 'cron' | 'heartbeat' | 'command'
+export type ThreadMessagesUpdatedSource = 'channel' | 'command'
 
 export type ThreadMessagesUpdatedEvent = {
   type: 'thread-messages-updated'

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
@@ -14,6 +13,9 @@ import {
   type ManagedRuntimeKind,
   type ManagedRuntimesState
 } from '../runtimes/managed-runtimes-query'
+
+const providerSelectClassName =
+  'h-11 w-full rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 py-2 text-sm shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_44%,transparent)]'
 
 export type ProviderFormValues = {
   name: string
@@ -221,7 +223,7 @@ export function ProvidersForm({
     <form className="py-4 flex flex-col gap-4" onSubmit={handleSubmit}>
       {isBuiltIn ? (
         <Field>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-4 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_46%,transparent)]">
             <div className="space-y-0.5">
               <FieldLabel htmlFor="provider-enabled">
                 {t('settings.providers.form.enableProvider')}
@@ -254,7 +256,7 @@ export function ProvidersForm({
         <FieldLabel htmlFor="provider-type">{t('settings.providers.form.type')}</FieldLabel>
         <select
           id="provider-type"
-          className="border-input file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className={providerSelectClassName}
           value={values.type}
           onChange={(event) => updateValue('type', event.target.value as ProviderType)}
           disabled={isBuiltIn}
@@ -270,8 +272,16 @@ export function ProvidersForm({
       {isAcpProvider ? (
         <Field>
           <FieldLabel>{t('settings.providers.form.acpBinaryStatus')}</FieldLabel>
-          <div className="rounded-xl border border-border/70 bg-card/60 px-4 py-3 text-sm space-y-1">
-            <p>{t('settings.providers.form.acpBinaryDescription')}</p>
+          <div className="space-y-3 rounded-[1rem] border border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel-soft)_70%,transparent))] px-4 py-4 text-sm shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_42%,transparent)]">
+            <div className="space-y-1">
+              <p className="section-kicker text-[0.66rem]">Runtime status</p>
+              <p className="font-editorial text-[1.15rem] leading-none tracking-[-0.02em]">
+                {t('settings.providers.form.acpBinaryStatus')}
+              </p>
+              <p className="text-muted-foreground">
+                {t('settings.providers.form.acpBinaryDescription')}
+              </p>
+            </div>
             <p>
               <span className="font-medium">{t('settings.providers.form.acpStatus')}</span>{' '}
               {acpRuntimeRecord?.status ?? t('settings.providers.form.acpStatusLoading')}
@@ -287,11 +297,7 @@ export function ProvidersForm({
             <p className="text-muted-foreground">
               {isAcpRuntimeReady
                 ? t('settings.providers.form.acpReady')
-                : t('settings.providers.form.acpNotReadyPrefix')}{' '}
-              <Link className="underline underline-offset-2" to="/settings/coding">
-                {t('settings.providers.form.acpOpenCoding')}
-              </Link>
-              {!isAcpRuntimeReady ? ` ${t('settings.providers.form.acpNotReadySuffix')}` : null}
+                : `${t('settings.providers.form.acpNotReadyPrefix')} Configure the ACP binary outside AppV2 settings for now. ${t('settings.providers.form.acpNotReadySuffix')}`}
             </p>
           </div>
         </Field>
@@ -337,15 +343,23 @@ export function ProvidersForm({
       )}
 
       {!isAcpProvider ? (
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <input
-            type="checkbox"
-            className="border-input h-4 w-4 rounded border bg-transparent"
-            checked={hasProviderModels}
-            onChange={(event) => setHasProviderModels(event.target.checked)}
-          />
-          {t('settings.providers.form.includeModelPresets')}
-        </label>
+        <Field>
+          <div className="flex items-center justify-between rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-4 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_46%,transparent)]">
+            <div className="space-y-0.5">
+              <FieldLabel htmlFor="provider-model-presets">
+                {t('settings.providers.form.includeModelPresets')}
+              </FieldLabel>
+              <FieldDescription>
+                Save a reusable model list for faster workspace setup.
+              </FieldDescription>
+            </div>
+            <Switch
+              id="provider-model-presets"
+              checked={hasProviderModels}
+              onCheckedChange={setHasProviderModels}
+            />
+          </div>
+        </Field>
       ) : null}
 
       {showProviderModels && !isAcpProvider ? (
@@ -367,7 +381,7 @@ export function ProvidersForm({
 
       {!isAcpProvider ? (
         <Field>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-4 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_46%,transparent)]">
             <div className="space-y-0.5">
               <FieldLabel htmlFor="supports-vision">
                 {t('settings.providers.form.supportsVision')}

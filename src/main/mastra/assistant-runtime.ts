@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { access, readFile, writeFile } from 'node:fs/promises'
 import { Agent } from '@mastra/core/agent'
 import type { AgentExecutionOptions, ToolsInput } from '@mastra/core/agent'
-import type { MessageInput, MessageListInput } from '@mastra/core/agent/message-list'
+import type { MessageListInput } from '@mastra/core/agent/message-list'
 import type { MemoryConfig } from '@mastra/core/memory'
 import type { Mastra } from '@mastra/core/mastra'
 import { BatchPartsProcessor, PIIDetector, PromptInjectionDetector } from '@mastra/core/processors'
@@ -15,16 +15,9 @@ import { toAISdkV5Messages } from '@mastra/ai-sdk/ui'
 import { Memory } from '@mastra/memory'
 import { MCPClient, type MastraMCPServerDefinition } from '@mastra/mcp'
 import { generateText, type LanguageModel, type UIMessage, type UIMessageChunk } from 'ai'
-import type { BuiltInBrowserController } from '../built-in-browser-manager'
-import { buildBuiltInBrowserGuidance } from '../built-in-browser-contract'
-import type { TiaBrowserToolController } from '../tia-browser-tool-manager'
-import { buildTiaBrowserToolGuidance } from '../tia-browser-tool-contract'
 import { ChannelEventBus } from '../channels/channel-event-bus'
 import { buildChannelImageSupportGuidance } from '../channels/channel-media-support'
 import type { ChannelTarget } from '../channels/types'
-import type { AssistantCronJobsService } from '../cron/assistant-cron-jobs-service'
-import { buildHeartbeatWorklogContext } from '../heartbeat/heartbeat-context'
-import { listRecentConversations } from '../heartbeat/recent-conversations'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { ChannelThreadBindingsRepository } from '../persistence/repos/channel-thread-bindings-repo'
 import type {
@@ -35,36 +28,28 @@ import type {
 import type { AppMcpServer, McpServersRepository } from '../persistence/repos/mcp-servers-repo'
 import type { AppProvider, ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { SecuritySettingsRepository } from '../persistence/repos/security-settings-repo'
-import type { ThreadsRepository } from '../persistence/repos/threads-repo'
-import type {
-  BrowserAutomationMode,
-  WebSearchSettingsRepository
-} from '../persistence/repos/web-search-settings-repo'
+import {
+  readThreadProviderOverride,
+  type AppThread,
+  type ThreadsRepository
+} from '../persistence/repos/threads-repo'
+import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import { ChatRouteError } from '../server/chat/chat-errors'
 import { ensureAssistantWorkspaceFiles } from './assistant-workspace'
 import { createCodingAgent } from './coding-agent'
-import { createTiaBrowserToolAgent } from './tia-browser-tool-agent'
 import { createDefaultModelSettings, DEFAULT_MODEL_MAX_RETRIES } from './model-retry-settings'
 import { resolveModel } from './model-resolver'
 import { buildOpenAIProviderOptions } from './openai-provider-options'
 import { AttachmentUploader } from './processors/attachment-uploader'
-import { createBuiltInBrowserTools } from './tools/built-in-browser-tools'
 import { createCodingAgentDelegateTool } from './tools/coding-agent-tools'
-import {
-  createTiaBrowserToolActionTools,
-  createTiaBrowserToolDelegateTool,
-  createTiaBrowserToolTools
-} from './tools/tia-browser-tool-tools'
 import { createWebFetchTool } from './tools/web-fetch-tool'
 import { createChannelTools } from './tools/channel-tools'
-import { createCronTools } from './tools/cron-tools'
 import { createMemorySessionTools } from './tools/memory-session-tools'
 import {
   assistantWorkspaceContextInputProcessor,
   createSoulMemoryTools
 } from './tools/soul-memory-tools'
 import { createWorkLogTools } from './tools/work-log-tools'
-import { HEARTBEAT_RUN_CONTEXT_KEY } from './tool-context'
 import { createContainedLocalFilesystemInstructions } from './workspace-filesystem-instructions'
 import { logger } from '../utils/logger'
 
@@ -109,34 +94,20 @@ type RuntimeMemoryStore = {
   deleteThread?(input: { threadId: string }): Promise<void>
 }
 
-type RunCronJobParams = {
-  assistantId: string
-  threadId: string
-  prompt: string
-  channelId?: string
-  remoteChatId?: string
-}
-
-type RunHeartbeatParams = {
-  assistantId: string
-  threadId: string
-  prompt: string
-  intervalMinutes: number
-}
-
-type CronJobRunResult = {
-  outputText: string
-}
-
 type AssistantContext = {
   assistant: NonNullable<Awaited<ReturnType<AssistantsRepository['getById']>>>
   provider: NonNullable<Awaited<ReturnType<ProvidersRepository['getById']>>>
 }
 
+type ResolvedRuntimeAgent = {
+  agentId: string
+  assistant: AssistantContext['assistant']
+  provider: AssistantContext['provider']
+}
+
 const CHANNEL_BREAK_TAG = '[[BR]]'
 const CHANNEL_SPLITTER_INSTRUCTION =
   'When you want to split a reply into multiple channel messages, insert [[BR]] between chunks.'
-const WECHAT_KF_CHANNEL_TYPE = 'wechat-kf'
 const PROMPT_INJECTION_THRESHOLD = 0.8
 const PII_THRESHOLD = 0.6
 const EMPTY_THREAD_COMPACTION_SUMMARY =
@@ -172,26 +143,13 @@ This is your first conversation! Let's set up your identity and personality.
 Keep it conversational and friendly. This is about co-creating your identity together!
 `.trim()
 
-function buildWebFetchInstructions(browserAutomationMode: BrowserAutomationMode): string {
-  if (browserAutomationMode === 'tia-browser-tool') {
-    return `
-Web browsing guidance:
-- Use the tia-browser-tool path first unless the task is simply to fetch one specific page.
-- Use the use-tia-browser-tool tool for multi-step navigation, page interaction, form filling, snapshots, and extraction.
-- Use webFetch only when you already know the exact page URL you need.
-- Do not use webFetch to search the web, discover candidate pages, or crawl across multiple pages.
-- If the user explicitly prefers an external browser tool such as agent-browser or Playwright MCP, follow that preference.
-- Fall back to webFetch only when richer browser tooling is unnecessary or unavailable.
-`.trim()
-  }
-
+function buildWebFetchInstructions(): string {
   return `
 Web browsing guidance:
-- Please use the built-in-browser approach with agent-browser or Playwright first unless the task is simply to fetch one specific page.
+- Use agent-browser, Playwright MCP, or another browser-oriented tool for page interaction and multi-step website workflows.
 - Use webFetch only when you already know the exact page URL you need.
 - Do not use webFetch to search the web, discover candidate pages, or crawl across multiple pages.
-- For long-running browser work or page interaction, prefer browser-oriented tools such as agent-browser or Playwright MCP.
-- If the user has not named a browser tool preference and browser work would help, first recommend choosing Built-in Browser mode, agent-browser, Playwright MCP, or installing a browser-related skill.
+- If the user has not named a browser tool preference and browser work would help, first recommend agent-browser, Playwright MCP, or installing a browser-related skill.
 - Fall back to webFetch only when richer browser tooling is unavailable or the task is simply to fetch one specific page.
 `.trim()
 }
@@ -200,8 +158,6 @@ export type AssistantRuntime = {
   streamChat: (params: StreamChatParams) => Promise<ReadableStream<UIMessageChunk>>
   listThreadMessages: (params: ListThreadMessagesParams) => Promise<UIMessage[]>
   runThreadCommand: (params: RunThreadCommandParams) => Promise<ThreadCommandResult>
-  runCronJob: (params: RunCronJobParams) => Promise<CronJobRunResult>
-  runHeartbeat: (params: RunHeartbeatParams) => Promise<CronJobRunResult>
 }
 
 type AssistantRuntimeServiceOptions = {
@@ -222,13 +178,9 @@ type AssistantRuntimeServiceOptions = {
       assistantId: string
       threadId: string
       profileId: string
-      source?: 'channel' | 'cron' | 'heartbeat' | 'command'
+      source?: 'channel' | 'command'
     }): void
   }
-  cronJobService?: Pick<
-    AssistantCronJobsService,
-    'createCronJob' | 'listAssistantCronJobs' | 'removeAssistantCronJob'
-  >
   managedRuntimeResolver?: {
     getStatus: () => Promise<ManagedRuntimesState>
     resolveManagedCommand: (
@@ -241,8 +193,6 @@ type AssistantRuntimeServiceOptions = {
       env: NodeJS.ProcessEnv
     }>
   }
-  builtInBrowserManager?: BuiltInBrowserController
-  tiaBrowserToolManager?: TiaBrowserToolController
   acpHomeRootPath?: string
   threadUsageRepo?: {
     recordMessageUsage(input: {
@@ -252,7 +202,7 @@ type AssistantRuntimeServiceOptions = {
       resourceId: string
       providerId: string
       model: string
-      source: 'chat' | 'cron' | 'heartbeat'
+      source: 'chat'
       usage: {
         inputTokens: number
         outputTokens: number
@@ -324,7 +274,7 @@ type PersistThreadUsageInput = {
   resourceId: string
   providerId: string
   model: string
-  source: 'chat' | 'cron' | 'heartbeat'
+  source: 'chat'
 }
 
 export class AssistantRuntimeService implements AssistantRuntime {
@@ -337,17 +287,21 @@ export class AssistantRuntimeService implements AssistantRuntime {
   }
 
   async streamChat(params: StreamChatParams): Promise<ReadableStream<UIMessageChunk>> {
-    const { assistant, provider } = await this.getAssistantContext(params.assistantId)
     const thread = await this.getThreadForAssistant({
       assistantId: params.assistantId,
       threadId: params.threadId
     })
+    const { agentId, assistant, provider } = await this.resolveRuntimeAgent(
+      params.assistantId,
+      thread
+    )
     if (thread.resourceId !== params.profileId) {
       throw new ChatRouteError(404, 'thread_not_found', 'Thread not found')
     }
     await this.ensureAgentRegistered(assistant, provider, {
       channelDeliveryEnabled: Boolean(params.channelTarget),
-      channelType: params.channelTarget?.channelType
+      channelType: params.channelTarget?.channelType,
+      runtimeAgentId: agentId
     })
 
     // Create request context with channel context if available
@@ -363,7 +317,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
     const stream = await handleChatStream({
       mastra: this.options.mastra,
-      agentId: assistant.id,
+      agentId,
       params: {
         messages: toAISdkV5Messages(params.messages),
         trigger: params.trigger,
@@ -398,258 +352,6 @@ export class AssistantRuntimeService implements AssistantRuntime {
     })
   }
 
-  async runCronJob(params: RunCronJobParams): Promise<CronJobRunResult> {
-    logger.debug(
-      `[AssistantRuntime] Running cron job for assistant "${params.assistantId}" with prompt: "${params.prompt}"`
-    )
-    logger.debug('[AssistantRuntime] Cron job params:', {
-      assistantId: params.assistantId,
-      threadId: params.threadId,
-      prompt: params.prompt,
-      promptLength: params.prompt?.length,
-      channelId: params.channelId,
-      remoteChatId: params.remoteChatId
-    })
-
-    const { assistant, provider } = await this.getAssistantContext(params.assistantId)
-    const thread = await this.getThreadForAssistant({
-      assistantId: params.assistantId,
-      threadId: params.threadId
-    })
-
-    logger.debug(`[AssistantRuntime] Cron job thread ID: ${params.threadId}`)
-
-    // Use channel context from params if provided
-    const hasChannelTarget = Boolean(params.channelId && params.remoteChatId)
-
-    if (hasChannelTarget) {
-      logger.debug(
-        `[AssistantRuntime] Cron job has channel target: channelId=${params.channelId}, remoteChatId=${params.remoteChatId}`
-      )
-    }
-
-    await this.ensureAgentRegistered(assistant, provider, {
-      channelDeliveryEnabled: hasChannelTarget,
-      cronToolsEnabled: false // Disable cron tools during cron execution to prevent recursion
-    })
-
-    logger.debug(
-      `[AssistantRuntime] Agent registered, starting chat stream (model: ${provider.selectedModel}, channel: ${hasChannelTarget ? 'yes' : 'no'})`
-    )
-
-    const requestContext = new RequestContext()
-
-    // Set channel context if available so channel tools can access it
-    if (hasChannelTarget && params.channelId && params.remoteChatId) {
-      const channelContext = {
-        channelId: params.channelId,
-        remoteChatId: params.remoteChatId,
-        userId: thread.resourceId
-      }
-      logger.debug('[AssistantRuntime] Setting channel context:', channelContext)
-      requestContext.set('channelContext', channelContext)
-    }
-
-    const messages = this.buildScheduledRunMessages({
-      kind: 'cron',
-      threadId: params.threadId,
-      prompt: params.prompt
-    })
-
-    logger.debug('[AssistantRuntime] Cron job messages being sent to agent:')
-    logger.debug('[AssistantRuntime] Number of messages:', messages.length)
-    messages.forEach((msg, idx) => {
-      logger.debug(`  Message ${idx + 1} [${msg.role}]:`)
-      logger.debug('    content:', msg.content)
-      logger.debug('    parts:', JSON.stringify(msg.parts, null, 2))
-    })
-    logger.debug('[AssistantRuntime] Original prompt:', params.prompt)
-
-    const stream = await handleChatStream({
-      mastra: this.options.mastra,
-      agentId: assistant.id,
-      params: {
-        messages,
-        maxSteps: assistant.maxSteps,
-        modelSettings: createDefaultModelSettings(),
-        providerOptions: this.buildProviderOptions(provider),
-        requestContext
-        // No memory for cron jobs - they should execute without conversation history
-      },
-      sendReasoning: true
-    })
-
-    const outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>, {
-      assistantId: assistant.id,
-      threadId: params.threadId,
-      resourceId: thread.resourceId,
-      providerId: provider.id,
-      model: provider.selectedModel,
-      source: 'cron'
-    })
-
-    logger.debug('[AssistantRuntime] Cron job stream completed')
-    logger.debug('[AssistantRuntime] Collected output text length:', outputText.length)
-    logger.debug('[AssistantRuntime] Output text preview:', outputText.substring(0, 200))
-
-    // Fallback: If cron job has channel context but agent didn't send anything via tools,
-    // send the collected output as a fallback message
-    if (
-      hasChannelTarget &&
-      params.channelId &&
-      params.remoteChatId &&
-      outputText.trim().length > 0
-    ) {
-      logger.debug(`[AssistantRuntime] Cron job completed with ${outputText.length} chars output`)
-      // Note: If agent used channel tools, messages were already sent during execution
-      // This fallback ensures something is sent if agent didn't use tools
-    }
-
-    logger.debug(`[AssistantRuntime] Cron job completed`)
-    // Notify UI that thread has new messages
-    this.options.threadMessageEventsStore?.appendMessagesUpdated({
-      assistantId: params.assistantId,
-      threadId: params.threadId,
-      profileId: thread.resourceId,
-      source: 'cron'
-    })
-
-    return {
-      outputText
-    }
-  }
-
-  async runHeartbeat(params: RunHeartbeatParams): Promise<CronJobRunResult> {
-    const { assistant, provider } = await this.getAssistantContext(params.assistantId)
-    const thread = await this.getThreadForAssistant({
-      assistantId: params.assistantId,
-      threadId: params.threadId
-    })
-    await this.ensureAgentRegistered(assistant, provider, {
-      channelDeliveryEnabled: true,
-      cronToolsEnabled: true
-    })
-
-    const requestContext = new RequestContext()
-    requestContext.set(HEARTBEAT_RUN_CONTEXT_KEY, randomUUID())
-
-    const workspaceRootPath = this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})
-    const worklogContext = workspaceRootPath
-      ? await buildHeartbeatWorklogContext({
-          workspaceRootPath,
-          intervalMinutes: params.intervalMinutes
-        })
-      : null
-
-    const stream = await handleChatStream({
-      mastra: this.options.mastra,
-      agentId: assistant.id,
-      params: {
-        messages: this.buildScheduledRunMessages({
-          kind: 'heartbeat',
-          threadId: params.threadId,
-          prompt: params.prompt,
-          systemContext: worklogContext
-        }),
-        maxSteps: assistant.maxSteps,
-        modelSettings: createDefaultModelSettings(),
-        providerOptions: this.buildProviderOptions(provider),
-        requestContext
-      },
-      sendReasoning: true
-    })
-
-    const outputText = await this.collectStreamText(stream as ReadableStream<UIMessageChunk>, {
-      assistantId: assistant.id,
-      threadId: params.threadId,
-      resourceId: thread.resourceId,
-      providerId: provider.id,
-      model: provider.selectedModel,
-      source: 'heartbeat'
-    })
-
-    // Notify UI that thread has new messages
-    this.options.threadMessageEventsStore?.appendMessagesUpdated({
-      assistantId: params.assistantId,
-      threadId: params.threadId,
-      profileId: thread.resourceId,
-      source: 'heartbeat'
-    })
-
-    return {
-      outputText
-    }
-  }
-
-  private buildScheduledRunMessages(input: {
-    kind: 'cron' | 'heartbeat'
-    threadId: string
-    prompt: string
-    systemContext?: string | null
-  }): ReturnType<typeof toAISdkV5Messages> {
-    logger.debug('[buildScheduledRunMessages] Input:', {
-      kind: input.kind,
-      prompt: input.prompt,
-      promptLength: input.prompt?.length
-    })
-
-    const messages: MessageInput[] = []
-
-    // For cron jobs, prepend instructions to the user message since AI SDK v5 doesn't support system messages
-    let userMessage = input.prompt
-    if (input.kind === 'cron') {
-      const now = new Date()
-      const cronInstructions = `[CRON JOB EXECUTION - ${now.toLocaleString('en-US', { timeZone: 'UTC', dateStyle: 'full', timeStyle: 'long' })}]
-
-You are executing a SCHEDULED REMINDER that was already created. This is NOT a new request.
-
-CRITICAL INSTRUCTIONS:
-1. The user is NOT asking you to create a reminder - the reminder ALREADY EXISTS and is running NOW
-2. DO NOT save anything to SOUL.md or MEMORY.md - this is just executing an existing reminder
-3. DO NOT create new cron jobs - this reminder is already scheduled
-4. You MUST call the sendMessageToChannel tool to deliver the reminder message
-5. Keep the message simple and direct - just deliver the reminder
-
-Example:
-- Task: "提醒我：开会了。"
-- Action: Call sendMessageToChannel({ message: "提醒：开会了。" })
-
-DO NOT explain, DO NOT save to memory, DO NOT create tasks - JUST SEND THE REMINDER MESSAGE.
-
----
-TASK TO EXECUTE NOW:
-${input.prompt}`
-
-      userMessage = cronInstructions
-      logger.debug('[buildScheduledRunMessages] Prepended cron instructions to user message')
-    }
-
-    if (input.systemContext) {
-      // For heartbeat, prepend system context to user message
-      userMessage = `${input.systemContext}\n\n---\n${userMessage}`
-    }
-
-    // Add the user message with instructions prepended
-    logger.debug('[buildScheduledRunMessages] Adding user message, length:', userMessage.length)
-    messages.push({
-      id: `${input.kind}:${input.threadId}:${randomUUID()}`,
-      role: 'user',
-      content: userMessage,
-      parts: [
-        {
-          type: 'text',
-          text: userMessage
-        }
-      ]
-    })
-
-    logger.debug('[buildScheduledRunMessages] Messages before transformation:', messages.length)
-    const transformed = toAISdkV5Messages(messages)
-    logger.debug('[buildScheduledRunMessages] Messages after transformation:', transformed.length)
-
-    return transformed
-  }
-
   private streamWithThreadTitleSync(
     stream: ReadableStream<UIMessageChunk>,
     params: {
@@ -663,14 +365,9 @@ ${input.prompt}`
     let isSynced = false
     let channelTextBuffer = ''
     const usageObservation = this.createStreamUsageObservation()
-    const bufferSingleChannelReply = params.channelTarget?.channelType === WECHAT_KF_CHANNEL_TYPE
 
     const publishCompletedChannelChunks = async (): Promise<void> => {
-      if (
-        !params.channelTarget ||
-        bufferSingleChannelReply ||
-        !channelTextBuffer.includes(CHANNEL_BREAK_TAG)
-      ) {
+      if (!params.channelTarget || !channelTextBuffer.includes(CHANNEL_BREAK_TAG)) {
         return
       }
 
@@ -697,7 +394,7 @@ ${input.prompt}`
     }
 
     const flushChannelTextBeforeStep = async (): Promise<void> => {
-      if (!params.channelTarget || bufferSingleChannelReply || !channelTextBuffer.trim()) {
+      if (!params.channelTarget || !channelTextBuffer.trim()) {
         return
       }
 
@@ -806,10 +503,7 @@ ${input.prompt}`
     }
 
     const normalizedText = input.text.trim()
-    const finalText =
-      input.channelTarget.channelType === WECHAT_KF_CHANNEL_TYPE
-        ? normalizedText.replaceAll(CHANNEL_BREAK_TAG, '\n').trim()
-        : normalizedText
+    const finalText = normalizedText
     if (finalText.length === 0) {
       return
     }
@@ -958,11 +652,11 @@ ${input.prompt}`
     threadId: string
     profileId: string
   }): Promise<Omit<ThreadCommandResult, 'command'>> {
-    const { assistant, provider } = await this.getAssistantContext(params.assistantId)
     const thread = await this.getThreadForAssistant({
       assistantId: params.assistantId,
       threadId: params.threadId
     })
+    const { assistant, provider } = await this.getAssistantContext(params.assistantId, thread)
     if (thread.resourceId !== params.profileId) {
       throw new ChatRouteError(404, 'thread_not_found', 'Thread not found')
     }
@@ -1250,38 +944,6 @@ ${input.prompt}`
     return thread
   }
 
-  private async collectStreamText(
-    stream: ReadableStream<UIMessageChunk>,
-    usageContext?: PersistThreadUsageInput
-  ): Promise<string> {
-    const reader = stream.getReader()
-    const responseTextParts: string[] = []
-    const usageObservation = this.createStreamUsageObservation()
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) {
-          break
-        }
-
-        const observedValue = this.observeStreamChunk(usageObservation, value)
-
-        if (observedValue.type === 'text-delta' && typeof observedValue.delta === 'string') {
-          responseTextParts.push(observedValue.delta)
-        }
-      }
-
-      if (usageContext) {
-        await this.persistObservedThreadUsage(usageContext, usageObservation)
-      }
-    } finally {
-      reader.releaseLock()
-    }
-
-    return responseTextParts.join('')
-  }
-
   private createStreamUsageObservation(): StreamUsageObservation {
     return {
       assistantMessageId: null,
@@ -1486,7 +1148,10 @@ ${input.prompt}`
     }
   }
 
-  private async getAssistantContext(assistantId: string): Promise<AssistantContext> {
+  private async getAssistantContext(
+    assistantId: string,
+    thread?: Pick<AppThread, 'id' | 'metadata'>
+  ): Promise<AssistantContext> {
     const assistant = await this.options.assistantsRepo.getById(assistantId)
     if (!assistant) {
       throw new ChatRouteError(404, 'assistant_not_found', 'Assistant not found')
@@ -1496,7 +1161,10 @@ ${input.prompt}`
       throw new ChatRouteError(409, 'provider_not_found', 'Assistant provider is not configured')
     }
 
-    const provider = await this.options.providersRepo.getById(assistant.providerId)
+    const providerOverride = readThreadProviderOverride(thread?.metadata)
+    const providerId = providerOverride?.providerId ?? assistant.providerId
+
+    const provider = await this.options.providersRepo.getById(providerId)
     if (!provider) {
       throw new ChatRouteError(409, 'provider_not_found', 'Assistant provider is not configured')
     }
@@ -1505,13 +1173,40 @@ ${input.prompt}`
       throw new ChatRouteError(409, 'provider_disabled', 'Assistant provider is disabled')
     }
 
-    if (!provider.selectedModel) {
+    const selectedModel = providerOverride?.model ?? provider.selectedModel
+    if (!selectedModel) {
       throw new ChatRouteError(409, 'provider_model_missing', 'Assistant provider model is missing')
     }
 
-    await this.assertAcpProviderReady(provider)
+    const resolvedProvider =
+      provider.selectedModel === selectedModel ? provider : { ...provider, selectedModel }
 
-    return { assistant, provider }
+    await this.assertAcpProviderReady(resolvedProvider)
+
+    return { assistant, provider: resolvedProvider }
+  }
+
+  private buildRuntimeAgentId(
+    assistantId: string,
+    thread?: Pick<AppThread, 'id' | 'metadata'>
+  ): string {
+    if (!thread || !readThreadProviderOverride(thread.metadata)) {
+      return assistantId
+    }
+
+    return `${assistantId}:thread:${thread.id}`
+  }
+
+  private async resolveRuntimeAgent(
+    assistantId: string,
+    thread?: Pick<AppThread, 'id' | 'metadata'>
+  ): Promise<ResolvedRuntimeAgent> {
+    const context = await this.getAssistantContext(assistantId, thread)
+
+    return {
+      agentId: this.buildRuntimeAgentId(assistantId, thread),
+      ...context
+    }
   }
 
   private async ensureAgentRegistered(
@@ -1520,18 +1215,16 @@ ${input.prompt}`
     options: {
       channelDeliveryEnabled: boolean
       channelType?: string
-      cronToolsEnabled?: boolean
+      runtimeAgentId?: string
     } = {
-      channelDeliveryEnabled: false,
-      cronToolsEnabled: true
+      channelDeliveryEnabled: false
     }
   ): Promise<void> {
+    const agentId = options.runtimeAgentId ?? assistant.id
     const enabledMcpServers = await this.resolveEnabledMcpServers(assistant.mcpConfig ?? {})
     const mcpServersSignature = JSON.stringify(enabledMcpServers)
     const guardrailConfig = await this.resolveGuardrailConfig(provider)
     await this.assertAcpProviderReady(guardrailConfig.provider)
-    const browserAutomationMode = await this.resolveBrowserAutomationMode()
-    const browserAgentName = `${assistant.id}:browser-agent`
     const legacyCodingAgentName = `${assistant.id}:coding-agent`
     const codingAgentNames = CODING_RUNTIME_KINDS.map((kind) =>
       this.buildCodingAgentName(assistant.id, kind)
@@ -1539,7 +1232,7 @@ ${input.prompt}`
     const workspaceRootPath = this.resolveWorkspaceRootPath(assistant.workspaceConfig ?? {})
     const codingAgents = await this.resolveEnabledCodingAgentProviders(assistant)
     const nextSignature = [
-      assistant.id,
+      agentId,
       assistant.updatedAt,
       assistant.instructions,
       provider.id,
@@ -1564,8 +1257,6 @@ ${input.prompt}`
       guardrailConfig.provider.apiHost ?? '',
       options.channelDeliveryEnabled ? 'channel-delivery:on' : 'channel-delivery:off',
       options.channelType ?? '',
-      options.cronToolsEnabled !== false ? 'cron-tools:on' : 'cron-tools:off',
-      `browser-mode:${browserAutomationMode}`,
       ...codingAgents.flatMap(({ kind, provider }) => [
         `coding-agent:${kind}:${provider.id}`,
         provider.updatedAt,
@@ -1574,12 +1265,11 @@ ${input.prompt}`
       ])
     ].join('|')
 
-    if (this.registeredAgentSignatures.get(assistant.id) === nextSignature) {
+    if (this.registeredAgentSignatures.get(agentId) === nextSignature) {
       return
     }
 
-    this.options.mastra.removeAgent(assistant.id)
-    this.options.mastra.removeAgent(browserAgentName)
+    this.options.mastra.removeAgent(agentId)
     this.options.mastra.removeAgent(legacyCodingAgentName)
     for (const codingAgentName of codingAgentNames) {
       this.options.mastra.removeAgent(codingAgentName)
@@ -1602,7 +1292,7 @@ ${input.prompt}`
       this.buildResolveModelOptions({
         provider,
         acpWorkingDirectory: workspaceRootPath,
-        acpScopeId: assistant.id
+        acpScopeId: agentId
       })
     )
     const guardrailModel = resolveModel(
@@ -1632,51 +1322,14 @@ ${input.prompt}`
     const mcpTools = await this.buildMcpTools(assistant.id, enabledMcpServers)
     const soulMemoryTools = workspaceRootPath ? createSoulMemoryTools({ workspaceRootPath }) : {}
     const workLogTools = workspaceRootPath ? createWorkLogTools({ workspaceRootPath }) : {}
-    const cronTools =
-      workspaceRootPath && this.options.cronJobService && options.cronToolsEnabled !== false
-        ? createCronTools({
-            assistantId: assistant.id,
-            cronJobService: this.options.cronJobService
-          })
-        : {}
     const channelTools = options.channelDeliveryEnabled
       ? createChannelTools({
-          bus: this.channelEventBus,
-          workspaceRootPath,
-          resolveRecentConversations: this.options.channelThreadBindingsRepo
-            ? async () =>
-                listRecentConversations({
-                  assistantId: assistant.id,
-                  threadsRepo: this.options.threadsRepo,
-                  channelThreadBindingsRepo: this.options
-                    .channelThreadBindingsRepo as ChannelThreadBindingsRepository,
-                  mastra: this.options.mastra
-                })
-            : undefined
+        bus: this.channelEventBus,
+          workspaceRootPath
         })
       : {}
 
     const memorySessionTools = createMemorySessionTools(memory)
-    const builtInBrowserTools =
-      this.options.builtInBrowserManager && browserAutomationMode === 'built-in-browser'
-        ? createBuiltInBrowserTools({
-            controller: this.options.builtInBrowserManager
-          })
-        : {}
-    const tiaBrowserToolTools =
-      this.options.tiaBrowserToolManager && browserAutomationMode === 'tia-browser-tool'
-        ? createTiaBrowserToolTools({
-            controller: this.options.tiaBrowserToolManager
-          })
-        : {}
-    const browserDelegateTools =
-      this.options.tiaBrowserToolManager && browserAutomationMode === 'tia-browser-tool'
-        ? createTiaBrowserToolDelegateTool({
-            browserAgentName,
-            maxSteps: assistant.maxSteps,
-            providerOptions: this.buildProviderOptions(provider)
-          })
-        : {}
     const codingAgentTools: ToolsInput = {}
     if (codingAgents.length > 0) {
       codingAgentTools.useCodingAgent = createCodingAgentDelegateTool({
@@ -1692,28 +1345,19 @@ ${input.prompt}`
     }
 
     logger.debug('[AssistantRuntime] Agent tools registered:', {
-      hasBuiltInBrowserTools: Boolean(this.options.builtInBrowserManager),
-      hasTiaBrowserTool: Boolean(this.options.tiaBrowserToolManager),
       hasCodingAgent: codingAgents.length > 0,
       codingAgentTargets: codingAgents.map(({ kind }) => kind),
-      browserAutomationMode,
-      hasCronTools: Object.keys(cronTools).length > 0,
       hasChannelTools: Object.keys(channelTools).length > 0,
       channelToolNames: Object.keys(channelTools),
-      cronToolsEnabled: options.cronToolsEnabled,
       channelDeliveryEnabled: options.channelDeliveryEnabled,
       channelType: options.channelType ?? null
     })
 
     const tools: ToolsInput = {
       webFetch: webFetchTool,
-      ...builtInBrowserTools,
-      ...tiaBrowserToolTools,
-      ...browserDelegateTools,
       ...codingAgentTools,
       ...soulMemoryTools,
       ...workLogTools,
-      ...cronTools,
       ...channelTools,
       ...memorySessionTools,
       ...mcpTools
@@ -1737,23 +1381,7 @@ ${input.prompt}`
     const isFirstConversation = !hasAnyThreads
     const baseInstructions = assistant.instructions || 'You are a helpful assistant.'
     const onboardingInstructions = isFirstConversation ? `\n\n${ONBOARDING_INSTRUCTIONS}\n` : ''
-    const webFetchInstructions = `\n${buildWebFetchInstructions(browserAutomationMode)}\n`
-    const builtInBrowserInstructions =
-      browserAutomationMode === 'built-in-browser'
-        ? `\n${buildBuiltInBrowserGuidance({
-            handoffToolAvailable: Boolean(this.options.builtInBrowserManager)
-          })}\n`
-        : ''
-    const tiaBrowserToolInstructions =
-      browserAutomationMode === 'tia-browser-tool'
-        ? `\n${buildTiaBrowserToolGuidance({
-            handoffToolAvailable: Boolean(this.options.tiaBrowserToolManager)
-          })}\n`
-        : ''
-    const builtInBrowserDelegateInstructions =
-      this.options.tiaBrowserToolManager && browserAutomationMode === 'tia-browser-tool'
-        ? '\nTIA browser tool mode:\n- A use-tia-browser-tool tool is available for common open, snapshot, click, fill, get, and wait workflows.\n- Prefer use-tia-browser-tool for multi-step website tasks instead of recommending external agent-browser unless the user explicitly wants the external tool.\n- The browser subagent already knows how to refresh snapshots after DOM changes and when to request a human handoff.\n'
-        : ''
+    const webFetchInstructions = `\n${buildWebFetchInstructions()}\n`
     const codingAgentInstructions =
       codingAgents.length > 0
         ? `\nCoding agent mode:\n- A use-coding-agent tool is available for code changes, debugging, repository analysis, tests, and implementation work.\n- Available coding targets: ${codingAgents.map(({ kind }) => kind).join(', ')}.\n- Set the target when you want a specific coding subagent. If omitted, the tool chooses the default enabled coding target.\n- After the coding subagent returns, summarize the useful result for the user.\n`
@@ -1762,38 +1390,13 @@ ${input.prompt}`
       .map((line) => `${line}\n`)
       .join('')
     const channelInstructions = options.channelDeliveryEnabled
-      ? options.channelType === WECHAT_KF_CHANNEL_TYPE
-        ? `\nChannel delivery guidelines:\n- Reply in a single message.\n- Do not use [[BR]] in your reply.\n- Keep channel replies short and natural.\n${channelImageGuidance}`
-        : `\nChannel delivery guidelines:\n- ${CHANNEL_SPLITTER_INSTRUCTION}\n- Keep channel replies short and natural.\n- Do not mention [[BR]] to the user.\n${channelImageGuidance}`
+      ? `\nChannel delivery guidelines:\n- ${CHANNEL_SPLITTER_INSTRUCTION}\n- Keep channel replies short and natural.\n- Do not mention [[BR]] to the user.\n${channelImageGuidance}`
       : ''
-    const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${webFetchInstructions}${builtInBrowserInstructions}${tiaBrowserToolInstructions}${builtInBrowserDelegateInstructions}${codingAgentInstructions}${channelInstructions}\n`
+    const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${webFetchInstructions}${codingAgentInstructions}${channelInstructions}\n`
     const workspace = await this.buildWorkspace(
       assistant.workspaceConfig ?? {},
       assistant.skillsConfig ?? {}
     )
-    if (this.options.tiaBrowserToolManager && browserAutomationMode === 'tia-browser-tool') {
-      const browserAgentMemory = new Memory({
-        ...(storage ? { storage } : {}),
-        options: {
-          generateTitle: true
-        }
-      })
-      const browserAgent = createTiaBrowserToolAgent({
-        assistantId: assistant.id,
-        assistantName: assistant.name,
-        memory: browserAgentMemory,
-        model,
-        tools: {
-          ...createTiaBrowserToolActionTools({
-            controller: this.options.tiaBrowserToolManager
-          }),
-          ...createTiaBrowserToolTools({
-            controller: this.options.tiaBrowserToolManager
-          })
-        }
-      })
-      this.options.mastra.addAgent(browserAgent, browserAgentName)
-    }
     if (codingAgents.length > 0) {
       const codingWorkspace = await this.buildWorkspace(
         assistant.workspaceConfig ?? {},
@@ -1873,7 +1476,7 @@ ${input.prompt}`
       : []
 
     const agent = new Agent({
-      id: assistant.id,
+      id: agentId,
       name: assistant.name,
       instructions: agentInstructions,
       model: model as never,
@@ -1884,8 +1487,8 @@ ${input.prompt}`
       ...(outputProcessors.length > 0 ? { outputProcessors } : {})
     })
 
-    this.options.mastra.addAgent(agent, assistant.id)
-    this.registeredAgentSignatures.set(assistant.id, nextSignature)
+    this.options.mastra.addAgent(agent, agentId)
+    this.registeredAgentSignatures.set(agentId, nextSignature)
   }
 
   private async resolveGuardrailConfig(
@@ -2436,18 +2039,6 @@ ${input.prompt}`
     apiHost?: string | null
   }): AgentExecutionOptions['providerOptions'] {
     return buildOpenAIProviderOptions(provider)
-  }
-
-  private async resolveBrowserAutomationMode(): Promise<BrowserAutomationMode> {
-    const candidate = this.options.webSearchSettingsRepo as WebSearchSettingsRepository & {
-      getBrowserAutomationMode?: () => Promise<BrowserAutomationMode>
-    }
-
-    if (typeof candidate.getBrowserAutomationMode !== 'function') {
-      return 'built-in-browser'
-    }
-
-    return await candidate.getBrowserAutomationMode()
   }
 
   private toStringList(value: unknown): string[] {

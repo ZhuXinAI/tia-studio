@@ -7,7 +7,7 @@ describe('ToolFallbackResult', () => {
     const html = renderToString(
       <ToolFallbackResult
         result={{
-          kind: 'team-member-result',
+          kind: 'delegated-agent-result',
           assistantId: 'assistant-1',
           assistantName: 'Researcher',
           task: 'Check the factual risks in the rollout plan.',

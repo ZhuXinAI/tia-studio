@@ -5,22 +5,23 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockState = vi.hoisted(() => {
-  const routeParams: { assistantId?: string; threadId?: string } = {}
+  const routeParams: { workspaceId?: string; threadId?: string } = {}
   const sendResolvers: Array<() => void> = []
 
   return {
     routeParams,
+    routePath: '/chat',
     sendResolvers,
     chatStatus: 'ready' as 'ready' | 'submitted' | 'streaming',
     chatMessages: [] as Array<Record<string, unknown>>,
     assistantsData: [] as Array<Record<string, unknown>>,
+    workspacesData: [] as Array<Record<string, unknown>>,
     providersData: [] as Array<Record<string, unknown>>,
     threadsData: [] as Array<Record<string, unknown>>,
     listAssistantsMock: vi.fn(),
     createAssistantMock: vi.fn(),
     updateAssistantMock: vi.fn(),
     deleteAssistantMock: vi.fn(),
-    updateAssistantHeartbeatMock: vi.fn(),
     listProvidersMock: vi.fn(),
     getMcpServersSettingsMock: vi.fn(),
     clawsData: {
@@ -41,6 +42,8 @@ const mockState = vi.hoisted(() => {
     updateClawChannelMock: vi.fn(),
     recoverClawChannelSetupMock: vi.fn(),
     deleteClawChannelMock: vi.fn(),
+    relocateWorkspaceMock: vi.fn(),
+    deleteWorkspaceMock: vi.fn(),
     listThreadsMock: vi.fn(),
     createThreadMock: vi.fn(),
     deleteThreadMock: vi.fn(),
@@ -59,7 +62,14 @@ const mockState = vi.hoisted(() => {
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockState.navigateMock,
-  useParams: () => mockState.routeParams
+  useParams: () => mockState.routeParams,
+  useLocation: () => ({
+    pathname: mockState.routePath,
+    search: '',
+    hash: '',
+    state: null,
+    key: 'test'
+  })
 }))
 
 vi.mock('../../assistants/assistants-query', () => ({
@@ -87,10 +97,6 @@ vi.mock('../../assistants/assistants-query', () => ({
   deleteAssistant: (...args: unknown[]) => mockState.deleteAssistantMock(...args)
 }))
 
-vi.mock('../../assistants/assistant-heartbeat-query', () => ({
-  updateAssistantHeartbeat: (...args: unknown[]) => mockState.updateAssistantHeartbeatMock(...args)
-}))
-
 vi.mock('../../settings/providers/providers-query', () => ({
   useProviders: () => ({
     data: mockState.providersData,
@@ -98,6 +104,22 @@ vi.mock('../../settings/providers/providers-query', () => ({
     error: null
   }),
   listProviders: (...args: unknown[]) => mockState.listProvidersMock(...args)
+}))
+
+vi.mock('../../workspaces/workspaces-query', () => ({
+  useWorkspaces: () => ({
+    data: mockState.workspacesData,
+    isLoading: false,
+    error: null
+  }),
+  useRelocateWorkspace: () => ({
+    isPending: false,
+    mutateAsync: mockState.relocateWorkspaceMock
+  }),
+  useDeleteWorkspace: () => ({
+    isPending: false,
+    mutateAsync: mockState.deleteWorkspaceMock
+  })
 }))
 
 vi.mock('../../settings/mcp-servers/mcp-servers-query', () => ({
@@ -171,6 +193,30 @@ vi.mock('@ai-sdk/react', () => ({
 import { useThreadPageController, type ThreadPageController } from './use-thread-page-controller'
 import { queryClient } from '../../../lib/query-client'
 
+function applyRoute(to: string): void {
+  mockState.routePath = to
+  delete mockState.routeParams.workspaceId
+  delete mockState.routeParams.threadId
+
+  const workspaceThreadMatch = /^\/workspaces\/([^/]+)\/threads\/([^/]+)$/.exec(to)
+  if (workspaceThreadMatch) {
+    mockState.routeParams.workspaceId = workspaceThreadMatch[1]
+    mockState.routeParams.threadId = workspaceThreadMatch[2]
+    return
+  }
+
+  const workspaceRootMatch = /^\/workspaces\/([^/]+)(?:\/new)?$/.exec(to)
+  if (workspaceRootMatch) {
+    mockState.routeParams.workspaceId = workspaceRootMatch[1]
+    return
+  }
+
+  const chatThreadMatch = /^\/chat\/([^/]+)$/.exec(to)
+  if (chatThreadMatch && chatThreadMatch[1] !== 'new') {
+    mockState.routeParams.threadId = chatThreadMatch[1]
+  }
+}
+
 let controller: ThreadPageController | null = null
 let forceRerender: (() => void) | null = null
 let container: HTMLDivElement
@@ -241,7 +287,8 @@ describe('useThreadPageController', () => {
   beforeEach(() => {
     queryClient.clear()
     window.localStorage.clear()
-    mockState.routeParams.assistantId = 'assistant-1'
+    mockState.routePath = '/chat'
+    delete mockState.routeParams.workspaceId
     delete mockState.routeParams.threadId
     mockState.chatStatus = 'ready'
     mockState.chatMessages = []
@@ -249,9 +296,7 @@ describe('useThreadPageController', () => {
 
     mockState.navigateMock.mockReset()
     mockState.navigateMock.mockImplementation((to: string) => {
-      const parts = to.split('/').filter(Boolean)
-      mockState.routeParams.assistantId = parts[1]
-      mockState.routeParams.threadId = parts[2]
+      applyRoute(to)
     })
 
     mockState.listAssistantsMock.mockReset()
@@ -315,21 +360,6 @@ describe('useThreadPageController', () => {
     })
     mockState.deleteAssistantMock.mockReset()
     mockState.deleteAssistantMock.mockResolvedValue(undefined)
-    mockState.updateAssistantHeartbeatMock.mockReset()
-    mockState.updateAssistantHeartbeatMock.mockResolvedValue({
-      id: 'heartbeat-1',
-      assistantId: 'assistant-1',
-      enabled: false,
-      intervalMinutes: 30,
-      prompt: 'Review recent work logs and recent conversations. Follow up only if needed.',
-      threadId: null,
-      lastRunAt: null,
-      nextRunAt: null,
-      lastRunStatus: null,
-      lastError: null,
-      createdAt: '2026-03-01T00:00:00.000Z',
-      updatedAt: '2026-03-01T00:00:00.000Z'
-    })
 
     mockState.listProvidersMock.mockReset()
     mockState.listProvidersMock.mockResolvedValue([
@@ -362,6 +392,16 @@ describe('useThreadPageController', () => {
         officialSite: null,
         createdAt: '2026-03-01T00:00:00.000Z',
         updatedAt: '2026-03-01T00:00:00.000Z'
+      }
+    ]
+    mockState.workspacesData = [
+      {
+        id: 'workspace-chats',
+        name: 'Chats',
+        rootPath: '/tmp/tia-studio/chats',
+        builtInKind: 'chats',
+        defaultAssistantId: null,
+        isMissing: false
       }
     ]
 
@@ -426,6 +466,10 @@ describe('useThreadPageController', () => {
       pendingPairingCount: 0
     })
     mockState.deleteClawChannelMock.mockReset()
+    mockState.relocateWorkspaceMock.mockReset()
+    mockState.relocateWorkspaceMock.mockResolvedValue(undefined)
+    mockState.deleteWorkspaceMock.mockReset()
+    mockState.deleteWorkspaceMock.mockResolvedValue(undefined)
 
     mockState.listThreadsMock.mockReset()
     mockState.listThreadsMock.mockResolvedValue([])
@@ -544,70 +588,7 @@ describe('useThreadPageController', () => {
     vi.clearAllMocks()
   })
 
-  it('does not resend the pending first message after stream completion', async () => {
-    await act(async () => {
-      root.render(
-        <Harness
-          onControllerChange={(value) => {
-            controller = value
-          }}
-          onForceRerenderReady={(value) => {
-            forceRerender = value
-          }}
-        />
-      )
-    })
-
-    await waitForCondition(() => controller?.selectedAssistant?.id === 'assistant-1', 'assistant')
-
-    await act(async () => {
-      await controller?.onSubmitMessage('Draft an agenda for planning')
-    })
-
-    expect(mockState.createThreadMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: ''
-      })
-    )
-
-    await waitForCondition(
-      () => mockState.sendMessageMock.mock.calls.length === 1,
-      'first send invocation'
-    )
-
-    const firstSendPayload = mockState.sendMessageMock.mock.calls[0]?.[0] as
-      | Record<string, unknown>
-      | undefined
-    expect(firstSendPayload?.messageId).toBe(firstSendPayload?.id)
-    expect(
-      mockState.chatMessages.filter((message) => message.id === firstSendPayload?.id)
-    ).toHaveLength(1)
-
-    await act(async () => {
-      forceRerender?.()
-    })
-
-    await act(async () => {
-      const resolveSend = mockState.sendResolvers.shift()
-      if (!resolveSend) {
-        throw new Error('Missing pending send resolver')
-      }
-      resolveSend()
-    })
-
-    await act(async () => {
-      forceRerender?.()
-    })
-
-    await act(async () => {
-      await Promise.resolve()
-    })
-
-    expect(mockState.sendMessageMock).toHaveBeenCalledTimes(1)
-  })
-
-  it('restores the stored assistant thread when loading /chat without route params', async () => {
-    delete mockState.routeParams.assistantId
+  it('restores the stored thread when loading /chat without route params', async () => {
     delete mockState.routeParams.threadId
     mockState.listThreadsMock.mockResolvedValue([
       {
@@ -623,7 +604,6 @@ describe('useThreadPageController', () => {
     window.localStorage.setItem(
       'tia.chat.last-thread-selection',
       JSON.stringify({
-        assistantId: 'assistant-1',
         threadId: 'thread-1'
       })
     )
@@ -645,99 +625,35 @@ describe('useThreadPageController', () => {
       () =>
         mockState.navigateMock.mock.calls.some(
           ([to, options]) =>
-            to === '/chat/assistant-1/thread-1' &&
+            to === '/chat/thread-1' &&
             (options as { replace?: boolean } | undefined)?.replace === true
         ),
       'stored chat route restore'
     )
   })
 
-  it('routes /chat to the latest thread across assistants when no stored selection exists', async () => {
-    delete mockState.routeParams.assistantId
+  it('routes /chat to the latest thread in Chats when no stored selection exists', async () => {
     delete mockState.routeParams.threadId
-    mockState.listAssistantsMock.mockResolvedValue([
+    mockState.listThreadsMock.mockResolvedValue([
       {
-        id: 'assistant-1',
-        name: 'Planner',
-        instructions: 'Keep responses concise.',
-        providerId: 'provider-1',
-        workspaceConfig: { rootPath: '/workspace/demo' },
-        skillsConfig: {},
-        mcpConfig: {},
-        maxSteps: 100,
-        memoryConfig: null,
+        id: 'thread-1',
+        assistantId: 'assistant-1',
+        resourceId: 'default-profile',
+        title: 'Older thread',
+        lastMessageAt: '2026-03-02T00:00:00.000Z',
         createdAt: '2026-03-01T00:00:00.000Z',
-        updatedAt: '2026-03-01T00:00:00.000Z'
+        updatedAt: '2026-03-02T00:00:00.000Z'
       },
       {
-        id: 'assistant-2',
-        name: 'Reviewer',
-        instructions: '',
-        providerId: 'provider-1',
-        workspaceConfig: { rootPath: '/workspace/reviewer' },
-        skillsConfig: {},
-        mcpConfig: {},
-        maxSteps: 100,
-        memoryConfig: null,
+        id: 'thread-2',
+        assistantId: 'assistant-1',
+        resourceId: 'default-profile',
+        title: 'Latest thread',
+        lastMessageAt: '2026-03-03T00:00:00.000Z',
         createdAt: '2026-03-01T00:00:00.000Z',
-        updatedAt: '2026-03-01T00:00:00.000Z'
+        updatedAt: '2026-03-03T00:00:00.000Z'
       }
     ])
-    mockState.assistantsData = [
-      {
-        id: 'assistant-1',
-        name: 'Planner',
-        instructions: 'Keep responses concise.',
-        providerId: 'provider-1',
-        workspaceConfig: { rootPath: '/workspace/demo' },
-        skillsConfig: {},
-        mcpConfig: {},
-        maxSteps: 100,
-        memoryConfig: null,
-        createdAt: '2026-03-01T00:00:00.000Z',
-        updatedAt: '2026-03-01T00:00:00.000Z'
-      },
-      {
-        id: 'assistant-2',
-        name: 'Reviewer',
-        instructions: '',
-        providerId: 'provider-1',
-        workspaceConfig: { rootPath: '/workspace/reviewer' },
-        skillsConfig: {},
-        mcpConfig: {},
-        maxSteps: 100,
-        memoryConfig: null,
-        createdAt: '2026-03-01T00:00:00.000Z',
-        updatedAt: '2026-03-01T00:00:00.000Z'
-      }
-    ]
-    mockState.listThreadsMock.mockImplementation(async (assistantId: unknown) => {
-      if (assistantId === 'assistant-1') {
-        return [
-          {
-            id: 'thread-1',
-            assistantId: 'assistant-1',
-            resourceId: 'default-profile',
-            title: 'Older thread',
-            lastMessageAt: '2026-03-02T00:00:00.000Z',
-            createdAt: '2026-03-01T00:00:00.000Z',
-            updatedAt: '2026-03-02T00:00:00.000Z'
-          }
-        ]
-      }
-
-      return [
-        {
-          id: 'thread-2',
-          assistantId: 'assistant-2',
-          resourceId: 'default-profile',
-          title: 'Latest thread',
-          lastMessageAt: '2026-03-03T00:00:00.000Z',
-          createdAt: '2026-03-01T00:00:00.000Z',
-          updatedAt: '2026-03-03T00:00:00.000Z'
-        }
-      ]
-    })
 
     await act(async () => {
       root.render(
@@ -756,15 +672,129 @@ describe('useThreadPageController', () => {
       () =>
         mockState.navigateMock.mock.calls.some(
           ([to, options]) =>
-            to === '/chat/assistant-2/thread-2' &&
+            to === '/chat/thread-2' &&
             (options as { replace?: boolean } | undefined)?.replace === true
         ),
       'latest thread route restore'
     )
   })
 
-  it('routes /chat to the first assistant detail when assistants exist but no threads do', async () => {
-    delete mockState.routeParams.assistantId
+  it('restores the stored thread when loading a named workspace root route', async () => {
+    mockState.routePath = '/workspaces/workspace-1'
+    mockState.routeParams.workspaceId = 'workspace-1'
+    mockState.workspacesData = [
+      ...mockState.workspacesData,
+      {
+        id: 'workspace-1',
+        name: 'Repo Alpha',
+        rootPath: '/workspace/repo-alpha',
+        builtInKind: null,
+        defaultAssistantId: 'assistant-1',
+        isMissing: false
+      }
+    ]
+    mockState.listThreadsMock.mockResolvedValue([
+      {
+        id: 'thread-1',
+        assistantId: 'assistant-1',
+        resourceId: 'default-profile',
+        title: 'Workspace thread',
+        lastMessageAt: '2026-03-02T00:00:00.000Z',
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+    window.localStorage.setItem(
+      'tia.workspace.workspace-1.last-thread-selection',
+      JSON.stringify({
+        threadId: 'thread-1'
+      })
+    )
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+          onForceRerenderReady={(value) => {
+            forceRerender = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(
+      () =>
+        mockState.navigateMock.mock.calls.some(
+          ([to, options]) =>
+            to === '/workspaces/workspace-1/threads/thread-1' &&
+            (options as { replace?: boolean } | undefined)?.replace === true
+        ),
+      'stored workspace route restore'
+    )
+  })
+
+  it('creates a new workspace-scoped thread from the dedicated new route', async () => {
+    mockState.routePath = '/workspaces/workspace-1/new'
+    mockState.routeParams.workspaceId = 'workspace-1'
+    mockState.workspacesData = [
+      ...mockState.workspacesData,
+      {
+        id: 'workspace-1',
+        name: 'Repo Alpha',
+        rootPath: '/workspace/repo-alpha',
+        builtInKind: null,
+        defaultAssistantId: 'assistant-1',
+        isMissing: false
+      }
+    ]
+    mockState.createThreadMock.mockResolvedValue({
+      id: 'thread-9',
+      assistantId: 'assistant-1',
+      resourceId: 'default-profile',
+      title: 'New Thread',
+      lastMessageAt: null,
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-01T00:00:00.000Z'
+    })
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+          onForceRerenderReady={(value) => {
+            forceRerender = value
+          }}
+        />
+      )
+    })
+
+    expect(mockState.createThreadMock).not.toHaveBeenCalled()
+
+    await act(async () => {
+      await controller?.onSubmitMessage('Kick off Repo Alpha')
+    })
+
+    await waitForCondition(
+      () =>
+        mockState.createThreadMock.mock.calls.some(
+          ([input]) =>
+            (input as { workspaceId?: string; assistantId?: string }).workspaceId ===
+              'workspace-1' &&
+            (input as { workspaceId?: string; assistantId?: string }).assistantId === 'assistant-1'
+        ),
+      'workspace new thread creation'
+    )
+
+    expect(mockState.navigateMock).toHaveBeenCalledWith('/workspaces/workspace-1/threads/thread-9', {
+      replace: true
+    })
+  })
+
+  it('keeps /chat selected when Chats has no threads yet', async () => {
     delete mockState.routeParams.threadId
     mockState.listThreadsMock.mockResolvedValue([])
 
@@ -785,15 +815,13 @@ describe('useThreadPageController', () => {
       () =>
         mockState.navigateMock.mock.calls.some(
           ([to, options]) =>
-            to === '/chat/assistant-1' &&
-            (options as { replace?: boolean } | undefined)?.replace === true
+            to === '/chat/new' && (options as { replace?: boolean } | undefined)?.replace === true
         ),
-      'first assistant route restore'
+      'chat new route restore'
     )
   })
 
-  it('routes /chat to /claws when there are no assistants to restore', async () => {
-    delete mockState.routeParams.assistantId
+  it('keeps /chat selected when there are no assistants to restore', async () => {
     delete mockState.routeParams.threadId
     mockState.assistantsData = []
     mockState.listAssistantsMock.mockResolvedValue([])
@@ -813,40 +841,10 @@ describe('useThreadPageController', () => {
 
     await waitForCondition(
       () =>
-        mockState.navigateMock.mock.calls.some(
-          ([to, options]) =>
-            to === '/claws' && (options as { replace?: boolean } | undefined)?.replace === true
-        ),
-      'claws fallback route'
+        mockState.navigateMock.mock.calls.some(([to]) => to === '/chat/new') &&
+        controller?.selectedAssistant === null,
+      'chat route without assistants'
     )
-  })
-
-  it('asks for confirmation before deleting an assistant', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
-
-    await act(async () => {
-      root.render(
-        <Harness
-          onControllerChange={(value) => {
-            controller = value
-          }}
-          onForceRerenderReady={(value) => {
-            forceRerender = value
-          }}
-        />
-      )
-    })
-
-    await waitForCondition(() => controller?.selectedAssistant?.id === 'assistant-1', 'assistant')
-
-    await act(async () => {
-      controller?.onDeleteAssistant('assistant-1')
-      await Promise.resolve()
-    })
-
-    expect(confirmSpy).toHaveBeenCalledTimes(1)
-    expect(mockState.deleteAssistantMock).not.toHaveBeenCalled()
-    confirmSpy.mockRestore()
   })
 
   it('resumes an active stream after selected thread history loads', async () => {
@@ -1131,7 +1129,6 @@ describe('useThreadPageController', () => {
     })
 
     expect(mockState.runThreadCommandMock).toHaveBeenCalledWith({
-      assistantId: 'assistant-1',
       threadId: 'thread-1',
       profileId: 'default-profile',
       text: '/stop'
@@ -1183,7 +1180,6 @@ describe('useThreadPageController', () => {
     })
 
     expect(mockState.runThreadCommandMock).toHaveBeenCalledWith({
-      assistantId: 'assistant-1',
       threadId: 'thread-1',
       profileId: 'default-profile',
       text: '/stop'
@@ -1225,7 +1221,6 @@ describe('useThreadPageController', () => {
     })
 
     expect(mockState.runThreadCommandMock).toHaveBeenCalledWith({
-      assistantId: 'assistant-1',
       threadId: 'thread-1',
       profileId: 'default-profile',
       text: '/new'
@@ -1273,7 +1268,6 @@ describe('useThreadPageController', () => {
     })
 
     expect(mockState.runThreadCommandMock).toHaveBeenCalledWith({
-      assistantId: 'assistant-1',
       threadId: 'thread-1',
       profileId: 'default-profile',
       text: '/unknown'
@@ -1414,326 +1408,4 @@ describe('useThreadPageController', () => {
     })
   })
 
-  it('attaches a selected channel when saving the shared assistant dialog in edit mode', async () => {
-    mockState.clawsData = {
-      claws: [],
-      configuredChannels: [
-        {
-          id: 'channel-1',
-          type: 'telegram',
-          name: 'Ops Chat',
-          assistantId: null,
-          assistantName: null,
-          status: 'connected',
-          errorMessage: null,
-          pairedCount: 0,
-          pendingPairingCount: 0
-        }
-      ]
-    }
-
-    await act(async () => {
-      root.render(
-        <Harness
-          onControllerChange={(value) => {
-            controller = value
-          }}
-          onForceRerenderReady={(value) => {
-            forceRerender = value
-          }}
-        />
-      )
-    })
-
-    await waitForCondition(() => controller?.selectedAssistant?.id === 'assistant-1', 'assistant')
-
-    act(() => {
-      controller?.onOpenAssistantConfig()
-    })
-
-    await act(async () => {
-      await Promise.resolve()
-    })
-
-    act(() => {
-      controller?.assistantDialogChannels?.onSelectedChannelChange('channel-1')
-    })
-
-    await act(async () => {
-      await controller?.onSubmitAssistantDialog({
-        name: 'Planner',
-        providerId: 'provider-1',
-        workspaceConfig: {
-          rootPath: '/workspace/demo'
-        }
-      })
-    })
-
-    expect(mockState.updateAssistantMock).toHaveBeenCalledWith({
-      id: 'assistant-1',
-      input: expect.objectContaining({
-        name: 'Planner',
-        providerId: 'provider-1'
-      })
-    })
-    expect(mockState.updateClawMock).toHaveBeenCalledWith(
-      'assistant-1',
-      expect.objectContaining({
-        assistant: expect.objectContaining({
-          enabled: true,
-          workspacePath: '/workspace/demo'
-        }),
-        channel: {
-          mode: 'attach',
-          channelId: 'channel-1'
-        }
-      })
-    )
-  })
-
-  it('attaches a selected channel when creating a new assistant from chat', async () => {
-    mockState.clawsData = {
-      claws: [],
-      configuredChannels: [
-        {
-          id: 'channel-1',
-          type: 'telegram',
-          name: 'Ops Chat',
-          assistantId: null,
-          assistantName: null,
-          status: 'connected',
-          errorMessage: null,
-          pairedCount: 0,
-          pendingPairingCount: 0
-        }
-      ]
-    }
-
-    await act(async () => {
-      root.render(
-        <Harness
-          onControllerChange={(value) => {
-            controller = value
-          }}
-          onForceRerenderReady={(value) => {
-            forceRerender = value
-          }}
-        />
-      )
-    })
-
-    await waitForCondition(() => controller?.selectedAssistant?.id === 'assistant-1', 'assistant')
-
-    act(() => {
-      controller?.onCreateAssistant()
-    })
-
-    await act(async () => {
-      await Promise.resolve()
-    })
-
-    act(() => {
-      controller?.assistantDialogChannels?.onSelectedChannelChange('channel-1')
-    })
-
-    await act(async () => {
-      await controller?.onSubmitAssistantDialog({
-        name: 'Reviewer',
-        providerId: 'provider-1',
-        workspaceConfig: {
-          rootPath: '/workspace/reviewer'
-        }
-      })
-    })
-
-    expect(mockState.createAssistantMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: 'Reviewer',
-        providerId: 'provider-1'
-      })
-    )
-    expect(mockState.updateClawMock).toHaveBeenCalledWith(
-      'assistant-2',
-      expect.objectContaining({
-        assistant: expect.objectContaining({
-          enabled: true,
-          workspacePath: '/workspace/reviewer'
-        }),
-        channel: {
-          mode: 'attach',
-          channelId: 'channel-1'
-        }
-      })
-    )
-  })
-
-  it('exposes assistant modal setup action for a saved wechat channel', async () => {
-    mockState.clawsData = {
-      claws: [
-        {
-          id: 'assistant-1',
-          name: 'Planner',
-          description: '',
-          providerId: 'provider-1',
-          enabled: true,
-          workspacePath: '/workspace/demo',
-          channel: {
-            id: 'channel-wechat',
-            type: 'wechat',
-            name: 'Wechat Device',
-            status: 'disconnected',
-            errorMessage: null,
-            pairedCount: 0,
-            pendingPairingCount: 0
-          }
-        }
-      ],
-      configuredChannels: []
-    }
-    mockState.getClawChannelAuthStateMock.mockResolvedValueOnce({
-      channelId: 'channel-wechat',
-      channelType: 'wechat',
-      status: 'qr_ready',
-      qrCodeDataUrl: 'data:image/png;base64,wechat-qr',
-      qrCodeValue: 'https://wechat.example/qr',
-      phoneNumber: null,
-      accountId: null,
-      errorMessage: null,
-      updatedAt: '2026-03-24T00:00:00.000Z'
-    })
-
-    await act(async () => {
-      root.render(
-        <Harness
-          onControllerChange={(value) => {
-            controller = value
-          }}
-          onForceRerenderReady={(value) => {
-            forceRerender = value
-          }}
-        />
-      )
-    })
-
-    await waitForCondition(() => controller?.selectedAssistant?.id === 'assistant-1', 'assistant')
-
-    act(() => {
-      controller?.onOpenAssistantConfig()
-    })
-
-    await act(async () => {
-      await Promise.resolve()
-    })
-
-    expect(controller?.assistantDialogChannelSetupAction?.label).toBe('Open Setup')
-
-    await act(async () => {
-      await controller?.assistantDialogChannelSetupAction?.onOpen()
-    })
-
-    await waitForCondition(
-      () => controller?.channelAccessClaw?.id === 'assistant-1',
-      'wechat setup dialog'
-    )
-
-    expect(controller?.isAssistantDialogOpen).toBe(false)
-    expect(mockState.getClawChannelAuthStateMock).toHaveBeenCalledWith('assistant-1')
-  })
-
-  it('opens wechat setup immediately after creating an assistant with a wechat channel', async () => {
-    mockState.clawsData = {
-      claws: [],
-      configuredChannels: [
-        {
-          id: 'channel-wechat',
-          type: 'wechat',
-          name: 'Wechat Device',
-          assistantId: null,
-          assistantName: null,
-          status: 'disconnected',
-          errorMessage: null,
-          pairedCount: 0,
-          pendingPairingCount: 0
-        }
-      ]
-    }
-    mockState.listClawsMock.mockResolvedValueOnce({
-      claws: [
-        {
-          id: 'assistant-2',
-          name: 'Reviewer',
-          description: '',
-          providerId: 'provider-1',
-          enabled: true,
-          workspacePath: '/workspace/reviewer',
-          channel: {
-            id: 'channel-wechat',
-            type: 'wechat',
-            name: 'Wechat Device',
-            status: 'disconnected',
-            errorMessage: null,
-            pairedCount: 0,
-            pendingPairingCount: 0
-          }
-        }
-      ],
-      configuredChannels: mockState.clawsData.configuredChannels
-    })
-    mockState.getClawChannelAuthStateMock.mockResolvedValueOnce({
-      channelId: 'channel-wechat',
-      channelType: 'wechat',
-      status: 'qr_ready',
-      qrCodeDataUrl: 'data:image/png;base64,wechat-qr',
-      qrCodeValue: 'https://wechat.example/qr',
-      phoneNumber: null,
-      accountId: null,
-      errorMessage: null,
-      updatedAt: '2026-03-24T00:00:00.000Z'
-    })
-
-    await act(async () => {
-      root.render(
-        <Harness
-          onControllerChange={(value) => {
-            controller = value
-          }}
-          onForceRerenderReady={(value) => {
-            forceRerender = value
-          }}
-        />
-      )
-    })
-
-    await waitForCondition(() => controller?.selectedAssistant?.id === 'assistant-1', 'assistant')
-
-    act(() => {
-      controller?.onCreateAssistant()
-    })
-
-    await act(async () => {
-      await Promise.resolve()
-    })
-
-    act(() => {
-      controller?.assistantDialogChannels?.onSelectedChannelChange('channel-wechat')
-    })
-
-    await act(async () => {
-      await controller?.onSubmitAssistantDialog({
-        name: 'Reviewer',
-        providerId: 'provider-1',
-        workspaceConfig: {
-          rootPath: '/workspace/reviewer'
-        }
-      })
-    })
-
-    await waitForCondition(
-      () => controller?.channelAccessClaw?.id === 'assistant-2',
-      'created assistant wechat setup dialog'
-    )
-
-    expect(mockState.getClawChannelAuthStateMock).toHaveBeenCalledWith('assistant-2')
-    expect(controller?.isAssistantDialogOpen).toBe(false)
-  })
 })

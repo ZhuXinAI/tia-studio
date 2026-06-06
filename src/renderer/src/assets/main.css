@@ -27,63 +27,96 @@
 
 :root {
   --background: #181818;
-  --foreground: oklch(0.96 0.01 255);
-  --card: #1a1d22;
-  --card-foreground: oklch(0.96 0.01 255);
-  --popover: #1a1d22;
-  --popover-foreground: oklch(0.96 0.01 255);
-  --primary: oklch(0.73 0.12 234);
-  --primary-foreground: oklch(0.15 0.04 258);
-  --secondary: oklch(0.28 0.04 256);
-  --secondary-foreground: oklch(0.93 0.01 255);
-  --muted: oklch(0.24 0.03 258);
-  --muted-foreground: oklch(0.76 0.02 255);
-  --accent: #23272f;
-  --accent-foreground: oklch(0.97 0.01 255);
-  --destructive: oklch(0.64 0.19 25);
-  --border: #313640;
-  --input: #3b414d;
-  --ring: oklch(0.73 0.12 234 / 65%);
-  --radius: 0.72rem;
-  --surface-canvas: #101318;
-  --surface-panel: rgb(24 28 34 / 88%);
-  --surface-panel-strong: #191d23;
-  --surface-panel-soft: rgb(255 255 255 / 0.03);
-  --surface-muted: rgb(255 255 255 / 0.04);
-  --surface-border: rgb(255 255 255 / 0.08);
-  --surface-border-strong: rgb(255 255 255 / 0.14);
-  --surface-active: rgb(111 161 255 / 0.14);
-  --surface-active-strong: rgb(111 161 255 / 0.24);
+  --foreground: #f4efe8;
+  --card: #221e1a;
+  --card-foreground: #f4efe8;
+  --popover: #1e1a17;
+  --popover-foreground: #f4efe8;
+  --primary: #3e67b6;
+  --primary-foreground: #f9fbff;
+  --secondary: #2a2622;
+  --secondary-foreground: #f4efe8;
+  --muted: #26211d;
+  --muted-foreground: #b7aea2;
+  --accent: #2e2823;
+  --accent-foreground: #f4efe8;
+  --destructive: #c75a4a;
+  --border: #3d352d;
+  --input: #342d27;
+  --ring: rgb(62 103 182 / 55%);
+  --radius: 0.95rem;
+  --font-body:
+    'IBM Plex Sans',
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  --font-display:
+    'Iowan Old Style',
+    'Palatino Linotype',
+    'Book Antiqua',
+    'URW Palladio L',
+    Georgia,
+    serif;
+  --font-metadata:
+    'IBM Plex Mono',
+    'JetBrains Mono',
+    'SFMono-Regular',
+    ui-monospace,
+    monospace;
+  --surface-canvas: #181818;
+  --surface-panel: rgb(34 30 26 / 90%);
+  --surface-panel-strong: #24201b;
+  --surface-panel-soft: rgb(255 247 238 / 0.04);
+  --surface-muted: rgb(255 247 238 / 0.06);
+  --surface-well: #171411;
+  --surface-paper: #f7f1e8;
+  --surface-mineral: #2b2621;
+  --surface-border: rgb(236 222 203 / 0.1);
+  --surface-border-strong: rgb(236 222 203 / 0.18);
+  --surface-active: rgb(62 103 182 / 0.2);
+  --surface-active-strong: rgb(157 116 66 / 0.28);
+  --surface-shadow: 0 30px 80px -44px rgb(0 0 0 / 0.7);
+  --accent-brass: #9d7442;
+  --accent-brass-soft: rgb(157 116 66 / 0.16);
 }
 
 .light {
-  --background: #f3f5f8;
-  --foreground: #111827;
-  --card: #ffffff;
-  --card-foreground: #111827;
-  --popover: #ffffff;
-  --popover-foreground: #111827;
-  --primary: oklch(0.73 0.12 234);
-  --primary-foreground: #f8fbff;
-  --secondary: #e6ebf4;
-  --secondary-foreground: #1f2937;
-  --muted: #e9edf4;
-  --muted-foreground: #5f6673;
-  --accent: #eef2f7;
-  --accent-foreground: #111827;
-  --destructive: oklch(0.64 0.19 25);
-  --border: #d8dee8;
-  --input: #d8dee8;
-  --ring: oklch(0.73 0.12 234 / 45%);
-  --surface-canvas: #eef2f6;
-  --surface-panel: rgb(255 255 255 / 88%);
-  --surface-panel-strong: #ffffff;
-  --surface-panel-soft: rgb(148 163 184 / 0.06);
-  --surface-muted: rgb(148 163 184 / 0.08);
-  --surface-border: rgb(100 116 139 / 0.18);
-  --surface-border-strong: rgb(100 116 139 / 0.28);
-  --surface-active: rgb(59 130 246 / 0.1);
-  --surface-active-strong: rgb(59 130 246 / 0.18);
+  --background: #fcf9f8;
+  --foreground: #1b1c1c;
+  --card: #fffdfa;
+  --card-foreground: #1b1c1c;
+  --popover: #fffdfa;
+  --popover-foreground: #1b1c1c;
+  --primary: #0047ab;
+  --primary-foreground: #ffffff;
+  --secondary: #ede6dd;
+  --secondary-foreground: #272624;
+  --muted: #f0ece7;
+  --muted-foreground: #5d5b56;
+  --accent: #efe8df;
+  --accent-foreground: #1b1c1c;
+  --destructive: #b42318;
+  --border: #d7d0c6;
+  --input: #d7d0c6;
+  --ring: rgb(0 71 171 / 20%);
+  --radius: 0.95rem;
+  --surface-canvas: #f6f1ea;
+  --surface-panel: rgb(255 251 245 / 88%);
+  --surface-panel-strong: #fcf9f4;
+  --surface-panel-soft: rgb(67 70 83 / 0.035);
+  --surface-muted: rgb(67 70 83 / 0.055);
+  --surface-well: #f4efe9;
+  --surface-paper: #fffdfa;
+  --surface-mineral: #ede6dd;
+  --surface-border: rgb(67 70 83 / 0.15);
+  --surface-border-strong: rgb(67 70 83 / 0.24);
+  --surface-active: rgb(0 71 171 / 0.08);
+  --surface-active-strong: rgb(157 116 66 / 0.2);
+  --surface-shadow: 0 32px 70px -46px rgb(27 28 28 / 0.28);
+  --accent-brass: #9d7442;
+  --accent-brass-soft: rgb(157 116 66 / 0.12);
 }
 
 * {
@@ -94,14 +127,12 @@ body {
   margin: 0;
   min-height: 100vh;
   background-color: var(--surface-canvas);
+  background-image:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--accent-brass) 18%, transparent) 0, transparent 34%),
+    radial-gradient(circle at 82% 8%, color-mix(in srgb, var(--primary) 12%, transparent) 0, transparent 28%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-panel-soft) 48%, transparent), transparent 28%);
   color: var(--foreground);
-  font-family:
-    'IBM Plex Sans',
-    'Inter',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
+  font-family: var(--font-body);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -109,6 +140,54 @@ body {
 
 #root {
   min-height: 100vh;
+}
+
+.font-editorial {
+  font-family: var(--font-display);
+}
+
+.font-metadata {
+  font-family: var(--font-metadata);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.section-kicker {
+  color: color-mix(in srgb, var(--foreground) 62%, transparent);
+  font-family: var(--font-metadata);
+  font-size: 0.69rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.paper-panel {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-paper) 96%, transparent), var(--surface-panel)),
+    var(--surface-panel);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--surface-shadow);
+}
+
+.mineral-panel {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-mineral) 90%, transparent), var(--surface-panel)),
+    var(--surface-panel);
+  border: 1px solid var(--surface-border);
+}
+
+.draft-rule {
+  position: relative;
+}
+
+.draft-rule::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.7rem;
+  bottom: 0.7rem;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--accent-brass), color-mix(in srgb, var(--primary) 75%, white));
 }
 
 ::selection {
@@ -132,10 +211,10 @@ body {
 }
 
 .chat-scrollbar::-webkit-scrollbar-thumb {
-  background: oklch(0.35 0.03 258 / 0.3);
+  background: color-mix(in srgb, var(--foreground) 24%, transparent);
   border-radius: 4px;
 }
 
 .chat-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.45 0.03 258 / 0.5);
+  background: color-mix(in srgb, var(--foreground) 38%, transparent);
 }

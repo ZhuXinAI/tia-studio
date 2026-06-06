@@ -23,8 +23,52 @@ export type ListThreadsOptions = {
   includeHidden?: boolean
 }
 
+export type ThreadProviderOverride = {
+  providerId: string
+  model: string
+}
+
+export function readThreadWorkspaceId(
+  metadata: Record<string, unknown> | null | undefined
+): string | null {
+  if (!metadata) {
+    return null
+  }
+
+  const workspaceId = metadata.workspaceId
+  return typeof workspaceId === 'string' && workspaceId.trim().length > 0 ? workspaceId : null
+}
+
+export function readThreadProviderOverride(
+  metadata: Record<string, unknown> | null | undefined
+): ThreadProviderOverride | null {
+  if (!metadata) {
+    return null
+  }
+
+  const override = metadata.providerOverride
+  if (!override || typeof override !== 'object' || Array.isArray(override)) {
+    return null
+  }
+
+  const overrideRecord = override as Record<string, unknown>
+
+  const providerId =
+    typeof overrideRecord.providerId === 'string' ? overrideRecord.providerId.trim() : ''
+  const model = typeof overrideRecord.model === 'string' ? overrideRecord.model.trim() : ''
+
+  if (providerId.length === 0 || model.length === 0) {
+    return null
+  }
+
+  return {
+    providerId,
+    model
+  }
+}
+
 function isHiddenThread(thread: AppThread): boolean {
-  return thread.metadata.system === true || thread.metadata.cron === true
+  return thread.metadata.system === true
 }
 
 function parseJsonObject(value: unknown): Record<string, unknown> {
@@ -75,36 +119,30 @@ export class ThreadsRepository {
     return threads.filter((thread) => !isHiddenThread(thread))
   }
 
-  async getById(id: string): Promise<AppThread | null> {
-    const result = await this.db.execute(
-      'SELECT id, assistant_id, resource_id, title, metadata, last_message_at, created_at, updated_at FROM app_threads WHERE id = ? LIMIT 1',
-      [id]
-    )
-    const row = result.rows.at(0)
-
-    if (!row) {
-      return null
-    }
-
-    return parseThreadRow(row as Record<string, unknown>)
-  }
-
-  async findHiddenByCronJobId(cronJobId: string): Promise<AppThread | null> {
+  async listByWorkspace(workspaceId: string, options?: ListThreadsOptions): Promise<AppThread[]> {
     const result = await this.db.execute(
       `
         SELECT id, assistant_id, resource_id, title, metadata, last_message_at, created_at, updated_at
         FROM app_threads
-        WHERE json_extract(metadata, '$.cronJobId') = ?
-          AND (
-            json_extract(metadata, '$.cron') = 1
-            OR (
-              json_extract(metadata, '$.system') = 1
-              AND json_extract(metadata, '$.systemType') = 'cron'
-            )
-          )
-        LIMIT 1
+        WHERE json_extract(metadata, '$.workspaceId') = ?
+        ORDER BY COALESCE(last_message_at, created_at) DESC, rowid DESC
       `,
-      [cronJobId]
+      [workspaceId]
+    )
+
+    const threads = result.rows.map((row) => parseThreadRow(row as Record<string, unknown>))
+
+    if (options?.includeHidden) {
+      return threads
+    }
+
+    return threads.filter((thread) => !isHiddenThread(thread))
+  }
+
+  async getById(id: string): Promise<AppThread | null> {
+    const result = await this.db.execute(
+      'SELECT id, assistant_id, resource_id, title, metadata, last_message_at, created_at, updated_at FROM app_threads WHERE id = ? LIMIT 1',
+      [id]
     )
     const row = result.rows.at(0)
 
@@ -147,6 +185,18 @@ export class ThreadsRepository {
 
     await this.db.execute('DELETE FROM app_threads WHERE id = ?', [id])
     return true
+  }
+
+  async deleteByWorkspace(workspaceId: string): Promise<number> {
+    const result = await this.db.execute(
+      `
+        DELETE FROM app_threads
+        WHERE json_extract(metadata, '$.workspaceId') = ?
+      `,
+      [workspaceId]
+    )
+
+    return Number(result.rowsAffected ?? 0)
   }
 
   async touchLastMessageAt(id: string, timestamp: string): Promise<void> {

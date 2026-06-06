@@ -206,7 +206,7 @@ describe('mcp servers settings page', () => {
       editJsonButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    const rawJsonTextarea = container.querySelector(
+    const rawJsonTextarea = document.body.querySelector(
       '#mcp-json-dialog-textarea'
     ) as HTMLTextAreaElement | null
     expect(rawJsonTextarea).not.toBeNull()
@@ -241,7 +241,7 @@ describe('mcp servers settings page', () => {
       rawJsonTextarea.dispatchEvent(new Event('input', { bubbles: true }))
     })
 
-    const applyJsonButton = Array.from(container.querySelectorAll('button')).find((button) =>
+    const applyJsonButton = Array.from(document.body.querySelectorAll('button')).find((button) =>
       button.textContent?.includes('Apply JSON')
     )
 
@@ -293,7 +293,7 @@ describe('mcp servers settings page', () => {
       editJsonButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    const rawJsonTextarea = container.querySelector(
+    const rawJsonTextarea = document.body.querySelector(
       '#mcp-json-dialog-textarea'
     ) as HTMLTextAreaElement | null
     expect(rawJsonTextarea).not.toBeNull()
@@ -328,7 +328,7 @@ describe('mcp servers settings page', () => {
       editJsonButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    const rawJsonTextarea = container.querySelector(
+    const rawJsonTextarea = document.body.querySelector(
       '#mcp-json-dialog-textarea'
     ) as HTMLTextAreaElement | null
     expect(rawJsonTextarea).not.toBeNull()
@@ -342,7 +342,7 @@ describe('mcp servers settings page', () => {
       rawJsonTextarea.dispatchEvent(new Event('input', { bubbles: true }))
     })
 
-    const applyJsonButton = Array.from(container.querySelectorAll('button')).find((button) =>
+    const applyJsonButton = Array.from(document.body.querySelectorAll('button')).find((button) =>
       button.textContent?.includes('Apply JSON')
     )
 
@@ -351,8 +351,8 @@ describe('mcp servers settings page', () => {
     })
     await flushAsyncWork()
 
-    expect(container.textContent).toContain('Raw JSON is invalid.')
-    expect(container.querySelector('#mcp-json-dialog-textarea')).not.toBeNull()
+    expect(document.body.textContent).toContain('Raw JSON is invalid.')
+    expect(document.body.querySelector('#mcp-json-dialog-textarea')).not.toBeNull()
     expect(updateMcpServersSettings).toHaveBeenCalledTimes(0)
   })
 

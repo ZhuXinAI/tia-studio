@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
+import { applyAppearanceTokens, getAppearanceTokens } from '../features/settings/appearance-tokens'
 
 export type Theme = 'dark' | 'light' | 'system'
 
@@ -40,10 +41,12 @@ export function ThemeProvider({
         ? 'dark'
         : 'light'
       root.classList.add(systemTheme)
+      applyAppearanceTokens(getAppearanceTokens())
       return
     }
 
     root.classList.add(theme)
+    applyAppearanceTokens(getAppearanceTokens())
   }, [theme])
 
   const value = {

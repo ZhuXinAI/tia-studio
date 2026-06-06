@@ -5,7 +5,6 @@ import type { InputProcessor } from '@mastra/core/processors'
 import type { ToolExecutionContext } from '@mastra/core/tools'
 import { z } from 'zod'
 import { ensureAssistantWorkspaceFiles } from '../assistant-workspace'
-import { getHeartbeatRunId } from '../tool-context'
 import { createNoArgToolInputSchema } from './tool-schema'
 
 type SoulMemoryToolsOptions = {
@@ -118,19 +117,20 @@ export function createSoulMemoryTools(options: SoulMemoryToolsOptions) {
       message: z.string()
     }),
     execute: async ({ content, mode }, context) => {
+      const resolvedMode = mode ?? 'append'
       const source = getRequestSource(context)
       const result = await updateSoulMemoryContent({
         workspaceRootPath: options.workspaceRootPath,
         content,
-        mode,
+        mode: resolvedMode,
         source
       })
 
       return {
         path: result.path,
-        mode,
+        mode: resolvedMode,
         updatedAt: result.updatedAt,
-        message: `SOUL memory updated using ${mode} mode.`
+        message: `SOUL memory updated using ${resolvedMode} mode.`
       }
     }
   })
@@ -146,15 +146,10 @@ export function assistantWorkspaceContextInputProcessor(
 ): InputProcessor {
   return {
     id: 'assistant-workspace-context',
-    processInput: async ({ messages, systemMessages, requestContext }) => {
+    processInput: async ({ messages, systemMessages }) => {
       await ensureAssistantWorkspaceFiles(options.workspaceRootPath)
 
       const fileNames = ['IDENTITY.md', 'SOUL.md', 'MEMORY.md']
-      const shouldIncludeHeartbeat = getHeartbeatRunId(requestContext) !== null
-
-      if (shouldIncludeHeartbeat) {
-        fileNames.push('HEARTBEAT.md')
-      }
 
       const sections = (
         await Promise.all(

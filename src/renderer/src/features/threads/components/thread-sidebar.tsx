@@ -21,6 +21,7 @@ function normalizeSearchValue(value: string): string {
 }
 
 type ThreadSidebarProps = {
+  chatLabel: string
   branches: AssistantThreadBranch[]
   selectedThreadId: string | null
   deletingThreadId: string | null
@@ -29,11 +30,12 @@ type ThreadSidebarProps = {
   isCreatingThread: boolean
   canCreateThread: boolean
   onCreateThread: () => void
-  onSelectThread: (assistantId: string, threadId: string) => void
+  onSelectThread: (threadId: string) => void
   onDeleteThread: (thread: ThreadRecord) => void
 }
 
 export function ThreadSidebar({
+  chatLabel,
   branches,
   selectedThreadId,
   deletingThreadId,
@@ -98,13 +100,13 @@ export function ThreadSidebar({
 
   if (!selectedBranch) {
     return (
-      <Sidebar className="h-full w-80 border-r border-b-0 bg-transparent backdrop-blur-none">
-        <SidebarHeader className="space-y-3">
+      <Sidebar className="h-full w-[19rem] border-b-0 border-r border-[color:var(--surface-border)] bg-transparent">
+        <SidebarHeader className="space-y-4 border-b border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)]">
           <div className="space-y-1">
-            <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
-              {t('threads.sidebar.eyebrow')}
-            </p>
-            <h1 className="text-lg font-semibold">{t('threads.sidebar.title')}</h1>
+            <p className="section-kicker">Workspace thread archive</p>
+            <h1 className="font-editorial text-[1.65rem] leading-none tracking-[-0.03em]">
+              {chatLabel}
+            </h1>
             <p className="text-muted-foreground text-xs">
               {isLoadingData
                 ? t('threads.sidebar.loadingAssistants')
@@ -117,18 +119,18 @@ export function ThreadSidebar({
   }
 
   return (
-    <Sidebar className="h-full w-80 border-r border-b-0 bg-transparent backdrop-blur-none">
-      <SidebarHeader className="space-y-3">
+    <Sidebar className="h-full w-[19rem] border-b-0 border-r border-[color:var(--surface-border)] bg-transparent">
+      <SidebarHeader className="space-y-4 border-b border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)]">
         <div className="space-y-1">
-          <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
-            {t('threads.sidebar.currentAssistant')}
-          </p>
-          <h1 className="truncate text-lg font-semibold">{selectedBranch.assistantName}</h1>
+          <p className="section-kicker">Workspace thread archive</p>
+          <h1 className="font-editorial truncate text-[1.65rem] leading-none tracking-[-0.03em]">
+            {chatLabel}
+          </h1>
         </div>
         <Button
           type="button"
           size="sm"
-          className="w-full justify-start rounded-xl"
+          className="w-full justify-start"
           onClick={onCreateThread}
           disabled={!canCreateThread || isCreatingThread}
         >
@@ -137,7 +139,7 @@ export function ThreadSidebar({
         </Button>
       </SidebarHeader>
 
-      <SidebarContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-2 py-3">
+      <SidebarContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-3 py-4">
         <SidebarGroup className="my-0 flex min-h-0 flex-1 flex-col">
           <div className="space-y-3 px-2">
             <SidebarGroupLabel className="px-0">
@@ -191,8 +193,8 @@ export function ThreadSidebar({
                         <SidebarMenuSubButton
                           type="button"
                           variant={isActiveThread ? 'active' : 'default'}
-                          className="min-w-0 flex-1"
-                          onClick={() => onSelectThread(selectedBranch.assistantId, thread.id)}
+                          className="min-w-0 flex-1 text-[0.82rem]"
+                          onClick={() => onSelectThread(thread.id)}
                         >
                           <span className="truncate">{displayTitle}</span>
                         </SidebarMenuSubButton>
@@ -218,7 +220,7 @@ export function ThreadSidebar({
                       {isConfirmingDelete ? (
                         <div
                           ref={confirmDeleteContainerRef}
-                          className="bg-card border-border mt-1 flex items-center justify-between gap-2 rounded-md border px-2 py-2"
+                          className="mt-1 flex items-center justify-between gap-2 rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-2 py-2"
                         >
                           <span className="text-xs font-medium">
                             {t('threads.sidebar.deleteThreadPrompt')}

@@ -21,7 +21,6 @@ describe('resolveVisibleThreads', () => {
 
     const nextThreads = resolveVisibleThreads({
       currentThreads,
-      selectedAssistantId: null,
       threads: []
     })
 
@@ -36,7 +35,6 @@ describe('resolveVisibleThreads', () => {
 
     const nextThreads = resolveVisibleThreads({
       currentThreads,
-      selectedAssistantId: 'assistant-1',
       threads: [
         createThread({ id: 'thread-1', lastMessageAt: '2026-03-01T00:00:00.000Z' }),
         createThread({ id: 'thread-2', lastMessageAt: '2026-03-02T00:00:00.000Z' })

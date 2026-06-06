@@ -8,7 +8,7 @@ function Sidebar({ className, ...props }: React.ComponentProps<'aside'>): React.
     <aside
       data-slot="sidebar"
       className={cn(
-        'text-card-foreground flex h-full w-80 shrink-0 flex-col border-r [border-color:var(--surface-border)] bg-[color:var(--surface-panel)] backdrop-blur-xl',
+        'text-card-foreground flex h-full w-80 shrink-0 flex-col border-r [border-color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-mineral)_88%,transparent),color-mix(in_srgb,var(--surface-panel)_88%,transparent))] backdrop-blur-xl',
         className
       )}
       {...props}
@@ -78,14 +78,14 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<'li'>): R
 }
 
 const sidebarMenuButtonVariants = cva(
-  'focus-visible:ring-ring/50 flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-sm outline-none transition-[background-color,color,box-shadow] focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50',
+  'focus-visible:ring-ring/50 relative flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm outline-none transition-[background-color,color,box-shadow,border-color] focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
         default:
-          'text-muted-foreground hover:bg-[color:var(--surface-muted)] hover:text-foreground',
+          'border border-transparent text-muted-foreground hover:bg-[color:var(--surface-muted)] hover:text-foreground',
         active:
-          'bg-[color:var(--surface-active)] text-foreground shadow-[inset_0_0_0_1px_var(--surface-active-strong)]'
+          'draft-rule border-[color:var(--surface-border-strong)] bg-[color:var(--surface-active)] pl-5 text-foreground shadow-[inset_0_0_0_1px_var(--surface-active-strong)]'
       }
     },
     defaultVariants: {
@@ -133,13 +133,13 @@ function SidebarMenuSubItem({
 }
 
 const sidebarMenuSubButtonVariants = cva(
-  'focus-visible:ring-ring/50 text-muted-foreground hover:text-foreground hover:bg-[color:var(--surface-muted)] flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs outline-none transition-[background-color,color,box-shadow] focus-visible:ring-[3px]',
+  'focus-visible:ring-ring/50 flex w-full items-center justify-between rounded-md border border-transparent px-2.5 py-2 text-left text-xs text-muted-foreground outline-none transition-[background-color,color,box-shadow,border-color] focus-visible:ring-[3px] hover:bg-[color:var(--surface-muted)] hover:text-foreground',
   {
     variants: {
       variant: {
         default: '',
         active:
-          'bg-[color:var(--surface-active)] text-foreground shadow-[inset_0_0_0_1px_var(--surface-active-strong)]'
+          'border-[color:var(--surface-border-strong)] bg-[color:var(--surface-active)] text-foreground shadow-[inset_0_0_0_1px_var(--surface-active-strong)]'
       }
     },
     defaultVariants: {

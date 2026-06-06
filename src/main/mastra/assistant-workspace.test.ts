@@ -14,7 +14,7 @@ describe('assistant workspace', () => {
     }
   })
 
-  it('creates identity, soul, memory, and heartbeat files', async () => {
+  it('creates identity, soul, and memory files', async () => {
     workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-assistant-workspace-'))
 
     const createdFiles = await ensureAssistantWorkspaceFiles(workspaceRoot)
@@ -23,8 +23,7 @@ describe('assistant workspace', () => {
       expect.arrayContaining([
         path.join(workspaceRoot, 'IDENTITY.md'),
         path.join(workspaceRoot, 'SOUL.md'),
-        path.join(workspaceRoot, 'MEMORY.md'),
-        path.join(workspaceRoot, 'HEARTBEAT.md')
+        path.join(workspaceRoot, 'MEMORY.md')
       ])
     )
 
@@ -36,9 +35,6 @@ describe('assistant workspace', () => {
     )
     await expect(readFile(path.join(workspaceRoot, 'MEMORY.md'), 'utf8')).resolves.toContain(
       'Curated long-term memory'
-    )
-    await expect(readFile(path.join(workspaceRoot, 'HEARTBEAT.md'), 'utf8')).resolves.toContain(
-      'skip heartbeat'
     )
   })
 

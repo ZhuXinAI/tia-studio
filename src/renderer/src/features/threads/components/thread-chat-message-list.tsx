@@ -25,7 +25,6 @@ import { cn } from '../../../lib/utils'
 type ThreadChatMessageListProps = {
   threadId: string | null
   assistantName: string
-  assistantMessageVariant?: 'default' | 'team'
   isLoadingChatHistory: boolean
   isChatStreaming: boolean
   loadError: string | null
@@ -34,10 +33,10 @@ type ThreadChatMessageListProps = {
 
 const AssistantNameContext = createContext('Assistant')
 const ESTIMATED_MESSAGE_HEIGHT = 160
-const TEAM_ERROR_MESSAGE_MAX_LENGTH = 50
+const DELEGATION_ERROR_MESSAGE_MAX_LENGTH = 50
 
-type TeamMemberToolResult = {
-  kind: 'team-member-result'
+type DelegatedAgentToolResult = {
+  kind: 'delegated-agent-result'
   assistantId: string
   assistantName: string
   task: string
@@ -85,19 +84,19 @@ type AssistantMessagePart =
       [key: string]: unknown
     }
 
-type TeamNestedToolCall = {
+type DelegatedNestedToolCall = {
   key: string
   name: string
   status: 'running' | 'complete' | 'error'
 }
 
-type TeamVisibleMessageBlock = {
+type DelegatedVisibleMessageBlock = {
   key: string
   assistantName: string
   text: string
   mentions: string[]
   status: 'running' | 'complete' | 'error'
-  nestedTools: TeamNestedToolCall[]
+  nestedTools: DelegatedNestedToolCall[]
 }
 
 type MessageUsage = {
@@ -108,14 +107,14 @@ type MessageUsage = {
   cachedInputTokens: number
 }
 
-function isTeamMemberToolResult(value: unknown): value is TeamMemberToolResult {
+function isDelegatedAgentToolResult(value: unknown): value is DelegatedAgentToolResult {
   if (!value || typeof value !== 'object') {
     return false
   }
 
-  const candidate = value as Partial<TeamMemberToolResult>
+  const candidate = value as Partial<DelegatedAgentToolResult>
   return (
-    candidate.kind === 'team-member-result' &&
+    candidate.kind === 'delegated-agent-result' &&
     typeof candidate.assistantName === 'string' &&
     typeof candidate.text === 'string' &&
     Array.isArray(candidate.mentionNames)
@@ -206,7 +205,7 @@ function extractToolResultStatus(
   }
 }
 
-function extractNestedTools(snapshot: ToolAgentStreamData | null): TeamNestedToolCall[] {
+function extractNestedTools(snapshot: ToolAgentStreamData | null): DelegatedNestedToolCall[] {
   if (!snapshot) {
     return []
   }
@@ -238,14 +237,14 @@ function normalizeErrorMessage(value: string): string | null {
 }
 
 function truncateErrorMessage(value: string): string {
-  if (value.length <= TEAM_ERROR_MESSAGE_MAX_LENGTH) {
+  if (value.length <= DELEGATION_ERROR_MESSAGE_MAX_LENGTH) {
     return value
   }
 
-  return `${value.slice(0, TEAM_ERROR_MESSAGE_MAX_LENGTH - 3)}...`
+  return `${value.slice(0, DELEGATION_ERROR_MESSAGE_MAX_LENGTH - 3)}...`
 }
 
-function extractTeamToolErrorMessage(
+function extractDelegationToolErrorMessage(
   status: Extract<AssistantMessagePart, { type: 'tool-call' }>['status']
 ): string | null {
   if (status?.type !== 'incomplete') {
@@ -270,12 +269,14 @@ function extractTeamToolErrorMessage(
   return null
 }
 
-function buildTeamVisibleBlocks(parts: readonly AssistantMessagePart[]): TeamVisibleMessageBlock[] {
+function buildDelegatedVisibleBlocks(
+  parts: readonly AssistantMessagePart[]
+): DelegatedVisibleMessageBlock[] {
   const delegationTools = parts.filter(isDelegationToolPart)
   const agentDataParts = parts.filter(isToolAgentDataPart)
   const blocks = delegationTools.map((toolPart) => ({
     toolPart,
-    result: isTeamMemberToolResult(toolPart.result) ? toolPart.result : null,
+    result: isDelegatedAgentToolResult(toolPart.result) ? toolPart.result : null,
     snapshot: null as ToolAgentStreamData | null
   }))
 
@@ -311,7 +312,7 @@ function buildTeamVisibleBlocks(parts: readonly AssistantMessagePart[]): TeamVis
 
   return blocks
     .map(({ toolPart, result, snapshot }) => {
-      const errorMessage = extractTeamToolErrorMessage(toolPart.status)
+      const errorMessage = extractDelegationToolErrorMessage(toolPart.status)
       const text =
         errorMessage ??
         result?.text.trim() ??
@@ -334,9 +335,9 @@ function buildTeamVisibleBlocks(parts: readonly AssistantMessagePart[]): TeamVis
         mentions: result?.mentionNames ?? [],
         status,
         nestedTools
-      } satisfies TeamVisibleMessageBlock
+      } satisfies DelegatedVisibleMessageBlock
     })
-    .filter((block): block is TeamVisibleMessageBlock => block !== null)
+    .filter((block): block is DelegatedVisibleMessageBlock => block !== null)
 }
 
 function formatMessageTimestamp(
@@ -646,7 +647,11 @@ function StandardAssistantMessageBubble(): React.JSX.Element {
   )
 }
 
-function TeamVisibleMessageCard({ block }: { block: TeamVisibleMessageBlock }): React.JSX.Element {
+function DelegatedVisibleMessageCard({
+  block
+}: {
+  block: DelegatedVisibleMessageBlock
+}): React.JSX.Element {
   return (
     <div className="rounded-[24px] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-strong)] px-4 py-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -714,12 +719,12 @@ function TeamVisibleMessageCard({ block }: { block: TeamVisibleMessageBlock }): 
   )
 }
 
-function TeamAssistantMessageBubble(): React.JSX.Element | null {
+function DelegationAwareAssistantMessageBubble(): React.JSX.Element | null {
   const assistantName = useContext(AssistantNameContext)
   const parts = useAuiState(
     (state) => state.message.parts as unknown as readonly AssistantMessagePart[]
   )
-  const visibleBlocks = useMemo(() => buildTeamVisibleBlocks(parts), [parts])
+  const visibleBlocks = useMemo(() => buildDelegatedVisibleBlocks(parts), [parts])
   const hidesSupervisorMessage = useMemo(
     () => visibleBlocks.length === 0 && parts.some(isCompletionToolPart),
     [parts, visibleBlocks.length]
@@ -737,7 +742,7 @@ function TeamAssistantMessageBubble(): React.JSX.Element | null {
     <MessagePrimitive.Root className="max-w-3xl px-4 py-3">
       <div className="space-y-4 rounded-[28px] bg-[color:var(--surface-panel-soft)] px-4 py-4">
         {visibleBlocks.map((block) => (
-          <TeamVisibleMessageCard key={block.key} block={block} />
+          <DelegatedVisibleMessageCard key={block.key} block={block} />
         ))}
 
         <div className="sr-only">{assistantName}</div>
@@ -793,7 +798,6 @@ function ThreadChatStatus({
 export function ThreadChatMessageList({
   threadId,
   assistantName,
-  assistantMessageVariant = 'default',
   isLoadingChatHistory,
   isChatStreaming,
   loadError,
@@ -816,12 +820,9 @@ export function ThreadChatMessageList({
   const messageComponents = useMemo(
     () => ({
       UserMessage: UserMessageBubble,
-      AssistantMessage:
-        assistantMessageVariant === 'team'
-          ? TeamAssistantMessageBubble
-          : StandardAssistantMessageBubble
+      AssistantMessage: DelegationAwareAssistantMessageBubble
     }),
-    [assistantMessageVariant]
+    []
   )
 
   if (!shouldRenderVirtualList) {

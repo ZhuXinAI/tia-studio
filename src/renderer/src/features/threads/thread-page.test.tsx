@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { buildAssistantThreadBranches, evaluateAssistantReadiness } from './thread-page-helpers'
+import {
+  buildAssistantThreadBranches,
+  buildWorkspaceThreadBranches,
+  evaluateAssistantReadiness,
+  resolveWorkspaceAssistant
+} from './thread-page-helpers'
 import type { AssistantRecord } from '../assistants/assistants-query'
 import type { ProviderRecord } from '../settings/providers/providers-query'
 import type { ThreadRecord } from './threads-query'
+import type { WorkspaceRecord } from '../workspaces/workspaces-query'
 
 function createAssistant(overrides?: Partial<AssistantRecord>): AssistantRecord {
   return {
@@ -62,6 +68,18 @@ function createThread(overrides?: Partial<ThreadRecord>): ThreadRecord {
   }
 }
 
+function createWorkspace(overrides?: Partial<WorkspaceRecord>): WorkspaceRecord {
+  return {
+    id: 'workspace-1',
+    name: 'Workspace One',
+    rootPath: '/workspace/a',
+    builtInKind: null,
+    defaultAssistantId: 'assistant-1',
+    isMissing: false,
+    ...overrides
+  }
+}
+
 describe('thread page readiness gate', () => {
   it('shows checklist items and hides composer when setup is incomplete', () => {
     const readiness = evaluateAssistantReadiness({
@@ -94,6 +112,39 @@ describe('thread page readiness gate', () => {
 })
 
 describe('thread sidebar nesting', () => {
+  it('resolves a named workspace to its hidden default assistant', () => {
+    const assistant = createAssistant({ id: 'assistant-1', name: 'Workspace Agent' })
+
+    expect(
+      resolveWorkspaceAssistant({
+        assistants: [assistant],
+        workspace: createWorkspace()
+      })
+    ).toMatchObject({
+      id: 'assistant-1'
+    })
+  })
+
+  it('builds a single selected branch for workspace-scoped threads', () => {
+    const assistant = createAssistant({ id: 'assistant-1', name: 'Workspace Agent' })
+    const threads = [createThread({ id: 'thread-1', title: 'Workspace thread' })]
+
+    expect(
+      buildWorkspaceThreadBranches({
+        assistant,
+        workspaceName: 'My Workspace',
+        threads
+      })
+    ).toEqual([
+      expect.objectContaining({
+        assistantId: 'assistant-1',
+        assistantName: 'My Workspace',
+        isSelected: true,
+        threads
+      })
+    ])
+  })
+
   it('nests selected assistant threads only', () => {
     const assistants = [
       createAssistant({ id: 'assistant-1', name: 'Planner' }),

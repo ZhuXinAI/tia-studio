@@ -13,12 +13,10 @@ import type { ManagedRuntimesState } from '../persistence/repos/managed-runtimes
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import { ChannelEventBus } from '../channels/channel-event-bus'
-import { appendWorkLogEntry } from '../cron/work-log-writer'
-import type { AssistantCronJobsService } from '../cron/assistant-cron-jobs-service'
 import { AssistantRuntimeService } from './assistant-runtime'
 import * as modelResolver from './model-resolver'
+import { buildOpenAIProviderOptions } from './openai-provider-options'
 import { createMastraInstance } from './store'
-import { HEARTBEAT_RUN_CONTEXT_KEY } from './tool-context'
 
 const { handleChatStreamMock, toAISdkV5MessagesMock, generateTextMock } = vi.hoisted(() => ({
   handleChatStreamMock: vi.fn(),
@@ -557,291 +555,12 @@ describe('AssistantRuntimeService', () => {
 
     expect(instructions).toContain('Use webFetch only when you already know the exact page URL')
     expect(instructions).toContain(
-      'prefer browser-oriented tools such as agent-browser or Playwright MCP'
+      'Use agent-browser, Playwright MCP, or another browser-oriented tool'
     )
-    expect(instructions).toContain('remote debugging port 10531')
-    expect(instructions).toContain('--session-name tia-built-in-browser --cdp 10531')
-    expect(instructions).toContain('login sessions should survive normal app restarts')
-    expect(instructions).toContain('Do not rely on hidden tool-call UI')
-    expect(instructions).toContain('send the screenshot to the user first')
-    expect(instructions).toContain('recommend installing agent-browser')
+    expect(instructions).toContain('recommend agent-browser, Playwright MCP, or installing')
     expect(instructions).toContain(
       'Fall back to webFetch only when richer browser tooling is unavailable'
     )
-  })
-
-  it('registers the browser handoff tool when a built-in browser manager is available', async () => {
-    const mastra = await createMastraInstance(':memory:')
-    const builtInBrowserManager = {
-      getRemoteDebuggingPort: vi.fn(() => 10531),
-      requestHumanHandoff: vi.fn(async () => ({
-        status: 'completed' as const,
-        currentUrl: 'https://example.test/account',
-        remoteDebuggingPort: 10531
-      }))
-    }
-    const runtime = new AssistantRuntimeService({
-      mastra,
-      assistantsRepo: {} as AssistantsRepository,
-      providersRepo: {} as ProvidersRepository,
-      threadsRepo: {
-        hasAnyThreads: vi.fn(async () => true)
-      } as unknown as ThreadsRepository,
-      webSearchSettingsRepo: {
-        getDefaultEngine: vi.fn(async () => 'bing')
-      } as unknown as WebSearchSettingsRepository,
-      mcpServersRepo: {
-        getSettings: vi.fn(async () => ({ mcpServers: {} }))
-      } as never,
-      builtInBrowserManager
-    })
-
-    await (
-      runtime as unknown as {
-        ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
-      }
-    ).ensureAgentRegistered(buildAssistant(), buildProvider())
-
-    const agent = mastra.getAgentById('assistant-1')
-    const instructions = await getAgentInstructions(agent)
-    const tools = (await agent.listTools()) as Record<
-      string,
-      {
-        execute?: (input: Record<string, unknown>) => Promise<Record<string, unknown>>
-      }
-    >
-
-    expect(Object.keys(tools)).toEqual(expect.arrayContaining(['requestBrowserHumanHandoff']))
-    expect(instructions).toContain('use the request-browser-human-handoff tool')
-
-    const result = await tools.requestBrowserHumanHandoff.execute?.({
-      message: 'Please finish logging in.',
-      timeoutSeconds: 1
-    })
-
-    expect(result).toMatchObject({
-      status: 'completed',
-      currentUrl: 'https://example.test/account',
-      remoteDebuggingPort: 10531
-    })
-    expect(builtInBrowserManager.requestHumanHandoff).toHaveBeenCalledWith({
-      message: 'Please finish logging in.',
-      buttonLabel: undefined,
-      timeoutMs: 1000
-    })
-  })
-
-  it('registers and streams through the tia browser tool delegation tool in tia-browser-tool mode', async () => {
-    const mastra = await createMastraInstance(':memory:')
-    const builtInBrowserManager = {
-      getRemoteDebuggingPort: vi.fn(() => 10531),
-      requestHumanHandoff: vi.fn(async () => ({
-        status: 'completed' as const,
-        currentUrl: 'https://example.test/login',
-        remoteDebuggingPort: 10531
-      }))
-    }
-    const tiaBrowserToolManager = {
-      runAutomationCommand: vi.fn(async () => ({
-        action: 'snapshot' as const,
-        currentUrl: 'https://example.test',
-        snapshot: '- button "Continue" [ref=e1]'
-      })),
-      requestHumanHandoff: vi.fn(async () => ({
-        status: 'completed' as const,
-        currentUrl: 'https://example.test/login'
-      }))
-    }
-    const runtime = new AssistantRuntimeService({
-      mastra,
-      assistantsRepo: {} as AssistantsRepository,
-      providersRepo: {} as ProvidersRepository,
-      threadsRepo: {
-        hasAnyThreads: vi.fn(async () => true)
-      } as unknown as ThreadsRepository,
-      webSearchSettingsRepo: {
-        getDefaultEngine: vi.fn(async () => 'bing'),
-        getBrowserAutomationMode: vi.fn(async () => 'tia-browser-tool')
-      } as unknown as WebSearchSettingsRepository,
-      mcpServersRepo: {
-        getSettings: vi.fn(async () => ({ mcpServers: {} }))
-      } as never,
-      builtInBrowserManager,
-      tiaBrowserToolManager
-    })
-
-    await (
-      runtime as unknown as {
-        ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
-      }
-    ).ensureAgentRegistered(buildAssistant(), buildProvider({ type: 'openai-response' }))
-
-    const agent = mastra.getAgentById('assistant-1')
-    const browserAgent = mastra.getAgent('assistant-1:browser-agent')
-    const instructions = await getAgentInstructions(agent)
-    const tools = (await agent.listTools()) as Record<
-      string,
-      {
-        execute?: (
-          input: Record<string, unknown>,
-          context?: Record<string, unknown>
-        ) => Promise<unknown>
-      }
-    >
-
-    expect(Object.keys(tools)).toEqual(
-      expect.arrayContaining(['useTiaBrowserTool', 'requestBrowserHumanHandoff'])
-    )
-    expect(instructions).toContain('use-tia-browser-tool tool is available')
-    expect(instructions).toContain('Prefer use-tia-browser-tool for multi-step website tasks')
-    expect(browserAgent.hasOwnMemory()).toBe(true)
-    expect((await browserAgent.getMemory())?.getMergedThreadConfig().generateTitle).toBe(true)
-
-    const streamedChunks = [
-      {
-        type: 'text-delta',
-        payload: {
-          text: 'Partial '
-        }
-      },
-      {
-        type: 'text-delta',
-        payload: {
-          text: 'browser update'
-        }
-      }
-    ]
-    const fakeBrowserAgent = {
-      stream: vi.fn(async () => ({
-        fullStream: new ReadableStream({
-          start(controller) {
-            for (const chunk of streamedChunks) {
-              controller.enqueue(chunk)
-            }
-            controller.close()
-          }
-        }),
-        text: Promise.resolve('Partial browser update')
-      }))
-    }
-    const streamedOutput: unknown[] = []
-    const writer = new WritableStream<unknown>({
-      write(chunk) {
-        streamedOutput.push(chunk)
-      }
-    })
-
-    const result = await tools.useTiaBrowserTool.execute?.(
-      {
-        task: 'Inspect the sign-in form and summarize it.'
-      },
-      {
-        mastra: {
-          getAgent: vi.fn(() => fakeBrowserAgent)
-        },
-        writer,
-        requestContext: new RequestContext()
-      }
-    )
-
-    expect(streamedOutput).toEqual([])
-    expect(result).toMatchObject({
-      text: 'Partial browser update',
-      subAgentResourceId: 'assistant-1:browser-agent'
-    })
-    expect(fakeBrowserAgent.stream).toHaveBeenCalledTimes(1)
-    expect(fakeBrowserAgent.stream).toHaveBeenCalledWith(
-      [{ role: 'user', content: 'Inspect the sign-in form and summarize it.' }],
-      expect.objectContaining({
-        providerOptions: {
-          openai: {
-            store: false
-          }
-        }
-      })
-    )
-  })
-
-  it('times out stuck tia browser tool delegation runs', async () => {
-    const previousTimeout = process.env.TIA_BROWSER_TOOL_DELEGATE_TIMEOUT_MS
-    process.env.TIA_BROWSER_TOOL_DELEGATE_TIMEOUT_MS = '20'
-
-    try {
-      const mastra = await createMastraInstance(':memory:')
-      const tiaBrowserToolManager = {
-        runAutomationCommand: vi.fn(async () => ({
-          action: 'snapshot' as const,
-          currentUrl: 'https://example.test',
-          snapshot: '- button "Continue" [ref=e1]'
-        })),
-        requestHumanHandoff: vi.fn(async () => ({
-          status: 'completed' as const,
-          currentUrl: 'https://example.test/login'
-        }))
-      }
-      const runtime = new AssistantRuntimeService({
-        mastra,
-        assistantsRepo: {} as AssistantsRepository,
-        providersRepo: {} as ProvidersRepository,
-        threadsRepo: {
-          hasAnyThreads: vi.fn(async () => true)
-        } as unknown as ThreadsRepository,
-        webSearchSettingsRepo: {
-          getDefaultEngine: vi.fn(async () => 'bing'),
-          getBrowserAutomationMode: vi.fn(async () => 'tia-browser-tool')
-        } as unknown as WebSearchSettingsRepository,
-        mcpServersRepo: {
-          getSettings: vi.fn(async () => ({ mcpServers: {} }))
-        } as never,
-        tiaBrowserToolManager
-      })
-
-      await (
-        runtime as unknown as {
-          ensureAgentRegistered: (assistant: AppAssistant, provider: AppProvider) => Promise<void>
-        }
-      ).ensureAgentRegistered(buildAssistant(), buildProvider())
-
-      const agent = mastra.getAgentById('assistant-1')
-      const tools = (await agent.listTools()) as Record<
-        string,
-        {
-          execute?: (
-            input: Record<string, unknown>,
-            context?: Record<string, unknown>
-          ) => Promise<unknown>
-        }
-      >
-
-      const fakeBrowserAgent = {
-        stream: vi.fn(async () => ({
-          fullStream: new ReadableStream(),
-          text: new Promise<string>(() => undefined)
-        }))
-      }
-
-      await expect(
-        tools.useTiaBrowserTool.execute?.(
-          {
-            task: 'Inspect the sign-in form and summarize it.'
-          },
-          {
-            mastra: {
-              getAgent: vi.fn(() => fakeBrowserAgent)
-            },
-            requestContext: new RequestContext()
-          }
-        )
-      ).rejects.toThrow(
-        'use-tia-browser-tool timed out after 20ms. Set TIA_BROWSER_TOOL_DEBUG=true to capture detailed browser delegation logs.'
-      )
-    } finally {
-      if (previousTimeout === undefined) {
-        delete process.env.TIA_BROWSER_TOOL_DELEGATE_TIMEOUT_MS
-      } else {
-        process.env.TIA_BROWSER_TOOL_DELEGATE_TIMEOUT_MS = previousTimeout
-      }
-    }
   })
 
   it('bootstraps assistant workspace files when registering an agent', async () => {
@@ -877,7 +596,6 @@ describe('AssistantRuntimeService', () => {
       await expect(access(path.join(workspaceRoot, 'IDENTITY.md'))).resolves.toBeUndefined()
       await expect(access(path.join(workspaceRoot, 'SOUL.md'))).resolves.toBeUndefined()
       await expect(access(path.join(workspaceRoot, 'MEMORY.md'))).resolves.toBeUndefined()
-      await expect(access(path.join(workspaceRoot, 'HEARTBEAT.md'))).resolves.toBeUndefined()
     } finally {
       await rm(workspaceRoot, { recursive: true, force: true })
     }
@@ -946,15 +664,7 @@ describe('AssistantRuntimeService', () => {
         mcpServersRepo: {
           getSettings: vi.fn(async () => ({ mcpServers: {} }))
         } as never,
-        channelEventBus: new ChannelEventBus(),
-        cronJobService: {
-          createCronJob: vi.fn(),
-          listAssistantCronJobs: vi.fn(async () => []),
-          removeAssistantCronJob: vi.fn(async () => true)
-        } as unknown as Pick<
-          AssistantCronJobsService,
-          'createCronJob' | 'listAssistantCronJobs' | 'removeAssistantCronJob'
-        >
+        channelEventBus: new ChannelEventBus()
       })
 
       await (
@@ -964,7 +674,6 @@ describe('AssistantRuntimeService', () => {
             provider: AppProvider,
             options?: {
               channelDeliveryEnabled: boolean
-              cronToolsEnabled?: boolean
             }
           ) => Promise<void>
         }
@@ -983,9 +692,6 @@ describe('AssistantRuntimeService', () => {
           'listWorkLogs',
           'readWorkLog',
           'searchWorkLogs',
-          'createCronJob',
-          'listCronJobs',
-          'removeCronJob',
           'sendMessageToChannel',
           'sendImage',
           'sendFile'
@@ -1006,22 +712,14 @@ describe('AssistantRuntimeService', () => {
       assistantsRepo: {} as AssistantsRepository,
       providersRepo: {} as ProvidersRepository,
       threadsRepo: {} as ThreadsRepository,
-      webSearchSettingsRepo: {
-        getDefaultEngine: vi.fn(async () => 'bing')
-      } as unknown as WebSearchSettingsRepository,
-      mcpServersRepo: {
-        getSettings: vi.fn(async () => ({ mcpServers: {} }))
-      } as never,
-      channelEventBus: new ChannelEventBus(),
-      cronJobService: {
-        createCronJob: vi.fn(),
-        listAssistantCronJobs: vi.fn(async () => []),
-        removeAssistantCronJob: vi.fn(async () => true)
-      } as unknown as Pick<
-        AssistantCronJobsService,
-        'createCronJob' | 'listAssistantCronJobs' | 'removeAssistantCronJob'
-      >
-    })
+        webSearchSettingsRepo: {
+          getDefaultEngine: vi.fn(async () => 'bing')
+        } as unknown as WebSearchSettingsRepository,
+        mcpServersRepo: {
+          getSettings: vi.fn(async () => ({ mcpServers: {} }))
+        } as never,
+        channelEventBus: new ChannelEventBus()
+      })
 
     await (
       runtime as unknown as {
@@ -1036,10 +734,7 @@ describe('AssistantRuntimeService', () => {
       expect.arrayContaining([
         'listWorkLogs',
         'readWorkLog',
-        'searchWorkLogs',
-        'createCronJob',
-        'listCronJobs',
-        'removeCronJob'
+        'searchWorkLogs'
       ])
     )
   })
@@ -1378,6 +1073,97 @@ describe('AssistantRuntimeService', () => {
     )
   })
 
+  it('uses thread-level provider overrides for chat execution', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockResolvedValue(new ReadableStream())
+
+    const resolveModelSpy = vi.spyOn(modelResolver, 'resolveModel')
+    const assistant = buildAssistant({
+      providerId: 'assistant-provider'
+    })
+    const assistantProvider = buildProvider({
+      id: 'assistant-provider',
+      selectedModel: 'assistant-model'
+    })
+    const overrideProvider = buildProvider({
+      id: 'override-provider',
+      type: 'anthropic',
+      apiHost: 'https://anthropic.example.com',
+      selectedModel: 'provider-default-model'
+    })
+
+    const providersRepo = {
+      getById: vi.fn(async (providerId: string) => {
+        if (providerId === assistantProvider.id) {
+          return assistantProvider
+        }
+
+        if (providerId === overrideProvider.id) {
+          return overrideProvider
+        }
+
+        return null
+      })
+    } as unknown as ProvidersRepository
+
+    const runtime = new AssistantRuntimeService({
+      mastra: await createMastraInstance(':memory:'),
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          metadata: {
+            providerOverride: {
+              providerId: overrideProvider.id,
+              model: 'claude-sonnet-4-5'
+            }
+          }
+        }))
+      } as unknown as ThreadsRepository,
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    try {
+      await runtime.streamChat({
+        assistantId: assistant.id,
+        threadId: 'thread-1',
+        profileId: 'profile-1',
+        messages: []
+      })
+
+      expect(resolveModelSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: overrideProvider.type,
+          apiKey: overrideProvider.apiKey,
+          apiHost: overrideProvider.apiHost,
+          selectedModel: 'claude-sonnet-4-5'
+        }),
+        expect.anything(),
+        expect.anything()
+      )
+      expect(handleChatStreamMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            providerOptions: buildOpenAIProviderOptions(overrideProvider)
+          })
+        })
+      )
+    } finally {
+      resolveModelSpy.mockRestore()
+    }
+  })
+
   it('forwards request abort signal into mastra chat stream execution', async () => {
     handleChatStreamMock.mockReset()
     handleChatStreamMock.mockResolvedValue(new ReadableStream())
@@ -1499,270 +1285,6 @@ describe('AssistantRuntimeService', () => {
     )
   })
 
-  it('omits heartbeat request context and memory persistence for cron runs', async () => {
-    handleChatStreamMock.mockReset()
-    toAISdkV5MessagesMock.mockReset()
-    toAISdkV5MessagesMock.mockImplementation((messages) => messages)
-    handleChatStreamMock.mockResolvedValue(
-      new ReadableStream<UIMessageChunk>({
-        start(controller) {
-          controller.close()
-        }
-      })
-    )
-
-    const assistant = buildAssistant()
-    const runtime = new AssistantRuntimeService({
-      mastra: await createMastraInstance(':memory:'),
-      assistantsRepo: {
-        getById: vi.fn(async () => assistant)
-      } as unknown as AssistantsRepository,
-      providersRepo: {
-        getById: vi.fn(async () => buildProvider())
-      } as unknown as ProvidersRepository,
-      threadsRepo: {
-        getById: vi.fn(async () => ({
-          id: 'thread-1',
-          assistantId: assistant.id,
-          resourceId: 'profile-1',
-          title: 'Cron thread',
-          metadata: {
-            cron: true
-          },
-          lastMessageAt: null,
-          createdAt: '2026-03-02T00:00:00.000Z',
-          updatedAt: '2026-03-02T00:00:00.000Z'
-        }))
-      } as unknown as ThreadsRepository,
-      webSearchSettingsRepo: {
-        getDefaultEngine: vi.fn(async () => 'bing'),
-        getKeepBrowserWindowOpen: vi.fn(async () => false)
-      } as unknown as WebSearchSettingsRepository,
-      mcpServersRepo: {
-        getSettings: vi.fn(async () => ({ mcpServers: {} }))
-      } as never
-    })
-    ;(
-      runtime as unknown as {
-        ensureAgentRegistered: () => Promise<void>
-      }
-    ).ensureAgentRegistered = vi.fn(async () => undefined)
-
-    await runtime.runCronJob({
-      assistantId: assistant.id,
-      threadId: 'thread-1',
-      prompt: 'Check the workspace and report status.'
-    })
-
-    const handleCall = handleChatStreamMock.mock.calls[0]?.[0] as {
-      params: {
-        requestContext: {
-          get: (key: string) => unknown
-        }
-        modelSettings: {
-          maxRetries: number
-        }
-      } & Record<string, unknown>
-    }
-
-    expect(handleCall.params.requestContext.get(HEARTBEAT_RUN_CONTEXT_KEY)).toBeUndefined()
-    expect(handleCall.params.modelSettings).toEqual({
-      maxRetries: 2
-    })
-    expect('memory' in handleCall.params).toBe(false)
-  })
-
-  it('injects heartbeat request context, omits memory persistence, and adds recent work-log context for heartbeat runs', async () => {
-    handleChatStreamMock.mockReset()
-    toAISdkV5MessagesMock.mockReset()
-    toAISdkV5MessagesMock.mockImplementation((messages) => messages)
-    handleChatStreamMock.mockResolvedValue(
-      new ReadableStream<UIMessageChunk>({
-        start(controller) {
-          controller.close()
-        }
-      })
-    )
-
-    const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-heartbeat-runtime-'))
-
-    try {
-      await appendWorkLogEntry({
-        workspaceRootPath: workspaceRoot,
-        assistantName: 'TIA',
-        outputText: 'Recent work entry.',
-        occurredAt: new Date('2026-03-10T00:20:00.000Z')
-      })
-      await appendWorkLogEntry({
-        workspaceRootPath: workspaceRoot,
-        assistantName: 'TIA',
-        outputText: 'Old work entry.',
-        occurredAt: new Date('2026-03-09T22:00:00.000Z')
-      })
-
-      vi.setSystemTime(new Date('2026-03-10T00:30:00.000Z'))
-
-      const assistant = buildAssistant({
-        workspaceConfig: {
-          rootPath: workspaceRoot
-        }
-      })
-      const runtime = new AssistantRuntimeService({
-        mastra: await createMastraInstance(':memory:'),
-        assistantsRepo: {
-          getById: vi.fn(async () => assistant)
-        } as unknown as AssistantsRepository,
-        providersRepo: {
-          getById: vi.fn(async () => buildProvider())
-        } as unknown as ProvidersRepository,
-        threadsRepo: {
-          getById: vi.fn(async () => ({
-            id: 'thread-1',
-            assistantId: assistant.id,
-            resourceId: 'profile-1',
-            title: 'Heartbeat thread',
-            metadata: {
-              system: true,
-              systemType: 'heartbeat'
-            },
-            lastMessageAt: null,
-            createdAt: '2026-03-02T00:00:00.000Z',
-            updatedAt: '2026-03-02T00:00:00.000Z'
-          }))
-        } as unknown as ThreadsRepository,
-        webSearchSettingsRepo: {
-          getDefaultEngine: vi.fn(async () => 'bing'),
-          getKeepBrowserWindowOpen: vi.fn(async () => false)
-        } as unknown as WebSearchSettingsRepository,
-        mcpServersRepo: {
-          getSettings: vi.fn(async () => ({ mcpServers: {} }))
-        } as never
-      })
-      ;(
-        runtime as unknown as {
-          ensureAgentRegistered: () => Promise<void>
-        }
-      ).ensureAgentRegistered = vi.fn(async () => undefined)
-
-      await runtime.runHeartbeat({
-        assistantId: assistant.id,
-        threadId: 'thread-1',
-        prompt: 'Review the recent work and decide whether follow-up is needed.',
-        intervalMinutes: 30
-      })
-
-      const handleCall = handleChatStreamMock.mock.calls[0]?.[0] as {
-        params: {
-          requestContext: {
-            get: (key: string) => unknown
-          }
-          modelSettings: {
-            maxRetries: number
-          }
-          messages: Array<Record<string, unknown>>
-        } & Record<string, unknown>
-      }
-
-      expect(handleCall.params.requestContext.get(HEARTBEAT_RUN_CONTEXT_KEY)).toEqual(
-        expect.any(String)
-      )
-      expect(handleCall.params.modelSettings).toEqual({
-        maxRetries: 2
-      })
-      expect('memory' in handleCall.params).toBe(false)
-      expect(handleCall.params.messages).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            role: 'user',
-            content: expect.stringContaining('Recent work-log context')
-          }),
-          expect.objectContaining({
-            role: 'user',
-            content: expect.stringContaining('Recent work entry.')
-          }),
-          expect.objectContaining({
-            role: 'user',
-            content: expect.stringContaining(
-              'Review the recent work and decide whether follow-up is needed.'
-            )
-          })
-        ])
-      )
-      expect(handleCall.params.messages).not.toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            role: 'user',
-            content: expect.stringContaining('Old work entry.')
-          })
-        ])
-      )
-    } finally {
-      await rm(workspaceRoot, { recursive: true, force: true })
-    }
-  })
-
-  it('collects final assistant output text for cron runs', async () => {
-    handleChatStreamMock.mockReset()
-    toAISdkV5MessagesMock.mockReset()
-    toAISdkV5MessagesMock.mockImplementation((messages) => messages)
-    handleChatStreamMock.mockResolvedValue(
-      new ReadableStream<UIMessageChunk>({
-        start(controller) {
-          controller.enqueue({ type: 'text-delta', delta: 'Workspace ' } as UIMessageChunk)
-          controller.enqueue({ type: 'text-delta', delta: 'is healthy.' } as UIMessageChunk)
-          controller.enqueue({ type: 'finish' } as UIMessageChunk)
-          controller.close()
-        }
-      })
-    )
-
-    const assistant = buildAssistant()
-    const runtime = new AssistantRuntimeService({
-      mastra: await createMastraInstance(':memory:'),
-      assistantsRepo: {
-        getById: vi.fn(async () => assistant)
-      } as unknown as AssistantsRepository,
-      providersRepo: {
-        getById: vi.fn(async () => buildProvider())
-      } as unknown as ProvidersRepository,
-      threadsRepo: {
-        getById: vi.fn(async () => ({
-          id: 'thread-1',
-          assistantId: assistant.id,
-          resourceId: 'profile-1',
-          title: 'Cron thread',
-          metadata: {
-            cron: true
-          },
-          lastMessageAt: null,
-          createdAt: '2026-03-02T00:00:00.000Z',
-          updatedAt: '2026-03-02T00:00:00.000Z'
-        }))
-      } as unknown as ThreadsRepository,
-      webSearchSettingsRepo: {
-        getDefaultEngine: vi.fn(async () => 'bing'),
-        getKeepBrowserWindowOpen: vi.fn(async () => false)
-      } as unknown as WebSearchSettingsRepository,
-      mcpServersRepo: {
-        getSettings: vi.fn(async () => ({ mcpServers: {} }))
-      } as never
-    })
-    ;(
-      runtime as unknown as {
-        ensureAgentRegistered: () => Promise<void>
-      }
-    ).ensureAgentRegistered = vi.fn(async () => undefined)
-
-    await expect(
-      runtime.runCronJob({
-        assistantId: assistant.id,
-        threadId: 'thread-1',
-        prompt: 'Check the workspace and report status.'
-      })
-    ).resolves.toEqual({
-      outputText: 'Workspace is healthy.'
-    })
-  })
 
   it('publishes an outbound channel event after a channel-targeted reply completes', async () => {
     handleChatStreamMock.mockReset()
@@ -1985,105 +1507,6 @@ describe('AssistantRuntimeService', () => {
     ])
   })
 
-  it('buffers wechat-kf replies into one outbound message and strips [[BR]] markers', async () => {
-    handleChatStreamMock.mockReset()
-
-    let streamController!: ReadableStreamDefaultController<UIMessageChunk>
-    handleChatStreamMock.mockResolvedValue(
-      new ReadableStream<UIMessageChunk>({
-        start(controller) {
-          streamController = controller
-        }
-      })
-    )
-
-    const assistant = buildAssistant()
-    const bus = new ChannelEventBus()
-    const publishedEvents: unknown[] = []
-    bus.subscribe('channel.message.send-requested', (event) => {
-      publishedEvents.push(event)
-    })
-
-    const runtime = new AssistantRuntimeService({
-      mastra: await createMastraInstance(':memory:'),
-      assistantsRepo: {
-        getById: vi.fn(async () => assistant)
-      } as unknown as AssistantsRepository,
-      providersRepo: {
-        getById: vi.fn(async () => buildProvider())
-      } as unknown as ProvidersRepository,
-      threadsRepo: {
-        getById: vi.fn(async () => ({
-          id: 'thread-1',
-          assistantId: assistant.id,
-          resourceId: 'profile-1',
-          title: 'New Thread',
-          lastMessageAt: null,
-          createdAt: '2026-03-02T00:00:00.000Z',
-          updatedAt: '2026-03-02T00:00:00.000Z'
-        })),
-        touchLastMessageAt: vi.fn(async () => undefined)
-      } as unknown as ThreadsRepository,
-      webSearchSettingsRepo: {
-        getDefaultEngine: vi.fn(async () => 'bing'),
-        getKeepBrowserWindowOpen: vi.fn(async () => false)
-      } as unknown as WebSearchSettingsRepository,
-      mcpServersRepo: {
-        getSettings: vi.fn(async () => ({ mcpServers: {} }))
-      } as never,
-      channelEventBus: bus
-    })
-
-    const stream = await runtime.streamChat({
-      assistantId: assistant.id,
-      threadId: 'thread-1',
-      profileId: 'profile-1',
-      messages: [],
-      channelTarget: {
-        channelId: 'channel-1',
-        channelType: 'wechat-kf',
-        remoteChatId: 'chat-1'
-      }
-    })
-
-    const drainPromise = drainStream(stream)
-
-    streamController.enqueue({
-      type: 'text-delta',
-      id: 'message-1',
-      delta: 'First[[BR]]'
-    } as UIMessageChunk)
-    streamController.enqueue({ type: 'start-step' } as UIMessageChunk)
-
-    await Promise.resolve()
-
-    expect(publishedEvents).toEqual([])
-
-    streamController.enqueue({
-      type: 'text-delta',
-      id: 'message-1',
-      delta: 'Second'
-    } as UIMessageChunk)
-    streamController.enqueue({ type: 'finish' } as UIMessageChunk)
-    streamController.close()
-
-    await drainPromise
-
-    expect(publishedEvents).toEqual([
-      {
-        eventId: expect.any(String),
-        channelId: 'channel-1',
-        channelType: 'wechat-kf',
-        remoteChatId: 'chat-1',
-        content: 'First\nSecond',
-        payload: {
-          type: 'text',
-          text: 'First\nSecond'
-        }
-      }
-    ])
-  })
-
   it('does not publish an outbound channel event when reply text is empty', async () => {
     handleChatStreamMock.mockReset()
     handleChatStreamMock.mockResolvedValue(
@@ -2247,203 +1670,6 @@ describe('AssistantRuntimeService', () => {
     })
   })
 
-  it('falls back to the latest assistant message id when cron streams do not emit a start message id', async () => {
-    handleChatStreamMock.mockReset()
-    handleChatStreamMock.mockResolvedValue(
-      new ReadableStream<UIMessageChunk>({
-        start(controller) {
-          controller.enqueue({ type: 'text-delta', delta: 'Scheduled reply' } as UIMessageChunk)
-          controller.enqueue({ type: 'finish-step' } as UIMessageChunk)
-          controller.enqueue({
-            type: 'finish',
-            totalUsage: {
-              inputTokens: 80,
-              outputTokens: 20,
-              totalTokens: 100
-            },
-            finishReason: 'stop'
-          } as UIMessageChunk)
-          controller.close()
-        }
-      })
-    )
-
-    const assistant = buildAssistant()
-    const recordMessageUsage = vi.fn(async () => undefined)
-    const runtime = new AssistantRuntimeService({
-      mastra: {
-        getStorage: () => ({
-          getStore: async () => ({
-            listMessages: async () => ({
-              messages: [
-                {
-                  id: 'assistant-msg-older',
-                  role: 'assistant',
-                  createdAt: new Date('2026-03-13T23:59:00.000Z')
-                },
-                {
-                  id: 'assistant-msg-2',
-                  role: 'assistant',
-                  createdAt: new Date('2026-03-14T00:00:00.000Z')
-                }
-              ]
-            })
-          })
-        })
-      } as unknown as Mastra,
-      assistantsRepo: {
-        getById: vi.fn(async () => assistant)
-      } as unknown as AssistantsRepository,
-      providersRepo: {
-        getById: vi.fn(async () => buildProvider())
-      } as unknown as ProvidersRepository,
-      threadsRepo: {
-        getById: vi.fn(async () => ({
-          id: 'thread-1',
-          assistantId: assistant.id,
-          resourceId: 'profile-1',
-          title: 'Cron thread',
-          lastMessageAt: null,
-          createdAt: '2026-03-02T00:00:00.000Z',
-          updatedAt: '2026-03-02T00:00:00.000Z'
-        }))
-      } as unknown as ThreadsRepository,
-      threadUsageRepo: {
-        recordMessageUsage
-      },
-      webSearchSettingsRepo: {
-        getDefaultEngine: vi.fn(async () => 'bing'),
-        getKeepBrowserWindowOpen: vi.fn(async () => false)
-      } as unknown as WebSearchSettingsRepository,
-      mcpServersRepo: {
-        getSettings: vi.fn(async () => ({ mcpServers: {} }))
-      } as never
-    })
-    ;(
-      runtime as unknown as {
-        ensureAgentRegistered: () => Promise<void>
-      }
-    ).ensureAgentRegistered = vi.fn(async () => undefined)
-
-    await runtime.runCronJob({
-      assistantId: assistant.id,
-      threadId: 'thread-1',
-      prompt: 'Send the scheduled reminder'
-    })
-
-    expect(recordMessageUsage).toHaveBeenCalledWith({
-      messageId: 'assistant-msg-2',
-      threadId: 'thread-1',
-      assistantId: assistant.id,
-      resourceId: 'profile-1',
-      providerId: 'provider-1',
-      model: 'gpt-4.1',
-      source: 'cron',
-      usage: {
-        inputTokens: 80,
-        outputTokens: 20,
-        totalTokens: 100,
-        reasoningTokens: 0,
-        cachedInputTokens: 0
-      },
-      stepCount: 1,
-      finishReason: 'stop',
-      createdAt: expect.any(String)
-    })
-  })
-
-  it('records usage for heartbeat runs', async () => {
-    handleChatStreamMock.mockReset()
-    handleChatStreamMock.mockResolvedValue(
-      new ReadableStream<UIMessageChunk>({
-        start(controller) {
-          controller.enqueue({
-            type: 'start',
-            messageId: 'assistant-msg-heartbeat'
-          } as UIMessageChunk)
-          controller.enqueue({ type: 'finish-step' } as UIMessageChunk)
-          controller.enqueue({
-            type: 'finish',
-            totalUsage: {
-              inputTokens: 90,
-              outputTokens: 35,
-              totalTokens: 125,
-              cachedInputTokens: 10
-            },
-            finishReason: 'stop'
-          } as UIMessageChunk)
-          controller.close()
-        }
-      })
-    )
-
-    const assistant = buildAssistant()
-    const recordMessageUsage = vi.fn(async () => undefined)
-    const runtime = new AssistantRuntimeService({
-      mastra: {
-        getStorage: () => null
-      } as unknown as Mastra,
-      assistantsRepo: {
-        getById: vi.fn(async () => assistant)
-      } as unknown as AssistantsRepository,
-      providersRepo: {
-        getById: vi.fn(async () => buildProvider())
-      } as unknown as ProvidersRepository,
-      threadsRepo: {
-        getById: vi.fn(async () => ({
-          id: 'thread-1',
-          assistantId: assistant.id,
-          resourceId: 'profile-1',
-          title: 'Heartbeat thread',
-          lastMessageAt: null,
-          createdAt: '2026-03-02T00:00:00.000Z',
-          updatedAt: '2026-03-02T00:00:00.000Z'
-        }))
-      } as unknown as ThreadsRepository,
-      threadUsageRepo: {
-        recordMessageUsage
-      },
-      webSearchSettingsRepo: {
-        getDefaultEngine: vi.fn(async () => 'bing'),
-        getKeepBrowserWindowOpen: vi.fn(async () => false)
-      } as unknown as WebSearchSettingsRepository,
-      mcpServersRepo: {
-        getSettings: vi.fn(async () => ({ mcpServers: {} }))
-      } as never
-    })
-    ;(
-      runtime as unknown as {
-        ensureAgentRegistered: () => Promise<void>
-      }
-    ).ensureAgentRegistered = vi.fn(async () => undefined)
-
-    await runtime.runHeartbeat({
-      assistantId: assistant.id,
-      threadId: 'thread-1',
-      prompt: 'Write the heartbeat update',
-      intervalMinutes: 30
-    })
-
-    expect(recordMessageUsage).toHaveBeenCalledWith({
-      messageId: 'assistant-msg-heartbeat',
-      threadId: 'thread-1',
-      assistantId: assistant.id,
-      resourceId: 'profile-1',
-      providerId: 'provider-1',
-      model: 'gpt-4.1',
-      source: 'heartbeat',
-      usage: {
-        inputTokens: 90,
-        outputTokens: 35,
-        totalTokens: 125,
-        reasoningTokens: 0,
-        cachedInputTokens: 10
-      },
-      stepCount: 1,
-      finishReason: 'stop',
-      createdAt: expect.any(String)
-    })
-  })
 
   it('does not record usage when a streamed chat is aborted', async () => {
     handleChatStreamMock.mockReset()
@@ -2574,11 +1800,14 @@ describe('AssistantRuntimeService', () => {
     ).ensureAgentRegistered = vi.fn(async () => undefined)
 
     await expect(
-      runtime.runCronJob({
-        assistantId: assistant.id,
-        threadId: 'thread-1',
-        prompt: 'Run the failing job'
-      })
+      drainStream(
+        await runtime.streamChat({
+          assistantId: assistant.id,
+          threadId: 'thread-1',
+          profileId: 'profile-1',
+          messages: []
+        })
+      )
     ).rejects.toThrow('stream failed')
 
     expect(recordMessageUsage).not.toHaveBeenCalled()

@@ -270,7 +270,7 @@ describe('thread chat message list', () => {
     expect(dataConfig?.by_name?.['tool-agent']).toBeTypeOf('function')
   })
 
-  it('renders team turns as delegated member blocks and hides supervisor summary text', async () => {
+  it('renders delegated turns as member blocks and hides the supervisor summary text', async () => {
     messageState.message.parts = [
       {
         type: 'text',
@@ -282,7 +282,7 @@ describe('thread chat message list', () => {
         toolCallId: 'tool-1',
         status: { type: 'complete' },
         result: {
-          kind: 'team-member-result',
+          kind: 'delegated-agent-result',
           assistantId: 'assistant-1',
           assistantName: 'Researcher',
           task: 'Check the factual risks',
@@ -299,8 +299,7 @@ describe('thread chat message list', () => {
       root.render(
         <ThreadChatMessageList
           threadId="thread-1"
-          assistantName="Team Supervisor"
-          assistantMessageVariant="team"
+          assistantName="Workspace Supervisor"
           isLoadingChatHistory={false}
           isChatStreaming={false}
           loadError={null}
@@ -317,7 +316,7 @@ describe('thread chat message list', () => {
     expect(container.textContent).not.toContain('Should I ask Planner if they want another round?')
   })
 
-  it('renders running delegated streams as agent-authored team blocks', async () => {
+  it('renders running delegated streams as agent-authored blocks', async () => {
     messageState.message.parts = [
       {
         type: 'tool-call',
@@ -348,8 +347,7 @@ describe('thread chat message list', () => {
       root.render(
         <ThreadChatMessageList
           threadId="thread-1"
-          assistantName="Team Supervisor"
-          assistantMessageVariant="team"
+          assistantName="Workspace Supervisor"
           isLoadingChatHistory={false}
           isChatStreaming={true}
           loadError={null}
@@ -372,7 +370,7 @@ describe('thread chat message list', () => {
         toolCallId: 'tool-1',
         status: { type: 'complete' },
         result: {
-          kind: 'team-member-result',
+          kind: 'delegated-agent-result',
           assistantId: 'assistant-1',
           assistantName: 'GMNT',
           task: 'Investigate the issue',
@@ -405,8 +403,7 @@ describe('thread chat message list', () => {
       root.render(
         <ThreadChatMessageList
           threadId="thread-1"
-          assistantName="Team Supervisor"
-          assistantMessageVariant="team"
+          assistantName="Workspace Supervisor"
           isLoadingChatHistory={false}
           isChatStreaming={true}
           loadError={null}
@@ -424,7 +421,7 @@ describe('thread chat message list', () => {
     )
   })
 
-  it('shows truncated delegation errors in team mode instead of a hanging working state', async () => {
+  it('shows truncated delegation errors instead of a hanging working state', async () => {
     messageState.message.parts = [
       {
         type: 'tool-call',
@@ -444,8 +441,7 @@ describe('thread chat message list', () => {
       root.render(
         <ThreadChatMessageList
           threadId="thread-1"
-          assistantName="Team Supervisor"
-          assistantMessageVariant="team"
+          assistantName="Workspace Supervisor"
           isLoadingChatHistory={false}
           isChatStreaming={false}
           loadError={null}
@@ -462,7 +458,7 @@ describe('thread chat message list', () => {
     )
   })
 
-  it('hides completion-only supervisor turns in team mode', async () => {
+  it('hides completion-only supervisor turns', async () => {
     messageState.message.parts = [
       {
         type: 'text',
@@ -485,8 +481,7 @@ describe('thread chat message list', () => {
       root.render(
         <ThreadChatMessageList
           threadId="thread-1"
-          assistantName="Team Supervisor"
-          assistantMessageVariant="team"
+          assistantName="Workspace Supervisor"
           isLoadingChatHistory={false}
           isChatStreaming={false}
           loadError={null}
@@ -496,7 +491,7 @@ describe('thread chat message list', () => {
     })
 
     expect(container.textContent).not.toContain('All set, I will summarize this myself.')
-    expect(container.textContent).not.toContain('Team Supervisor')
+    expect(container.textContent).not.toContain('Workspace Supervisor')
   })
 
   it('applies custom scrollbar styling to the thread viewport', async () => {

@@ -7,7 +7,6 @@ export type ChannelType =
   | 'whatsapp'
   | 'wechat'
   | 'wecom'
-  | 'wechat-kf'
 
 export interface ChannelMessage {
   id: string

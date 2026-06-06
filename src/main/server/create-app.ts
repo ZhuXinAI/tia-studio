@@ -1,43 +1,31 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import type { AssistantHeartbeatsRepository } from '../persistence/repos/assistant-heartbeats-repo'
-import type { AssistantHeartbeatRunsRepository } from '../persistence/repos/assistant-heartbeat-runs-repo'
 import type { AssistantsRepository } from '../persistence/repos/assistants-repo'
 import type { ChannelsRepository } from '../persistence/repos/channels-repo'
 import type { ChannelPairingsRepository } from '../persistence/repos/channel-pairings-repo'
 import type { ChannelThreadBindingsRepository } from '../persistence/repos/channel-thread-bindings-repo'
-import type { CronJobsRepository } from '../persistence/repos/cron-jobs-repo'
-import type { CronJobRunsRepository } from '../persistence/repos/cron-job-runs-repo'
 import type { McpServersRepository } from '../persistence/repos/mcp-servers-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { SecuritySettingsRepository } from '../persistence/repos/security-settings-repo'
-import type { TeamThreadsRepository } from '../persistence/repos/team-threads-repo'
-import type { TeamWorkspacesRepository } from '../persistence/repos/team-workspaces-repo'
 import type { ThreadUsageRepository } from '../persistence/repos/thread-usage-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
+import type { WorkspacesRepository } from '../persistence/repos/workspaces-repo'
 import type { AssistantRuntime } from '../mastra/assistant-runtime'
-import type { TeamRuntime } from '../mastra/team-runtime'
 import type { WhatsAppAuthStateStore } from '../channels/whatsapp-auth-state-store'
 import type { WechatAuthStateStore } from '../channels/wechat-auth-state-store'
 import { createBearerAuthMiddleware } from './auth-middleware'
 import type { ThreadMessageEventsStore } from './chat/thread-message-events-store'
-import type { TeamRunStatusStore } from './chat/team-run-status-store'
-import { registerAssistantHeartbeatRoute } from './routes/assistant-heartbeat-route'
 import { registerAssistantsRoute } from './routes/assistants-route'
-import { registerBuiltInBrowserRoute } from './routes/built-in-browser-route'
+import { registerChannelsRoute } from './routes/channels-route'
 import { registerChatRoute } from './routes/chat-route'
-import { registerClawsRoute } from './routes/claws-route'
-import { registerCronJobsRoute } from './routes/cron-jobs-route'
 import { registerHealthRoute } from './routes/health-route'
 import { registerMcpServersRoute } from './routes/mcp-servers-route'
 import { registerProvidersRoute } from './routes/providers-route'
 import { registerSecuritySettingsRoute } from './routes/security-settings-route'
-import { registerTeamChatRoute } from './routes/team-chat-route'
-import { registerTeamThreadsRoute } from './routes/team-threads-route'
-import { registerTeamWorkspacesRoute } from './routes/team-workspaces-route'
 import { registerThreadsRoute } from './routes/threads-route'
 import { registerWebSearchSettingsRoute } from './routes/web-search-settings-route'
+import { registerWorkspacesRoute } from './routes/workspaces-route'
 
 type CreateAppOptions = {
   token: string
@@ -45,8 +33,7 @@ type CreateAppOptions = {
     providers: ProvidersRepository
     assistants: AssistantsRepository
     threads: ThreadsRepository
-    teamWorkspaces: TeamWorkspacesRepository
-    teamThreads: TeamThreadsRepository
+    workspaces?: WorkspacesRepository
     webSearchSettings: WebSearchSettingsRepository
     securitySettings?: SecuritySettingsRepository
     mcpServers: McpServersRepository
@@ -54,14 +41,8 @@ type CreateAppOptions = {
     channels: ChannelsRepository
     pairings: ChannelPairingsRepository
     channelThreadBindings: ChannelThreadBindingsRepository
-    cronJobs: CronJobsRepository
-    cronJobRuns: CronJobRunsRepository
-    heartbeats: AssistantHeartbeatsRepository
-    heartbeatRuns: AssistantHeartbeatRunsRepository
   }
   assistantRuntime?: AssistantRuntime
-  teamRuntime?: TeamRuntime
-  teamRunStatusStore?: TeamRunStatusStore
   threadMessageEventsStore?: ThreadMessageEventsStore
   channelService?: {
     reload(): Promise<void>
@@ -71,15 +52,6 @@ type CreateAppOptions = {
   }
   whatsAppAuthStateStore?: WhatsAppAuthStateStore
   wechatAuthStateStore?: WechatAuthStateStore
-  cronSchedulerService?: {
-    reload(): Promise<void>
-  }
-  heartbeatSchedulerService?: {
-    reload(): Promise<void>
-  }
-  onShowBuiltInBrowserChange?: (show: boolean) => Promise<void> | void
-  onShowTiaBrowserToolChange?: (show: boolean) => Promise<void> | void
-  onShowBuiltInBrowserWindow?: () => Promise<void> | void
 }
 
 export function createApp(options: CreateAppOptions): Hono {
@@ -103,15 +75,6 @@ export function createApp(options: CreateAppOptions): Hono {
     })
   )
   app.use('/chat/*', createBearerAuthMiddleware(options.token))
-  app.use(
-    '/team-chat/*',
-    cors({
-      origin: (origin) => origin ?? '*',
-      allowMethods: ['GET', 'POST', 'OPTIONS'],
-      allowHeaders: ['Authorization', 'Content-Type']
-    })
-  )
-  app.use('/team-chat/*', createBearerAuthMiddleware(options.token))
   registerHealthRoute(app)
 
   if (options.repositories) {
@@ -120,55 +83,34 @@ export function createApp(options: CreateAppOptions): Hono {
       assistantsRepo: options.repositories.assistants
     })
     registerAssistantsRoute(app, {
-      assistantsRepo: options.repositories.assistants,
-      providersRepo: options.repositories.providers
-    })
-    if (options.channelService) {
-      registerClawsRoute(app, {
-        assistantsRepo: options.repositories.assistants,
-        providersRepo: options.repositories.providers,
-        channelsRepo: options.repositories.channels,
-        pairingsRepo: options.repositories.pairings,
-        channelService: options.channelService,
-        channelSetupRecovery: options.channelSetupRecovery,
-        whatsAppAuthStateStore: options.whatsAppAuthStateStore,
-        wechatAuthStateStore: options.wechatAuthStateStore,
-        cronSchedulerService: options.cronSchedulerService,
-        heartbeatsRepo: options.repositories.heartbeats,
-        threadsRepo: options.repositories.threads,
-        heartbeatSchedulerService: options.heartbeatSchedulerService
-      })
-    }
-    registerAssistantHeartbeatRoute(app, {
-      assistantsRepo: options.repositories.assistants,
-      threadsRepo: options.repositories.threads,
-      heartbeatsRepo: options.repositories.heartbeats,
-      heartbeatRunsRepo: options.repositories.heartbeatRuns,
-      cronJobsRepo: options.repositories.cronJobs,
-      cronJobRunsRepo: options.repositories.cronJobRuns,
-      heartbeatSchedulerService: options.heartbeatSchedulerService
+      assistantsRepo: options.repositories.assistants
     })
     registerThreadsRoute(app, {
       threadsRepo: options.repositories.threads,
       assistantsRepo: options.repositories.assistants,
+      providersRepo: options.repositories.providers,
+      workspacesRepo: options.repositories.workspaces,
       channelThreadBindingsRepo: options.repositories.channelThreadBindings,
       threadUsageRepo: options.repositories.threadUsage
     })
-    registerTeamWorkspacesRoute(app, {
-      teamWorkspacesRepo: options.repositories.teamWorkspaces
+    registerChannelsRoute(app, {
+      assistantsRepo: options.repositories.assistants,
+      channelsRepo: options.repositories.channels,
+      pairingsRepo: options.repositories.pairings,
+      channelService: options.channelService ?? {
+        reload: async () => undefined
+      },
+      channelSetupRecovery: options.channelSetupRecovery,
+      whatsAppAuthStateStore: options.whatsAppAuthStateStore,
+      wechatAuthStateStore: options.wechatAuthStateStore
     })
-    registerTeamThreadsRoute(app, {
-      teamThreadsRepo: options.repositories.teamThreads,
-      teamWorkspacesRepo: options.repositories.teamWorkspaces,
-      providersRepo: options.repositories.providers
-    })
+    if (options.repositories.workspaces) {
+      registerWorkspacesRoute(app, {
+        workspacesRepo: options.repositories.workspaces
+      })
+    }
     registerWebSearchSettingsRoute(app, {
-      webSearchSettingsRepo: options.repositories.webSearchSettings,
-      onShowBuiltInBrowserChange: options.onShowBuiltInBrowserChange,
-      onShowTiaBrowserToolChange: options.onShowTiaBrowserToolChange
-    })
-    registerBuiltInBrowserRoute(app, {
-      onShowBuiltInBrowserWindow: options.onShowBuiltInBrowserWindow
+      webSearchSettingsRepo: options.repositories.webSearchSettings
     })
     if (options.repositories.securitySettings) {
       registerSecuritySettingsRoute(app, {
@@ -179,27 +121,13 @@ export function createApp(options: CreateAppOptions): Hono {
     registerMcpServersRoute(app, {
       mcpServersRepo: options.repositories.mcpServers
     })
-    if (options.cronSchedulerService) {
-      registerCronJobsRoute(app, {
-        cronJobsRepo: options.repositories.cronJobs,
-        assistantsRepo: options.repositories.assistants,
-        threadsRepo: options.repositories.threads,
-        cronSchedulerService: options.cronSchedulerService
-      })
-    }
   }
 
   if (options.assistantRuntime) {
     registerChatRoute(app, {
       assistantRuntime: options.assistantRuntime,
-      threadMessageEventsStore: options.threadMessageEventsStore
-    })
-  }
-
-  if (options.teamRuntime && options.teamRunStatusStore) {
-    registerTeamChatRoute(app, {
-      teamRuntime: options.teamRuntime,
-      teamRunStatusStore: options.teamRunStatusStore
+      threadMessageEventsStore: options.threadMessageEventsStore,
+      threadsRepo: options.repositories?.threads
     })
   }
 

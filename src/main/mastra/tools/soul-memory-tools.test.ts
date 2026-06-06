@@ -6,7 +6,6 @@ import { makeCoreTool } from '@mastra/core/utils'
 import { afterEach, describe, expect, it } from 'vitest'
 import { ensureAssistantWorkspaceFiles } from '../assistant-workspace'
 import { resolveModel } from '../model-resolver'
-import { HEARTBEAT_RUN_CONTEXT_KEY } from '../tool-context'
 import { assistantWorkspaceContextInputProcessor, createSoulMemoryTools } from './soul-memory-tools'
 
 describe('soul memory tools', () => {
@@ -109,11 +108,6 @@ describe('soul memory tools', () => {
     await writeFile(path.join(workspaceRoot, 'IDENTITY.md'), '# IDENTITY.md\n\nIdentity\n', 'utf8')
     await writeFile(path.join(workspaceRoot, 'SOUL.md'), '# SOUL.md\n\nSoul\n', 'utf8')
     await writeFile(path.join(workspaceRoot, 'MEMORY.md'), '# MEMORY.md\n\nMemory\n', 'utf8')
-    await writeFile(
-      path.join(workspaceRoot, 'HEARTBEAT.md'),
-      '# HEARTBEAT.md\n\nHeartbeat\n',
-      'utf8'
-    )
 
     const processor = assistantWorkspaceContextInputProcessor({ workspaceRootPath: workspaceRoot })
 
@@ -145,41 +139,5 @@ describe('soul memory tools', () => {
     expect(systemContent).toContain('Soul')
     expect(systemContent).toContain('## MEMORY.md')
     expect(systemContent).toContain('Memory')
-    expect(systemContent).not.toContain('## HEARTBEAT.md')
-  })
-
-  it('injects heartbeat instructions only for heartbeat runs', async () => {
-    workspaceRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-soul-tools-'))
-    await ensureAssistantWorkspaceFiles(workspaceRoot)
-    await writeFile(
-      path.join(workspaceRoot, 'HEARTBEAT.md'),
-      '# HEARTBEAT.md\n\nHeartbeat\n',
-      'utf8'
-    )
-
-    const requestContext = new RequestContext()
-    requestContext.set(HEARTBEAT_RUN_CONTEXT_KEY, 'heartbeat-1')
-
-    const processor = assistantWorkspaceContextInputProcessor({ workspaceRootPath: workspaceRoot })
-    const result = await processor.processInput?.({
-      messages: [],
-      systemMessages: [],
-      state: {},
-      retryCount: 0,
-      messageList: {} as never,
-      requestContext,
-      abort: () => {
-        throw new Error('abort should not be called')
-      }
-    })
-
-    if (!result || !('systemMessages' in result)) {
-      throw new Error('Expected processor to return systemMessages')
-    }
-
-    const output = result as { systemMessages: Array<{ content: unknown }> }
-    const systemContent = output.systemMessages.map((message) => String(message.content)).join('\n')
-    expect(systemContent).toContain('## HEARTBEAT.md')
-    expect(systemContent).toContain('Heartbeat')
   })
 })

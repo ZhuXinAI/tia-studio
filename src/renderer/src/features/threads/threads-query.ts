@@ -29,6 +29,11 @@ export type ThreadRecord = {
 
 export type CreateThreadInput = {
   assistantId: string
+  workspaceId?: string
+  providerOverride?: {
+    providerId: string
+    model: string
+  }
   resourceId: string
   title: string
 }
@@ -42,7 +47,8 @@ const defaultProfileId = 'default-profile'
 export const threadKeys = {
   all: ['threads'] as const,
   lists: () => [...threadKeys.all, 'list'] as const,
-  list: (assistantId: string) => [...threadKeys.lists(), assistantId] as const,
+  list: (scope: { assistantId?: string; workspaceId?: string }) =>
+    [...threadKeys.lists(), scope.workspaceId ?? '', scope.assistantId ?? ''] as const,
   detail: (id: string) => [...threadKeys.all, 'detail', id] as const
 }
 
@@ -61,17 +67,19 @@ export function getActiveResourceId(): string {
 }
 
 export type ListThreadsOptions = {
+  workspaceId?: string
+  assistantId?: string
   includeHidden?: boolean
 }
 
-// Legacy functions (kept for backward compatibility during migration)
-export async function listThreads(
-  assistantId: string,
-  options?: ListThreadsOptions
-): Promise<ThreadRecord[]> {
-  const params = new URLSearchParams({
-    assistantId
-  })
+export async function listThreads(options: ListThreadsOptions): Promise<ThreadRecord[]> {
+  const params = new URLSearchParams()
+  if (options.workspaceId) {
+    params.set('workspaceId', options.workspaceId)
+  }
+  if (options.assistantId) {
+    params.set('assistantId', options.assistantId)
+  }
   if (options?.includeHidden) {
     params.set('includeHidden', 'true')
   }
@@ -91,11 +99,14 @@ export async function deleteThread(threadId: string): Promise<void> {
 }
 
 // TanStack Query hooks
-export function useThreads(assistantId: string | undefined, options?: { enabled?: boolean }) {
+export function useThreads(
+  scope: { assistantId?: string; workspaceId?: string },
+  options?: { enabled?: boolean }
+) {
   return useQuery({
-    queryKey: threadKeys.list(assistantId ?? ''),
-    queryFn: () => listThreads(assistantId!),
-    enabled: options?.enabled !== false && !!assistantId
+    queryKey: threadKeys.list(scope),
+    queryFn: () => listThreads(scope),
+    enabled: options?.enabled !== false && (!!scope.assistantId || !!scope.workspaceId)
   })
 }
 
@@ -104,9 +115,8 @@ export function useCreateThread() {
 
   return useMutation({
     mutationFn: createThread,
-    onSuccess: (newThread) => {
-      // Invalidate the threads list for this assistant
-      queryClient.invalidateQueries({ queryKey: threadKeys.list(newThread.assistantId) })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: threadKeys.lists() })
     }
   })
 }
@@ -117,9 +127,8 @@ export function useUpdateThreadTitle() {
   return useMutation({
     mutationFn: ({ threadId, title }: { threadId: string; title: string }) =>
       updateThreadTitle(threadId, title),
-    onSuccess: (updatedThread) => {
-      // Invalidate the threads list for this assistant
-      queryClient.invalidateQueries({ queryKey: threadKeys.list(updatedThread.assistantId) })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: threadKeys.lists() })
     }
   })
 }

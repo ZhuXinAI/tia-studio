@@ -8,6 +8,8 @@ import { ChannelThreadBindingsRepository } from '../persistence/repos/channel-th
 import { ChannelsRepository } from '../persistence/repos/channels-repo'
 import { ProvidersRepository } from '../persistence/repos/providers-repo'
 import { ThreadsRepository } from '../persistence/repos/threads-repo'
+import { WorkspaceRecordsRepository } from '../persistence/repos/workspace-records-repo'
+import { WorkspacesRepository } from '../persistence/repos/workspaces-repo'
 import { ChannelEventBus } from './channel-event-bus'
 import { ChannelMessageRouter } from './channel-message-router'
 
@@ -53,8 +55,6 @@ function createAssistantRuntimeStub(
           compactedAt: '2026-03-14T00:00:00.000Z'
         }) as const
     ),
-    runCronJob: vi.fn(async () => ({ outputText: '' })),
-    runHeartbeat: vi.fn(async () => ({ outputText: '' })),
     ...overrides
   }
 }
@@ -138,7 +138,7 @@ async function expectEventually(assertion: () => void, timeoutMs = 1000): Promis
 function createInboundEvent(input: {
   eventId: string
   channelId: string
-  channelType?: 'lark' | 'telegram' | 'wechat-kf'
+  channelType?: 'lark' | 'telegram'
   messageId: string
   remoteChatId?: string
   senderId?: string
@@ -164,6 +164,7 @@ describe('ChannelMessageRouter', () => {
   let channelsRepo: ChannelsRepository
   let bindingsRepo: ChannelThreadBindingsRepository
   let threadsRepo: ThreadsRepository
+  let workspacesRepo: WorkspacesRepository
   let assistantId: string
   let channelId: string
 
@@ -173,9 +174,15 @@ describe('ChannelMessageRouter', () => {
     channelsRepo = new ChannelsRepository(db)
     bindingsRepo = new ChannelThreadBindingsRepository(db)
     threadsRepo = new ThreadsRepository(db)
+    const assistantsRepo = new AssistantsRepository(db)
+    workspacesRepo = new WorkspacesRepository({
+      assistantsRepo,
+      workspaceRecordsRepo: new WorkspaceRecordsRepository(db),
+      threadsRepo,
+      builtInChatsRootPath: '/tmp/tia-studio/chats'
+    })
 
     const providersRepo = new ProvidersRepository(db)
-    const assistantsRepo = new AssistantsRepository(db)
     const provider = await providersRepo.create({
       name: 'OpenAI',
       type: 'openai',
@@ -213,6 +220,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat)
     })
 
@@ -253,7 +261,10 @@ describe('ChannelMessageRouter', () => {
     expect(threads[0]).toMatchObject({
       assistantId,
       resourceId: 'default-profile',
-      title: 'New Thread'
+      title: 'New Thread',
+      metadata: {
+        workspaceId: expect.any(String)
+      }
     })
     expect(streamChat).toHaveBeenCalledTimes(2)
     expect(streamChat).toHaveBeenNthCalledWith(
@@ -325,6 +336,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat)
     })
 
@@ -367,6 +379,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat)
     })
 
@@ -405,6 +418,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat)
     })
 
@@ -455,6 +469,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat)
     })
 
@@ -494,6 +509,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat)
     })
 
@@ -527,6 +543,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat)
     })
 
@@ -585,6 +602,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat),
       resolveToolProgressLocale: () => 'zh-CN'
     })
@@ -644,6 +662,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat)
     })
 
@@ -673,58 +692,6 @@ describe('ChannelMessageRouter', () => {
     ])
   })
 
-  it('suppresses tool progress updates for wechat-kf channels', async () => {
-    const publishedEvents: unknown[] = []
-    const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
-      createStream([
-        { type: 'start' } as UIMessageChunk,
-        {
-          type: 'tool-input-available',
-          toolCallId: 'tool-call-1',
-          toolName: 'updateSoulMemory',
-          input: {
-            content: 'Remember this note.'
-          }
-        } as UIMessageChunk,
-        {
-          type: 'tool-output-available',
-          toolCallId: 'tool-call-1',
-          output: { ok: true }
-        } as UIMessageChunk,
-        { type: 'text-start', id: 'text-1' } as UIMessageChunk,
-        { type: 'text-delta', id: 'text-1', delta: 'All set.' } as UIMessageChunk,
-        { type: 'text-end', id: 'text-1' } as UIMessageChunk,
-        { type: 'finish' } as UIMessageChunk
-      ])
-    )
-    const router = new ChannelMessageRouter({
-      eventBus,
-      channelsRepo,
-      bindingsRepo,
-      threadsRepo,
-      assistantRuntime: createAssistantRuntimeStub(streamChat)
-    })
-
-    eventBus.subscribe('channel.message.send-requested', (event) => {
-      publishedEvents.push(event)
-    })
-
-    await router.handleInboundEvent({
-      eventId: 'evt-tool-wechat-kf',
-      channelId,
-      channelType: 'wechat-kf',
-      message: {
-        id: 'msg-tool-wechat-kf',
-        remoteChatId: 'oc_123',
-        senderId: 'ou_user',
-        content: 'hello',
-        timestamp: new Date('2026-03-08T00:00:00.000Z')
-      }
-    })
-
-    expect(publishedEvents).toEqual([])
-  })
-
   it('publishes a thread message updated event after processing inbound channel messages', async () => {
     const appendMessagesUpdated = vi.fn()
     const streamChat = vi.fn<AssistantRuntime['streamChat']>(async () =>
@@ -735,6 +702,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat),
       threadMessageEventsStore: {
         appendMessagesUpdated
@@ -779,6 +747,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat)
     })
 
@@ -823,6 +792,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat)
     })
 
@@ -864,6 +834,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat)
     })
 
@@ -903,6 +874,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat)
     })
 
@@ -940,6 +912,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat)
     })
 
@@ -977,6 +950,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat)
     })
 
@@ -1018,6 +992,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat, {
         runThreadCommand
       })
@@ -1079,6 +1054,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat, {
         runThreadCommand
       })
@@ -1129,6 +1105,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat),
       interruptionDecider: vi.fn(async () => ({
         decision: 'queue',
@@ -1201,6 +1178,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat),
       interruptionDecider: vi.fn(async () => ({
         decision: 'interrupt',
@@ -1267,6 +1245,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat),
       interruptionDecider: vi.fn(async () => ({
         decision: 'interrupt',
@@ -1334,6 +1313,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat),
       interruptionDecider: vi.fn(async () => ({
         decision: 'interrupt',
@@ -1402,6 +1382,7 @@ describe('ChannelMessageRouter', () => {
       channelsRepo,
       bindingsRepo,
       threadsRepo,
+      workspacesRepo,
       assistantRuntime: createAssistantRuntimeStub(streamChat)
     })
 

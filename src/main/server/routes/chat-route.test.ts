@@ -20,13 +20,53 @@ function createAssistantRuntimeStub(overrides: Partial<AssistantRuntime>): Assis
           compactedAt: '2026-03-14T00:00:00.000Z'
         }) as const
     ),
-    runCronJob: vi.fn(async () => ({ outputText: '' })),
-    runHeartbeat: vi.fn(async () => ({ outputText: '' })),
     ...overrides
   }
 }
 
 describe('chat route', () => {
+  it('streams chat through the assistant-less thread route by resolving the thread owner', async () => {
+    const streamChat = vi.fn(async () => new ReadableStream())
+    const app = new Hono()
+    registerChatRoute(app, {
+      assistantRuntime: createAssistantRuntimeStub({
+        streamChat
+      }),
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: 'assistant-1',
+          resourceId: 'profile-1',
+          title: 'Thread',
+          metadata: {},
+          lastMessageAt: null,
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z'
+        }))
+      }
+    })
+
+    const response = await app.request('http://localhost/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [],
+        threadId: 'thread-1',
+        profileId: 'profile-1'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(streamChat).toHaveBeenCalledWith({
+      assistantId: 'assistant-1',
+      messages: [],
+      threadId: 'thread-1',
+      profileId: 'profile-1',
+      trigger: undefined,
+      abortSignal: expect.any(AbortSignal)
+    })
+  })
+
   it('streams chat with thread and profile ids', async () => {
     const streamChat = vi.fn(async () => new ReadableStream())
     const listThreadMessages = vi.fn(async () => [])
@@ -150,6 +190,47 @@ describe('chat route', () => {
       profileId: 'profile-1'
     })
     expect(streamChat).not.toHaveBeenCalled()
+  })
+
+  it('returns message history through the assistant-less alias by resolving the thread owner', async () => {
+    const historyMessages: UIMessage[] = [
+      {
+        id: 'msg-user',
+        role: 'user',
+        parts: [{ type: 'text', text: 'Hello there' }]
+      }
+    ]
+    const listThreadMessages = vi.fn(async () => historyMessages)
+    const app = new Hono()
+    registerChatRoute(app, {
+      assistantRuntime: createAssistantRuntimeStub({
+        listThreadMessages
+      }),
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: 'assistant-1',
+          resourceId: 'profile-1',
+          title: 'Thread',
+          metadata: {},
+          lastMessageAt: null,
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z'
+        }))
+      }
+    })
+
+    const response = await app.request(
+      'http://localhost/chat/history?threadId=thread-1&profileId=profile-1'
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual(historyMessages)
+    expect(listThreadMessages).toHaveBeenCalledWith({
+      assistantId: 'assistant-1',
+      threadId: 'thread-1',
+      profileId: 'profile-1'
+    })
   })
 
   it('runs assistant thread commands without starting chat streaming', async () => {

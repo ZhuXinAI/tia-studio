@@ -1,12 +1,16 @@
 import type { Hono } from 'hono'
 import type { AssistantsRepository } from '../../persistence/repos/assistants-repo'
 import type { ChannelThreadBindingsRepository } from '../../persistence/repos/channel-thread-bindings-repo'
+import type { ProvidersRepository } from '../../persistence/repos/providers-repo'
 import type { AppThread, ThreadsRepository } from '../../persistence/repos/threads-repo'
+import type { WorkspacesRepository } from '../../persistence/repos/workspaces-repo'
 import { createThreadSchema, updateThreadSchema } from '../validators/threads-validator'
 
 type RegisterThreadsRouteOptions = {
   threadsRepo: ThreadsRepository
   assistantsRepo?: AssistantsRepository
+  providersRepo?: Pick<ProvidersRepository, 'getById'>
+  workspacesRepo?: Pick<WorkspacesRepository, 'getById'>
   channelThreadBindingsRepo?: Pick<ChannelThreadBindingsRepository, 'listByThreadIds'>
   threadUsageRepo?: {
     listThreadTotals(threadIds: string[]): Promise<
@@ -97,12 +101,15 @@ function toThreadResponse(
 export function registerThreadsRoute(app: Hono, options: RegisterThreadsRouteOptions): void {
   app.get('/v1/threads', async (context) => {
     const assistantId = context.req.query('assistantId')
-    if (!assistantId) {
-      return context.json({ ok: false, error: 'assistantId query is required' }, 400)
+    const workspaceId = context.req.query('workspaceId')
+    if (!assistantId && !workspaceId) {
+      return context.json({ ok: false, error: 'assistantId or workspaceId query is required' }, 400)
     }
 
     const includeHidden = context.req.query('includeHidden') === 'true'
-    const threads = await options.threadsRepo.listByAssistant(assistantId, { includeHidden })
+    const threads = workspaceId
+      ? await options.threadsRepo.listByWorkspace(workspaceId, { includeHidden })
+      : await options.threadsRepo.listByAssistant(assistantId!, { includeHidden })
     const usageTotalsByThreadId = options.threadUsageRepo
       ? await options.threadUsageRepo.listThreadTotals(threads.map((thread) => thread.id))
       : {}
@@ -167,7 +174,38 @@ export function registerThreadsRoute(app: Hono, options: RegisterThreadsRouteOpt
       }
     }
 
-    const thread = await options.threadsRepo.create(parsed.data)
+    if (parsed.data.workspaceId && options.workspacesRepo) {
+      const workspace = await options.workspacesRepo.getById(parsed.data.workspaceId)
+      if (!workspace) {
+        return context.json({ ok: false, error: 'Workspace not found' }, 400)
+      }
+    }
+
+    if (parsed.data.providerOverride && options.providersRepo) {
+      const provider = await options.providersRepo.getById(parsed.data.providerOverride.providerId)
+      if (!provider) {
+        return context.json({ ok: false, error: 'Provider not found' }, 400)
+      }
+    }
+
+    const metadata: Record<string, unknown> = {}
+    if (parsed.data.workspaceId) {
+      metadata.workspaceId = parsed.data.workspaceId
+    }
+
+    if (parsed.data.providerOverride) {
+      metadata.providerOverride = {
+        providerId: parsed.data.providerOverride.providerId,
+        model: parsed.data.providerOverride.model
+      }
+    }
+
+    const thread = await options.threadsRepo.create({
+      assistantId: parsed.data.assistantId,
+      resourceId: parsed.data.resourceId,
+      title: parsed.data.title,
+      metadata: Object.keys(metadata).length > 0 ? metadata : undefined
+    })
     return context.json(toThreadResponse(thread, null), 201)
   })
 

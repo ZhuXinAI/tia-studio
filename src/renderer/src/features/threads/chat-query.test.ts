@@ -75,7 +75,6 @@ describe('chat query', () => {
     vi.stubGlobal('fetch', fetchSpy)
 
     const messages = await listThreadChatMessages({
-      assistantId: 'assistant-1',
       threadId: 'thread-1',
       profileId: 'profile-1'
     })
@@ -85,7 +84,7 @@ describe('chat query', () => {
       fromChannel: 'lark'
     })
     expect(fetchSpy).toHaveBeenCalledWith(
-      'http://127.0.0.1:4769/chat/assistant-1/history?threadId=thread-1&profileId=profile-1',
+      'http://127.0.0.1:4769/chat/history?threadId=thread-1&profileId=profile-1',
       expect.objectContaining({
         method: 'GET'
       })
@@ -99,7 +98,6 @@ describe('chat query', () => {
     vi.stubGlobal('fetch', fetchSpy)
 
     const transport = createThreadChatTransport({
-      assistantId: 'assistant-1',
       threadId: 'thread-1',
       profileId: 'profile-1'
     })

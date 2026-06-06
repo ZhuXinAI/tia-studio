@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto'
+import path from 'node:path'
 import type { AppDatabase } from '../client'
 
-const DEFAULT_ASSISTANT_MAX_STEPS = 100
+export const DEFAULT_ASSISTANT_MAX_STEPS = 100
+export const BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__tiaBuiltInDefaultAgent'
+export const WORKSPACE_DEFAULT_AGENT_MCP_KEY = '__tiaWorkspaceDefaultAgent'
 
 export type AppAssistant = {
   id: string
@@ -54,6 +57,11 @@ function normalizeWorkspaceConfig(
   }
 
   return normalizedConfig
+}
+
+function normalizeWorkspaceRootPath(value: unknown): string | null {
+  const rootPath = toNonEmptyString(value)
+  return rootPath ? path.resolve(rootPath) : null
 }
 
 function parseJsonObject(value: unknown): Record<string, unknown> {
@@ -117,7 +125,7 @@ function parseAssistantRow(row: Record<string, unknown>): AppAssistant {
     description: String(row.description ?? ''),
     instructions: String(row.instructions),
     enabled: Number(row.enabled) === 1,
-    providerId: String(row.provider_id),
+    providerId: row.provider_id ? String(row.provider_id) : null,
     workspaceConfig: normalizeWorkspaceConfig(parseJsonObject(row.workspace_config)),
     skillsConfig: parseJsonObject(row.skills_config),
     mcpConfig: parseJsonBooleanMap(row.mcp_config),
@@ -151,6 +159,32 @@ export class AssistantsRepository {
     }
 
     return parseAssistantRow(row as Record<string, unknown>)
+  }
+
+  async findBuiltInDefault(): Promise<AppAssistant | null> {
+    const assistants = await this.list()
+    return (
+      assistants.find((assistant) => assistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] === true) ??
+      null
+    )
+  }
+
+  async findWorkspaceDefaultByRootPath(rootPath: string): Promise<AppAssistant | null> {
+    const normalizedRootPath = normalizeWorkspaceRootPath(rootPath)
+    if (!normalizedRootPath) {
+      return null
+    }
+
+    const assistants = await this.list()
+    return (
+      assistants.find((assistant) => {
+        if (assistant.mcpConfig[WORKSPACE_DEFAULT_AGENT_MCP_KEY] !== true) {
+          return false
+        }
+
+        return normalizeWorkspaceRootPath(assistant.workspaceConfig.rootPath) === normalizedRootPath
+      }) ?? null
+    )
   }
 
   async countByProviderId(providerId: string): Promise<number> {

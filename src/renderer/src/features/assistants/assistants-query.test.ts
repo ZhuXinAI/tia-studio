@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { deleteAssistant } from './assistants-query'
+import { listAssistants } from './assistants-query'
 
 describe('assistants query api client', () => {
   beforeEach(() => {
@@ -15,21 +15,29 @@ describe('assistants query api client', () => {
     }
   })
 
-  it('deletes assistant through backend api', async () => {
+  it('lists assistants through backend api', async () => {
     const fetchSpy = vi.fn(
       async () =>
-        new Response(null, {
-          status: 204
-        })
+        Response.json([
+          {
+            id: 'assistant-1',
+            name: 'Workspace Agent'
+          }
+        ])
     )
     vi.stubGlobal('fetch', fetchSpy)
 
-    await deleteAssistant('assistant-1')
+    await expect(listAssistants()).resolves.toEqual([
+      expect.objectContaining({
+        id: 'assistant-1',
+        name: 'Workspace Agent'
+      })
+    ])
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      'http://127.0.0.1:4769/v1/assistants/assistant-1',
+      'http://127.0.0.1:4769/v1/assistants',
       expect.objectContaining({
-        method: 'DELETE',
+        method: 'GET',
         headers: expect.objectContaining({
           Authorization: 'Bearer test-token'
         })

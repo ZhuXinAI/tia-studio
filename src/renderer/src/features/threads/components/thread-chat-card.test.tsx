@@ -60,94 +60,93 @@ vi.mock('@assistant-ui/react', () => {
 
 import { ThreadChatCard } from './thread-chat-card'
 
+function createDefaultProps() {
+  return {
+    chatLabel: 'Chats',
+    selectedWorkspace: {
+      id: 'workspace-chats',
+      name: 'Chats',
+      rootPath: '/tmp/chats',
+      builtInKind: 'chats' as const,
+      defaultAssistantId: 'assistant-1',
+      isMissing: false
+    },
+    workspaces: [
+      {
+        id: 'workspace-chats',
+        name: 'Chats',
+        rootPath: '/tmp/chats',
+        builtInKind: 'chats' as const,
+        defaultAssistantId: 'assistant-1',
+        isMissing: false
+      }
+    ],
+    providers: [
+      {
+        id: 'provider-1',
+        name: 'OpenAI',
+        type: 'openai' as const,
+        apiKey: 'secret',
+        apiHost: 'https://api.openai.com/v1',
+        selectedModel: 'gpt-5',
+        providerModels: null,
+        enabled: true,
+        supportsVision: true,
+        isBuiltIn: false,
+        icon: null,
+        officialSite: null,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z'
+      }
+    ],
+    isNewThreadRoute: false,
+    draftProviderId: 'provider-1',
+    draftModel: 'gpt-5',
+    selectedAssistant: {
+      id: 'assistant-1',
+      name: 'Planner',
+      description: '',
+      instructions: 'Keep plans concise.',
+      enabled: true,
+      providerId: 'provider-1',
+      workspaceConfig: { rootPath: '/tmp/workspace' },
+      skillsConfig: {},
+      mcpConfig: {},
+      maxSteps: 100,
+      memoryConfig: null,
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-01T00:00:00.000Z'
+    },
+    chat: {} as UseChatHelpers<UIMessage>,
+    readiness: { canChat: true, checks: [] },
+    isLoadingChatHistory: false,
+    isChatStreaming: false,
+    chatError: null,
+    loadError: null,
+    canAbortGeneration: false,
+    supportsVision: true,
+    tokenUsage: null,
+    onSubmitMessage: async () => undefined,
+    onAbortGeneration: () => undefined,
+    onCreateThread: () => undefined,
+    onSelectDraftWorkspace: () => undefined,
+    onDraftProviderChange: () => undefined,
+    onDraftModelChange: () => undefined,
+    onRelocateWorkspace: () => undefined,
+    onDeleteWorkspace: () => undefined,
+    isRelocatingWorkspace: false,
+    isDeletingWorkspace: false
+  }
+}
+
 describe('ThreadChatCard', () => {
-  it('shows a built-in browser handoff banner when the browser handoff tool is waiting', () => {
-    mockThreadMessages.length = 0
-    mockThreadMessages.push({
-      id: 'msg-assistant-1',
-      role: 'assistant',
-      parts: [
-        {
-          type: 'tool-requestBrowserHumanHandoff',
-          toolCallId: 'tool-handoff-1',
-          state: 'input-available',
-          input: {
-            message: 'Finish signing in before the agent resumes.'
-          }
-        }
-      ]
-    })
-
-    const html = renderToString(
-      <ThreadChatCard
-        selectedAssistant={{
-          id: 'assistant-1',
-          name: 'Planner',
-          description: '',
-          instructions: 'Keep plans concise.',
-          enabled: true,
-          providerId: 'provider-1',
-          workspaceConfig: { rootPath: '/tmp/workspace' },
-          skillsConfig: {},
-          mcpConfig: {},
-          maxSteps: 100,
-          memoryConfig: null,
-          createdAt: '2026-03-01T00:00:00.000Z',
-          updatedAt: '2026-03-01T00:00:00.000Z'
-        }}
-        selectedThread={{
-          id: 'thread-1',
-          assistantId: 'assistant-1',
-          resourceId: 'default-profile',
-          title: 'Thread title',
-          lastMessageAt: '2026-03-01T00:00:00.000Z',
-          createdAt: '2026-03-01T00:00:00.000Z',
-          updatedAt: '2026-03-01T00:00:00.000Z'
-        }}
-        chat={{} as UseChatHelpers<UIMessage>}
-        readiness={{ canChat: true, checks: [] }}
-        isLoadingChatHistory={false}
-        isChatStreaming={true}
-        chatError={null}
-        loadError={null}
-        canAbortGeneration
-        supportsVision
-        tokenUsage={null}
-        onSubmitMessage={async () => undefined}
-        onAbortGeneration={() => undefined}
-        onOpenAssistantConfig={() => undefined}
-        onOpenHeartbeatMonitor={() => undefined}
-        onOpenCronMonitor={() => undefined}
-        onCreateThread={() => undefined}
-      />
-    )
-
-    expect(html).toContain('Human action needed in the built-in browser')
-    expect(html).toContain('Finish signing in before the agent resumes.')
-    expect(html).toContain('Show browser again')
-  })
-
   it('keeps the header compact, single-line, and shows the selected assistant name', () => {
     mockThreadMessages.length = 0
     useAISDKRuntimeMock.mockClear()
 
     const html = renderToString(
       <ThreadChatCard
-        selectedAssistant={{
-          id: 'assistant-1',
-          name: 'Planner',
-          description: '',
-          instructions: 'Keep plans concise.',
-          enabled: true,
-          providerId: 'provider-1',
-          workspaceConfig: { rootPath: '/tmp/workspace' },
-          skillsConfig: {},
-          mcpConfig: {},
-          maxSteps: 100,
-          memoryConfig: null,
-          createdAt: '2026-03-01T00:00:00.000Z',
-          updatedAt: '2026-03-01T00:00:00.000Z'
-        }}
+        {...createDefaultProps()}
         selectedThread={{
           id: 'thread-1',
           assistantId: 'assistant-1',
@@ -157,52 +156,22 @@ describe('ThreadChatCard', () => {
           createdAt: '2026-03-01T00:00:00.000Z',
           updatedAt: '2026-03-01T00:00:00.000Z'
         }}
-        chat={{} as UseChatHelpers<UIMessage>}
-        readiness={{ canChat: true, checks: [] }}
-        isLoadingChatHistory={false}
-        isChatStreaming={false}
-        chatError={null}
-        loadError={null}
-        canAbortGeneration={false}
-        supportsVision
-        tokenUsage={null}
-        onSubmitMessage={async () => undefined}
-        onAbortGeneration={() => undefined}
-        onOpenAssistantConfig={() => undefined}
-        onOpenHeartbeatMonitor={() => undefined}
-        onOpenCronMonitor={() => undefined}
-        onCreateThread={() => undefined}
       />
     )
 
     expect(useAISDKRuntimeMock).toHaveBeenCalledTimes(1)
-    expect(html).toContain('rounded-none border-t-0')
+    expect(html).toContain('rounded-none border-0')
     expect(html).toContain('flex-nowrap items-center')
-    expect(html).toContain('border-b border-border/70 py-2')
-    expect(html).toContain('Heartbeat')
-    expect(html).toContain('Cron')
-    expect(html).toContain('Configure')
+    expect(html).toContain('Conversation canvas')
+    expect(html).toContain('font-editorial')
+    expect(html).toContain('New thread')
   })
 
   it('shows a remote channel badge when the thread is bound to a channel chat', () => {
     mockThreadMessages.length = 0
     const html = renderToString(
       <ThreadChatCard
-        selectedAssistant={{
-          id: 'assistant-1',
-          name: 'Planner',
-          description: '',
-          instructions: 'Keep plans concise.',
-          enabled: true,
-          providerId: 'provider-1',
-          workspaceConfig: { rootPath: '/tmp/workspace' },
-          skillsConfig: {},
-          mcpConfig: {},
-          maxSteps: 100,
-          memoryConfig: null,
-          createdAt: '2026-03-01T00:00:00.000Z',
-          updatedAt: '2026-03-01T00:00:00.000Z'
-        }}
+        {...createDefaultProps()}
         selectedThread={{
           id: 'thread-1',
           assistantId: 'assistant-1',
@@ -217,21 +186,6 @@ describe('ThreadChatCard', () => {
             createdAt: '2026-03-01T00:00:00.000Z'
           }
         }}
-        chat={{} as UseChatHelpers<UIMessage>}
-        readiness={{ canChat: true, checks: [] }}
-        isLoadingChatHistory={false}
-        isChatStreaming={false}
-        chatError={null}
-        loadError={null}
-        canAbortGeneration={false}
-        supportsVision
-        tokenUsage={null}
-        onSubmitMessage={async () => undefined}
-        onAbortGeneration={() => undefined}
-        onOpenAssistantConfig={() => undefined}
-        onOpenHeartbeatMonitor={() => undefined}
-        onOpenCronMonitor={() => undefined}
-        onCreateThread={() => undefined}
       />
     )
 
@@ -242,21 +196,7 @@ describe('ThreadChatCard', () => {
     mockThreadMessages.length = 0
     const html = renderToString(
       <ThreadChatCard
-        selectedAssistant={{
-          id: 'assistant-1',
-          name: 'Planner',
-          description: '',
-          instructions: 'Keep plans concise.',
-          enabled: true,
-          providerId: 'provider-1',
-          workspaceConfig: { rootPath: '/tmp/workspace' },
-          skillsConfig: {},
-          mcpConfig: {},
-          maxSteps: 100,
-          memoryConfig: null,
-          createdAt: '2026-03-01T00:00:00.000Z',
-          updatedAt: '2026-03-01T00:00:00.000Z'
-        }}
+        {...createDefaultProps()}
         selectedThread={{
           id: 'thread-1',
           assistantId: 'assistant-1',
@@ -274,14 +214,6 @@ describe('ThreadChatCard', () => {
             cachedInputTokens: 18
           }
         }}
-        chat={{} as UseChatHelpers<UIMessage>}
-        readiness={{ canChat: true, checks: [] }}
-        isLoadingChatHistory={false}
-        isChatStreaming={false}
-        chatError={null}
-        loadError={null}
-        canAbortGeneration={false}
-        supportsVision
         tokenUsage={{
           assistantMessageCount: 2,
           inputTokens: 120,
@@ -290,12 +222,6 @@ describe('ThreadChatCard', () => {
           reasoningTokens: 9,
           cachedInputTokens: 18
         }}
-        onSubmitMessage={async () => undefined}
-        onAbortGeneration={() => undefined}
-        onOpenAssistantConfig={() => undefined}
-        onOpenHeartbeatMonitor={() => undefined}
-        onOpenCronMonitor={() => undefined}
-        onCreateThread={() => undefined}
       />
     )
 
@@ -311,21 +237,7 @@ describe('ThreadChatCard', () => {
 
     const html = renderToString(
       <ThreadChatCard
-        selectedAssistant={{
-          id: 'assistant-1',
-          name: 'Planner',
-          description: '',
-          instructions: 'Keep plans concise.',
-          enabled: true,
-          providerId: 'provider-1',
-          workspaceConfig: { rootPath: '/tmp/workspace' },
-          skillsConfig: {},
-          mcpConfig: {},
-          maxSteps: 100,
-          memoryConfig: null,
-          createdAt: '2026-03-01T00:00:00.000Z',
-          updatedAt: '2026-03-01T00:00:00.000Z'
-        }}
+        {...createDefaultProps()}
         selectedThread={{
           id: 'thread-1',
           assistantId: 'assistant-1',
@@ -335,21 +247,8 @@ describe('ThreadChatCard', () => {
           createdAt: '2026-03-01T00:00:00.000Z',
           updatedAt: '2026-03-01T00:00:00.000Z'
         }}
-        chat={{} as UseChatHelpers<UIMessage>}
-        readiness={{ canChat: true, checks: [] }}
-        isLoadingChatHistory={false}
         isChatStreaming={true}
-        chatError={null}
-        loadError={null}
         canAbortGeneration
-        supportsVision
-        tokenUsage={null}
-        onSubmitMessage={async () => undefined}
-        onAbortGeneration={() => undefined}
-        onOpenAssistantConfig={() => undefined}
-        onOpenHeartbeatMonitor={() => undefined}
-        onOpenCronMonitor={() => undefined}
-        onCreateThread={() => undefined}
       />
     )
 

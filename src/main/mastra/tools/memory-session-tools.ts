@@ -118,21 +118,23 @@ export function createMemorySessionTools(memory: MemoryCleanupStore) {
       message: z.string()
     }),
     execute: async ({ scope, threadId, confirm }, context) => {
+      const resolvedScope = scope ?? 'current-session'
+
       if (confirm === false || confirm === 'false' || confirm === 'False') {
         return response({
           success: false,
-          scope,
+          scope: resolvedScope,
           message: 'Refused cleanup. Re-run with confirm=true after explicit user approval.'
         })
       }
 
       const executionContext = resolveExecutionMemoryContext(context)
 
-      if (scope === 'all-sessions-for-user') {
+      if (resolvedScope === 'all-sessions-for-user') {
         if (!executionContext.resourceId) {
           return response({
             success: false,
-            scope,
+            scope: resolvedScope,
             message: 'Cannot identify the active user. Provide resource context before cleanup.'
           })
         }
@@ -147,7 +149,7 @@ export function createMemorySessionTools(memory: MemoryCleanupStore) {
         if (threads.length === 0) {
           return response({
             success: true,
-            scope,
+            scope: resolvedScope,
             message: 'No memory sessions were found for the active user.'
           })
         }
@@ -158,21 +160,21 @@ export function createMemorySessionTools(memory: MemoryCleanupStore) {
 
         return response({
           success: true,
-          scope,
+          scope: resolvedScope,
           deletedThreadIds: threads.map((thread) => thread.id),
           message: `Deleted ${threads.length} memory session(s) for the active user.`
         })
       }
 
       const targetThreadId =
-        scope === 'current-session' ? executionContext.threadId : threadId?.trim()
+        resolvedScope === 'current-session' ? executionContext.threadId : threadId?.trim()
 
       if (!targetThreadId) {
         return response({
           success: false,
-          scope,
+          scope: resolvedScope,
           message:
-            scope === 'specific-session'
+            resolvedScope === 'specific-session'
               ? 'Missing threadId for specific-session cleanup.'
               : 'Cannot resolve the current memory session thread.'
         })
@@ -187,7 +189,7 @@ export function createMemorySessionTools(memory: MemoryCleanupStore) {
       if (!deleted.ok) {
         return response({
           success: false,
-          scope,
+          scope: resolvedScope,
           message: deleted.message
         })
       }
@@ -195,14 +197,14 @@ export function createMemorySessionTools(memory: MemoryCleanupStore) {
       if (!deleted.deleted) {
         return response({
           success: true,
-          scope,
+          scope: resolvedScope,
           message: `Memory session ${targetThreadId} was already empty.`
         })
       }
 
       return response({
         success: true,
-        scope,
+        scope: resolvedScope,
         deletedThreadIds: [targetThreadId],
         message: `Deleted memory session ${targetThreadId}.`
       })

@@ -20,7 +20,6 @@ import { AutoUpdateService } from './auto-updater'
 import { resolveAvailableServerPort, resolveServerConfig } from './config/server-config'
 import { ensureBuiltInDefaultAgent } from './default-agent/default-agent-bootstrap'
 import { ensureBuiltInProviders } from './default-agent/built-in-providers-bootstrap'
-import { ensureBuiltInDefaultTeamWorkspace } from './default-team/default-team-bootstrap'
 import { logger } from './utils/logger'
 import { ChannelEventBus } from './channels/channel-event-bus'
 import { resolveGroupRequireMention } from './channels/channel-config'
@@ -31,29 +30,16 @@ import { ChannelService } from './channels/channel-service'
 import { TelegramChannel } from './channels/telegram-channel'
 import { WechatAuthStateStore } from './channels/wechat-auth-state-store'
 import { WechatChannel } from './channels/wechat-channel'
-import { WechatKfChannel } from './channels/wechat-kf-channel'
 import { WeComChannel } from './channels/wecom-channel'
 import { WhatsAppAuthStateStore } from './channels/whatsapp-auth-state-store'
 import { WhatsAppChannel } from './channels/whatsapp-channel'
-import { AssistantCronJobsService } from './cron/assistant-cron-jobs-service'
-import { NodeCronSchedulerService } from './cron/node-cron-scheduler-service'
-import { AssistantHeartbeatsService } from './heartbeat/assistant-heartbeats-service'
-import { HeartbeatSchedulerService } from './heartbeat/heartbeat-scheduler-service'
-import { BuiltInBrowserManager } from './built-in-browser-manager'
-import { BUILT_IN_BROWSER_REMOTE_DEBUGGING_PORT } from './built-in-browser-contract'
-import { TiaBrowserToolManager } from './tia-browser-tool-manager'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
 import { createMastraInstance } from './mastra/store'
-import { TeamRuntimeService } from './mastra/team-runtime'
 import { migrateAppSchema } from './persistence/migrate'
-import { AssistantHeartbeatRunsRepository } from './persistence/repos/assistant-heartbeat-runs-repo'
-import { AssistantHeartbeatsRepository } from './persistence/repos/assistant-heartbeats-repo'
 import { AssistantsRepository } from './persistence/repos/assistants-repo'
 import { ChannelPairingsRepository } from './persistence/repos/channel-pairings-repo'
 import { ChannelThreadBindingsRepository } from './persistence/repos/channel-thread-bindings-repo'
 import { ChannelsRepository } from './persistence/repos/channels-repo'
-import { CronJobRunsRepository } from './persistence/repos/cron-job-runs-repo'
-import { CronJobsRepository } from './persistence/repos/cron-jobs-repo'
 import {
   type ManagedRuntimeKind,
   ManagedRuntimesRepository
@@ -61,14 +47,16 @@ import {
 import { McpServersRepository } from './persistence/repos/mcp-servers-repo'
 import { ProvidersRepository } from './persistence/repos/providers-repo'
 import { SecuritySettingsRepository } from './persistence/repos/security-settings-repo'
-import { TeamThreadsRepository } from './persistence/repos/team-threads-repo'
-import { TeamWorkspacesRepository } from './persistence/repos/team-workspaces-repo'
 import { ThreadUsageRepository } from './persistence/repos/thread-usage-repo'
 import { ThreadsRepository } from './persistence/repos/threads-repo'
 import { runThreadUsageBackfill } from './persistence/thread-usage-backfill'
 import { WebSearchSettingsRepository } from './persistence/repos/web-search-settings-repo'
+import { WorkspaceRecordsRepository } from './persistence/repos/workspace-records-repo'
+import {
+  resolveBuiltInChatsWorkspacePath,
+  WorkspacesRepository
+} from './persistence/repos/workspaces-repo'
 import { ManagedRuntimeService } from './runtimes/managed-runtime-service'
-import { TeamRunStatusStore } from './server/chat/team-run-status-store'
 import { ThreadMessageEventsStore } from './server/chat/thread-message-events-store'
 import { createApp } from './server/create-app'
 import { registerSingleInstanceApp } from './single-instance'
@@ -109,10 +97,6 @@ let mainWindow: BrowserWindow | null = null
 let managedRuntimeService: ManagedRuntimeService | null = null
 let channelService: ChannelService | null = null
 let channelMessageRouter: ChannelMessageRouter | null = null
-let cronSchedulerService: NodeCronSchedulerService | null = null
-let heartbeatSchedulerService: HeartbeatSchedulerService | null = null
-let builtInBrowserManager: BuiltInBrowserManager | null = null
-let tiaBrowserToolManager: TiaBrowserToolManager | null = null
 let uiConfigStore: UiConfigStore | null = null
 
 function logAppLifecycle(eventName: string, data?: Record<string, unknown>): void {
@@ -186,54 +170,6 @@ async function syncManagedRuntimeProcessEnv(): Promise<void> {
   }
 }
 
-function resolveBuiltInBrowserManager(): BuiltInBrowserManager {
-  if (!builtInBrowserManager) {
-    builtInBrowserManager = new BuiltInBrowserManager({
-      executablePath: process.execPath,
-      entryPath: join(__dirname, 'built-in-browser.js'),
-      profileRootPath: join(app.getPath('userData'), 'built-in-browser-profiles'),
-      remoteDebuggingPort: BUILT_IN_BROWSER_REMOTE_DEBUGGING_PORT
-    })
-  }
-
-  return builtInBrowserManager
-}
-
-function resolveTiaBrowserToolManager(): TiaBrowserToolManager {
-  if (!tiaBrowserToolManager) {
-    tiaBrowserToolManager = new TiaBrowserToolManager()
-  }
-
-  return tiaBrowserToolManager
-}
-
-async function syncBuiltInBrowserVisibility(visible: boolean): Promise<void> {
-  const manager = resolveBuiltInBrowserManager()
-  if (visible) {
-    await manager.showWindow()
-    return
-  }
-
-  await manager.hideWindow()
-}
-
-async function syncTiaBrowserToolVisibility(visible: boolean): Promise<void> {
-  const manager = resolveTiaBrowserToolManager()
-  manager.setRuntimeOptions({
-    show: visible
-  })
-  if (!manager.isLaunched()) {
-    return
-  }
-
-  if (visible) {
-    await manager.showWindow()
-    return
-  }
-
-  await manager.hideWindow()
-}
-
 async function startLocalApiServer(): Promise<void> {
   if (localApiServer) {
     return
@@ -258,23 +194,20 @@ async function startLocalApiServer(): Promise<void> {
   const providersRepo = new ProvidersRepository(db)
   const assistantsRepo = new AssistantsRepository(db)
   const threadsRepo = new ThreadsRepository(db)
+  const workspaceRecordsRepo = new WorkspaceRecordsRepository(db)
+  const workspacesRepo = new WorkspacesRepository({
+    assistantsRepo,
+    workspaceRecordsRepo,
+    threadsRepo,
+    builtInChatsRootPath: resolveBuiltInChatsWorkspacePath(app.getPath('userData'))
+  })
   const channelsRepo = new ChannelsRepository(db)
   const channelPairingsRepo = new ChannelPairingsRepository(db)
-  const cronJobRunsRepo = new CronJobRunsRepository(db)
-  const cronJobsRepo = new CronJobsRepository(db)
-  const heartbeatsRepo = new AssistantHeartbeatsRepository(db)
-  const heartbeatRunsRepo = new AssistantHeartbeatRunsRepository(db)
   const channelThreadBindingsRepo = new ChannelThreadBindingsRepository(db)
-  const teamWorkspacesRepo = new TeamWorkspacesRepository(db)
-  const teamThreadsRepo = new TeamThreadsRepository(db)
   const webSearchSettingsRepo = new WebSearchSettingsRepository(db)
   const securitySettingsRepo = new SecuritySettingsRepository(db)
   const threadUsageRepo = new ThreadUsageRepository(db)
   const mcpServersRepo = new McpServersRepository(join(app.getPath('userData'), 'mcp.json'))
-  const initialTiaBrowserToolVisible = await webSearchSettingsRepo.getShowTiaBrowserTool()
-  void syncTiaBrowserToolVisibility(initialTiaBrowserToolVisible).catch((error) => {
-    logger.error('[TiaBrowserTool] failed to apply initial visibility preference:', error)
-  })
   const managedRuntimesRepo = new ManagedRuntimesRepository(
     join(app.getPath('userData'), 'managed-runtimes.json')
   )
@@ -284,32 +217,15 @@ async function startLocalApiServer(): Promise<void> {
   })
   await syncManagedRuntimeProcessEnv()
   await ensureBuiltInProviders(providersRepo)
+  await workspacesRepo.ensureBuiltInChatsWorkspace()
   await ensureBuiltInDefaultAgent({
     assistantsRepo,
-    providersRepo,
-    userDataPath: app.getPath('userData')
-  })
-  await ensureBuiltInDefaultTeamWorkspace({
-    teamWorkspacesRepo,
     providersRepo,
     userDataPath: app.getPath('userData')
   })
   const channelEventBus = new ChannelEventBus()
   const whatsAppAuthStateStore = new WhatsAppAuthStateStore()
   const wechatAuthStateStore = new WechatAuthStateStore()
-  const assistantCronJobsService = new AssistantCronJobsService({
-    cronJobsRepo,
-    assistantsRepo,
-    threadsRepo,
-    channelThreadBindingsRepo,
-    reloadScheduler: async () => cronSchedulerService?.reload()
-  })
-  const assistantHeartbeatsService = new AssistantHeartbeatsService({
-    heartbeatsRepo,
-    assistantsRepo,
-    threadsRepo,
-    reloadScheduler: async () => heartbeatSchedulerService?.reload()
-  })
   const mastraDbPath = join(app.getPath('userData'), 'mastra.db')
   const mastra = await createMastraInstance(mastraDbPath)
   await runThreadUsageBackfill({
@@ -332,21 +248,7 @@ async function startLocalApiServer(): Promise<void> {
     channelEventBus,
     threadMessageEventsStore,
     threadUsageRepo,
-    cronJobService: assistantCronJobsService,
     managedRuntimeResolver: managedRuntimeService,
-    builtInBrowserManager: resolveBuiltInBrowserManager(),
-    tiaBrowserToolManager: resolveTiaBrowserToolManager(),
-    acpHomeRootPath
-  })
-  const teamRunStatusStore = new TeamRunStatusStore()
-  const teamRuntime = new TeamRuntimeService({
-    mastra,
-    assistantsRepo,
-    providersRepo,
-    teamWorkspacesRepo,
-    teamThreadsRepo,
-    statusStore: teamRunStatusStore,
-    builtInBrowserManager: resolveBuiltInBrowserManager(),
     acpHomeRootPath
   })
   channelService = new ChannelService({
@@ -428,27 +330,6 @@ async function startLocalApiServer(): Promise<void> {
           }
         })
       },
-      'wechat-kf': async (channel) => {
-        const serverUrl = channel.config.serverUrl
-        if (typeof serverUrl !== 'string' || serverUrl.trim().length === 0) {
-          throw new Error(`Channel ${channel.id} is missing required config: serverUrl`)
-        }
-
-        const serverKey = channel.config.serverKey
-        if (typeof serverKey !== 'string' || serverKey.trim().length === 0) {
-          throw new Error(`Channel ${channel.id} is missing required config: serverKey`)
-        }
-
-        return new WechatKfChannel({
-          id: channel.id,
-          serverUrl,
-          serverKey,
-          onFatalError: async (error) => {
-            const message = error instanceof Error ? error.message : 'Unknown error'
-            await channelsRepo.setLastError(channel.id, message)
-          }
-        })
-      },
       whatsapp: async (channel) => {
         return new WhatsAppChannel({
           id: channel.id,
@@ -469,6 +350,7 @@ async function startLocalApiServer(): Promise<void> {
     channelsRepo,
     bindingsRepo: channelThreadBindingsRepo,
     threadsRepo,
+    workspacesRepo,
     assistantRuntime,
     interruptionDecider: createLlmInterruptionDecider({
       assistantsRepo,
@@ -477,61 +359,6 @@ async function startLocalApiServer(): Promise<void> {
     resolveToolProgressLocale: () => resolveUiConfigStore().getConfig().language ?? app.getLocale(),
     threadMessageEventsStore
   })
-  cronSchedulerService = new NodeCronSchedulerService({
-    cronJobsRepo,
-    cronJobRunsRepo,
-    assistantsRepo,
-    runJob: async (job) => {
-      let threadId = job.threadId
-
-      // If cron job has channel context, look up the thread from the channel binding
-      if (job.channelId && job.remoteChatId) {
-        const binding = await channelThreadBindingsRepo.getByChannelAndRemoteChat(
-          job.channelId,
-          job.remoteChatId
-        )
-        if (binding) {
-          threadId = binding.threadId
-        } else {
-          throw new Error(
-            `Channel binding not found for channelId=${job.channelId}, remoteChatId=${job.remoteChatId}`
-          )
-        }
-      }
-
-      if (!threadId) {
-        throw new Error('Cron job thread is missing')
-      }
-
-      return assistantRuntime.runCronJob({
-        assistantId: job.assistantId,
-        threadId,
-        prompt: job.prompt,
-        channelId: job.channelId ?? undefined,
-        remoteChatId: job.remoteChatId ?? undefined
-      })
-    }
-  })
-  heartbeatSchedulerService = new HeartbeatSchedulerService({
-    heartbeatsRepo,
-    heartbeatRunsRepo,
-    assistantsRepo,
-    debugMode: process.env.HEARTBEAT_DEBUG === 'true',
-    ensureHeartbeatThread: (assistantId, heartbeatId) =>
-      assistantHeartbeatsService.ensureHeartbeatThread(assistantId, heartbeatId),
-    runHeartbeat: async (heartbeat) => {
-      if (!heartbeat.threadId) {
-        throw new Error('Heartbeat thread is missing')
-      }
-
-      return assistantRuntime.runHeartbeat({
-        assistantId: heartbeat.assistantId,
-        threadId: heartbeat.threadId,
-        prompt: heartbeat.prompt,
-        intervalMinutes: heartbeat.intervalMinutes
-      })
-    }
-  })
 
   const apiApp = createApp({
     token: serverConfig.token,
@@ -539,23 +366,16 @@ async function startLocalApiServer(): Promise<void> {
       providers: providersRepo,
       assistants: assistantsRepo,
       threads: threadsRepo,
+      workspaces: workspacesRepo,
       channels: channelsRepo,
       pairings: channelPairingsRepo,
       channelThreadBindings: channelThreadBindingsRepo,
-      cronJobs: cronJobsRepo,
-      cronJobRuns: cronJobRunsRepo,
-      heartbeats: heartbeatsRepo,
-      heartbeatRuns: heartbeatRunsRepo,
-      teamWorkspaces: teamWorkspacesRepo,
-      teamThreads: teamThreadsRepo,
       webSearchSettings: webSearchSettingsRepo,
       securitySettings: securitySettingsRepo,
       mcpServers: mcpServersRepo,
       threadUsage: threadUsageRepo
     },
     assistantRuntime,
-    teamRuntime,
-    teamRunStatusStore,
     threadMessageEventsStore,
     channelService,
     channelSetupRecovery: {
@@ -578,24 +398,8 @@ async function startLocalApiServer(): Promise<void> {
         }
       }
     },
-    cronSchedulerService,
-    heartbeatSchedulerService,
     whatsAppAuthStateStore,
-    wechatAuthStateStore,
-    onShowBuiltInBrowserChange: async (show) => {
-      await syncBuiltInBrowserVisibility(show)
-    },
-    onShowTiaBrowserToolChange: async (show) => {
-      await syncTiaBrowserToolVisibility(show)
-    },
-    onShowBuiltInBrowserWindow: async () => {
-      await resolveBuiltInBrowserManager().showWindow()
-    }
-  })
-
-  const initialBuiltInBrowserVisible = await webSearchSettingsRepo.getShowBuiltInBrowser()
-  void syncBuiltInBrowserVisibility(initialBuiltInBrowserVisible).catch((error) => {
-    logger.error('[BuiltInBrowser] failed to apply initial visibility preference:', error)
+    wechatAuthStateStore
   })
 
   localApiServer = serve(
@@ -616,8 +420,6 @@ async function startLocalApiServer(): Promise<void> {
 
   await channelMessageRouter.start()
   await channelService.start()
-  await cronSchedulerService.start()
-  await heartbeatSchedulerService.start()
 }
 
 function stopLocalApiServer(): void {
@@ -629,16 +431,6 @@ function stopLocalApiServer(): void {
   if (channelMessageRouter) {
     void channelMessageRouter.stop()
     channelMessageRouter = null
-  }
-
-  if (cronSchedulerService) {
-    void cronSchedulerService.stop()
-    cronSchedulerService = null
-  }
-
-  if (heartbeatSchedulerService) {
-    void heartbeatSchedulerService.stop()
-    heartbeatSchedulerService = null
   }
 
   if (!localApiServer) {
@@ -960,8 +752,6 @@ app.on('before-quit', () => {
     appTray.destroy()
     appTray = null
   }
-  builtInBrowserManager?.shutdown()
-  tiaBrowserToolManager?.shutdown()
   stopLocalApiServer()
 })
 

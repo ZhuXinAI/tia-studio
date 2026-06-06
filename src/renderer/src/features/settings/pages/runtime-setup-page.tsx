@@ -97,10 +97,13 @@ export function RuntimeSetupPage(): React.JSX.Element {
   }
 
   return (
-    <div className="py-4 flex flex-col gap-4">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{t('settings.runtime.title')}</h1>
-        <p className="text-muted-foreground text-sm">{t('settings.runtime.description')}</p>
+    <div className="flex flex-col gap-6 py-8">
+      <header className="space-y-3 border-b border-[color:var(--surface-border)] pb-5">
+        <p className="section-kicker">Managed runtimes</p>
+        <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
+          {t('settings.runtime.title')}
+        </h1>
+        <p className="max-w-3xl text-sm text-muted-foreground">{t('settings.runtime.description')}</p>
       </header>
 
       <div className="grid gap-4 xl:grid-cols-2">
@@ -108,9 +111,12 @@ export function RuntimeSetupPage(): React.JSX.Element {
           const runtime = state[kind]
 
           return (
-            <Card key={kind}>
+            <Card
+              key={kind}
+              className="border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_78%,transparent))]"
+            >
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 lowercase">
+                <CardTitle className="flex items-center gap-2 font-editorial text-[1.45rem] leading-none tracking-[-0.025em] lowercase">
                   <Wrench className="size-4" />
                   {kind}
                 </CardTitle>
@@ -123,7 +129,7 @@ export function RuntimeSetupPage(): React.JSX.Element {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="space-y-1 rounded-xl border border-border/70 bg-card/60 px-4 py-3 text-sm">
+                <div className="space-y-1 rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-3 text-sm shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_46%,transparent)]">
                   <p>
                     <span className="font-medium">{t('settings.runtime.labels.status')}</span>{' '}
                     {runtime.status}

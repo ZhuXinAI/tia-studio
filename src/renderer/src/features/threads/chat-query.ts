@@ -2,19 +2,16 @@ import { DefaultChatTransport, type UIMessage } from 'ai'
 import { getDesktopConfig } from '../../lib/desktop-config'
 
 type ThreadChatTransportInput = {
-  assistantId: string
   threadId: string
   profileId: string
 }
 
 type ThreadChatHistoryInput = {
-  assistantId: string
   threadId: string
   profileId: string
 }
 
 type RunThreadCommandInput = {
-  assistantId: string
   threadId: string
   profileId: string
   text: string
@@ -57,7 +54,7 @@ export type ThreadMessageEvent = {
   assistantId: string
   threadId: string
   profileId: string
-  source: 'channel' | 'cron' | 'heartbeat' | 'command'
+  source: 'channel' | 'command'
   createdAt: string
 }
 
@@ -125,7 +122,7 @@ export async function listThreadChatMessages(input: ThreadChatHistoryInput): Pro
     threadId: input.threadId,
     profileId: input.profileId
   })
-  const response = await chatFetch(`/chat/${input.assistantId}/history?${params.toString()}`, {
+  const response = await chatFetch(`/chat/history?${params.toString()}`, {
     method: 'GET'
   })
 
@@ -139,7 +136,7 @@ export async function listThreadChatMessages(input: ThreadChatHistoryInput): Pro
 
 export async function runThreadCommand(input: RunThreadCommandInput): Promise<ThreadCommandResult> {
   const chatFetch = createDesktopChatFetch()
-  const response = await chatFetch(`/chat/${input.assistantId}/commands`, {
+  const response = await chatFetch('/chat/commands', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -163,7 +160,7 @@ export function createThreadChatTransport(
   input: ThreadChatTransportInput
 ): DefaultChatTransport<UIMessage> {
   return new DefaultChatTransport<UIMessage>({
-    api: `/chat/${input.assistantId}`,
+    api: '/chat',
     body: {
       threadId: input.threadId,
       profileId: input.profileId

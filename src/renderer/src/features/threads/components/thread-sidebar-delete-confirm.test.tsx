@@ -49,6 +49,7 @@ describe('ThreadSidebar delete confirmation', () => {
       root.render(
         <MemoryRouter>
           <ThreadSidebar
+            chatLabel="Chats"
             branches={[
               {
                 assistantId: 'assistant-1',

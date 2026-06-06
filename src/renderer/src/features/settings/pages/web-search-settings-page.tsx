@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Button } from '../../../components/ui/button'
 import {
   Card,
   CardContent,
@@ -11,7 +10,6 @@ import {
 import { Switch } from '../../../components/ui/switch'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import {
-  type BrowserAutomationMode,
   getWebSearchSettings,
   updateWebSearchSettings,
   type WebSearchSettings
@@ -33,7 +31,7 @@ function SettingsSwitchRow({
   onCheckedChange
 }: SettingsSwitchRowProps): React.JSX.Element {
   return (
-    <div className="flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-card/60 px-4 py-3">
+    <div className="flex items-start justify-between gap-3 rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-3 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_46%,transparent)]">
       <div className="space-y-1 flex-1">
         <h2 className="text-base font-medium">{title}</h2>
         <p className="text-muted-foreground text-sm">{description}</p>
@@ -47,12 +45,8 @@ export function WebSearchSettingsPage(): React.JSX.Element {
   const { t } = useTranslation()
   const [settings, setSettings] = useState<WebSearchSettings | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [savingBrowserAutomationMode, setSavingBrowserAutomationMode] =
-    useState<BrowserAutomationMode | null>(null)
   const [isSavingKeepBrowserWindowOpen, setIsSavingKeepBrowserWindowOpen] = useState(false)
   const [isSavingShowBrowser, setIsSavingShowBrowser] = useState(false)
-  const [isSavingShowBuiltInBrowser, setIsSavingShowBuiltInBrowser] = useState(false)
-  const [isSavingShowTiaBrowserTool, setIsSavingShowTiaBrowserTool] = useState(false)
 
   const toErrorMessage = useCallback(
     (error: unknown): string => {
@@ -83,12 +77,7 @@ export function WebSearchSettingsPage(): React.JSX.Element {
     void loadSettings()
   }, [loadSettings])
 
-  const isSavingAnySetting =
-    Boolean(savingBrowserAutomationMode) ||
-    isSavingKeepBrowserWindowOpen ||
-    isSavingShowBrowser ||
-    isSavingShowBuiltInBrowser ||
-    isSavingShowTiaBrowserTool
+  const isSavingAnySetting = isSavingKeepBrowserWindowOpen || isSavingShowBrowser
 
   const setKeepBrowserWindowOpen = async (keepBrowserWindowOpen: boolean): Promise<void> => {
     if (!settings || settings.keepBrowserWindowOpen === keepBrowserWindowOpen) {
@@ -140,186 +129,39 @@ export function WebSearchSettingsPage(): React.JSX.Element {
     }
   }
 
-  const setShowBuiltInBrowser = async (showBuiltInBrowser: boolean): Promise<void> => {
-    if (!settings || settings.showBuiltInBrowser === showBuiltInBrowser) {
-      return
-    }
-
-    setIsSavingShowBuiltInBrowser(true)
-    try {
-      const nextSettings = await updateWebSearchSettings({
-        showBuiltInBrowser
-      })
-      setSettings(nextSettings)
-      toast.success(
-        t('settings.webSearch.toasts.builtInBrowserVisibility', {
-          state: showBuiltInBrowser
-            ? t('settings.webSearch.toasts.windowVisible')
-            : t('settings.webSearch.toasts.windowHidden')
-        })
-      )
-    } catch (error) {
-      toast.error(toErrorMessage(error))
-    } finally {
-      setIsSavingShowBuiltInBrowser(false)
-    }
-  }
-
-  const setShowTiaBrowserTool = async (showTiaBrowserTool: boolean): Promise<void> => {
-    if (!settings || settings.showTiaBrowserTool === showTiaBrowserTool) {
-      return
-    }
-
-    setIsSavingShowTiaBrowserTool(true)
-    try {
-      const nextSettings = await updateWebSearchSettings({
-        showTiaBrowserTool
-      })
-      setSettings(nextSettings)
-      toast.success(
-        t('settings.webSearch.toasts.tiaBrowserToolVisibility', {
-          state: showTiaBrowserTool
-            ? t('settings.webSearch.toasts.windowVisible')
-            : t('settings.webSearch.toasts.windowHidden')
-        })
-      )
-    } catch (error) {
-      toast.error(toErrorMessage(error))
-    } finally {
-      setIsSavingShowTiaBrowserTool(false)
-    }
-  }
-
-  const setBrowserAutomationMode = async (
-    browserAutomationMode: BrowserAutomationMode
-  ): Promise<void> => {
-    if (!settings || settings.browserAutomationMode === browserAutomationMode) {
-      return
-    }
-
-    setSavingBrowserAutomationMode(browserAutomationMode)
-    try {
-      const nextSettings = await updateWebSearchSettings({
-        browserAutomationMode
-      })
-      setSettings(nextSettings)
-      toast.success(
-        t('settings.webSearch.toasts.browserAutomationModeUpdated', {
-          mode:
-            browserAutomationMode === 'tia-browser-tool'
-              ? t('settings.webSearch.browserAutomation.modeTiaBrowserToolLabel')
-              : t('settings.webSearch.browserAutomation.modeBuiltInBrowserLabel')
-        })
-      )
-    } catch (error) {
-      toast.error(toErrorMessage(error))
-    } finally {
-      setSavingBrowserAutomationMode(null)
-    }
-  }
-
-  const browserAutomationDescription =
-    settings?.browserAutomationMode === 'tia-browser-tool'
-      ? t('settings.webSearch.browserAutomation.modeTiaBrowserToolDescription')
-      : t('settings.webSearch.browserAutomation.modeBuiltInBrowserDescription')
-
   return (
-    <div className="py-4 flex flex-col gap-4">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{t('settings.webSearch.title')}</h1>
-        <p className="text-muted-foreground text-sm">{t('settings.webSearch.description')}</p>
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 py-8">
+      <header className="space-y-3 border-b border-[color:var(--surface-border)] pb-5">
+        <p className="section-kicker">External tool browsing</p>
+        <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
+          {t('settings.webSearch.title')}
+        </h1>
+        <p className="max-w-3xl text-sm text-muted-foreground">{t('settings.webSearch.description')}</p>
       </header>
 
-      <Card>
+      <Card className="border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_78%,transparent))]">
         <CardHeader className="pb-3">
-          <CardTitle>{t('settings.webSearch.browserAutomation.title')}</CardTitle>
+          <p className="section-kicker">Mode</p>
+          <CardTitle className="font-editorial text-[1.7rem] leading-none tracking-[-0.03em]">
+            {t('settings.webSearch.browserAutomation.title')}
+          </CardTitle>
           <CardDescription>{t('settings.webSearch.browserAutomation.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {isLoading ? (
-            <p className="text-muted-foreground text-sm">
-              {t('settings.webSearch.browserAutomation.loading')}
-            </p>
-          ) : (
-            <>
-              <div className="rounded-xl border border-border/70 bg-card/60 px-4 py-3">
-                <div className="space-y-1">
-                  <h2 className="text-base font-medium">
-                    {t('settings.webSearch.browserAutomation.modeTitle')}
-                  </h2>
-                  <p className="text-muted-foreground text-sm">{browserAutomationDescription}</p>
-                </div>
-                <div className="flex flex-wrap gap-2 pt-3">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={
-                      settings?.browserAutomationMode === 'tia-browser-tool'
-                        ? 'secondary'
-                        : 'outline'
-                    }
-                    disabled={!settings || isSavingAnySetting}
-                    onClick={() => {
-                      void setBrowserAutomationMode('tia-browser-tool')
-                    }}
-                  >
-                    {t('settings.webSearch.browserAutomation.modeTiaBrowserToolLabel')}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={
-                      settings?.browserAutomationMode === 'built-in-browser'
-                        ? 'secondary'
-                        : 'outline'
-                    }
-                    disabled={!settings || isSavingAnySetting}
-                    onClick={() => {
-                      void setBrowserAutomationMode('built-in-browser')
-                    }}
-                  >
-                    {t('settings.webSearch.browserAutomation.modeBuiltInBrowserLabel')}
-                  </Button>
-                </div>
-              </div>
-
-              {settings?.browserAutomationMode === 'tia-browser-tool' ? (
-                <SettingsSwitchRow
-                  title={t('settings.webSearch.browserAutomation.showTiaBrowserToolTitle')}
-                  description={
-                    settings.showTiaBrowserTool
-                      ? t('settings.webSearch.browserAutomation.showTiaBrowserToolVisible')
-                      : t('settings.webSearch.browserAutomation.showTiaBrowserToolHidden')
-                  }
-                  checked={settings.showTiaBrowserTool}
-                  disabled={!settings || isSavingAnySetting}
-                  onCheckedChange={(checked) => {
-                    void setShowTiaBrowserTool(checked)
-                  }}
-                />
-              ) : (
-                <SettingsSwitchRow
-                  title={t('settings.webSearch.browserAutomation.showBuiltInBrowserTitle')}
-                  description={
-                    settings?.showBuiltInBrowser
-                      ? t('settings.webSearch.browserAutomation.showBuiltInBrowserVisible')
-                      : t('settings.webSearch.browserAutomation.showBuiltInBrowserHidden')
-                  }
-                  checked={settings?.showBuiltInBrowser ?? false}
-                  disabled={!settings || isSavingAnySetting}
-                  onCheckedChange={(checked) => {
-                    void setShowBuiltInBrowser(checked)
-                  }}
-                />
-              )}
-            </>
-          )}
+          <p className="text-muted-foreground text-sm">
+            {isLoading
+              ? t('settings.webSearch.browserAutomation.loading')
+              : t('settings.webSearch.browserAutomation.modeExternalToolsDescription')}
+          </p>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] shadow-none">
         <CardHeader className="pb-3">
-          <CardTitle>{t('settings.webSearch.fetchWindow.title')}</CardTitle>
+          <p className="section-kicker">Fetch window</p>
+          <CardTitle className="font-editorial text-[1.7rem] leading-none tracking-[-0.03em]">
+            {t('settings.webSearch.fetchWindow.title')}
+          </CardTitle>
           <CardDescription>{t('settings.webSearch.fetchWindow.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">

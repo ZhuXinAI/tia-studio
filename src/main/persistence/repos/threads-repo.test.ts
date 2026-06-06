@@ -3,7 +3,7 @@ import type { AppDatabase } from '../client'
 import { migrateAppSchema } from '../migrate'
 import { AssistantsRepository } from './assistants-repo'
 import { ProvidersRepository } from './providers-repo'
-import { ThreadsRepository } from './threads-repo'
+import { readThreadProviderOverride, ThreadsRepository } from './threads-repo'
 
 describe('ThreadsRepository', () => {
   let db: AppDatabase
@@ -34,30 +34,20 @@ describe('ThreadsRepository', () => {
     db.close()
   })
 
-  it('filters heartbeat and cron system threads by default and includes them on demand', async () => {
+  it('filters hidden system threads by default and includes them on demand', async () => {
     const visibleThread = await repo.create({
       assistantId,
       resourceId: 'profile-default',
       title: 'Visible chat'
     })
-    const hiddenCronThread = await repo.create({
+    const hiddenSystemThread = await repo.create({
       assistantId,
       resourceId: 'profile-default',
-      title: 'Daily cron',
+      title: 'Background task',
       metadata: {
         system: true,
-        systemType: 'cron',
-        cronJobId: 'cron-job-1'
-      }
-    })
-    const hiddenHeartbeatThread = await repo.create({
-      assistantId,
-      resourceId: 'profile-default',
-      title: 'Heartbeat',
-      metadata: {
-        system: true,
-        systemType: 'heartbeat',
-        heartbeatId: 'heartbeat-1'
+        systemType: 'background',
+        taskId: 'task-1'
       }
     })
 
@@ -74,52 +64,15 @@ describe('ThreadsRepository', () => {
           id: visibleThread.id
         }),
         expect.objectContaining({
-          id: hiddenCronThread.id,
+          id: hiddenSystemThread.id,
           metadata: {
             system: true,
-            systemType: 'cron',
-            cronJobId: 'cron-job-1'
-          }
-        }),
-        expect.objectContaining({
-          id: hiddenHeartbeatThread.id,
-          metadata: {
-            system: true,
-            systemType: 'heartbeat',
-            heartbeatId: 'heartbeat-1'
+            systemType: 'background',
+            taskId: 'task-1'
           }
         })
       ])
     )
-  })
-
-  it('finds cron-owned hidden threads by cron job id for both system and legacy metadata', async () => {
-    const legacyCronThread = await repo.create({
-      assistantId,
-      resourceId: 'profile-default',
-      title: 'Legacy cron',
-      metadata: {
-        cron: true,
-        cronJobId: 'cron-job-legacy'
-      }
-    })
-    const systemCronThread = await repo.create({
-      assistantId,
-      resourceId: 'profile-default',
-      title: 'System cron',
-      metadata: {
-        system: true,
-        systemType: 'cron',
-        cronJobId: 'cron-job-system'
-      }
-    })
-
-    await expect(repo.findHiddenByCronJobId('cron-job-legacy')).resolves.toMatchObject({
-      id: legacyCronThread.id
-    })
-    await expect(repo.findHiddenByCronJobId('cron-job-system')).resolves.toMatchObject({
-      id: systemCronThread.id
-    })
   })
 
   it('checks if assistant has any threads', async () => {
@@ -145,5 +98,55 @@ describe('ThreadsRepository', () => {
     })
 
     await expect(repo.hasAnyThreads(newAssistant.id)).resolves.toBe(true)
+  })
+
+  it('lists threads by workspace metadata ownership', async () => {
+    await repo.create({
+      assistantId,
+      resourceId: 'profile-default',
+      title: 'Chats thread',
+      metadata: {
+        workspaceId: 'workspace-chats'
+      }
+    })
+    await repo.create({
+      assistantId,
+      resourceId: 'profile-default',
+      title: 'Other workspace thread',
+      metadata: {
+        workspaceId: 'workspace-other'
+      }
+    })
+
+    await expect(repo.listByWorkspace('workspace-chats')).resolves.toEqual([
+      expect.objectContaining({
+        title: 'Chats thread',
+        metadata: {
+          workspaceId: 'workspace-chats'
+        }
+      })
+    ])
+  })
+
+  it('reads provider overrides from thread metadata only when complete', () => {
+    expect(
+      readThreadProviderOverride({
+        providerOverride: {
+          providerId: 'provider-2',
+          model: 'gpt-5-mini'
+        }
+      })
+    ).toEqual({
+      providerId: 'provider-2',
+      model: 'gpt-5-mini'
+    })
+
+    expect(
+      readThreadProviderOverride({
+        providerOverride: {
+          providerId: 'provider-2'
+        }
+      })
+    ).toBeNull()
   })
 })

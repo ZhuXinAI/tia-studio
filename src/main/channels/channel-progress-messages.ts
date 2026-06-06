@@ -99,11 +99,8 @@ const channelInterruptionMessages: Record<UiLanguage, ChannelInterruptionMessage
 
 const toolNameOverrides: Record<string, string> = {
   webFetch: 'Web Fetch',
-  createCronJob: 'Create Reminder',
-  getRecentConversations: 'Get Recent Conversations',
   readSoulMemory: 'Read Soul Memory',
   readWorkLog: 'Read Work Log',
-  removeCronJob: 'Remove Reminder',
   searchWorkLogs: 'Search Work Logs',
   sendFile: 'Send File',
   sendImage: 'Send Image',

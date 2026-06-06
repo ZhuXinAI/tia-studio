@@ -8,8 +8,7 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          index: resolve('src/main/index.ts'),
-          'built-in-browser': resolve('src/main/built-in-browser.ts')
+          index: resolve('src/main/index.ts')
         },
         output: {
           entryFileNames: '[name].js'

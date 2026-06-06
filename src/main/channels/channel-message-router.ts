@@ -6,6 +6,7 @@ import { parseThreadSlashCommand } from '../chat/thread-slash-commands'
 import type { ChannelThreadBindingsRepository } from '../persistence/repos/channel-thread-bindings-repo'
 import type { ChannelsRepository } from '../persistence/repos/channels-repo'
 import type { ThreadsRepository } from '../persistence/repos/threads-repo'
+import type { WorkspacesRepository } from '../persistence/repos/workspaces-repo'
 import { ChannelEventBus } from './channel-event-bus'
 import {
   formatChannelInterruptionReply,
@@ -59,6 +60,7 @@ type ChannelMessageRouterOptions = {
   channelsRepo: Pick<ChannelsRepository, 'getById' | 'getRuntimeById'>
   bindingsRepo: ChannelThreadBindingsRepository
   threadsRepo: ThreadsRepository
+  workspacesRepo: Pick<WorkspacesRepository, 'ensureBuiltInChatsWorkspace'>
   assistantRuntime: AssistantRuntime
   resolveToolProgressLocale?: (() => string | null | undefined) | undefined
   threadMessageEventsStore?: {
@@ -90,7 +92,7 @@ const SOFT_QUEUE_PATTERNS = [
   /\b(also|after that|when done|later|next|follow[- ]?up)\b/i,
   /\b(additionally|in addition|by the way)\b/i
 ]
-const TOOL_PROGRESS_CHANNEL_BLACKLIST = new Set(['wechat-kf'])
+const TOOL_PROGRESS_CHANNEL_BLACKLIST = new Set<string>()
 const STOPPED_ACTIVE_RUN_REPLY = 'Stopped the current run.'
 const STOP_NO_ACTIVE_RUN_REPLY = 'There is no active run to stop right now.'
 
@@ -654,10 +656,14 @@ export class ChannelMessageRouter {
     assistantId: string
     remoteChatId: string
   }) {
+    const chatsWorkspace = await this.options.workspacesRepo.ensureBuiltInChatsWorkspace()
     const thread = await this.options.threadsRepo.create({
       assistantId: input.assistantId,
       resourceId: DEFAULT_PROFILE_ID,
-      title: DEFAULT_THREAD_TITLE
+      title: DEFAULT_THREAD_TITLE,
+      metadata: {
+        workspaceId: chatsWorkspace.id
+      }
     })
 
     return this.options.bindingsRepo.upsert({

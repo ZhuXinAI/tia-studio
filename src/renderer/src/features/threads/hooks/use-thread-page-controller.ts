@@ -1,48 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useChat, type UIMessage } from '@ai-sdk/react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useTranslation } from '../../../i18n/use-app-translation'
-import {
-  useAssistants,
-  useCreateAssistant,
-  useUpdateAssistant,
-  useDeleteAssistant,
-  type AssistantRecord,
-  type SaveAssistantInput
-} from '../../assistants/assistants-query'
-import {
-  updateAssistantHeartbeat,
-  type SaveAssistantHeartbeatInput
-} from '../../assistants/assistant-heartbeat-query'
-import type { AssistantManagementDialogMode } from '../../claws/components/assistant-management-dialog'
-import {
-  approveClawPairing,
-  clawKeys,
-  createClawChannel,
-  deleteClawChannel,
-  getClawChannelAuthState,
-  listClawPairings,
-  listClaws,
-  recoverClawChannelSetup,
-  rejectClawPairing,
-  revokeClawPairing,
-  updateClaw,
-  updateClawChannel,
-  useClaws,
-  type ClawChannelAuthRecord,
-  type ClawPairingRecord,
-  type ClawRecord,
-  type ClawsResponse,
-  type ConfiguredClawChannelRecord,
-  type CreateClawChannelInput,
-  type UpdateClawChannelInput
-} from '../../claws/claws-query'
-import {
-  getMcpServersSettings,
-  type McpServerRecord
-} from '../../settings/mcp-servers/mcp-servers-query'
+import { useAssistants } from '../../assistants/assistants-query'
 import { useProviders } from '../../settings/providers/providers-query'
+import {
+  useDeleteWorkspace,
+  useRelocateWorkspace,
+  useWorkspaces
+} from '../../workspaces/workspaces-query'
 import {
   useThreads,
   useCreateThread,
@@ -58,66 +25,31 @@ import {
   runThreadCommand
 } from '../chat-query'
 import {
-  buildAssistantThreadBranches,
+  buildWorkspaceThreadBranches,
   evaluateAssistantReadiness,
+  resolveWorkspaceAssistant,
   resolveVisibleThreads
 } from '../thread-page-helpers'
 import {
   createThreadTitle,
-  findLatestThreadAcrossAssistants,
-  readStoredChatSelection,
-  routeToAssistantThreads,
+  findLatestThread,
+  readStoredThreadSelection,
+  routeToNewThread,
+  routeToThread,
   sortThreadsByRecentActivity,
-  storeChatSelection,
+  storeThreadSelection,
+  type ThreadRouteScope,
   toErrorMessage
 } from '../thread-page-routing'
-import { queryClient } from '../../../lib/query-client'
 
 type PendingThreadMessage = {
   threadId: string
   message: UIMessage
 }
 
-const BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__tiaBuiltInDefaultAgent'
-
-function emptyClawsResponse(): ClawsResponse {
-  return {
-    claws: [],
-    configuredChannels: []
-  }
-}
-
-function buildChannelPayload(
-  currentChannelId: string,
-  selectedChannelId: string
-):
-  | {
-      mode: 'attach'
-      channelId: string
-    }
-  | {
-      mode: 'detach'
-    }
-  | {
-      mode: 'keep'
-    }
-  | undefined {
-  if (selectedChannelId.length === 0) {
-    return currentChannelId.length > 0 ? { mode: 'detach' } : undefined
-  }
-
-  if (currentChannelId === selectedChannelId) {
-    return currentChannelId.length > 0 ? { mode: 'keep' } : undefined
-  }
-
-  return {
-    mode: 'attach',
-    channelId: selectedChannelId
-  }
-}
-
-function supportsChannelAccess(channelType: string | null | undefined): boolean {
-  return channelType === 'telegram' || channelType === 'whatsapp' || channelType === 'wechat'
+type ThreadProviderOverride = {
+  providerId: string
+  model: string
 }
 
 function createPendingUserMessage(threadId: string, text: string): UIMessage {
@@ -179,11 +111,67 @@ function mergeDisplayedThreadMessages(input: {
   return merged
 }
 
+function readThreadProviderOverride(metadata: Record<string, unknown> | undefined): ThreadProviderOverride | null {
+  const override = metadata?.providerOverride
+  if (!override || typeof override !== 'object' || Array.isArray(override)) {
+    return null
+  }
+
+  const overrideRecord = override as Record<string, unknown>
+
+  const providerId =
+    typeof overrideRecord.providerId === 'string' ? overrideRecord.providerId.trim() : ''
+  const model = typeof overrideRecord.model === 'string' ? overrideRecord.model.trim() : ''
+  if (providerId.length === 0 || model.length === 0) {
+    return null
+  }
+
+  return {
+    providerId,
+    model
+  }
+}
+
+function resolveDraftModel(input: {
+  draftModel: string
+  providerModels: string[] | null
+  providerSelectedModel: string | null | undefined
+}): string {
+  const normalizedDraftModel = input.draftModel.trim()
+  if (input.providerModels && input.providerModels.includes(normalizedDraftModel)) {
+    return normalizedDraftModel
+  }
+
+  if (!input.providerModels && normalizedDraftModel.length > 0) {
+    return normalizedDraftModel
+  }
+
+  return (
+    input.providerSelectedModel?.trim() ||
+    input.providerModels?.[0] ||
+    ''
+  )
+}
+
+function toWorkspaceRouteScope(workspaceId: string | null | undefined): ThreadRouteScope {
+  if (workspaceId && workspaceId.trim().length > 0) {
+    return {
+      kind: 'workspace',
+      workspaceId
+    }
+  }
+
+  return {
+    kind: 'chats'
+  }
+}
+
 export type ThreadPageController = ReturnType<typeof useThreadPageController>
 
 export function useThreadPageController() {
   const { t } = useTranslation()
   const params = useParams()
+  const location = useLocation()
   const navigate = useNavigate()
 
   // TanStack Query hooks for data fetching
@@ -197,12 +185,11 @@ export function useThreadPageController() {
     isLoading: isLoadingProviders,
     error: providersError
   } = useProviders()
-  const { data: clawsData = emptyClawsResponse(), isLoading: isLoadingClaws } = useClaws()
-  const createAssistantMutation = useCreateAssistant()
-  const updateAssistantMutation = useUpdateAssistant()
-  const deleteAssistantMutation = useDeleteAssistant()
+  const { data: workspaces = [], isLoading: isLoadingWorkspaces } = useWorkspaces()
   const createThreadMutation = useCreateThread()
   const deleteThreadMutation = useDeleteThread()
+  const relocateWorkspaceMutation = useRelocateWorkspace()
+  const deleteWorkspaceMutation = useDeleteWorkspace()
 
   // Filter to only show enabled providers
   const providers = useMemo(
@@ -210,14 +197,11 @@ export function useThreadPageController() {
     [allProviders]
   )
 
-  // Local state for MCP servers (not yet migrated to TanStack Query)
-  const [mcpServers, setMcpServers] = useState<Record<string, McpServerRecord>>({})
-
   // Local state for threads (will be replaced by useThreads hook)
   const [threads, setThreads] = useState<ThreadRecord[]>([])
 
   // Derived loading states
-  const isLoadingData = isLoadingAssistants || isLoadingProviders
+  const isLoadingData = isLoadingAssistants || isLoadingProviders || isLoadingWorkspaces
   const loadError = assistantsError
     ? toErrorMessage(assistantsError)
     : providersError
@@ -226,75 +210,46 @@ export function useThreadPageController() {
 
   // UI state
   const [isLoadingChatHistory, setIsLoadingChatHistory] = useState(false)
-  const [assistantDialogMode, setAssistantDialogMode] =
-    useState<AssistantManagementDialogMode>('edit')
-  const [assistantDialogAssistantId, setAssistantDialogAssistantId] = useState<string | null>(null)
-  const [assistantDialogChannelIdOverride, setAssistantDialogChannelIdOverride] = useState<
-    string | null
-  >(null)
-  const [isAssistantDialogOpen, setIsAssistantDialogOpen] = useState(false)
-  const [assistantDialogError, setAssistantDialogError] = useState<string | null>(null)
-  const [isAssistantChannelMutating, setIsAssistantChannelMutating] = useState(false)
-  const [channelAccessClaw, setChannelAccessClaw] = useState<ClawRecord | null>(null)
-  const [channelAccessPairings, setChannelAccessPairings] = useState<ClawPairingRecord[]>([])
-  const [isChannelAccessLoading, setIsChannelAccessLoading] = useState(false)
-  const [channelAuthState, setChannelAuthState] = useState<ClawChannelAuthRecord | null>(null)
-  const [isChannelAuthLoading, setIsChannelAuthLoading] = useState(false)
-  const [isChannelAccessSubmitting, setIsChannelAccessSubmitting] = useState(false)
-  const [channelAccessError, setChannelAccessError] = useState<string | null>(null)
-  const [heartbeatMonitorAssistant, setHeartbeatMonitorAssistant] =
-    useState<AssistantRecord | null>(null)
-  const [cronMonitorAssistant, setCronMonitorAssistant] = useState<AssistantRecord | null>(null)
   const pendingThreadMessageRef = useRef<PendingThreadMessage | null>(null)
   const activePendingUserMessagesRef = useRef(new Map<string, UIMessage>())
   const [hasPendingMessage, setHasPendingMessage] = useState(false)
+  const [draftProviderId, setDraftProviderId] = useState('')
+  const [draftModel, setDraftModel] = useState('')
   const hasLoadedInitialMessagesRef = useRef(false)
-  const connectedAuthRefreshKeyRef = useRef<string | null>(null)
   const profileId = useMemo(() => getActiveResourceId(), [])
 
-  const selectedAssistant = useMemo(() => {
-    const assistantId = params.assistantId
-    if (!assistantId) {
-      return null
+  const chatsWorkspace = useMemo(
+    () => workspaces.find((workspace) => workspace.builtInKind === 'chats') ?? null,
+    [workspaces]
+  )
+  const selectedWorkspace = useMemo(() => {
+    if (params.workspaceId) {
+      return workspaces.find((workspace) => workspace.id === params.workspaceId) ?? null
     }
 
-    return assistants.find((assistant) => assistant.id === assistantId) ?? null
-  }, [assistants, params.assistantId])
-
-  const assistantDialogAssistant = useMemo(() => {
-    if (assistantDialogMode !== 'edit') {
-      return null
+    return chatsWorkspace
+  }, [chatsWorkspace, params.workspaceId, workspaces])
+  const routeScope = useMemo(() => {
+    if (selectedWorkspace?.builtInKind === 'chats') {
+      return toWorkspaceRouteScope(null)
     }
 
-    if (assistantDialogAssistantId) {
-      return assistants.find((assistant) => assistant.id === assistantDialogAssistantId) ?? null
+    return toWorkspaceRouteScope(selectedWorkspace?.id)
+  }, [selectedWorkspace?.builtInKind, selectedWorkspace?.id])
+  const workspaceDefaultAssistant = useMemo(() => {
+    return resolveWorkspaceAssistant({
+      assistants,
+      workspace: selectedWorkspace
+    })
+  }, [assistants, selectedWorkspace])
+  const baseRoute = useMemo(() => routeToThread(routeScope), [routeScope])
+  const isNewThreadRoute = useMemo(() => {
+    if (routeScope.kind === 'chats') {
+      return location.pathname === '/chat/new'
     }
 
-    return selectedAssistant
-  }, [assistantDialogAssistantId, assistantDialogMode, assistants, selectedAssistant])
-
-  const assistantDialogCurrentClaw = useMemo(() => {
-    if (assistantDialogMode !== 'edit' || !assistantDialogAssistant) {
-      return null
-    }
-
-    return clawsData.claws.find((claw) => claw.id === assistantDialogAssistant.id) ?? null
-  }, [assistantDialogAssistant, assistantDialogMode, clawsData.claws])
-
-  const canManageAssistantChannels = useMemo(() => {
-    if (assistantDialogMode === 'create') {
-      return true
-    }
-
-    if (!assistantDialogAssistant) {
-      return false
-    }
-
-    return assistantDialogAssistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] !== true
-  }, [assistantDialogAssistant, assistantDialogMode])
-
-  const assistantDialogSelectedChannelId =
-    assistantDialogChannelIdOverride ?? assistantDialogCurrentClaw?.channel?.id ?? ''
+    return location.pathname === routeToNewThread(routeScope)
+  }, [location.pathname, routeScope])
 
   const selectedThread = useMemo(() => {
     if (!params.threadId) {
@@ -303,31 +258,95 @@ export function useThreadPageController() {
 
     return threads.find((thread) => thread.id === params.threadId) ?? null
   }, [params.threadId, threads])
+  const selectedAssistant = useMemo(() => {
+    if (!selectedThread) {
+      return workspaceDefaultAssistant
+    }
+
+    return (
+      assistants.find((assistant) => assistant.id === selectedThread.assistantId) ??
+      workspaceDefaultAssistant
+    )
+  }, [assistants, selectedThread, workspaceDefaultAssistant])
+  const selectedThreadProviderOverride = useMemo(
+    () => readThreadProviderOverride(selectedThread?.metadata),
+    [selectedThread?.metadata]
+  )
+  const effectiveProviderId = useMemo(() => {
+    if (selectedThreadProviderOverride) {
+      return selectedThreadProviderOverride.providerId
+    }
+
+    if (!selectedThread) {
+      return draftProviderId.trim()
+    }
+
+    return selectedAssistant?.providerId?.trim() ?? ''
+  }, [draftProviderId, selectedAssistant?.providerId, selectedThread, selectedThreadProviderOverride])
+  const effectiveModel = useMemo(() => {
+    if (selectedThreadProviderOverride) {
+      return selectedThreadProviderOverride.model
+    }
+
+    if (!selectedThread) {
+      return draftModel.trim()
+    }
+
+    const selectedProvider = providers.find((provider) => provider.id === effectiveProviderId)
+    return selectedProvider?.selectedModel?.trim() ?? ''
+  }, [draftModel, effectiveProviderId, providers, selectedThread, selectedThreadProviderOverride])
+  const effectiveProvider = useMemo(
+    () => providers.find((provider) => provider.id === effectiveProviderId) ?? null,
+    [effectiveProviderId, providers]
+  )
+  const readinessAssistant = useMemo(() => {
+    if (!selectedAssistant) {
+      return null
+    }
+
+    return {
+      ...selectedAssistant,
+      providerId: effectiveProviderId
+    }
+  }, [effectiveProviderId, selectedAssistant])
+  const readinessProviders = useMemo(() => {
+    if (!effectiveProvider || effectiveModel.length === 0) {
+      return providers
+    }
+
+    return providers.map((provider) =>
+      provider.id === effectiveProvider.id
+        ? {
+            ...provider,
+            selectedModel: effectiveModel
+          }
+        : provider
+    )
+  }, [effectiveModel, effectiveProvider, providers])
   const tokenUsage = useMemo(() => selectedThread?.usageTotals ?? null, [selectedThread])
 
   const readiness = useMemo(() => {
     return evaluateAssistantReadiness({
-      assistant: selectedAssistant,
-      providers
+      assistant: readinessAssistant,
+      providers: readinessProviders
     })
-  }, [providers, selectedAssistant])
+  }, [readinessAssistant, readinessProviders])
 
   const supportsVision = useMemo(() => {
-    if (!selectedAssistant) {
+    if (!effectiveProvider) {
       return false
     }
 
-    const provider = providers.find((p) => p.id === selectedAssistant.providerId)
-    return provider?.supportsVision ?? false
-  }, [providers, selectedAssistant])
+    return effectiveProvider.supportsVision ?? false
+  }, [effectiveProvider])
 
   const sidebarBranches = useMemo(() => {
-    return buildAssistantThreadBranches({
-      assistants,
-      selectedAssistantId: selectedAssistant?.id ?? null,
+    return buildWorkspaceThreadBranches({
+      assistant: workspaceDefaultAssistant,
+      workspaceName: selectedWorkspace?.name ?? 'Chats',
       threads
     })
-  }, [assistants, selectedAssistant?.id, threads])
+  }, [selectedWorkspace?.name, threads, workspaceDefaultAssistant])
 
   const chatTransport = useMemo(() => {
     if (!selectedAssistant || !selectedThread) {
@@ -335,26 +354,25 @@ export function useThreadPageController() {
     }
 
     return createThreadChatTransport({
-      assistantId: selectedAssistant.id,
       threadId: selectedThread.id,
       profileId
     })
   }, [profileId, selectedAssistant, selectedThread])
 
   const chat = useChat({
-    id: selectedThread ? `${selectedAssistant?.id}:${selectedThread.id}` : 'default-chat',
+    id: selectedThread ? selectedThread.id : 'default-chat',
     transport: chatTransport,
     resume: false,
     experimental_throttle: 48,
     onFinish: ({ isDisconnect, isError }) => {
-      const selectedAssistantId = selectedAssistant?.id
+      const selectedWorkspaceId = selectedWorkspace?.id
       const selectedThreadId = selectedThread?.id
 
       if (selectedThreadId && isError && !isDisconnect) {
         activePendingUserMessagesRef.current.delete(selectedThreadId)
       }
 
-      if (!selectedThreadId || !selectedAssistantId) {
+      if (!selectedThreadId || !selectedWorkspaceId) {
         return
       }
 
@@ -372,7 +390,7 @@ export function useThreadPageController() {
         return sortThreadsByRecentActivity(nextThreads)
       })
 
-      void listThreads(selectedAssistantId)
+      void listThreads({ workspaceId: selectedWorkspaceId })
         .then((latestThreads) => {
           setThreads(sortThreadsByRecentActivity(latestThreads))
         })
@@ -446,202 +464,160 @@ export function useThreadPageController() {
     [sendMessage]
   )
 
-  // Load MCP servers on mount
   useEffect(() => {
-    void getMcpServersSettings()
-      .then((result) => {
-        setMcpServers(result.mcpServers)
-      })
-      .catch(() => {
-        setMcpServers({})
-      })
-  }, [])
-
-  useEffect(() => {
-    if (!isAssistantDialogOpen) {
+    if (selectedThread) {
       return
     }
 
-    const handleEscape = (event: KeyboardEvent): void => {
-      if (
-        event.key === 'Escape' &&
-        !createAssistantMutation.isPending &&
-        !updateAssistantMutation.isPending &&
-        !isAssistantChannelMutating
-      ) {
-        setIsAssistantDialogOpen(false)
-        setAssistantDialogAssistantId(null)
-        setAssistantDialogChannelIdOverride(null)
-        setAssistantDialogError(null)
-      }
+    const defaultProvider =
+      providers.find(
+        (provider) =>
+          provider.id === workspaceDefaultAssistant?.providerId && provider.enabled
+      ) ?? providers[0] ?? null
+    const nextProviderId =
+      draftProviderId && providers.some((provider) => provider.id === draftProviderId)
+        ? draftProviderId
+        : defaultProvider?.id ?? ''
+
+    if (nextProviderId !== draftProviderId) {
+      setDraftProviderId(nextProviderId)
     }
 
-    window.addEventListener('keydown', handleEscape)
-    return () => {
-      window.removeEventListener('keydown', handleEscape)
+    const selectedProvider =
+      providers.find((provider) => provider.id === nextProviderId) ?? defaultProvider
+    const nextModel = resolveDraftModel({
+      draftModel,
+      providerModels: selectedProvider?.providerModels ?? null,
+      providerSelectedModel: selectedProvider?.selectedModel
+    })
+
+    if (nextModel !== draftModel) {
+      setDraftModel(nextModel)
     }
   }, [
-    createAssistantMutation.isPending,
-    isAssistantChannelMutating,
-    isAssistantDialogOpen,
-    updateAssistantMutation.isPending
+    draftModel,
+    draftProviderId,
+    providers,
+    selectedThread,
+    workspaceDefaultAssistant?.providerId
   ])
-
-  useEffect(() => {
-    if (!isAssistantDialogOpen || assistantDialogMode !== 'edit') {
-      return
-    }
-
-    if (!assistantDialogAssistant) {
-      setIsAssistantDialogOpen(false)
-      setAssistantDialogAssistantId(null)
-      setAssistantDialogChannelIdOverride(null)
-      setAssistantDialogError(null)
-    }
-  }, [assistantDialogAssistant, assistantDialogMode, isAssistantDialogOpen])
 
   useEffect(() => {
     if (isLoadingData) {
       return
     }
 
-    if (assistants.length === 0) {
-      if (!params.assistantId) {
-        navigate('/claws', { replace: true })
-      }
+    if (!selectedWorkspace) {
+      navigate('/chat', { replace: true })
       return
     }
 
-    const selectedAssistantId = params.assistantId ?? null
-    if (
-      selectedAssistantId &&
-      assistants.some((assistant) => assistant.id === selectedAssistantId)
-    ) {
+    if (isNewThreadRoute || params.threadId) {
       return
     }
 
     let active = true
 
-    const resolveAssistantRoute = async (): Promise<void> => {
-      const assistantsById = new Set(assistants.map((assistant) => assistant.id))
-      const storedSelection = readStoredChatSelection()
-      const threadsByAssistant: Array<{
-        assistantId: string
-        threads: ThreadRecord[]
-      }> = []
-
-      const readThreads = async (assistantId: string): Promise<ThreadRecord[]> => {
-        const existingCache = threadsByAssistant.find((entry) => entry.assistantId === assistantId)
-        if (existingCache) {
-          return existingCache.threads
-        }
-
-        const loadedThreads = sortThreadsByRecentActivity(await listThreads(assistantId))
-        threadsByAssistant.push({
-          assistantId,
-          threads: loadedThreads
-        })
-        return loadedThreads
-      }
-
+    const resolveWorkspaceRoute = async (): Promise<void> => {
       try {
-        if (
-          storedSelection &&
-          assistantsById.has(storedSelection.assistantId) &&
-          storedSelection.threadId
-        ) {
-          const storedThreads = await readThreads(storedSelection.assistantId)
-          const matchedThread = storedThreads.find(
+        const workspaceThreads = sortThreadsByRecentActivity(
+          await listThreads({ workspaceId: selectedWorkspace.id })
+        )
+        const storedSelection = readStoredThreadSelection(routeScope)
+        if (storedSelection?.threadId) {
+          const matchedThread = workspaceThreads.find(
             (thread) => thread.id === storedSelection.threadId
           )
           if (matchedThread) {
             if (!active) {
               return
             }
-            navigate(routeToAssistantThreads(storedSelection.assistantId, matchedThread.id), {
-              replace: true
-            })
+            navigate(routeToThread(routeScope, matchedThread.id), { replace: true })
             return
           }
         }
 
-        await Promise.all(
-          assistants.map(async (assistant) => {
-            await readThreads(assistant.id)
-          })
-        )
-        const latestThread = findLatestThreadAcrossAssistants(threadsByAssistant)
+        const latestThread = findLatestThread(workspaceThreads)
         if (latestThread) {
           if (!active) {
             return
           }
-          navigate(routeToAssistantThreads(latestThread.assistantId, latestThread.threadId), {
-            replace: true
-          })
+          navigate(routeToThread(routeScope, latestThread.id), { replace: true })
           return
         }
 
-        const fallbackAssistant = assistants[0]
-        if (fallbackAssistant) {
-          if (!active) {
-            return
-          }
-          navigate(routeToAssistantThreads(fallbackAssistant.id), { replace: true })
+        if (!active) {
+          return
         }
+        navigate(routeToNewThread(routeScope), { replace: true })
       } catch (error) {
         if (!active) {
           return
         }
         toast.error(toErrorMessage(error))
-        const fallbackAssistant = assistants[0]
-        if (fallbackAssistant) {
-          navigate(routeToAssistantThreads(fallbackAssistant.id), { replace: true })
-          return
-        }
-
-        navigate('/claws', { replace: true })
+        navigate(baseRoute, { replace: true })
       }
     }
 
-    void resolveAssistantRoute()
+    void resolveWorkspaceRoute()
 
     return () => {
       active = false
     }
-  }, [assistants, isLoadingData, navigate, params.assistantId])
+  }, [
+    baseRoute,
+    isLoadingData,
+    isNewThreadRoute,
+    navigate,
+    params.threadId,
+    params.workspaceId,
+    routeScope,
+    selectedWorkspace
+  ])
 
-  // Use TanStack Query to fetch threads for the selected assistant
   const { data: threadsData = [], isLoading: isLoadingThreads } = useThreads(
-    selectedAssistant?.id,
+    { workspaceId: selectedWorkspace?.id },
     {
-      enabled: !!selectedAssistant
+      enabled: !!selectedWorkspace
     }
   )
 
-  // Keep threads in local state sorted by recent activity
   useEffect(() => {
     setThreads((currentThreads) =>
       resolveVisibleThreads({
         currentThreads,
-        selectedAssistantId: selectedAssistant?.id ?? null,
         threads: threadsData
       })
     )
-  }, [selectedAssistant?.id, threadsData])
+  }, [threadsData])
 
   useEffect(() => {
-    if (!selectedAssistant?.id || !selectedThread?.id) {
+    if (!selectedThread?.id) {
       return
     }
 
-    storeChatSelection({
-      assistantId: selectedAssistant.id,
+    storeThreadSelection(routeScope, {
       threadId: selectedThread.id
     })
-  }, [selectedAssistant?.id, selectedThread?.id])
+  }, [routeScope, selectedThread?.id])
 
   useEffect(() => {
-    const assistantId = selectedAssistant?.id
+    if (!params.threadId || isLoadingThreads || !selectedWorkspace) {
+      return
+    }
+
+    if (
+      threads.some((thread) => thread.id === params.threadId) ||
+      threadsData.some((thread) => thread.id === params.threadId)
+    ) {
+      return
+    }
+
+    navigate(baseRoute, { replace: true })
+  }, [baseRoute, isLoadingThreads, navigate, params.threadId, selectedWorkspace, threads, threadsData])
+
+  useEffect(() => {
+    const assistantId = selectedThread?.assistantId ?? selectedAssistant?.id
     const threadId = selectedThread?.id
 
     if (!assistantId || !threadId) {
@@ -658,7 +634,6 @@ export function useThreadPageController() {
     setMessagesRef.current(pendingUserMessage ? [pendingUserMessage] : [])
 
     void listThreadChatMessages({
-      assistantId,
       threadId,
       profileId
     })
@@ -693,76 +668,92 @@ export function useThreadPageController() {
     mergeHydratedThreadMessages,
     profileId,
     resumeStream,
-    selectedAssistant?.id,
+    selectedThread?.assistantId,
     selectedThread?.id
   ])
 
   useEffect(() => {
-    const assistantId = selectedAssistant?.id
+    const assistantIds = Array.from(
+      new Set(
+        [workspaceDefaultAssistant?.id, ...threads.map((thread) => thread.assistantId)].filter(
+          (assistantId): assistantId is string => typeof assistantId === 'string' && assistantId.length > 0
+        )
+      )
+    )
 
-    if (!assistantId) {
+    if (assistantIds.length === 0 || !selectedWorkspace?.id) {
       return
     }
 
-    const streamHandle = openAssistantMessageEventsStream({
-      assistantId,
-      profileId,
-      onEvent: (event) => {
-        if (
-          event.type !== 'thread-messages-updated' ||
-          event.assistantId !== assistantId ||
-          event.profileId !== profileId
-        ) {
-          return
-        }
+    const streamHandles = assistantIds.map((assistantId) =>
+      openAssistantMessageEventsStream({
+        assistantId,
+        profileId,
+        onEvent: (event) => {
+          if (event.type !== 'thread-messages-updated' || event.profileId !== profileId) {
+            return
+          }
 
-        if (selectedThread?.id === event.threadId) {
-          void listThreadChatMessages({
-            assistantId,
-            threadId: selectedThread.id,
-            profileId
-          })
-            .then((messages) => {
-              setMessages(mergeHydratedThreadMessages(selectedThread.id, messages))
+          if (selectedThread?.id === event.threadId) {
+            void listThreadChatMessages({
+              threadId: selectedThread.id,
+              profileId
+            })
+              .then((messages) => {
+                setMessages(mergeHydratedThreadMessages(selectedThread.id, messages))
+              })
+              .catch(() => undefined)
+          }
+
+          void listThreads({ workspaceId: selectedWorkspace.id })
+            .then((latestThreads) => {
+              setThreads(sortThreadsByRecentActivity(latestThreads))
             })
             .catch(() => undefined)
         }
-
-        void listThreads(assistantId)
-          .then((latestThreads) => {
-            setThreads(sortThreadsByRecentActivity(latestThreads))
-          })
-          .catch(() => undefined)
-      }
-    })
+      })
+    )
 
     return () => {
-      streamHandle.close()
+      streamHandles.forEach((streamHandle) => {
+        streamHandle.close()
+      })
     }
   }, [
     mergeHydratedThreadMessages,
     profileId,
-    selectedAssistant?.id,
+    selectedThread?.assistantId,
     selectedThread?.id,
-    setMessages
+    selectedWorkspace?.id,
+    setMessages,
+    threads,
+    workspaceDefaultAssistant?.id
   ])
 
   const createNewThread = useCallback(
-    async (options?: { notify?: boolean }): Promise<ThreadRecord | null> => {
-      if (!selectedAssistant) {
+    async (options?: {
+      notify?: boolean
+      replace?: boolean
+      providerOverride?: ThreadProviderOverride
+    }): Promise<ThreadRecord | null> => {
+      if (!workspaceDefaultAssistant || !selectedWorkspace) {
         return null
       }
 
       try {
         const createdThread = await createThreadMutation.mutateAsync({
-          assistantId: selectedAssistant.id,
+          assistantId: workspaceDefaultAssistant.id,
+          workspaceId: selectedWorkspace.id,
+          providerOverride: options?.providerOverride,
           resourceId: getActiveResourceId(),
           title: createThreadTitle()
         })
         setThreads((currentThreads) =>
           sortThreadsByRecentActivity([createdThread, ...currentThreads])
         )
-        navigate(routeToAssistantThreads(selectedAssistant.id, createdThread.id))
+        navigate(routeToThread(routeScope, createdThread.id), {
+          replace: options?.replace ?? false
+        })
         if (options?.notify ?? true) {
           toast.success(t('threads.toasts.threadCreated'))
         }
@@ -772,7 +763,7 @@ export function useThreadPageController() {
         return null
       }
     },
-    [createThreadMutation, navigate, selectedAssistant, t]
+    [createThreadMutation, navigate, routeScope, selectedWorkspace, t, workspaceDefaultAssistant]
   )
 
   const handleDeleteThread = async (thread: ThreadRecord): Promise<void> => {
@@ -780,439 +771,13 @@ export function useThreadPageController() {
       await deleteThreadMutation.mutateAsync(thread.id)
       setThreads((currentThreads) => currentThreads.filter((item) => item.id !== thread.id))
       if (selectedThread?.id === thread.id) {
-        navigate(routeToAssistantThreads(thread.assistantId), { replace: true })
+        navigate(baseRoute, { replace: true })
       }
       toast.success(t('threads.toasts.threadRemoved'))
     } catch (error) {
       toast.error(toErrorMessage(error))
     }
   }
-
-  const selectWorkspacePath = useCallback(async (): Promise<string | null> => {
-    if (typeof window === 'undefined') {
-      return null
-    }
-
-    const picker = window.tiaDesktop?.pickDirectory
-    if (typeof picker !== 'function') {
-      return null
-    }
-
-    return picker()
-  }, [])
-
-  const invalidateClawsCache = useCallback(async (): Promise<void> => {
-    await queryClient.invalidateQueries({ queryKey: clawKeys.list() })
-  }, [])
-
-  const refreshClawsData = useCallback(async (): Promise<ClawsResponse> => {
-    await invalidateClawsCache()
-
-    return queryClient.fetchQuery({
-      queryKey: clawKeys.list(),
-      queryFn: listClaws
-    })
-  }, [invalidateClawsCache])
-
-  const refreshChannelAccessPairings = useCallback(async (assistantId: string): Promise<void> => {
-    const nextPairings = await listClawPairings(assistantId)
-    setChannelAccessPairings(nextPairings.pairings)
-  }, [])
-
-  const refreshChannelAccessAuthState = useCallback(
-    async (assistantId: string): Promise<void> => {
-      const nextAuthState = await getClawChannelAuthState(assistantId)
-      setChannelAuthState(nextAuthState)
-
-      if (nextAuthState.status === 'connected') {
-        const refreshKey = `${assistantId}:${nextAuthState.updatedAt}`
-        if (connectedAuthRefreshKeyRef.current !== refreshKey) {
-          connectedAuthRefreshKeyRef.current = refreshKey
-          await refreshClawsData()
-        }
-      }
-    },
-    [refreshClawsData]
-  )
-
-  const openChannelAccessDialog = useCallback(
-    async (claw: ClawRecord): Promise<void> => {
-      const channelType = claw.channel?.type ?? null
-      const shouldLoadPairings = channelType === 'telegram' || channelType === 'whatsapp'
-      const shouldLoadAuth = channelType === 'whatsapp' || channelType === 'wechat'
-
-      setChannelAccessClaw(claw)
-      setChannelAccessPairings([])
-      setChannelAuthState(null)
-      setChannelAccessError(null)
-      connectedAuthRefreshKeyRef.current = null
-      setIsChannelAccessLoading(shouldLoadPairings)
-      setIsChannelAuthLoading(shouldLoadAuth)
-
-      try {
-        await Promise.all([
-          shouldLoadPairings ? refreshChannelAccessPairings(claw.id) : Promise.resolve(),
-          shouldLoadAuth ? refreshChannelAccessAuthState(claw.id) : Promise.resolve()
-        ])
-      } catch (error) {
-        setChannelAccessError(
-          error instanceof Error ? error.message : t('claws.pairings.errors.loadFailed')
-        )
-      } finally {
-        setIsChannelAccessLoading(false)
-        setIsChannelAuthLoading(false)
-      }
-    },
-    [refreshChannelAccessAuthState, refreshChannelAccessPairings, t]
-  )
-
-  const handleCreateChannel = useCallback(
-    async (input: CreateClawChannelInput): Promise<ConfiguredClawChannelRecord> => {
-      setIsAssistantChannelMutating(true)
-      setAssistantDialogError(null)
-
-      try {
-        const createdChannel = await createClawChannel(input)
-        await invalidateClawsCache()
-        return createdChannel
-      } catch (error) {
-        const resolvedError =
-          error instanceof Error ? error : new Error(t('claws.errors.saveFailed'))
-        setAssistantDialogError(resolvedError.message)
-        throw resolvedError
-      } finally {
-        setIsAssistantChannelMutating(false)
-      }
-    },
-    [invalidateClawsCache, t]
-  )
-
-  const handleUpdateChannel = useCallback(
-    async (
-      channelId: string,
-      input: UpdateClawChannelInput
-    ): Promise<ConfiguredClawChannelRecord> => {
-      setIsAssistantChannelMutating(true)
-      setAssistantDialogError(null)
-
-      try {
-        const updatedChannel = await updateClawChannel(channelId, input)
-        await invalidateClawsCache()
-        return updatedChannel
-      } catch (error) {
-        const resolvedError =
-          error instanceof Error ? error : new Error(t('claws.errors.updateFailed'))
-        setAssistantDialogError(resolvedError.message)
-        throw resolvedError
-      } finally {
-        setIsAssistantChannelMutating(false)
-      }
-    },
-    [invalidateClawsCache, t]
-  )
-
-  const handleDeleteChannel = useCallback(
-    async (channelId: string): Promise<void> => {
-      setIsAssistantChannelMutating(true)
-      setAssistantDialogError(null)
-
-      try {
-        await deleteClawChannel(channelId)
-        await invalidateClawsCache()
-      } catch (error) {
-        const resolvedError =
-          error instanceof Error ? error : new Error(t('claws.errors.deleteFailed'))
-        setAssistantDialogError(resolvedError.message)
-        throw resolvedError
-      } finally {
-        setIsAssistantChannelMutating(false)
-      }
-    },
-    [invalidateClawsCache, t]
-  )
-
-  const handleRecoverChannel = useCallback(
-    async (channelId: string): Promise<ConfiguredClawChannelRecord> => {
-      setIsAssistantChannelMutating(true)
-      setAssistantDialogError(null)
-
-      try {
-        const recoveredChannel = await recoverClawChannelSetup(channelId)
-        await invalidateClawsCache()
-        return recoveredChannel
-      } catch (error) {
-        const resolvedError =
-          error instanceof Error ? error : new Error(t('claws.errors.updateFailed'))
-        setAssistantDialogError(resolvedError.message)
-        throw resolvedError
-      } finally {
-        setIsAssistantChannelMutating(false)
-      }
-    },
-    [invalidateClawsCache, t]
-  )
-
-  const handleSubmitAssistantDialog = async (
-    input: SaveAssistantInput,
-    heartbeatInput?: SaveAssistantHeartbeatInput | null,
-    selectedChannelIdOverride?: string
-  ): Promise<void> => {
-    setAssistantDialogError(null)
-
-    try {
-      const currentChannelId = assistantDialogCurrentClaw?.channel?.id ?? ''
-      const nextSelectedChannelId = canManageAssistantChannels
-        ? (selectedChannelIdOverride ?? assistantDialogSelectedChannelId).trim()
-        : ''
-      const nextWorkspacePath =
-        typeof input.workspaceConfig?.rootPath === 'string'
-          ? input.workspaceConfig.rootPath.trim()
-          : ''
-      const channelPayload = canManageAssistantChannels
-        ? buildChannelPayload(currentChannelId, nextSelectedChannelId)
-        : undefined
-
-      if (assistantDialogMode === 'create') {
-        const createdAssistant = await createAssistantMutation.mutateAsync(input)
-        if (heartbeatInput) {
-          await updateAssistantHeartbeat(createdAssistant.id, heartbeatInput)
-        }
-        let latestClaw: ClawRecord | null = null
-        if (nextSelectedChannelId.length > 0 || channelPayload) {
-          await updateClaw(createdAssistant.id, {
-            assistant: {
-              enabled: nextSelectedChannelId.length > 0,
-              ...(nextWorkspacePath.length > 0 ? { workspacePath: nextWorkspacePath } : {})
-            },
-            ...(channelPayload ? { channel: channelPayload } : {})
-          })
-          const latestClaws = await refreshClawsData()
-          latestClaw = latestClaws.claws.find((claw) => claw.id === createdAssistant.id) ?? null
-        }
-        setThreads([])
-        toast.success(t('threads.toasts.assistantCreated'))
-        setIsAssistantDialogOpen(false)
-        setAssistantDialogAssistantId(null)
-        setAssistantDialogChannelIdOverride(null)
-        navigate(routeToAssistantThreads(createdAssistant.id))
-
-        if (latestClaw && supportsChannelAccess(latestClaw.channel?.type)) {
-          await openChannelAccessDialog(latestClaw)
-        }
-
-        return
-      }
-
-      if (!assistantDialogAssistant) {
-        setAssistantDialogError(t('threads.assistantDialog.notFound'))
-        return
-      }
-
-      await updateAssistantMutation.mutateAsync({
-        id: assistantDialogAssistant.id,
-        input
-      })
-      if (heartbeatInput) {
-        await updateAssistantHeartbeat(assistantDialogAssistant.id, heartbeatInput)
-      }
-      let latestClaw: ClawRecord | null = null
-      if (assistantDialogCurrentClaw || nextSelectedChannelId.length > 0 || channelPayload) {
-        await updateClaw(assistantDialogAssistant.id, {
-          assistant: {
-            enabled:
-              nextSelectedChannelId.length > 0
-                ? (assistantDialogCurrentClaw?.enabled ?? true)
-                : false,
-            ...(nextWorkspacePath.length > 0 ? { workspacePath: nextWorkspacePath } : {})
-          },
-          ...(channelPayload ? { channel: channelPayload } : {})
-        })
-        const latestClaws = await refreshClawsData()
-        latestClaw = latestClaws.claws.find((claw) => claw.id === assistantDialogAssistant.id) ?? null
-      }
-      toast.success(t('threads.toasts.assistantUpdated'))
-      setIsAssistantDialogOpen(false)
-      setAssistantDialogAssistantId(null)
-      setAssistantDialogChannelIdOverride(null)
-
-      if (
-        latestClaw &&
-        supportsChannelAccess(latestClaw.channel?.type) &&
-        (!supportsChannelAccess(assistantDialogCurrentClaw?.channel?.type) ||
-          assistantDialogCurrentClaw?.channel?.id !== latestClaw.channel?.id)
-      ) {
-        await openChannelAccessDialog(latestClaw)
-      }
-    } catch (error) {
-      setAssistantDialogError(toErrorMessage(error))
-    }
-  }
-
-  const handleChannelAccessAction = useCallback(
-    async (
-      action: (assistantId: string, pairingId: string) => Promise<unknown>,
-      pairingId: string
-    ): Promise<void> => {
-      if (!channelAccessClaw) {
-        return
-      }
-
-      setIsChannelAccessSubmitting(true)
-      setChannelAccessError(null)
-
-      try {
-        await action(channelAccessClaw.id, pairingId)
-        await Promise.all([
-          refreshChannelAccessPairings(channelAccessClaw.id),
-          channelAccessClaw.channel?.type === 'whatsapp'
-            ? refreshChannelAccessAuthState(channelAccessClaw.id)
-            : Promise.resolve(),
-          refreshClawsData()
-        ])
-      } catch (error) {
-        setChannelAccessError(
-          error instanceof Error ? error.message : t('claws.pairings.errors.updateFailed')
-        )
-      } finally {
-        setIsChannelAccessSubmitting(false)
-      }
-    },
-    [channelAccessClaw, refreshChannelAccessAuthState, refreshChannelAccessPairings, refreshClawsData, t]
-  )
-
-  useEffect(() => {
-    if (
-      !channelAccessClaw ||
-      (channelAccessClaw.channel?.type !== 'whatsapp' &&
-        channelAccessClaw.channel?.type !== 'wechat')
-    ) {
-      return
-    }
-
-    if (channelAuthState?.status === 'connected') {
-      return
-    }
-
-    const intervalId = window.setInterval(() => {
-      void refreshChannelAccessAuthState(channelAccessClaw.id).catch((error) => {
-        setChannelAccessError(
-          error instanceof Error ? error.message : t('claws.pairings.errors.loadFailed')
-        )
-      })
-    }, 5000)
-
-    return () => {
-      window.clearInterval(intervalId)
-    }
-  }, [channelAccessClaw, channelAuthState?.status, refreshChannelAccessAuthState, t])
-
-  const handleRecoverChannelAccessSetup = useCallback(async (): Promise<void> => {
-    const channelId = channelAccessClaw?.channel?.id
-    if (!channelAccessClaw || !channelId) {
-      return
-    }
-
-    setIsChannelAccessSubmitting(true)
-    setChannelAccessError(null)
-
-    try {
-      await handleRecoverChannel(channelId)
-      await Promise.all([
-        channelAccessClaw.channel?.type === 'telegram' || channelAccessClaw.channel?.type === 'whatsapp'
-          ? refreshChannelAccessPairings(channelAccessClaw.id)
-          : Promise.resolve(),
-        channelAccessClaw.channel?.type === 'whatsapp' || channelAccessClaw.channel?.type === 'wechat'
-          ? refreshChannelAccessAuthState(channelAccessClaw.id)
-          : Promise.resolve(),
-        refreshClawsData()
-      ])
-    } catch (error) {
-      setChannelAccessError(
-        error instanceof Error ? error.message : t('claws.pairings.errors.updateFailed')
-      )
-    } finally {
-      setIsChannelAccessSubmitting(false)
-    }
-  }, [
-    channelAccessClaw,
-    handleRecoverChannel,
-    refreshChannelAccessAuthState,
-    refreshChannelAccessPairings,
-    refreshClawsData,
-    t
-  ])
-
-  const handleDeleteAssistant = useCallback(
-    async (assistantId: string): Promise<void> => {
-      if (deleteAssistantMutation.isPending) {
-        return
-      }
-
-      const assistant = assistants.find((item) => item.id === assistantId)
-      if (!assistant) {
-        return
-      }
-
-      if (assistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] === true) {
-        toast.error(t('threads.toasts.builtInDeleteBlocked'))
-        return
-      }
-
-      const confirmLabel =
-        assistant.name.trim().length > 0
-          ? assistant.name.trim()
-          : t('threads.toasts.assistantDeleteFallbackLabel')
-      if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
-        const confirmed = window.confirm(
-          t('threads.toasts.confirmAssistantDelete', { name: confirmLabel })
-        )
-        if (!confirmed) {
-          return
-        }
-      }
-
-      try {
-        await deleteAssistantMutation.mutateAsync(assistantId)
-        await invalidateClawsCache()
-
-        setThreads((currentThreads) =>
-          currentThreads.filter((thread) => thread.assistantId !== assistantId)
-        )
-
-        if (params.assistantId === assistantId) {
-          const fallbackAssistant = assistants.find((a) => a.id !== assistantId)
-          if (fallbackAssistant) {
-            navigate(routeToAssistantThreads(fallbackAssistant.id), { replace: true })
-          } else {
-            setMessages([])
-            navigate('/chat', { replace: true })
-          }
-        }
-
-        if (assistantDialogMode === 'edit' && assistantDialogAssistantId === assistantId) {
-          setIsAssistantDialogOpen(false)
-          setAssistantDialogAssistantId(null)
-          setAssistantDialogChannelIdOverride(null)
-          setAssistantDialogError(null)
-        }
-
-        toast.success(t('threads.toasts.assistantDeleted'))
-      } catch (error) {
-        toast.error(toErrorMessage(error))
-      }
-    },
-    [
-      assistantDialogAssistantId,
-      assistantDialogMode,
-      assistants,
-      deleteAssistantMutation,
-      invalidateClawsCache,
-      navigate,
-      params.assistantId,
-      setMessages,
-      t
-    ]
-  )
 
   const handleSubmitMessage = async (messageText: string): Promise<void> => {
     if (!selectedAssistant) {
@@ -1227,7 +792,6 @@ export function useThreadPageController() {
     if (nextMessage.startsWith('/') && selectedThread) {
       try {
         const result = await runThreadCommand({
-          assistantId: selectedAssistant.id,
           threadId: selectedThread.id,
           profileId,
           text: nextMessage
@@ -1268,7 +832,18 @@ export function useThreadPageController() {
       return
     }
 
-    const createdThread = await createNewThread({ notify: false })
+    const providerOverride =
+      effectiveProviderId && effectiveModel
+        ? {
+            providerId: effectiveProviderId,
+            model: effectiveModel
+          }
+        : null
+    const createdThread = await createNewThread({
+      notify: false,
+      replace: isNewThreadRoute,
+      providerOverride: providerOverride ?? undefined
+    })
     if (!createdThread) {
       return
     }
@@ -1283,7 +858,6 @@ export function useThreadPageController() {
 
     if (selectedAssistant && selectedThread) {
       void runThreadCommand({
-        assistantId: selectedAssistant.id,
         threadId: selectedThread.id,
         profileId,
         text: '/stop'
@@ -1342,118 +916,81 @@ export function useThreadPageController() {
     sendQueuedPendingUserMessage
   ])
 
-  const closeAssistantDialog = useCallback(() => {
-    if (
-      createAssistantMutation.isPending ||
-      updateAssistantMutation.isPending ||
-      isAssistantChannelMutating
-    ) {
-      return
-    }
-
-    setIsAssistantDialogOpen(false)
-    setAssistantDialogAssistantId(null)
-    setAssistantDialogChannelIdOverride(null)
-    setAssistantDialogError(null)
-  }, [
-    createAssistantMutation.isPending,
-    isAssistantChannelMutating,
-    updateAssistantMutation.isPending
-  ])
-
-  const openAssistantChannelSetup = useCallback(async (): Promise<void> => {
-    if (!assistantDialogCurrentClaw || !supportsChannelAccess(assistantDialogCurrentClaw.channel?.type)) {
-      return
-    }
-
-    closeAssistantDialog()
-    await openChannelAccessDialog(assistantDialogCurrentClaw)
-  }, [assistantDialogCurrentClaw, closeAssistantDialog, openChannelAccessDialog])
-
-  const openCreateAssistantDialog = useCallback(() => {
-    setAssistantDialogMode('create')
-    setAssistantDialogAssistantId(null)
-    setAssistantDialogChannelIdOverride('')
-    setAssistantDialogError(null)
-    setIsAssistantDialogOpen(true)
-  }, [])
-
-  const openEditAssistantDialog = useCallback((assistantId: string) => {
-    setAssistantDialogMode('edit')
-    setAssistantDialogAssistantId(assistantId)
-    setAssistantDialogChannelIdOverride(null)
-    setAssistantDialogError(null)
-    setIsAssistantDialogOpen(true)
-  }, [])
-
-  const openAssistantConfigDialog = useCallback(() => {
-    if (!selectedAssistant) {
-      return
-    }
-
-    openEditAssistantDialog(selectedAssistant.id)
-  }, [openEditAssistantDialog, selectedAssistant])
-
-  const handleSelectAssistant = useCallback(
-    (assistantId: string) => {
-      navigate(routeToAssistantThreads(assistantId))
-    },
-    [navigate]
-  )
-
   const handleSelectThread = useCallback(
-    (assistantId: string, threadId: string) => {
-      navigate(routeToAssistantThreads(assistantId, threadId))
+    (threadId: string) => {
+      navigate(routeToThread(routeScope, threadId))
     },
-    [navigate]
+    [navigate, routeScope]
   )
 
-  const openHeartbeatMonitor = useCallback(() => {
-    if (!selectedAssistant) {
+  const handleOpenNewThread = useCallback(() => {
+    navigate(routeToNewThread(routeScope))
+  }, [navigate, routeScope])
+
+  const handleSelectDraftWorkspace = useCallback(
+    (workspaceId: string) => {
+      const nextScope = toWorkspaceRouteScope(
+        workspaces.find((workspace) => workspace.id === workspaceId)?.builtInKind === 'chats'
+          ? null
+          : workspaceId
+      )
+      navigate(routeToNewThread(nextScope))
+    },
+    [navigate, workspaces]
+  )
+
+  const handleRelocateWorkspace = useCallback(async (): Promise<void> => {
+    if (!selectedWorkspace || selectedWorkspace.builtInKind === 'chats') {
       return
     }
 
-    setHeartbeatMonitorAssistant(selectedAssistant)
-  }, [selectedAssistant])
-
-  const openCronMonitor = useCallback(() => {
-    if (!selectedAssistant) {
+    const nextRootPath = await window.tiaDesktop?.pickDirectory()
+    if (!nextRootPath) {
       return
     }
 
-    setCronMonitorAssistant(selectedAssistant)
-  }, [selectedAssistant])
-
-  const assistantDialogChannels =
-    canManageAssistantChannels && !isLoadingClaws
-      ? {
-          currentAssistantId:
-            assistantDialogMode === 'edit' ? (assistantDialogAssistant?.id ?? null) : null,
-          channels: clawsData.configuredChannels,
-          selectedChannelId: assistantDialogSelectedChannelId,
-          isMutating: isAssistantChannelMutating,
-          errorMessage: assistantDialogError,
-          onSelectedChannelChange: setAssistantDialogChannelIdOverride,
-          onCreateChannel: handleCreateChannel,
-          onUpdateChannel: handleUpdateChannel,
-          onRecoverChannel: handleRecoverChannel,
-          onDeleteChannel: handleDeleteChannel
+    try {
+      await relocateWorkspaceMutation.mutateAsync({
+        workspaceId: selectedWorkspace.id,
+        input: {
+          rootPath: nextRootPath
         }
-      : undefined
+      })
+      toast.success('Workspace folder updated.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to relocate workspace')
+    }
+  }, [relocateWorkspaceMutation, selectedWorkspace])
 
-  const assistantDialogChannelSetupAction =
-    assistantDialogCurrentClaw && supportsChannelAccess(assistantDialogCurrentClaw.channel?.type)
-      ? {
-          label:
-            assistantDialogCurrentClaw.channel?.type === 'wechat'
-              ? t('claws.wechat.manageSetupButton')
-              : t('claws.telegram.managePairingsButton'),
-          onOpen: openAssistantChannelSetup
-        }
-      : null
+  const handleDeleteWorkspace = useCallback(async (): Promise<void> => {
+    if (!selectedWorkspace || selectedWorkspace.builtInKind === 'chats') {
+      return
+    }
+
+    const confirmed = window.confirm(
+      `Delete the workspace "${selectedWorkspace.name}" and remove its TIA threads?`
+    )
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      await deleteWorkspaceMutation.mutateAsync(selectedWorkspace.id)
+      toast.success('Workspace deleted.')
+      navigate('/chat', { replace: true })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete workspace')
+    }
+  }, [deleteWorkspaceMutation, navigate, selectedWorkspace])
 
   return {
-    assistantsCount: assistants.length,
+    chatLabel: selectedWorkspace?.name ?? 'Chats',
+    selectedWorkspace,
+    workspaces,
+    providers,
+    isNewThreadRoute,
+    draftProviderId,
+    draftModel,
     sidebarBranches,
     selectedAssistant,
     selectedThread,
@@ -1464,89 +1001,31 @@ export function useThreadPageController() {
     isLoadingThreads,
     isCreatingThread: createThreadMutation.isPending,
     deletingThreadId: deleteThreadMutation.isPending ? deleteThreadMutation.variables : null,
-    deletingAssistantId: deleteAssistantMutation.isPending
-      ? deleteAssistantMutation.variables
-      : null,
     isLoadingChatHistory,
     isChatStreaming,
     chatError,
     loadError,
     canAbortGeneration,
-    providers,
-    mcpServers,
-    assistantDialogMode,
-    assistantDialogAssistant,
-    assistantDialogChannels,
-    assistantDialogChannelSetupAction,
-    isAssistantDialogOpen,
-    isSubmittingAssistantDialog:
-      createAssistantMutation.isPending ||
-      updateAssistantMutation.isPending ||
-      isAssistantChannelMutating,
-    assistantDialogError,
-    channelAccessClaw,
-    channelAccessPairings,
-    isChannelAccessLoading,
-    channelAuthState,
-    isChannelAuthLoading,
-    isChannelAccessSubmitting,
-    channelAccessError,
     tokenUsage,
-    heartbeatMonitorAssistant,
-    cronMonitorAssistant,
     onCreateThread: () => {
-      void createNewThread()
+      handleOpenNewThread()
     },
-    onCreateAssistant: openCreateAssistantDialog,
-    onBrowseAssistants: () => {
-      navigate('/chat')
+    onSelectDraftWorkspace: handleSelectDraftWorkspace,
+    onDraftProviderChange: setDraftProviderId,
+    onDraftModelChange: setDraftModel,
+    onRelocateWorkspace: () => {
+      void handleRelocateWorkspace()
     },
-    onSelectAssistant: handleSelectAssistant,
+    onDeleteWorkspace: () => {
+      void handleDeleteWorkspace()
+    },
+    isRelocatingWorkspace: relocateWorkspaceMutation.isPending,
+    isDeletingWorkspace: deleteWorkspaceMutation.isPending,
     onSelectThread: handleSelectThread,
-    onEditAssistant: openEditAssistantDialog,
-    onDeleteAssistant: (assistantId: string) => {
-      void handleDeleteAssistant(assistantId)
-    },
     onDeleteThread: (thread: ThreadRecord) => {
       void handleDeleteThread(thread)
     },
     onSubmitMessage: handleSubmitMessage,
-    onAbortGeneration: handleAbortGeneration,
-    onOpenAssistantConfig: openAssistantConfigDialog,
-    onOpenHeartbeatMonitor: openHeartbeatMonitor,
-    onCloseHeartbeatMonitor: () => {
-      setHeartbeatMonitorAssistant(null)
-    },
-    onOpenCronMonitor: openCronMonitor,
-    onCloseCronMonitor: () => {
-      setCronMonitorAssistant(null)
-    },
-    onCloseAssistantDialog: closeAssistantDialog,
-    onCloseChannelAccessDialog: () => {
-      if (isChannelAccessSubmitting) {
-        return
-      }
-
-      setChannelAccessClaw(null)
-      setChannelAccessPairings([])
-      setIsChannelAccessLoading(false)
-      setChannelAuthState(null)
-      setIsChannelAuthLoading(false)
-      setChannelAccessError(null)
-    },
-    onApproveChannelAccessPairing: (pairingId: string) => {
-      void handleChannelAccessAction(approveClawPairing, pairingId)
-    },
-    onRejectChannelAccessPairing: (pairingId: string) => {
-      void handleChannelAccessAction(rejectClawPairing, pairingId)
-    },
-    onRevokeChannelAccessPairing: (pairingId: string) => {
-      void handleChannelAccessAction(revokeClawPairing, pairingId)
-    },
-    onRecoverChannelAccessSetup: () => {
-      void handleRecoverChannelAccessSetup()
-    },
-    onSelectWorkspacePath: selectWorkspacePath,
-    onSubmitAssistantDialog: handleSubmitAssistantDialog
+    onAbortGeneration: handleAbortGeneration
   }
 }

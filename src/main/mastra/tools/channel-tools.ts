@@ -9,15 +9,12 @@ import {
   isKnownChannelType,
   supportsChannelImageDelivery
 } from '../../channels/channel-media-support'
-import type { RecentConversation } from '../../heartbeat/recent-conversations'
 import { resolveAssistantWorkspacePath } from '../assistant-workspace'
-import { getChannelExecutionContext, getHeartbeatRunId } from '../tool-context'
-import { createNoArgToolInputSchema } from './tool-schema'
+import { getChannelExecutionContext } from '../tool-context'
 
 type ChannelToolsOptions = {
   bus: ChannelEventBus
   workspaceRootPath: string | null
-  resolveRecentConversations?: () => Promise<RecentConversation[]>
 }
 
 type ChannelTarget = {
@@ -78,35 +75,6 @@ function resolveFilePath(workspaceRootPath: string | null, filePath: string): st
 }
 
 export function createChannelTools(options: ChannelToolsOptions) {
-  const getRecentConversations = options.resolveRecentConversations
-    ? createTool({
-        id: 'get-recent-conversations',
-        description:
-          'List recent channel conversations that this heartbeat run can explicitly target for follow-up.',
-        inputSchema: createNoArgToolInputSchema(),
-        outputSchema: z.object({
-          conversations: z.array(
-            z.object({
-              threadId: z.string(),
-              channelId: z.string(),
-              remoteChatId: z.string(),
-              lastUserMessageAt: z.string(),
-              minutesSinceActivity: z.number().int().nonnegative()
-            })
-          )
-        }),
-        execute: async (_input, context) => {
-          if (!getHeartbeatRunId(context.requestContext)) {
-            throw new Error('Recent conversations are available only during heartbeat runs.')
-          }
-
-          return {
-            conversations: await options.resolveRecentConversations?.()
-          }
-        }
-      })
-    : undefined
-
   const sendMessageToChannel = createTool({
     id: 'send-message-to-channel',
     description:
@@ -265,7 +233,6 @@ export function createChannelTools(options: ChannelToolsOptions) {
   })
 
   return {
-    ...(getRecentConversations ? { getRecentConversations } : {}),
     sendMessageToChannel,
     sendImage,
     sendFile

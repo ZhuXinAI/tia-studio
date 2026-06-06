@@ -19,21 +19,27 @@ import {
 import { Input } from '../../../components/ui/input'
 import { Switch } from '../../../components/ui/switch'
 import { useTranslation } from '../../../i18n/use-app-translation'
-import { channelStatusLabel, channelTypeLabel } from '../../claws/claw-labels'
+import { channelStatusLabel, channelTypeLabel } from '../channels/channel-labels'
 import type {
-  ClawsResponse,
-  ConfiguredClawChannelRecord,
-  CreateClawChannelInput,
-  UpdateClawChannelInput
-} from '../../claws/claws-query'
-import {
-  createClawChannel,
-  deleteClawChannel,
-  listClaws,
-  updateClawChannel
-} from '../../claws/claws-query'
+  ConfiguredChannelRecord,
+  CreateChannelInput,
+  UpdateChannelInput
+} from '../channels/channels-query'
+import { createChannel, deleteChannel, listChannels, updateChannel } from '../channels/channels-query'
 
-type ChannelType = 'discord' | 'lark' | 'telegram' | 'whatsapp' | 'wechat' | 'wecom' | 'wechat-kf'
+const settingsSelectClassName =
+  'h-11 rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 py-2 text-sm shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_44%,transparent)] disabled:opacity-100'
+
+const SUPPORTED_CHANNEL_TYPES = [
+  'discord',
+  'lark',
+  'telegram',
+  'whatsapp',
+  'wechat',
+  'wecom'
+] as const
+
+type ChannelType = (typeof SUPPORTED_CHANNEL_TYPES)[number]
 type ChannelFormMode = 'create' | 'edit'
 
 type ChannelFormState = {
@@ -44,20 +50,19 @@ type ChannelFormState = {
   botToken: string
   botId: string
   secret: string
-  serverUrl: string
-  serverKey: string
   groupRequireMention: boolean
+}
+
+function isSupportedChannelType(type: string): type is ChannelType {
+  return SUPPORTED_CHANNEL_TYPES.includes(type as ChannelType)
+}
+
+function canEditChannel(channel: ConfiguredChannelRecord): boolean {
+  return isSupportedChannelType(channel.type)
 }
 
 function supportsGroupMentionSetting(type: ChannelType): boolean {
   return type === 'discord' || type === 'lark' || type === 'whatsapp' || type === 'wecom'
-}
-
-function emptyResponse(): ClawsResponse {
-  return {
-    claws: [],
-    configuredChannels: []
-  }
 }
 
 function emptyFormState(): ChannelFormState {
@@ -69,27 +74,12 @@ function emptyFormState(): ChannelFormState {
     botToken: '',
     botId: '',
     secret: '',
-    serverUrl: '',
-    serverKey: '',
     groupRequireMention: true
   }
 }
 
-function toEditFormState(channel: ConfiguredClawChannelRecord): ChannelFormState {
-  const type =
-    channel.type === 'discord'
-      ? 'discord'
-      : channel.type === 'telegram'
-        ? 'telegram'
-        : channel.type === 'whatsapp'
-          ? 'whatsapp'
-          : channel.type === 'wechat'
-            ? 'wechat'
-          : channel.type === 'wecom'
-            ? 'wecom'
-            : channel.type === 'wechat-kf'
-              ? 'wechat-kf'
-              : 'lark'
+function toEditFormState(channel: ConfiguredChannelRecord): ChannelFormState {
+  const type = isSupportedChannelType(channel.type) ? channel.type : 'lark'
 
   return {
     type,
@@ -99,13 +89,11 @@ function toEditFormState(channel: ConfiguredClawChannelRecord): ChannelFormState
     botToken: '',
     botId: '',
     secret: '',
-    serverUrl: '',
-    serverKey: '',
     groupRequireMention: channel.groupRequireMention !== false
   }
 }
 
-function buildCreateInput(formState: ChannelFormState): CreateClawChannelInput {
+function buildCreateInput(formState: ChannelFormState): CreateChannelInput {
   if (formState.type === 'discord') {
     return {
       type: 'discord',
@@ -148,15 +136,6 @@ function buildCreateInput(formState: ChannelFormState): CreateClawChannelInput {
     }
   }
 
-  if (formState.type === 'wechat-kf') {
-    return {
-      type: 'wechat-kf',
-      name: formState.name.trim(),
-      serverUrl: formState.serverUrl.trim(),
-      serverKey: formState.serverKey.trim()
-    }
-  }
-
   return {
     type: 'lark',
     name: formState.name.trim(),
@@ -166,7 +145,7 @@ function buildCreateInput(formState: ChannelFormState): CreateClawChannelInput {
   }
 }
 
-function buildUpdateInput(formState: ChannelFormState): UpdateClawChannelInput {
+function buildUpdateInput(formState: ChannelFormState): UpdateChannelInput {
   if (formState.type === 'discord') {
     return {
       type: 'discord',
@@ -209,15 +188,6 @@ function buildUpdateInput(formState: ChannelFormState): UpdateClawChannelInput {
     }
   }
 
-  if (formState.type === 'wechat-kf') {
-    return {
-      type: 'wechat-kf',
-      name: formState.name.trim(),
-      ...(formState.serverUrl.trim().length > 0 ? { serverUrl: formState.serverUrl.trim() } : {}),
-      ...(formState.serverKey.trim().length > 0 ? { serverKey: formState.serverKey.trim() } : {})
-    }
-  }
-
   return {
     type: 'lark',
     name: formState.name.trim(),
@@ -227,19 +197,30 @@ function buildUpdateInput(formState: ChannelFormState): UpdateClawChannelInput {
   }
 }
 
+function statusToneClassName(status: ConfiguredChannelRecord['status']): string {
+  switch (status) {
+    case 'connected':
+      return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+    case 'disconnected':
+      return 'bg-[color:var(--surface-muted)] text-muted-foreground'
+    default:
+      return 'bg-red-500/10 text-red-700 dark:text-red-300'
+  }
+}
+
 export function ChannelsSettingsPage(): React.JSX.Element {
   const { t } = useTranslation()
-  const [data, setData] = useState<ClawsResponse>(emptyResponse)
+  const [configuredChannels, setConfiguredChannels] = useState<ConfiguredChannelRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false)
   const [formMode, setFormMode] = useState<ChannelFormMode>('create')
-  const [editingChannel, setEditingChannel] = useState<ConfiguredClawChannelRecord | null>(null)
+  const [editingChannel, setEditingChannel] = useState<ConfiguredChannelRecord | null>(null)
   const [formState, setFormState] = useState<ChannelFormState>(emptyFormState)
   const [formError, setFormError] = useState<string | null>(null)
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false)
-  const [channelToRemove, setChannelToRemove] = useState<ConfiguredClawChannelRecord | null>(null)
+  const [channelToRemove, setChannelToRemove] = useState<ConfiguredChannelRecord | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
 
   const refreshChannels = useCallback(async (): Promise<void> => {
@@ -247,7 +228,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
     setErrorMessage(null)
 
     try {
-      setData(await listClaws())
+      setConfiguredChannels(await listChannels())
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : t('settings.channels.loadFailed'))
     } finally {
@@ -260,8 +241,21 @@ export function ChannelsSettingsPage(): React.JSX.Element {
   }, [refreshChannels])
 
   const sortedChannels = useMemo(
-    () => [...data.configuredChannels].sort((left, right) => left.name.localeCompare(right.name)),
-    [data.configuredChannels]
+    () => [...configuredChannels].sort((left, right) => left.name.localeCompare(right.name)),
+    [configuredChannels]
+  )
+  const activeChannelCount = useMemo(
+    () => sortedChannels.filter((channel) => channel.status === 'connected').length,
+    [sortedChannels]
+  )
+  const pairingChannelCount = useMemo(
+    () =>
+      sortedChannels.filter(
+        (channel) =>
+          (channel.type === 'telegram' || channel.type === 'whatsapp') &&
+          (channel.pairedCount > 0 || channel.pendingPairingCount > 0)
+      ).length,
+    [sortedChannels]
   )
 
   function resetForm(): void {
@@ -279,7 +273,11 @@ export function ChannelsSettingsPage(): React.JSX.Element {
     setIsFormDialogOpen(true)
   }
 
-  function openEditDialog(channel: ConfiguredClawChannelRecord): void {
+  function openEditDialog(channel: ConfiguredChannelRecord): void {
+    if (!canEditChannel(channel)) {
+      return
+    }
+
     setFormMode('edit')
     setEditingChannel(channel)
     setFormState(toEditFormState(channel))
@@ -289,38 +287,32 @@ export function ChannelsSettingsPage(): React.JSX.Element {
 
   async function handleSubmitForm(): Promise<void> {
     if (formState.name.trim().length === 0) {
-      setFormError(t('claws.channelSelector.errors.nameRequired'))
+      setFormError(t('settings.channels.errors.nameRequired'))
       return
     }
 
     if (formMode === 'create') {
       if (formState.type === 'discord') {
         if (formState.botToken.trim().length === 0) {
-          setFormError(t('claws.channelSelector.errors.discordCredentialsRequired'))
+          setFormError(t('settings.channels.errors.discordCredentialsRequired'))
           return
         }
       } else if (formState.type === 'telegram') {
         if (formState.botToken.trim().length === 0) {
-          setFormError(t('claws.channelSelector.errors.telegramCredentialsRequired'))
+          setFormError(t('settings.channels.errors.telegramCredentialsRequired'))
           return
         }
       } else if (
         formState.type === 'wecom' &&
         (formState.botId.trim().length === 0 || formState.secret.trim().length === 0)
       ) {
-        setFormError(t('claws.channelSelector.errors.wecomCredentialsRequired'))
-        return
-      } else if (
-        formState.type === 'wechat-kf' &&
-        (formState.serverUrl.trim().length === 0 || formState.serverKey.trim().length === 0)
-      ) {
-        setFormError(t('claws.channelSelector.errors.wechatKfCredentialsRequired'))
+        setFormError(t('settings.channels.errors.wecomCredentialsRequired'))
         return
       } else if (
         formState.type === 'lark' &&
         (formState.appId.trim().length === 0 || formState.appSecret.trim().length === 0)
       ) {
-        setFormError(t('claws.channelSelector.errors.larkCredentialsRequired'))
+        setFormError(t('settings.channels.errors.larkCredentialsRequired'))
         return
       }
     }
@@ -331,22 +323,13 @@ export function ChannelsSettingsPage(): React.JSX.Element {
 
     try {
       if (formMode === 'create') {
-        const createdChannel = await createClawChannel(buildCreateInput(formState))
-        setData((current) => ({
-          ...current,
-          configuredChannels: [...current.configuredChannels, createdChannel]
-        }))
+        const createdChannel = await createChannel(buildCreateInput(formState))
+        setConfiguredChannels((current) => [...current, createdChannel])
       } else if (editingChannel) {
-        const updatedChannel = await updateClawChannel(
-          editingChannel.id,
-          buildUpdateInput(formState)
+        const updatedChannel = await updateChannel(editingChannel.id, buildUpdateInput(formState))
+        setConfiguredChannels((current) =>
+          current.map((channel) => (channel.id === updatedChannel.id ? updatedChannel : channel))
         )
-        setData((current) => ({
-          ...current,
-          configuredChannels: current.configuredChannels.map((channel) =>
-            channel.id === updatedChannel.id ? updatedChannel : channel
-          )
-        }))
       }
 
       setIsFormDialogOpen(false)
@@ -354,8 +337,8 @@ export function ChannelsSettingsPage(): React.JSX.Element {
     } catch (error) {
       const fallbackKey =
         formMode === 'create'
-          ? 'claws.channelSelector.errors.createFailed'
-          : 'claws.channelSelector.errors.updateFailed'
+          ? 'settings.channels.errors.createFailed'
+          : 'settings.channels.errors.updateFailed'
       setFormError(error instanceof Error ? error.message : t(fallbackKey))
     } finally {
       setIsSubmitting(false)
@@ -372,18 +355,15 @@ export function ChannelsSettingsPage(): React.JSX.Element {
     setErrorMessage(null)
 
     try {
-      await deleteClawChannel(channelToRemove.id)
-      setData((current) => ({
-        ...current,
-        configuredChannels: current.configuredChannels.filter(
-          (channel) => channel.id !== channelToRemove.id
-        )
-      }))
+      await deleteChannel(channelToRemove.id)
+      setConfiguredChannels((current) =>
+        current.filter((channel) => channel.id !== channelToRemove.id)
+      )
       setIsRemoveDialogOpen(false)
       setChannelToRemove(null)
     } catch (error) {
       setRemoveError(
-        error instanceof Error ? error.message : t('claws.channelSelector.errors.deleteFailed')
+        error instanceof Error ? error.message : t('settings.channels.errors.deleteFailed')
       )
     } finally {
       setIsSubmitting(false)
@@ -391,96 +371,159 @@ export function ChannelsSettingsPage(): React.JSX.Element {
   }
 
   return (
-    <div className="flex flex-col gap-6 py-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{t('settings.channels.title')}</h1>
-        <p className="text-sm text-muted-foreground">{t('settings.channels.description')}</p>
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 py-8">
+      <header className="space-y-3 border-b border-[color:var(--surface-border)] pb-5">
+        <p className="section-kicker">Global routing and communication</p>
+        <h1 className="font-editorial text-[2.8rem] leading-none tracking-[-0.045em]">
+          {t('settings.channels.title')}
+        </h1>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          {t('settings.channels.description')}
+        </p>
       </header>
 
-      <Card className="border-border/70 bg-card/80 backdrop-blur-sm">
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div className="space-y-1">
-            <CardTitle>{t('settings.channels.configuredTitle')}</CardTitle>
-            <CardDescription>{t('settings.channels.configuredDescription')}</CardDescription>
-          </div>
-          <Button id="settings-channels-add" type="button" onClick={openCreateDialog}>
-            <Plus className="size-4" />
-            {t('claws.channelSelector.actions.add')}
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">{t('settings.channels.loading')}</p>
-          ) : null}
-          {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_320px]">
+        <Card className="overflow-hidden border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_98%,transparent),color-mix(in_srgb,var(--surface-panel)_74%,transparent))]">
+          <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] pb-5">
+            <div className="space-y-1">
+              <p className="section-kicker">Configured inventory</p>
+              <CardTitle className="font-editorial text-[2rem] leading-none tracking-[-0.035em]">
+                {t('settings.channels.configuredTitle')}
+              </CardTitle>
+              <CardDescription>{t('settings.channels.configuredDescription')}</CardDescription>
+            </div>
+            <Button id="settings-channels-add" type="button" onClick={openCreateDialog}>
+              <Plus className="size-4" />
+              {t('settings.channels.actions.add')}
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4 py-6">
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground">{t('settings.channels.loading')}</p>
+            ) : null}
+            {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
 
-          {!isLoading && sortedChannels.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t('settings.channels.empty')}</p>
-          ) : null}
+            {!isLoading && sortedChannels.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('settings.channels.empty')}</p>
+            ) : null}
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            {sortedChannels.map((channel) => (
-              <Card key={channel.id} className="border-border/60">
-                <CardHeader>
-                  <CardTitle className="text-base">{channel.name}</CardTitle>
-                  <CardDescription>
-                    {channelTypeLabel(channel.type, t)} · {channelStatusLabel(channel.status, t)}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    {channel.assistantId
-                      ? t('settings.channels.boundTo', {
-                          assistantName:
-                            channel.assistantName ??
-                            t('claws.channelSelector.otherAssistantFallback')
-                        })
-                      : t('settings.channels.available')}
-                  </p>
-                  {channel.type === 'telegram' || channel.type === 'whatsapp' ? (
-                    <p className="text-xs text-muted-foreground">
-                      {t('claws.telegram.pairingSummary', {
-                        pairedCount: channel.pairedCount,
-                        pendingCount: channel.pendingPairingCount
-                      })}
-                    </p>
-                  ) : null}
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      id={`settings-channels-edit-${channel.id}`}
-                      type="button"
-                      variant="outline"
-                      disabled={isSubmitting}
-                      onClick={() => openEditDialog(channel)}
-                    >
-                      <Pencil className="size-4" />
-                      {t('claws.channelSelector.actions.edit')}
-                    </Button>
-                    <Button
-                      id={`settings-channels-delete-${channel.id}`}
-                      type="button"
-                      variant="outline"
-                      disabled={channel.assistantId !== null || isSubmitting}
-                      onClick={() => {
-                        setChannelToRemove(channel)
-                        setRemoveError(null)
-                        setIsRemoveDialogOpen(true)
-                      }}
-                    >
-                      {t('claws.channelSelector.actions.remove')}
-                    </Button>
+            <div className="space-y-3">
+              {sortedChannels.map((channel) => (
+                <div
+                  key={channel.id}
+                  className="rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-5 py-4 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_46%,transparent)]"
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="font-editorial text-[1.45rem] leading-none tracking-[-0.03em]">
+                          {channel.name}
+                        </h2>
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusToneClassName(channel.status)}`}
+                        >
+                          {channelStatusLabel(channel.status, t)}
+                        </span>
+                        <span className="inline-flex rounded-full bg-[color:var(--surface-muted)] px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                          {channelTypeLabel(channel.type, t)}
+                        </span>
+                      </div>
+
+                      <p className="text-sm text-muted-foreground">
+                        {channel.assistantId
+                          ? channel.assistantName
+                            ? t('settings.channels.boundTo', {
+                                assistantName: channel.assistantName
+                              })
+                            : t('settings.channels.inUse')
+                          : t('settings.channels.available')}
+                      </p>
+
+                      {channel.type === 'telegram' || channel.type === 'whatsapp' ? (
+                        <p className="text-xs text-muted-foreground">
+                          {t('settings.channels.pairingSummary', {
+                            pairedCount: channel.pairedCount,
+                            pendingCount: channel.pendingPairingCount
+                          })}
+                        </p>
+                      ) : null}
+
+                      {channel.assistantId !== null ? (
+                        <p className="text-xs text-muted-foreground">
+                          {t('settings.channels.removeDisabled')}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <Button
+                        id={`settings-channels-edit-${channel.id}`}
+                        type="button"
+                        variant="outline"
+                        disabled={!canEditChannel(channel) || isSubmitting}
+                        onClick={() => openEditDialog(channel)}
+                      >
+                        <Pencil className="size-4" />
+                        {t('settings.channels.actions.edit')}
+                      </Button>
+                      <Button
+                        id={`settings-channels-delete-${channel.id}`}
+                        type="button"
+                        variant="outline"
+                        disabled={channel.assistantId !== null || isSubmitting}
+                        onClick={() => {
+                          setChannelToRemove(channel)
+                          setRemoveError(null)
+                          setIsRemoveDialogOpen(true)
+                        }}
+                      >
+                        {t('settings.channels.actions.remove')}
+                      </Button>
+                    </div>
                   </div>
-                  {channel.assistantId !== null ? (
-                    <p className="text-xs text-muted-foreground">
-                      {t('settings.channels.removeDisabled')}
-                    </p>
-                  ) : null}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-4">
+          <Card className="border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] shadow-none">
+            <CardHeader className="space-y-2">
+              <p className="section-kicker">Overview</p>
+              <CardTitle className="font-editorial text-[1.5rem] leading-none tracking-[-0.03em]">
+                Channel posture
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3">
+              <div className="rounded-[0.95rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-3">
+                <p className="section-kicker text-[0.64rem]">Active now</p>
+                <p className="font-editorial mt-1 text-[2rem] leading-none">{activeChannelCount}</p>
+              </div>
+              <div className="rounded-[0.95rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-3">
+                <p className="section-kicker text-[0.64rem]">Pairing queues</p>
+                <p className="font-editorial mt-1 text-[2rem] leading-none">{pairingChannelCount}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] shadow-none">
+            <CardHeader className="space-y-2">
+              <p className="section-kicker">Routing note</p>
+              <CardTitle className="font-editorial text-[1.5rem] leading-none tracking-[-0.03em]">
+                Global by design
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <p>{t('settings.channels.description')}</p>
+              <p>
+                Channels stay global here while inbound conversations continue into the built-in
+                Chats workspace.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       <Dialog
         open={isFormDialogOpen}
@@ -493,15 +536,16 @@ export function ChannelsSettingsPage(): React.JSX.Element {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
+            <p className="section-kicker">Channel details</p>
             <DialogTitle>
               {formMode === 'create'
-                ? t('claws.channelSelector.create.title')
-                : t('claws.channelSelector.edit.title')}
+                ? t('settings.channels.form.createTitle')
+                : t('settings.channels.form.editTitle')}
             </DialogTitle>
             <DialogDescription>
               {formMode === 'create'
-                ? t('claws.channelSelector.create.description')
-                : t('claws.channelSelector.edit.description')}
+                ? t('settings.channels.createDescription')
+                : t('settings.channels.form.editDescription')}
             </DialogDescription>
           </DialogHeader>
 
@@ -517,7 +561,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                 }
                 className="text-sm font-medium"
               >
-                {t('claws.channelSelector.create.fields.type')}
+                {t('settings.channels.form.type')}
               </label>
               <select
                 id={
@@ -525,7 +569,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                     ? 'settings-channel-create-type'
                     : 'settings-channel-form-type'
                 }
-                className="border-input bg-background rounded-md border px-3 py-2 text-sm disabled:opacity-100"
+                className={settingsSelectClassName}
                 value={formState.type}
                 disabled={formMode === 'edit'}
                 onChange={(event) =>
@@ -536,19 +580,16 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                     appSecret: '',
                     botToken: '',
                     botId: '',
-                    secret: '',
-                    serverUrl: '',
-                    serverKey: ''
+                    secret: ''
                   }))
                 }
               >
-                <option value="discord">{t('claws.dialog.channelTypes.discord')}</option>
-                <option value="lark">{t('claws.dialog.channelTypes.lark')}</option>
-                <option value="telegram">{t('claws.dialog.channelTypes.telegram')}</option>
-                <option value="whatsapp">{t('claws.dialog.channelTypes.whatsapp')}</option>
-                <option value="wechat">{t('claws.dialog.channelTypes.wechat')}</option>
-                <option value="wecom">{t('claws.dialog.channelTypes.wecom')}</option>
-                <option value="wechat-kf">{t('claws.dialog.channelTypes.wechatKf')}</option>
+                <option value="discord">{t('settings.channels.channelTypes.discord')}</option>
+                <option value="lark">{t('settings.channels.channelTypes.lark')}</option>
+                <option value="telegram">{t('settings.channels.channelTypes.telegram')}</option>
+                <option value="whatsapp">{t('settings.channels.channelTypes.whatsapp')}</option>
+                <option value="wechat">{t('settings.channels.channelTypes.wechat')}</option>
+                <option value="wecom">{t('settings.channels.channelTypes.wecom')}</option>
               </select>
             </div>
 
@@ -561,7 +602,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                 }
                 className="text-sm font-medium"
               >
-                {t('claws.dialog.fields.channelName')}
+                {t('settings.channels.form.channelName')}
               </label>
               <Input
                 id={
@@ -589,7 +630,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                   }
                   className="text-sm font-medium"
                 >
-                  {t('claws.dialog.fields.botToken')}
+                  {t('settings.channels.form.botToken')}
                 </label>
                 <Input
                   id={
@@ -600,7 +641,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                   type="password"
                   placeholder={
                     formMode === 'edit'
-                      ? t('claws.channelSelector.edit.botTokenPlaceholder')
+                      ? t('settings.channels.form.botTokenPlaceholder')
                       : undefined
                   }
                   value={formState.botToken}
@@ -614,96 +655,12 @@ export function ChannelsSettingsPage(): React.JSX.Element {
               </div>
             ) : formState.type === 'whatsapp' ? (
               <p className="text-sm text-muted-foreground">
-                {t('claws.channelSelector.create.whatsappHint')}
+                {t('settings.channels.whatsappHint')}
               </p>
             ) : formState.type === 'wechat' ? (
               <p className="text-sm text-muted-foreground">
-                {t('claws.channelSelector.create.wechatHint')}
+                {t('settings.channels.wechatHint')}
               </p>
-            ) : formState.type === 'wechat-kf' ? (
-              <div className="space-y-3">
-                <div className="rounded-lg border border-border/70 bg-muted/30 p-3 text-sm text-muted-foreground">
-                  <p>
-                    {t('claws.channelSelector.create.wechatKfHintPrefix')}{' '}
-                    <a
-                      className="font-medium text-foreground underline underline-offset-2"
-                      href="https://github.com/windht/wechat-kf-relay"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      wechat-kf-relay
-                    </a>
-                    . {t('claws.channelSelector.create.wechatKfHintSuffix')}
-                  </p>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="grid gap-2">
-                    <label
-                      htmlFor={
-                        formMode === 'create'
-                          ? 'settings-channel-create-server-url'
-                          : 'settings-channel-form-server-url'
-                      }
-                      className="text-sm font-medium"
-                    >
-                      {t('claws.dialog.fields.serverUrl')}
-                    </label>
-                    <Input
-                      id={
-                        formMode === 'create'
-                          ? 'settings-channel-create-server-url'
-                          : 'settings-channel-form-server-url'
-                      }
-                      placeholder={
-                        formMode === 'edit'
-                          ? t('claws.channelSelector.edit.appIdPlaceholder')
-                          : undefined
-                      }
-                      value={formState.serverUrl}
-                      onChange={(event) =>
-                        setFormState((currentState) => ({
-                          ...currentState,
-                          serverUrl: event.target.value
-                        }))
-                      }
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <label
-                      htmlFor={
-                        formMode === 'create'
-                          ? 'settings-channel-create-server-key'
-                          : 'settings-channel-form-server-key'
-                      }
-                      className="text-sm font-medium"
-                    >
-                      {t('claws.dialog.fields.serverKey')}
-                    </label>
-                    <Input
-                      id={
-                        formMode === 'create'
-                          ? 'settings-channel-create-server-key'
-                          : 'settings-channel-form-server-key'
-                      }
-                      type="password"
-                      placeholder={
-                        formMode === 'edit'
-                          ? t('claws.channelSelector.edit.appSecretPlaceholder')
-                          : undefined
-                      }
-                      value={formState.serverKey}
-                      onChange={(event) =>
-                        setFormState((currentState) => ({
-                          ...currentState,
-                          serverKey: event.target.value
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
             ) : formState.type === 'wecom' ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-2">
@@ -715,7 +672,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                     }
                     className="text-sm font-medium"
                   >
-                    {t('claws.dialog.fields.botId')}
+                    {t('settings.channels.form.botId')}
                   </label>
                   <Input
                     id={
@@ -725,7 +682,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                     }
                     placeholder={
                       formMode === 'edit'
-                        ? t('claws.channelSelector.edit.appIdPlaceholder')
+                        ? t('settings.channels.form.appIdPlaceholder')
                         : undefined
                     }
                     value={formState.botId}
@@ -747,7 +704,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                     }
                     className="text-sm font-medium"
                   >
-                    {t('claws.dialog.fields.secret')}
+                    {t('settings.channels.form.secret')}
                   </label>
                   <Input
                     id={
@@ -758,7 +715,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                     type="password"
                     placeholder={
                       formMode === 'edit'
-                        ? t('claws.channelSelector.edit.appSecretPlaceholder')
+                        ? t('settings.channels.form.appSecretPlaceholder')
                         : undefined
                     }
                     value={formState.secret}
@@ -782,7 +739,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                     }
                     className="text-sm font-medium"
                   >
-                    {t('claws.dialog.fields.appId')}
+                    {t('settings.channels.form.appId')}
                   </label>
                   <Input
                     id={
@@ -792,7 +749,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                     }
                     placeholder={
                       formMode === 'edit'
-                        ? t('claws.channelSelector.edit.appIdPlaceholder')
+                        ? t('settings.channels.form.appIdPlaceholder')
                         : undefined
                     }
                     value={formState.appId}
@@ -814,7 +771,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                     }
                     className="text-sm font-medium"
                   >
-                    {t('claws.dialog.fields.appSecret')}
+                    {t('settings.channels.form.appSecret')}
                   </label>
                   <Input
                     id={
@@ -825,7 +782,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                     type="password"
                     placeholder={
                       formMode === 'edit'
-                        ? t('claws.channelSelector.edit.appSecretPlaceholder')
+                        ? t('settings.channels.form.appSecretPlaceholder')
                         : undefined
                     }
                     value={formState.appSecret}
@@ -842,12 +799,12 @@ export function ChannelsSettingsPage(): React.JSX.Element {
 
             {formMode === 'edit' && formState.type !== 'whatsapp' && formState.type !== 'wechat' ? (
               <p className="text-xs text-muted-foreground">
-                {t('claws.channelSelector.edit.credentialsOptional')}
+                {t('settings.channels.form.credentialsOptional')}
               </p>
             ) : null}
 
             {supportsGroupMentionSetting(formState.type) ? (
-              <div className="flex items-start justify-between gap-4 rounded-lg border p-4">
+              <div className="flex items-start justify-between gap-4 rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-4">
                 <div className="grid gap-1">
                   <label
                     htmlFor={
@@ -857,10 +814,10 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                     }
                     className="text-sm font-medium"
                   >
-                    {t('claws.channelSelector.groupRequireMention.label')}
+                    {t('settings.channels.form.groupRequireMentionLabel')}
                   </label>
                   <p className="text-xs text-muted-foreground">
-                    {t('claws.channelSelector.groupRequireMention.description')}
+                    {t('settings.channels.groupRequireMentionDescription')}
                   </p>
                 </div>
                 <Switch
@@ -890,7 +847,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                 resetForm()
               }}
             >
-              {t('claws.channelSelector.actions.cancel')}
+              {t('settings.channels.actions.cancel')}
             </Button>
             <Button
               id={
@@ -903,8 +860,8 @@ export function ChannelsSettingsPage(): React.JSX.Element {
               onClick={() => void handleSubmitForm()}
             >
               {formMode === 'create'
-                ? t('claws.channelSelector.create.save')
-                : t('claws.channelSelector.edit.save')}
+                ? t('settings.channels.form.createSave')
+                : t('settings.channels.form.editSave')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -913,13 +870,13 @@ export function ChannelsSettingsPage(): React.JSX.Element {
       <Dialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{t('claws.channelSelector.remove.title')}</DialogTitle>
+            <DialogTitle>{t('settings.channels.remove.title')}</DialogTitle>
             <DialogDescription>
               {channelToRemove
-                ? t('claws.channelSelector.remove.description', {
+                ? t('settings.channels.remove.description', {
                     channelName: channelToRemove.name
                   })
-                : t('claws.channelSelector.remove.descriptionFallback')}
+                : t('settings.channels.remove.descriptionFallback')}
             </DialogDescription>
           </DialogHeader>
 
@@ -927,7 +884,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsRemoveDialogOpen(false)}>
-              {t('claws.channelSelector.actions.cancel')}
+              {t('settings.channels.actions.cancel')}
             </Button>
             <Button
               id="settings-channel-remove-confirm"
@@ -935,7 +892,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
               disabled={channelToRemove?.assistantId !== null || isSubmitting}
               onClick={() => void handleRemoveChannel()}
             >
-              {t('claws.channelSelector.remove.confirm')}
+              {t('settings.channels.remove.confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useThreadPageController, type ThreadPageController } from './use-thread-page-controller'
 
 const mockState = vi.hoisted(() => {
-  const routeParams: { assistantId?: string; threadId?: string } = {}
+  const routeParams: { workspaceId?: string; threadId?: string } = {}
   const setMessagesCalls: unknown[][] = []
   const assistantsData = [
     {
@@ -21,6 +21,16 @@ const mockState = vi.hoisted(() => {
       memoryConfig: null,
       createdAt: '2026-03-01T00:00:00.000Z',
       updatedAt: '2026-03-01T00:00:00.000Z'
+    }
+  ]
+  const workspacesData = [
+    {
+      id: 'workspace-chats',
+      name: 'Chats',
+      rootPath: '/tmp/tia-studio/chats',
+      builtInKind: 'chats',
+      defaultAssistantId: null,
+      isMissing: false
     }
   ]
   const providersData = [
@@ -50,14 +60,15 @@ const mockState = vi.hoisted(() => {
 
   return {
     routeParams,
+    routePath: '/chat',
     setMessagesCalls,
     assistantsData,
+    workspacesData,
     providersData,
     emptyThreads,
     idleMutation,
     navigateMock: vi.fn(),
     getMcpServersSettingsMock: vi.fn(),
-    updateAssistantHeartbeatMock: vi.fn(),
     clawsData: {
       claws: [],
       configuredChannels: []
@@ -66,13 +77,22 @@ const mockState = vi.hoisted(() => {
     createClawChannelMock: vi.fn(),
     updateClawChannelMock: vi.fn(),
     deleteClawChannelMock: vi.fn(),
+    relocateWorkspaceMock: vi.fn(),
+    deleteWorkspaceMock: vi.fn(),
     useChatMock: vi.fn()
   }
 })
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockState.navigateMock,
-  useParams: () => mockState.routeParams
+  useParams: () => mockState.routeParams,
+  useLocation: () => ({
+    pathname: mockState.routePath,
+    search: '',
+    hash: '',
+    state: null,
+    key: 'test'
+  })
 }))
 
 vi.mock('../../assistants/assistants-query', () => ({
@@ -86,15 +106,27 @@ vi.mock('../../assistants/assistants-query', () => ({
   useDeleteAssistant: () => mockState.idleMutation
 }))
 
-vi.mock('../../assistants/assistant-heartbeat-query', () => ({
-  updateAssistantHeartbeat: () => mockState.updateAssistantHeartbeatMock()
-}))
-
 vi.mock('../../settings/providers/providers-query', () => ({
   useProviders: () => ({
     data: mockState.providersData,
     isLoading: false,
     error: null
+  })
+}))
+
+vi.mock('../../workspaces/workspaces-query', () => ({
+  useWorkspaces: () => ({
+    data: mockState.workspacesData,
+    isLoading: false,
+    error: null
+  }),
+  useRelocateWorkspace: () => ({
+    isPending: false,
+    mutateAsync: mockState.relocateWorkspaceMock
+  }),
+  useDeleteWorkspace: () => ({
+    isPending: false,
+    mutateAsync: mockState.deleteWorkspaceMock
   })
 }))
 
@@ -146,6 +178,30 @@ let forceRerender: (() => void) | null = null
 let container: HTMLDivElement
 let root: Root
 
+function applyRoute(to: string): void {
+  mockState.routePath = to
+  delete mockState.routeParams.workspaceId
+  delete mockState.routeParams.threadId
+
+  const workspaceThreadMatch = /^\/workspaces\/([^/]+)\/threads\/([^/]+)$/.exec(to)
+  if (workspaceThreadMatch) {
+    mockState.routeParams.workspaceId = workspaceThreadMatch[1]
+    mockState.routeParams.threadId = workspaceThreadMatch[2]
+    return
+  }
+
+  const workspaceRootMatch = /^\/workspaces\/([^/]+)(?:\/new)?$/.exec(to)
+  if (workspaceRootMatch) {
+    mockState.routeParams.workspaceId = workspaceRootMatch[1]
+    return
+  }
+
+  const chatThreadMatch = /^\/chat\/([^/]+)$/.exec(to)
+  if (chatThreadMatch && chatThreadMatch[1] !== 'new') {
+    mockState.routeParams.threadId = chatThreadMatch[1]
+  }
+}
+
 function Harness(): React.JSX.Element {
   const [, setRenderVersion] = useState(0)
   const latestController = useThreadPageController()
@@ -171,16 +227,19 @@ async function flushReact(): Promise<void> {
 
 describe('useThreadPageController regression coverage', () => {
   beforeEach(() => {
-    mockState.routeParams.assistantId = 'assistant-1'
+    mockState.routePath = '/chat'
+    delete mockState.routeParams.workspaceId
     delete mockState.routeParams.threadId
     mockState.setMessagesCalls.splice(0, mockState.setMessagesCalls.length)
 
     mockState.navigateMock.mockReset()
+    mockState.navigateMock.mockImplementation((to: string) => {
+      applyRoute(to)
+    })
     mockState.getMcpServersSettingsMock.mockReset()
     mockState.getMcpServersSettingsMock.mockImplementation(
       () => new Promise<Record<string, unknown>>(() => undefined)
     )
-    mockState.updateAssistantHeartbeatMock.mockReset()
     mockState.clawsData = {
       claws: [],
       configuredChannels: []
@@ -189,6 +248,10 @@ describe('useThreadPageController regression coverage', () => {
     mockState.createClawChannelMock.mockReset()
     mockState.updateClawChannelMock.mockReset()
     mockState.deleteClawChannelMock.mockReset()
+    mockState.relocateWorkspaceMock.mockReset()
+    mockState.relocateWorkspaceMock.mockResolvedValue(undefined)
+    mockState.deleteWorkspaceMock.mockReset()
+    mockState.deleteWorkspaceMock.mockResolvedValue(undefined)
 
     mockState.useChatMock.mockReset()
     mockState.useChatMock.mockImplementation(() => {
@@ -222,7 +285,7 @@ describe('useThreadPageController regression coverage', () => {
     delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT
   })
 
-  it('clears composer messages only once for assistant-only chat routes', async () => {
+  it('clears composer messages only once for Chats routes', async () => {
     await act(async () => {
       root.render(<Harness />)
     })

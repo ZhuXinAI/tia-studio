@@ -55,6 +55,7 @@ describe('thread sidebar thread navigation', () => {
   })
 
   function renderSidebar(input?: {
+    chatLabel?: string
     branches?: Array<{
       assistantId: string
       assistantName: string
@@ -65,12 +66,13 @@ describe('thread sidebar thread navigation', () => {
     isLoadingData?: boolean
     isLoadingThreads?: boolean
     onCreateThread?: () => void
-    onSelectThread?: (assistantId: string, threadId: string) => void
+    onSelectThread?: (threadId: string) => void
   }): void {
     act(() => {
       root.render(
         <MemoryRouter>
           <ThreadSidebar
+            chatLabel={input?.chatLabel ?? 'Chats'}
             branches={
               input?.branches ?? [
                 {
@@ -111,8 +113,8 @@ describe('thread sidebar thread navigation', () => {
       isLoadingData: true
     })
 
-    expect(container.textContent).toContain('Conversations')
-    expect(container.textContent).toContain('Loading assistants...')
+    expect(container.textContent).toContain('Chats')
+    expect(container.textContent).toContain('Loading chats...')
   })
 
   it('creates a new thread from the active assistant thread view', () => {
@@ -166,9 +168,9 @@ describe('thread sidebar thread navigation', () => {
       ]
     })
 
-    const searchInput = container.querySelector(
-      'input[aria-label="Search assistant threads"]'
-    ) as HTMLInputElement | null
+    const searchInput = container.querySelector('input[aria-label="Search threads"]') as
+      | HTMLInputElement
+      | null
     expect(searchInput).not.toBeNull()
 
     act(() => {
