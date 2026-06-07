@@ -1157,12 +1157,11 @@ export class AssistantRuntimeService implements AssistantRuntime {
       throw new ChatRouteError(404, 'assistant_not_found', 'Assistant not found')
     }
 
-    if (!assistant.providerId) {
-      throw new ChatRouteError(409, 'provider_not_found', 'Assistant provider is not configured')
-    }
-
     const providerOverride = readThreadProviderOverride(thread?.metadata)
     const providerId = providerOverride?.providerId ?? assistant.providerId
+    if (!providerId) {
+      throw new ChatRouteError(409, 'provider_not_found', 'Assistant provider is not configured')
+    }
 
     const provider = await this.options.providersRepo.getById(providerId)
     if (!provider) {
@@ -1324,7 +1323,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
     const workLogTools = workspaceRootPath ? createWorkLogTools({ workspaceRootPath }) : {}
     const channelTools = options.channelDeliveryEnabled
       ? createChannelTools({
-        bus: this.channelEventBus,
+          bus: this.channelEventBus,
           workspaceRootPath
         })
       : {}

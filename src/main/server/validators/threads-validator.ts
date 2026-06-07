@@ -13,6 +13,11 @@ export const createThreadSchema = z.object({
   title: z.string()
 })
 
-export const updateThreadSchema = z.object({
-  title: z.string()
-})
+export const updateThreadSchema = z
+  .object({
+    title: z.string().optional(),
+    pinned: z.boolean().optional()
+  })
+  .refine((value) => value.title !== undefined || value.pinned !== undefined, {
+    message: 'title or pinned is required'
+  })

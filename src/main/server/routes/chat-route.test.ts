@@ -25,7 +25,7 @@ function createAssistantRuntimeStub(overrides: Partial<AssistantRuntime>): Assis
 }
 
 describe('chat route', () => {
-  it('streams chat through the assistant-less thread route by resolving the thread owner', async () => {
+  it('streams chat through the v2 thread route by resolving the thread owner', async () => {
     const streamChat = vi.fn(async () => new ReadableStream())
     const app = new Hono()
     registerChatRoute(app, {
@@ -46,7 +46,7 @@ describe('chat route', () => {
       }
     })
 
-    const response = await app.request('http://localhost/chat', {
+    const response = await app.request('http://localhost/chat/v2', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

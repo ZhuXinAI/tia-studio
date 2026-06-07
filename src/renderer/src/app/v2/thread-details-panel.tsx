@@ -1,6 +1,17 @@
-import { Bot, Boxes, Cable, CircleDot, Clock3, Folder, MessageSquare, Sparkles } from 'lucide-react'
+import {
+  Bot,
+  Boxes,
+  Cable,
+  CircleDot,
+  Clock3,
+  Folder,
+  MessageSquare,
+  PanelRightClose,
+  Sparkles
+} from 'lucide-react'
 import type { ThreadPageController } from '../../features/threads/hooks/use-thread-page-controller'
 import { getThreadDisplayTitle } from '../../features/threads/thread-page-routing'
+import { Button } from '../../components/ui/button'
 
 function readProviderOverride(metadata: Record<string, unknown> | undefined): {
   providerId: string
@@ -50,9 +61,11 @@ function DetailRow({
 }
 
 export function ThreadDetailsPanel({
-  controller
+  controller,
+  onCollapse
 }: {
   controller: ThreadPageController
+  onCollapse: () => void
 }): React.JSX.Element {
   const selectedThread = controller.selectedThread
   const selectedWorkspace = controller.selectedWorkspace
@@ -73,10 +86,25 @@ export function ThreadDetailsPanel({
   return (
     <aside className="hidden min-h-0 w-[19rem] shrink-0 flex-col border-l border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-panel-strong)_84%,transparent),color-mix(in_srgb,var(--surface-panel)_92%,transparent))] xl:flex">
       <div className="border-b border-[color:var(--surface-border)] px-4 py-4">
-        <p className="section-kicker">Thread Details</p>
-        <h2 className="font-editorial mt-1 truncate text-[1.55rem] leading-none tracking-[-0.035em]">
-          {selectedThread ? getThreadDisplayTitle(selectedThread.title) : 'New Chat'}
-        </h2>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="section-kicker">Thread Details</p>
+            <h2 className="font-editorial mt-1 truncate text-[1.55rem] leading-none tracking-[-0.035em]">
+              {selectedThread ? getThreadDisplayTitle(selectedThread.title) : 'New Chat'}
+            </h2>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0"
+            onClick={onCollapse}
+            aria-label="Collapse details"
+            title="Collapse details"
+          >
+            <PanelRightClose className="size-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="chat-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto p-4">

@@ -1,16 +1,10 @@
 import type { Hono } from 'hono'
-import {
-  type WhatsAppAuthStateStore
-} from '../../channels/whatsapp-auth-state-store'
-import {
-  type WechatAuthStateStore
-} from '../../channels/wechat-auth-state-store'
+import { type WhatsAppAuthStateStore } from '../../channels/whatsapp-auth-state-store'
+import { type WechatAuthStateStore } from '../../channels/wechat-auth-state-store'
 import { resolveGroupRequireMention } from '../../channels/channel-config'
 import { BUILT_IN_DEFAULT_AGENT_MCP_KEY } from '../../default-agent/default-agent-bootstrap'
 import type { AppAssistant, AssistantsRepository } from '../../persistence/repos/assistants-repo'
-import type {
-  ChannelPairingsRepository
-} from '../../persistence/repos/channel-pairings-repo'
+import type { ChannelPairingsRepository } from '../../persistence/repos/channel-pairings-repo'
 import type { AppChannel, ChannelsRepository } from '../../persistence/repos/channels-repo'
 import {
   createConfiguredChannelSchema,
@@ -22,9 +16,7 @@ type ChannelServiceLike = {
 }
 
 type ChannelSetupRecoveryLike = {
-  recover(
-    channel: Pick<AppChannel, 'id' | 'type'>
-  ): Promise<void>
+  recover(channel: Pick<AppChannel, 'id' | 'type'>): Promise<void>
 }
 
 type RegisterChannelsRouteOptions = {
@@ -486,11 +478,11 @@ export function registerChannelsRoute(app: Hono, options: RegisterChannelsRouteO
       return context.json({ ok: false, error: 'Channel not found' }, 404)
     }
 
-    if (channel.assistantId) {
-      return context.json({ ok: false, error: 'Channel is attached to an assistant' }, 409)
-    }
-
+    const shouldReloadChannelServices = Boolean(channel.assistantId)
     await options.channelsRepo.delete(channelId)
+    if (shouldReloadChannelServices) {
+      await reloadChannelServices(options)
+    }
     return context.body(null, 204)
   })
 }

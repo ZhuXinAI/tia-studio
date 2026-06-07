@@ -162,9 +162,31 @@ describe('ThreadChatCard', () => {
     expect(useAISDKRuntimeMock).toHaveBeenCalledTimes(1)
     expect(html).toContain('rounded-none border-0')
     expect(html).toContain('flex-nowrap items-center')
-    expect(html).toContain('Conversation canvas')
+    expect(html).not.toContain('Conversation canvas')
+    expect(html).toContain('Thread title')
     expect(html).toContain('font-editorial')
-    expect(html).toContain('New thread')
+    expect(html).not.toContain('New thread')
+  })
+
+  it('does not render a title bar before the thread has a generated title', () => {
+    mockThreadMessages.length = 0
+    const html = renderToString(
+      <ThreadChatCard
+        {...createDefaultProps()}
+        selectedThread={{
+          id: 'thread-1',
+          assistantId: 'assistant-1',
+          resourceId: 'default-profile',
+          title: '',
+          lastMessageAt: '2026-03-01T00:00:00.000Z',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z'
+        }}
+      />
+    )
+
+    expect(html).not.toContain('Untitled Thread')
+    expect(html).not.toContain('Conversation canvas')
   })
 
   it('shows a remote channel badge when the thread is bound to a channel chat', () => {

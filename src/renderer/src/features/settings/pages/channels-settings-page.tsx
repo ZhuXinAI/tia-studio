@@ -25,7 +25,12 @@ import type {
   CreateChannelInput,
   UpdateChannelInput
 } from '../channels/channels-query'
-import { createChannel, deleteChannel, listChannels, updateChannel } from '../channels/channels-query'
+import {
+  createChannel,
+  deleteChannel,
+  listChannels,
+  updateChannel
+} from '../channels/channels-query'
 
 const settingsSelectClassName =
   'h-11 rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 py-2 text-sm shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_44%,transparent)] disabled:opacity-100'
@@ -447,12 +452,6 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                           })}
                         </p>
                       ) : null}
-
-                      {channel.assistantId !== null ? (
-                        <p className="text-xs text-muted-foreground">
-                          {t('settings.channels.removeDisabled')}
-                        </p>
-                      ) : null}
                     </div>
 
                     <div className="flex shrink-0 flex-wrap gap-2">
@@ -470,7 +469,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                         id={`settings-channels-delete-${channel.id}`}
                         type="button"
                         variant="outline"
-                        disabled={channel.assistantId !== null || isSubmitting}
+                        disabled={isSubmitting}
                         onClick={() => {
                           setChannelToRemove(channel)
                           setRemoveError(null)
@@ -502,7 +501,9 @@ export function ChannelsSettingsPage(): React.JSX.Element {
               </div>
               <div className="rounded-[0.95rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-3">
                 <p className="section-kicker text-[0.64rem]">Pairing queues</p>
-                <p className="font-editorial mt-1 text-[2rem] leading-none">{pairingChannelCount}</p>
+                <p className="font-editorial mt-1 text-[2rem] leading-none">
+                  {pairingChannelCount}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -654,13 +655,9 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                 />
               </div>
             ) : formState.type === 'whatsapp' ? (
-              <p className="text-sm text-muted-foreground">
-                {t('settings.channels.whatsappHint')}
-              </p>
+              <p className="text-sm text-muted-foreground">{t('settings.channels.whatsappHint')}</p>
             ) : formState.type === 'wechat' ? (
-              <p className="text-sm text-muted-foreground">
-                {t('settings.channels.wechatHint')}
-              </p>
+              <p className="text-sm text-muted-foreground">{t('settings.channels.wechatHint')}</p>
             ) : formState.type === 'wecom' ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-2">
@@ -681,9 +678,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                         : 'settings-channel-form-app-id'
                     }
                     placeholder={
-                      formMode === 'edit'
-                        ? t('settings.channels.form.appIdPlaceholder')
-                        : undefined
+                      formMode === 'edit' ? t('settings.channels.form.appIdPlaceholder') : undefined
                     }
                     value={formState.botId}
                     onChange={(event) =>
@@ -748,9 +743,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                         : 'settings-channel-form-app-id'
                     }
                     placeholder={
-                      formMode === 'edit'
-                        ? t('settings.channels.form.appIdPlaceholder')
-                        : undefined
+                      formMode === 'edit' ? t('settings.channels.form.appIdPlaceholder') : undefined
                     }
                     value={formState.appId}
                     onChange={(event) =>

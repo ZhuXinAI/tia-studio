@@ -560,6 +560,93 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
     }
   })
 
+  app.post('/chat/v2', async (context) => {
+    let body: unknown
+    try {
+      body = await context.req.json()
+    } catch {
+      return context.json({ ok: false, error: 'Invalid JSON body' }, 400)
+    }
+
+    const parsed = chatRequestSchema.safeParse(body)
+    if (!parsed.success) {
+      logger.warn('Chat v2 request validation failed:', parsed.error.issues)
+      return context.json(
+        { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' },
+        400
+      )
+    }
+
+    let activeRun: ReturnType<typeof registerActiveRun> | null = null
+
+    try {
+      const assistantId = await resolveAssistantId({
+        threadId: parsed.data.threadId
+      })
+      activeRun = registerActiveRun({
+        assistantId,
+        threadId: parsed.data.threadId,
+        profileId: parsed.data.profileId
+      })
+      const stream = await options.assistantRuntime.streamChat({
+        assistantId,
+        messages: parsed.data.messages,
+        threadId: parsed.data.threadId,
+        profileId: parsed.data.profileId,
+        trigger: parsed.data.trigger,
+        abortSignal: activeRun.abortSignal
+      })
+      const streamWithCleanup = withRunCleanup(stream, activeRun.cleanup)
+
+      const chatId = parsed.data.id ?? parsed.data.threadId
+      return createUIMessageStreamResponse({
+        stream: streamWithCleanup,
+        consumeSseStream: async ({ stream: sseStream }) => {
+          try {
+            await resumableStreams.register(chatId, sseStream)
+          } catch (error) {
+            logger.error('[ChatRoute] Failed to register resumable chat v2 stream', {
+              assistantId,
+              chatId,
+              threadId: parsed.data.threadId,
+              profileId: parsed.data.profileId,
+              error
+            })
+          }
+        }
+      })
+    } catch (error) {
+      activeRun?.cleanup()
+
+      if (isChatRouteError(error)) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            code: error.code,
+            error: error.message
+          }),
+          {
+            status: error.statusCode,
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+      }
+
+      console.error(error)
+
+      return context.json(
+        {
+          ok: false,
+          code: 'chat_stream_error',
+          error: 'Failed to stream assistant response'
+        },
+        500
+      )
+    }
+  })
+
   app.post('/chat/:assistantId', async (context) => {
     let body: unknown
     try {

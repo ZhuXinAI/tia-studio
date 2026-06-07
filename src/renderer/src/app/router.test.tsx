@@ -72,6 +72,9 @@ describe('app router', () => {
     expect(html).toContain('Language')
     expect(html).toContain('General')
     expect(html).toContain('Model Provider')
+    expect(html).toContain('Back to app')
+    expect(html).not.toContain('Workspace Defaults')
+    expect(html).not.toContain('Local agent')
   })
 
   it('renders provider settings route', () => {
@@ -132,10 +135,10 @@ describe('app router', () => {
   })
 
   it('renders chat route with the AppV2 thread canvas while assistant detail restores', () => {
-    const html = renderRouter(['/chat'])
+    const html = renderRouter(['/chat/new'])
 
     expect(html).toContain('Chats')
-    expect(html).toContain('Conversation canvas')
+    expect(html).toContain('What should we build')
     expect(html).toContain('Thread Details')
   })
 

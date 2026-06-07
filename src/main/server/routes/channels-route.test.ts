@@ -241,7 +241,7 @@ describe('channels route', () => {
     })
   })
 
-  it('rejects deleting a channel that is attached to an assistant', async () => {
+  it('deletes a channel that is attached to an assistant and reloads channel services', async () => {
     const assistant = await assistantsRepo.create({
       name: 'Ops Assistant',
       providerId,
@@ -262,10 +262,8 @@ describe('channels route', () => {
       method: 'DELETE'
     })
 
-    expect(response.status).toBe(409)
-    await expect(response.json()).resolves.toEqual({
-      ok: false,
-      error: 'Channel is attached to an assistant'
-    })
+    expect(response.status).toBe(204)
+    await expect(channelsRepo.getById(channel.id)).resolves.toBeNull()
+    expect(channelReloadMock).toHaveBeenCalledOnce()
   })
 })

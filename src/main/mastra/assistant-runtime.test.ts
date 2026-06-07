@@ -712,14 +712,14 @@ describe('AssistantRuntimeService', () => {
       assistantsRepo: {} as AssistantsRepository,
       providersRepo: {} as ProvidersRepository,
       threadsRepo: {} as ThreadsRepository,
-        webSearchSettingsRepo: {
-          getDefaultEngine: vi.fn(async () => 'bing')
-        } as unknown as WebSearchSettingsRepository,
-        mcpServersRepo: {
-          getSettings: vi.fn(async () => ({ mcpServers: {} }))
-        } as never,
-        channelEventBus: new ChannelEventBus()
-      })
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing')
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never,
+      channelEventBus: new ChannelEventBus()
+    })
 
     await (
       runtime as unknown as {
@@ -731,11 +731,7 @@ describe('AssistantRuntimeService', () => {
     const tools = await agent.listTools()
 
     expect(Object.keys(tools)).not.toEqual(
-      expect.arrayContaining([
-        'listWorkLogs',
-        'readWorkLog',
-        'searchWorkLogs'
-      ])
+      expect.arrayContaining(['listWorkLogs', 'readWorkLog', 'searchWorkLogs'])
     )
   })
 
@@ -1079,11 +1075,7 @@ describe('AssistantRuntimeService', () => {
 
     const resolveModelSpy = vi.spyOn(modelResolver, 'resolveModel')
     const assistant = buildAssistant({
-      providerId: 'assistant-provider'
-    })
-    const assistantProvider = buildProvider({
-      id: 'assistant-provider',
-      selectedModel: 'assistant-model'
+      providerId: null
     })
     const overrideProvider = buildProvider({
       id: 'override-provider',
@@ -1094,10 +1086,6 @@ describe('AssistantRuntimeService', () => {
 
     const providersRepo = {
       getById: vi.fn(async (providerId: string) => {
-        if (providerId === assistantProvider.id) {
-          return assistantProvider
-        }
-
         if (providerId === overrideProvider.id) {
           return overrideProvider
         }
@@ -1284,7 +1272,6 @@ describe('AssistantRuntimeService', () => {
       })
     )
   })
-
 
   it('publishes an outbound channel event after a channel-targeted reply completes', async () => {
     handleChatStreamMock.mockReset()
@@ -1669,7 +1656,6 @@ describe('AssistantRuntimeService', () => {
       createdAt: expect.any(String)
     })
   })
-
 
   it('does not record usage when a streamed chat is aborted', async () => {
     handleChatStreamMock.mockReset()

@@ -17,6 +17,17 @@ import {
 const providerSelectClassName =
   'h-11 w-full rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 py-2 text-sm shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_44%,transparent)]'
 
+const defaultModelByProviderType: Record<ProviderType, string> = {
+  openai: 'gpt-4o',
+  'openai-response': 'gpt-4o',
+  openrouter: 'openai/gpt-4o',
+  gemini: 'gemini-2.0-flash-exp',
+  anthropic: 'claude-3-5-sonnet-20241022',
+  ollama: 'llama3.2',
+  'codex-acp': 'default',
+  'claude-agent-acp': 'default'
+}
+
 export type ProviderFormValues = {
   name: string
   type: ProviderType
@@ -42,6 +53,10 @@ function getAcpManagedRuntimeKind(type: ProviderType): ManagedRuntimeKind | null
   }
 
   return null
+}
+
+function getDefaultModelForProviderType(type: ProviderType): string {
+  return defaultModelByProviderType[type]
 }
 
 export function validateProviderForm(
@@ -117,7 +132,7 @@ export function ProvidersForm({
     apiHost: initialValue?.apiHost ?? '',
     selectedModel:
       initialValue?.selectedModel ??
-      (initialValue?.type && isAcpProviderType(initialValue.type) ? 'default' : ''),
+      (initialValue?.type ? getDefaultModelForProviderType(initialValue.type) : 'gpt-4o'),
     providerModelsText: initialValue?.providerModelsText ?? '',
     supportsVision: initialValue?.supportsVision ?? false,
     enabled: initialValue?.enabled ?? true
@@ -168,10 +183,17 @@ export function ProvidersForm({
         return {
           ...prev,
           type: nextType,
+          selectedModel: getDefaultModelForProviderType(nextType)
+        }
+      }
+
+      if (key === 'providerModelsText') {
+        const models = parseProviderModelsInput(value)
+        return {
+          ...prev,
+          providerModelsText: value,
           selectedModel:
-            isAcpProviderType(nextType) && prev.selectedModel.trim().length === 0
-              ? 'default'
-              : prev.selectedModel
+            prev.selectedModel.trim().length === 0 && models[0] ? models[0] : prev.selectedModel
         }
       }
 

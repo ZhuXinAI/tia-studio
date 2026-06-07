@@ -160,7 +160,7 @@ export function createThreadChatTransport(
   input: ThreadChatTransportInput
 ): DefaultChatTransport<UIMessage> {
   return new DefaultChatTransport<UIMessage>({
-    api: '/chat',
+    api: '/chat/v2',
     body: {
       threadId: input.threadId,
       profileId: input.profileId

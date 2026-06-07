@@ -1,4 +1,5 @@
 import clsx from 'clsx'
+import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { AppV2Sidebar } from './app-v2-sidebar'
 
@@ -9,6 +10,10 @@ function isWindowsPlatform(): boolean {
 export function AppV2Shell(): React.JSX.Element {
   const location = useLocation()
   const isSettingsRoute = location.pathname.startsWith('/settings')
+  const isChatRoute = location.pathname === '/chat' || location.pathname.startsWith('/chat/')
+  const isWorkspaceRoute = /^\/workspaces\/[^/]+(?:\/|$)/.test(location.pathname)
+  const isConversationRoute = isChatRoute || isWorkspaceRoute
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   return (
     <div className="app-v2-shell flex h-screen min-h-0 overflow-hidden bg-[color:var(--surface-canvas)] text-foreground">
@@ -19,7 +24,12 @@ export function AppV2Shell(): React.JSX.Element {
       />
       <div className="relative flex min-h-0 flex-1 overflow-hidden p-2 pt-9">
         <div className="neutral-panel flex min-h-0 flex-1 overflow-hidden rounded-[1.15rem]">
-          <AppV2Sidebar />
+          {isConversationRoute ? (
+            <AppV2Sidebar
+              isCollapsed={isSidebarCollapsed}
+              onToggleCollapsed={() => setIsSidebarCollapsed((current) => !current)}
+            />
+          ) : null}
           <main
             className={clsx(
               'min-h-0 min-w-0 flex-1 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_84%,transparent))]',

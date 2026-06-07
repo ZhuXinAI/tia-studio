@@ -225,10 +225,21 @@ export function registerThreadsRoute(app: Hono, options: RegisterThreadsRouteOpt
       )
     }
 
-    const thread = await options.threadsRepo.updateTitle(
-      context.req.param('threadId'),
-      parsed.data.title
-    )
+    const threadId = context.req.param('threadId')
+    let thread: AppThread | null = null
+    if (parsed.data.title !== undefined) {
+      thread = await options.threadsRepo.updateTitle(threadId, parsed.data.title)
+      if (!thread) {
+        return context.json({ ok: false, error: 'Thread not found' }, 404)
+      }
+    }
+
+    if (parsed.data.pinned !== undefined) {
+      thread = await options.threadsRepo.updatePinned(threadId, parsed.data.pinned)
+    } else if (!thread) {
+      thread = await options.threadsRepo.getById(threadId)
+    }
+
     if (!thread) {
       return context.json({ ok: false, error: 'Thread not found' }, 404)
     }

@@ -23,7 +23,9 @@ export function routeToThread(scope: ThreadRouteScope, threadId?: string): strin
     return threadId ? `/chat/${threadId}` : '/chat'
   }
 
-  return threadId ? `/workspaces/${scope.workspaceId}/threads/${threadId}` : `/workspaces/${scope.workspaceId}`
+  return threadId
+    ? `/workspaces/${scope.workspaceId}/threads/${threadId}`
+    : `/workspaces/${scope.workspaceId}`
 }
 
 export function routeToNewThread(scope: ThreadRouteScope): string {
@@ -47,8 +49,18 @@ export function getThreadDisplayTitle(title: string | null | undefined): string 
   return normalizedTitle.length > 0 ? normalizedTitle : i18n.t('threads.sidebar.untitledThread')
 }
 
+export function isThreadPinned(thread: ThreadRecord): boolean {
+  return thread.metadata?.pinned === true
+}
+
 export function sortThreadsByRecentActivity(threads: ThreadRecord[]): ThreadRecord[] {
   return [...threads].sort((left, right) => {
+    const leftPinned = isThreadPinned(left)
+    const rightPinned = isThreadPinned(right)
+    if (leftPinned !== rightPinned) {
+      return leftPinned ? -1 : 1
+    }
+
     const leftDate = Date.parse(left.lastMessageAt ?? left.createdAt)
     const rightDate = Date.parse(right.lastMessageAt ?? right.createdAt)
     return rightDate - leftDate

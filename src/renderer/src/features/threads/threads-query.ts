@@ -94,6 +94,10 @@ export async function updateThreadTitle(threadId: string, title: string): Promis
   return apiClient.patch<ThreadRecord>(`/v1/threads/${threadId}`, { title })
 }
 
+export async function updateThreadPinned(threadId: string, pinned: boolean): Promise<ThreadRecord> {
+  return apiClient.patch<ThreadRecord>(`/v1/threads/${threadId}`, { pinned })
+}
+
 export async function deleteThread(threadId: string): Promise<void> {
   await apiClient.delete(`/v1/threads/${threadId}`)
 }
@@ -127,6 +131,18 @@ export function useUpdateThreadTitle() {
   return useMutation({
     mutationFn: ({ threadId, title }: { threadId: string; title: string }) =>
       updateThreadTitle(threadId, title),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: threadKeys.lists() })
+    }
+  })
+}
+
+export function useUpdateThreadPinned() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ threadId, pinned }: { threadId: string; pinned: boolean }) =>
+      updateThreadPinned(threadId, pinned),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: threadKeys.lists() })
     }

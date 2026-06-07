@@ -1,4 +1,13 @@
-import { Cable, Cloud, Info, Languages, MessageCircleMore, Monitor, Shield } from 'lucide-react'
+import {
+  ArrowLeft,
+  Cable,
+  Cloud,
+  Info,
+  Languages,
+  MessageCircleMore,
+  Monitor,
+  Shield
+} from 'lucide-react'
 import type { ComponentType } from 'react'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { NavLink, useLocation } from 'react-router-dom'
@@ -12,6 +21,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem
 } from '../../../components/ui/sidebar'
+import { Button } from '../../../components/ui/button'
 
 type SettingsNavItem = {
   titleKey: string
@@ -82,11 +92,17 @@ export function SettingsSidebarNav(): React.JSX.Element {
 
   return (
     <Sidebar className="h-full border-b-0 border-r border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)]">
-      <SidebarHeader className="space-y-2 border-b border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)]">
-        <p className="section-kicker">{t('settings.sidebar.title')}</p>
-        <h1 className="font-editorial text-[1.55rem] leading-none tracking-[-0.03em]">
-          {t('settings.sidebar.subtitle')}
-        </h1>
+      <SidebarHeader className="space-y-3 border-b border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)]">
+        <Button
+          asChild
+          variant="ghost"
+          className="h-10 w-full justify-start px-2 text-muted-foreground"
+        >
+          <NavLink to="/chat">
+            <ArrowLeft className="size-4" />
+            Back to app
+          </NavLink>
+        </Button>
       </SidebarHeader>
 
       <SidebarContent className="py-5">

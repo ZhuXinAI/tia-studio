@@ -177,6 +177,27 @@ export class ThreadsRepository {
     return this.getById(id)
   }
 
+  async updatePinned(id: string, pinned: boolean): Promise<AppThread | null> {
+    const existing = await this.getById(id)
+    if (!existing) {
+      return null
+    }
+
+    const metadata = { ...existing.metadata }
+    if (pinned) {
+      metadata.pinned = true
+    } else {
+      delete metadata.pinned
+    }
+
+    await this.db.execute(
+      'UPDATE app_threads SET metadata = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [JSON.stringify(metadata), id]
+    )
+
+    return this.getById(id)
+  }
+
   async delete(id: string): Promise<boolean> {
     const existing = await this.getById(id)
     if (!existing) {

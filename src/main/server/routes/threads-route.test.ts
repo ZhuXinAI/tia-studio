@@ -162,6 +162,54 @@ describe('threads route', () => {
     })
   })
 
+  it('updates pinned state in thread metadata', async () => {
+    const provider = await providersRepo.create({
+      name: 'OpenAI',
+      type: 'openai',
+      apiKey: 'test-key',
+      selectedModel: 'gpt-5'
+    })
+    const assistant = await assistantsRepo.create({
+      name: 'Trip Planner',
+      providerId: provider.id
+    })
+    const thread = await threadsRepo.create({
+      assistantId: assistant.id,
+      resourceId: 'profile-default',
+      title: 'Pin me'
+    })
+
+    const pinResponse = await app.request(`http://localhost/v1/threads/${thread.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pinned: true
+      })
+    })
+
+    expect(pinResponse.status).toBe(200)
+    await expect(pinResponse.json()).resolves.toMatchObject({
+      id: thread.id,
+      metadata: {
+        pinned: true
+      }
+    })
+
+    const unpinResponse = await app.request(`http://localhost/v1/threads/${thread.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pinned: false
+      })
+    })
+
+    expect(unpinResponse.status).toBe(200)
+    await expect(unpinResponse.json()).resolves.toMatchObject({
+      id: thread.id,
+      metadata: {}
+    })
+  })
+
   it('rejects thread creation when provider override points to a missing provider', async () => {
     const provider = await providersRepo.create({
       name: 'OpenAI',

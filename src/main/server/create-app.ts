@@ -67,6 +67,14 @@ export function createApp(options: CreateAppOptions): Hono {
   )
   app.use('/v1/*', createBearerAuthMiddleware(options.token))
   app.use(
+    '/chat',
+    cors({
+      origin: (origin) => origin ?? '*',
+      allowMethods: ['GET', 'POST', 'OPTIONS'],
+      allowHeaders: ['Authorization', 'Content-Type']
+    })
+  )
+  app.use(
     '/chat/*',
     cors({
       origin: (origin) => origin ?? '*',
@@ -74,6 +82,7 @@ export function createApp(options: CreateAppOptions): Hono {
       allowHeaders: ['Authorization', 'Content-Type']
     })
   )
+  app.use('/chat', createBearerAuthMiddleware(options.token))
   app.use('/chat/*', createBearerAuthMiddleware(options.token))
   registerHealthRoute(app)
 
