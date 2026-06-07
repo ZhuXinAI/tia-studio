@@ -8,7 +8,7 @@ function Sidebar({ className, ...props }: React.ComponentProps<'aside'>): React.
     <aside
       data-slot="sidebar"
       className={cn(
-        'text-card-foreground flex h-full w-80 shrink-0 flex-col border-r [border-color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-mineral)_88%,transparent),color-mix(in_srgb,var(--surface-panel)_88%,transparent))] backdrop-blur-xl',
+        'text-card-foreground flex h-full w-80 shrink-0 flex-col border-r [border-color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-subtle)_88%,transparent),color-mix(in_srgb,var(--surface-panel)_88%,transparent))] backdrop-blur-xl',
         className
       )}
       {...props}
@@ -53,7 +53,9 @@ function SidebarFooter({ className, ...props }: React.ComponentProps<'div'>): Re
 }
 
 function SidebarGroup({ className, ...props }: React.ComponentProps<'section'>): React.JSX.Element {
-  return <section data-slot="sidebar-group" className={cn('my-2', className)} {...props} />
+  return (
+    <section data-slot="sidebar-group" className={cn('my-2 space-y-2', className)} {...props} />
+  )
 }
 
 function SidebarGroupLabel({ className, ...props }: React.ComponentProps<'h2'>): React.JSX.Element {
@@ -61,7 +63,7 @@ function SidebarGroupLabel({ className, ...props }: React.ComponentProps<'h2'>):
     <h2
       data-slot="sidebar-group-label"
       className={cn(
-        'text-muted-foreground px-2 text-xs font-semibold tracking-wide uppercase',
+        'text-muted-foreground px-2 text-xs font-semibold tracking-wide uppercase my-2',
         className
       )}
       {...props}

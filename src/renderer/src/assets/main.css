@@ -26,25 +26,25 @@
 }
 
 :root {
-  --background: #181818;
-  --foreground: #f4efe8;
-  --card: #221e1a;
-  --card-foreground: #f4efe8;
-  --popover: #1e1a17;
-  --popover-foreground: #f4efe8;
-  --primary: #3e67b6;
-  --primary-foreground: #f9fbff;
-  --secondary: #2a2622;
-  --secondary-foreground: #f4efe8;
-  --muted: #26211d;
-  --muted-foreground: #b7aea2;
-  --accent: #2e2823;
-  --accent-foreground: #f4efe8;
-  --destructive: #c75a4a;
-  --border: #3d352d;
-  --input: #342d27;
-  --ring: rgb(62 103 182 / 55%);
-  --radius: 0.95rem;
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #18181b;
+  --card-foreground: #fafafa;
+  --popover: #18181b;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #18181b;
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+  --destructive: #f87171;
+  --border: #27272a;
+  --input: #27272a;
+  --ring: rgb(212 212 216 / 55%);
+  --radius: 0.625rem;
   --font-body:
     'IBM Plex Sans',
     'Inter',
@@ -65,58 +65,58 @@
     'SFMono-Regular',
     ui-monospace,
     monospace;
-  --surface-canvas: #181818;
-  --surface-panel: rgb(34 30 26 / 90%);
-  --surface-panel-strong: #24201b;
-  --surface-panel-soft: rgb(255 247 238 / 0.04);
-  --surface-muted: rgb(255 247 238 / 0.06);
-  --surface-well: #171411;
-  --surface-paper: #f7f1e8;
-  --surface-mineral: #2b2621;
-  --surface-border: rgb(236 222 203 / 0.1);
-  --surface-border-strong: rgb(236 222 203 / 0.18);
-  --surface-active: rgb(62 103 182 / 0.2);
-  --surface-active-strong: rgb(157 116 66 / 0.28);
-  --surface-shadow: 0 30px 80px -44px rgb(0 0 0 / 0.7);
-  --accent-brass: #9d7442;
-  --accent-brass-soft: rgb(157 116 66 / 0.16);
+  --surface-canvas: #09090b;
+  --surface-panel: #18181b;
+  --surface-panel-strong: #18181b;
+  --surface-panel-soft: rgb(255 255 255 / 0.03);
+  --surface-muted: rgb(255 255 255 / 0.06);
+  --surface-well: #09090b;
+  --surface-paper: #18181b;
+  --surface-subtle: #18181b;
+  --surface-border: rgb(255 255 255 / 0.1);
+  --surface-border-strong: rgb(255 255 255 / 0.16);
+  --surface-active: rgb(255 255 255 / 0.08);
+  --surface-active-strong: rgb(255 255 255 / 0.14);
+  --surface-shadow: 0 24px 60px -42px rgb(0 0 0 / 0.85);
+  --accent-contrast: #fafafa;
+  --accent-contrast-soft: rgb(255 255 255 / 0.08);
 }
 
 .light {
-  --background: #fcf9f8;
-  --foreground: #1b1c1c;
-  --card: #fffdfa;
-  --card-foreground: #1b1c1c;
-  --popover: #fffdfa;
-  --popover-foreground: #1b1c1c;
-  --primary: #0047ab;
-  --primary-foreground: #ffffff;
-  --secondary: #ede6dd;
-  --secondary-foreground: #272624;
-  --muted: #f0ece7;
-  --muted-foreground: #5d5b56;
-  --accent: #efe8df;
-  --accent-foreground: #1b1c1c;
-  --destructive: #b42318;
-  --border: #d7d0c6;
-  --input: #d7d0c6;
-  --ring: rgb(0 71 171 / 20%);
-  --radius: 0.95rem;
-  --surface-canvas: #f6f1ea;
-  --surface-panel: rgb(255 251 245 / 88%);
-  --surface-panel-strong: #fcf9f4;
-  --surface-panel-soft: rgb(67 70 83 / 0.035);
-  --surface-muted: rgb(67 70 83 / 0.055);
-  --surface-well: #f4efe9;
-  --surface-paper: #fffdfa;
-  --surface-mineral: #ede6dd;
-  --surface-border: rgb(67 70 83 / 0.15);
-  --surface-border-strong: rgb(67 70 83 / 0.24);
-  --surface-active: rgb(0 71 171 / 0.08);
-  --surface-active-strong: rgb(157 116 66 / 0.2);
-  --surface-shadow: 0 32px 70px -46px rgb(27 28 28 / 0.28);
-  --accent-brass: #9d7442;
-  --accent-brass-soft: rgb(157 116 66 / 0.12);
+  --background: #ffffff;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --card-foreground: #09090b;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #dc2626;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: rgb(161 161 170 / 45%);
+  --radius: 0.625rem;
+  --surface-canvas: #ffffff;
+  --surface-panel: #ffffff;
+  --surface-panel-strong: #ffffff;
+  --surface-panel-soft: rgb(9 9 11 / 0.03);
+  --surface-muted: rgb(9 9 11 / 0.06);
+  --surface-well: #fafafa;
+  --surface-paper: #ffffff;
+  --surface-subtle: #f4f4f5;
+  --surface-border: rgb(9 9 11 / 0.1);
+  --surface-border-strong: rgb(9 9 11 / 0.16);
+  --surface-active: rgb(9 9 11 / 0.08);
+  --surface-active-strong: rgb(9 9 11 / 0.14);
+  --surface-shadow: 0 24px 60px -42px rgb(9 9 11 / 0.28);
+  --accent-contrast: #18181b;
+  --accent-contrast-soft: rgb(9 9 11 / 0.08);
 }
 
 * {
@@ -127,10 +127,7 @@ body {
   margin: 0;
   min-height: 100vh;
   background-color: var(--surface-canvas);
-  background-image:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--accent-brass) 18%, transparent) 0, transparent 34%),
-    radial-gradient(circle at 82% 8%, color-mix(in srgb, var(--primary) 12%, transparent) 0, transparent 28%),
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-panel-soft) 48%, transparent), transparent 28%);
+  background-image: none;
   color: var(--foreground);
   font-family: var(--font-body);
   text-rendering: optimizeLegibility;
@@ -168,9 +165,9 @@ body {
   box-shadow: var(--surface-shadow);
 }
 
-.mineral-panel {
+.neutral-panel {
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-mineral) 90%, transparent), var(--surface-panel)),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-subtle) 90%, transparent), var(--surface-panel)),
     var(--surface-panel);
   border: 1px solid var(--surface-border);
 }
@@ -187,7 +184,7 @@ body {
   bottom: 0.7rem;
   width: 2px;
   border-radius: 999px;
-  background: linear-gradient(180deg, var(--accent-brass), color-mix(in srgb, var(--primary) 75%, white));
+  background: var(--primary);
 }
 
 ::selection {

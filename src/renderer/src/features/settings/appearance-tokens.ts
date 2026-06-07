@@ -4,12 +4,21 @@ export type AppearanceTokens = {
   foregroundColor: string
 }
 
-const appearanceTokenStorageKey = 'tia.appearance.tokens'
+const appearanceTokenStorageKey = 'tia.appearance.tokens.v2'
+const appearanceTokenStyleProperties = [
+  '--primary',
+  '--accent-contrast',
+  '--surface-canvas',
+  '--background',
+  '--foreground',
+  '--card-foreground',
+  '--popover-foreground'
+] as const
 
-export const mineralAppearanceTokens: AppearanceTokens = {
-  accentColor: '#9d7442',
-  backgroundColor: '#181818',
-  foregroundColor: '#f4efe8'
+export const defaultAppearanceTokens: AppearanceTokens = {
+  accentColor: '#fafafa',
+  backgroundColor: '#09090b',
+  foregroundColor: '#fafafa'
 }
 
 function isHexColor(value: unknown): value is string {
@@ -18,37 +27,59 @@ function isHexColor(value: unknown): value is string {
 
 export function normalizeAppearanceTokens(value: unknown): AppearanceTokens {
   if (typeof value !== 'object' || value === null) {
-    return mineralAppearanceTokens
+    return defaultAppearanceTokens
   }
 
   const input = value as Record<string, unknown>
   return {
     accentColor: isHexColor(input.accentColor)
       ? input.accentColor.trim()
-      : mineralAppearanceTokens.accentColor,
+      : defaultAppearanceTokens.accentColor,
     backgroundColor: isHexColor(input.backgroundColor)
       ? input.backgroundColor.trim()
-      : mineralAppearanceTokens.backgroundColor,
+      : defaultAppearanceTokens.backgroundColor,
     foregroundColor: isHexColor(input.foregroundColor)
       ? input.foregroundColor.trim()
-      : mineralAppearanceTokens.foregroundColor
+      : defaultAppearanceTokens.foregroundColor
   }
 }
 
 export function getAppearanceTokens(): AppearanceTokens {
+  const storedTokens = getStoredAppearanceTokens()
+  if (storedTokens) {
+    return storedTokens
+  }
+
+  if (typeof document !== 'undefined') {
+    const rootStyles = getComputedStyle(document.documentElement)
+    const accentColor = rootStyles.getPropertyValue('--primary').trim()
+    const backgroundColor = rootStyles.getPropertyValue('--surface-canvas').trim()
+    const foregroundColor = rootStyles.getPropertyValue('--foreground').trim()
+
+    return normalizeAppearanceTokens({
+      accentColor,
+      backgroundColor,
+      foregroundColor
+    })
+  }
+
+  return defaultAppearanceTokens
+}
+
+export function getStoredAppearanceTokens(): AppearanceTokens | null {
   if (typeof window === 'undefined') {
-    return mineralAppearanceTokens
+    return null
   }
 
   const storedValue = window.localStorage.getItem(appearanceTokenStorageKey)
   if (!storedValue) {
-    return mineralAppearanceTokens
+    return null
   }
 
   try {
     return normalizeAppearanceTokens(JSON.parse(storedValue))
   } catch {
-    return mineralAppearanceTokens
+    return null
   }
 }
 
@@ -59,12 +90,23 @@ export function applyAppearanceTokens(tokens: AppearanceTokens): void {
 
   const root = document.documentElement
   root.style.setProperty('--primary', tokens.accentColor)
-  root.style.setProperty('--accent-brass', tokens.accentColor)
+  root.style.setProperty('--accent-contrast', tokens.accentColor)
   root.style.setProperty('--surface-canvas', tokens.backgroundColor)
   root.style.setProperty('--background', tokens.backgroundColor)
   root.style.setProperty('--foreground', tokens.foregroundColor)
   root.style.setProperty('--card-foreground', tokens.foregroundColor)
   root.style.setProperty('--popover-foreground', tokens.foregroundColor)
+}
+
+export function clearAppearanceTokenOverrides(): void {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  const root = document.documentElement
+  appearanceTokenStyleProperties.forEach((property) => {
+    root.style.removeProperty(property)
+  })
 }
 
 export function setAppearanceTokens(tokens: AppearanceTokens): AppearanceTokens {
@@ -76,6 +118,6 @@ export function setAppearanceTokens(tokens: AppearanceTokens): AppearanceTokens 
 
 export function resetAppearanceTokens(): AppearanceTokens {
   window.localStorage.removeItem(appearanceTokenStorageKey)
-  applyAppearanceTokens(mineralAppearanceTokens)
-  return mineralAppearanceTokens
+  clearAppearanceTokenOverrides()
+  return getAppearanceTokens()
 }

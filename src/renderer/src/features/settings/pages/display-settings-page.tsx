@@ -188,10 +188,10 @@ export function DisplaySettingsPage(): React.JSX.Element {
           <div className="space-y-4 rounded-[1.25rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-5">
             <div className="space-y-1">
               <p className="section-kicker text-[0.66rem]">Appearance Tokens</p>
-              <h3 className="text-sm font-medium">Mineral tuning</h3>
+              <h3 className="text-sm font-medium">Neutral tuning</h3>
               <p className="text-sm text-muted-foreground">
-                Adjust the accent, background, and foreground colors while keeping the AppV2 visual
-                system intact.
+                Adjust the accent, background, and foreground colors while keeping the neutral
+                visual system intact.
               </p>
             </div>
 
@@ -223,7 +223,7 @@ export function DisplaySettingsPage(): React.JSX.Element {
 
             <Button type="button" variant="outline" size="sm" onClick={handleResetAppearanceTokens}>
               <RotateCcw className="size-4" />
-              Reset to Mineral
+              Reset to Default
             </Button>
           </div>
 

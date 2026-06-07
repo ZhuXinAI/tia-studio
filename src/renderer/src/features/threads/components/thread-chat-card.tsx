@@ -129,7 +129,7 @@ function ThreadChatComposer({
       : t('threads.chat.composer.helperEmpty')
 
   return (
-    <div className="border-t border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-mineral)_34%,transparent),color-mix(in_srgb,var(--surface-panel-soft)_55%,transparent))] p-4 sm:p-5">
+    <div className="border-t border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-subtle)_34%,transparent),color-mix(in_srgb,var(--surface-panel-soft)_55%,transparent))] p-4 sm:p-5">
       {selectedWorkspace?.isMissing && selectedWorkspace.builtInKind !== 'chats' ? (
         <div className="mb-3 rounded-lg border border-amber-400/45 bg-amber-400/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
           Relocate this workspace before starting a new project thread.

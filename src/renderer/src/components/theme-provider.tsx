@@ -1,5 +1,9 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { applyAppearanceTokens, getAppearanceTokens } from '../features/settings/appearance-tokens'
+import {
+  applyAppearanceTokens,
+  clearAppearanceTokenOverrides,
+  getStoredAppearanceTokens
+} from '../features/settings/appearance-tokens'
 
 export type Theme = 'dark' | 'light' | 'system'
 
@@ -41,12 +45,22 @@ export function ThemeProvider({
         ? 'dark'
         : 'light'
       root.classList.add(systemTheme)
-      applyAppearanceTokens(getAppearanceTokens())
+      const appearanceTokens = getStoredAppearanceTokens()
+      if (appearanceTokens) {
+        applyAppearanceTokens(appearanceTokens)
+      } else {
+        clearAppearanceTokenOverrides()
+      }
       return
     }
 
     root.classList.add(theme)
-    applyAppearanceTokens(getAppearanceTokens())
+    const appearanceTokens = getStoredAppearanceTokens()
+    if (appearanceTokens) {
+      applyAppearanceTokens(appearanceTokens)
+    } else {
+      clearAppearanceTokenOverrides()
+    }
   }, [theme])
 
   const value = {

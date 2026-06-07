@@ -18,7 +18,7 @@ export function AppV2Shell(): React.JSX.Element {
         })}
       />
       <div className="relative flex min-h-0 flex-1 overflow-hidden p-2 pt-9">
-        <div className="mineral-panel flex min-h-0 flex-1 overflow-hidden rounded-[1.15rem]">
+        <div className="neutral-panel flex min-h-0 flex-1 overflow-hidden rounded-[1.15rem]">
           <AppV2Sidebar />
           <main
             className={clsx(
