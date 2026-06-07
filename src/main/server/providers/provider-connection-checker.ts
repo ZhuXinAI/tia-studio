@@ -25,6 +25,18 @@ type ConnectionRequest = {
 type TestProviderConnectionOptions = {
   fetcher?: typeof fetch
   timeoutMs?: number
+  getManagedRuntimeStatus?: () => Promise<
+    Partial<
+      Record<
+        'codex-acp' | 'claude-agent-acp',
+        {
+          status: string
+          binaryPath: string | null
+          errorMessage: string | null
+        }
+      >
+    >
+  >
 }
 
 function joinUrl(baseUrl: string, path: string): string {
@@ -218,6 +230,22 @@ export async function testProviderConnection(
   options: TestProviderConnectionOptions = {}
 ): Promise<void> {
   if (input.type === 'codex-acp' || input.type === 'claude-agent-acp') {
+    const runtimeStatus = await options.getManagedRuntimeStatus?.()
+    const record = runtimeStatus?.[input.type]
+    const isReady =
+      Boolean(record?.binaryPath) &&
+      (record?.status === 'ready' ||
+        record?.status === 'custom-ready' ||
+        record?.status === 'update-available')
+
+    if (!isReady) {
+      const displayName = input.type === 'codex-acp' ? 'Codex ACP' : 'Claude Agent ACP'
+      throw new Error(
+        record?.errorMessage ??
+          `${displayName} runtime is not ready. Install or activate it in Settings > Coding.`
+      )
+    }
+
     return
   }
 

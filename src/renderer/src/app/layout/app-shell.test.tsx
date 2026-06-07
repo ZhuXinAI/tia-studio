@@ -1,7 +1,24 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppShell } from './app-shell'
+
+function renderWithQueryClient(router: ReturnType<typeof createMemoryRouter>): string {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false
+      }
+    }
+  })
+
+  return renderToString(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  )
+}
 
 describe('AppShell', () => {
   const originalWindow = globalThis.window
@@ -40,7 +57,7 @@ describe('AppShell', () => {
         element: <AppShell />
       }
     ])
-    const html = renderToString(<RouterProvider router={router} />)
+    const html = renderWithQueryClient(router)
 
     expect(html).toContain('flex-1 p-0')
     expect(html).not.toContain('p-4 md:p-6')

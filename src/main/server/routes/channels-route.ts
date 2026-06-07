@@ -2,7 +2,10 @@ import type { Hono } from 'hono'
 import { type WhatsAppAuthStateStore } from '../../channels/whatsapp-auth-state-store'
 import { type WechatAuthStateStore } from '../../channels/wechat-auth-state-store'
 import { resolveGroupRequireMention } from '../../channels/channel-config'
-import { BUILT_IN_DEFAULT_AGENT_MCP_KEY } from '../../default-agent/default-agent-bootstrap'
+import {
+  BUILT_IN_DEFAULT_AGENT_MCP_KEY,
+  DEFAULT_AGENT_NAME
+} from '../../default-agent/default-agent-bootstrap'
 import type { AppAssistant, AssistantsRepository } from '../../persistence/repos/assistants-repo'
 import type { ChannelPairingsRepository } from '../../persistence/repos/channel-pairings-repo'
 import type { AppChannel, ChannelsRepository } from '../../persistence/repos/channels-repo'
@@ -51,6 +54,20 @@ function invalidBodyResponse() {
 
 function isBuiltInAssistant(assistant: Pick<AppAssistant, 'mcpConfig'>): boolean {
   return assistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] === true
+}
+
+function toAssistantDisplayName(assistant: AppAssistant | null): string | null {
+  if (!assistant) {
+    return null
+  }
+
+  return isBuiltInAssistant(assistant) ? DEFAULT_AGENT_NAME : assistant.name
+}
+
+async function loadBuiltInDefaultAssistant(
+  options: RegisterChannelsRouteOptions
+): Promise<AppAssistant | null> {
+  return options.assistantsRepo.findBuiltInDefault()
 }
 
 function hasValidChannelConfig(
@@ -169,16 +186,12 @@ async function listConfiguredChannels(
     options.assistantsRepo.list(),
     options.channelsRepo.list()
   ])
-  const visibleAssistants = new Map(
-    assistants
-      .filter((assistant) => !isBuiltInAssistant(assistant))
-      .map((assistant) => [assistant.id, assistant])
-  )
+  const assistantById = new Map(assistants.map((assistant) => [assistant.id, assistant]))
 
   const configuredChannels = await Promise.all(
     channels.map(async (channel) => {
       const assistant = channel.assistantId
-        ? (visibleAssistants.get(channel.assistantId) ?? null)
+        ? (assistantById.get(channel.assistantId) ?? null)
         : null
       if (channel.assistantId && !assistant) {
         return null
@@ -192,7 +205,7 @@ async function listConfiguredChannels(
         name: channel.name,
         groupRequireMention: resolveGroupRequireMention(channel.config),
         assistantId: channel.assistantId,
-        assistantName: assistant?.name ?? null,
+        assistantName: toAssistantDisplayName(assistant),
         status: await toChannelStatus(channel, assistant?.enabled ?? false, options),
         errorMessage: channel.lastError,
         pairedCount: counts.pairedCount,
@@ -213,7 +226,7 @@ async function toConfiguredChannelResponse(
   const assistant = channel.assistantId
     ? await options.assistantsRepo.getById(channel.assistantId)
     : null
-  if (channel.assistantId && (!assistant || isBuiltInAssistant(assistant))) {
+  if (channel.assistantId && !assistant) {
     return null
   }
 
@@ -225,7 +238,7 @@ async function toConfiguredChannelResponse(
     name: channel.name,
     groupRequireMention: resolveGroupRequireMention(channel.config),
     assistantId: channel.assistantId,
-    assistantName: assistant?.name ?? null,
+    assistantName: toAssistantDisplayName(assistant),
     status: await toChannelStatus(channel, assistant?.enabled ?? false, options),
     errorMessage: channel.lastError,
     pairedCount: counts.pairedCount,
@@ -247,7 +260,7 @@ async function loadVisibleConfiguredChannelById(
   }
 
   const assistant = await options.assistantsRepo.getById(channel.assistantId)
-  if (!assistant || isBuiltInAssistant(assistant)) {
+  if (!assistant) {
     return null
   }
 
@@ -387,13 +400,19 @@ export function registerChannelsRoute(app: Hono, options: RegisterChannelsRouteO
       )
     }
 
+    const defaultAssistant = await loadBuiltInDefaultAssistant(options)
+    if (!defaultAssistant) {
+      return context.json({ ok: false, error: 'Default assistant is not configured' }, 409)
+    }
+
     const createdChannel = await options.channelsRepo.create({
       type: parsed.data.type,
       name: parsed.data.name,
-      assistantId: null,
+      assistantId: defaultAssistant.id,
       enabled: true,
       config: buildChannelConfig(parsed.data)
     })
+    await reloadChannelServices(options)
     const response = await toConfiguredChannelResponse(createdChannel, options)
     if (!response) {
       return context.json({ ok: false, error: 'Channel not found' }, 404)

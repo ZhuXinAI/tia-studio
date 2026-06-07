@@ -378,6 +378,7 @@ async function startLocalApiServer(): Promise<void> {
     assistantRuntime,
     threadMessageEventsStore,
     channelService,
+    getManagedRuntimeStatus: () => resolveManagedRuntimeService().getStatus(),
     channelSetupRecovery: {
       async recover(channel) {
         if (channel.type === 'whatsapp') {

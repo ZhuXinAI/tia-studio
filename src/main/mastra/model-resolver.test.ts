@@ -191,6 +191,7 @@ describe('resolveModel', () => {
     })
     expect(factories.acpProviderFactory).toHaveBeenCalledWith(
       expect.objectContaining({
+        authMethodId: 'chatgpt',
         command: 'codex-acp',
         env: expect.objectContaining({
           CODEX_HOME: path.resolve(acpHomeDirectory)

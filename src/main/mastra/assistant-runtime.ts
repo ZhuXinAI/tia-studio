@@ -1,4 +1,3 @@
-import os from 'node:os'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { access, readFile, writeFile } from 'node:fs/promises'
@@ -1168,7 +1167,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       throw new ChatRouteError(409, 'provider_not_found', 'Assistant provider is not configured')
     }
 
-    if (!provider.enabled) {
+    if (!provider.enabled && !isAcpProviderType(provider.type)) {
       throw new ChatRouteError(409, 'provider_disabled', 'Assistant provider is disabled')
     }
 
@@ -1805,10 +1804,9 @@ export class AssistantRuntimeService implements AssistantRuntime {
   }
 
   private resolveSkillsPaths(workspaceRootPath: string, skillsConfig: JsonObject): string[] {
+    const workspaceRoot = path.resolve(workspaceRootPath)
     const rawPaths = [
-      path.join(os.homedir(), '.claude', 'skills'),
-      path.join(os.homedir(), '.agent', 'skills'),
-      path.join(workspaceRootPath, 'skills'),
+      'skills',
       ...this.toStringList(skillsConfig.path),
       ...this.toStringList(skillsConfig.paths),
       ...this.toStringList(skillsConfig.skillPath),
@@ -1819,7 +1817,20 @@ export class AssistantRuntimeService implements AssistantRuntime {
 
     const uniquePaths = new Set<string>()
     for (const rawPath of rawPaths) {
-      uniquePaths.add(rawPath)
+      const normalizedPath = rawPath.trim()
+      if (normalizedPath.length === 0) {
+        continue
+      }
+
+      const resolvedPath = path.isAbsolute(normalizedPath)
+        ? path.resolve(normalizedPath)
+        : path.resolve(workspaceRoot, normalizedPath)
+      const relativePath = path.relative(workspaceRoot, resolvedPath)
+      if (!relativePath || relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+        continue
+      }
+
+      uniquePaths.add(relativePath)
     }
 
     return [...uniquePaths]

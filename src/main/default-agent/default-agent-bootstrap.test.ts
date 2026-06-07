@@ -26,7 +26,8 @@ describe('default agent bootstrap', () => {
     tempRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-default-agent-'))
     const assistantsRepo = {
       list: vi.fn(async () => []),
-      create: vi.fn(async () => ({ id: 'assistant-1' }))
+      create: vi.fn(async () => ({ id: 'assistant-1' })),
+      findBuiltInDefault: vi.fn(async () => null)
     }
     const providersRepo = {
       list: vi.fn(async () => [])
@@ -67,7 +68,8 @@ describe('default agent bootstrap', () => {
           id: 'assistant-existing'
         }
       ]),
-      create: vi.fn()
+      create: vi.fn(),
+      findBuiltInDefault: vi.fn(async () => null)
     }
     const providersRepo = {
       list: vi.fn(async () => [])
@@ -86,7 +88,8 @@ describe('default agent bootstrap', () => {
     tempRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-default-agent-'))
     const assistantsRepo = {
       list: vi.fn(async () => []),
-      create: vi.fn(async () => ({ id: 'assistant-1' }))
+      create: vi.fn(async () => ({ id: 'assistant-1' })),
+      findBuiltInDefault: vi.fn(async () => null)
     }
     const providersRepo = {
       list: vi.fn(async () => [
@@ -116,6 +119,79 @@ describe('default agent bootstrap', () => {
     )
   })
 
+  it('falls back to the built-in Codex provider when no enabled provider exists', async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-default-agent-'))
+    const assistantsRepo = {
+      list: vi.fn(async () => []),
+      create: vi.fn(async () => ({ id: 'assistant-1' })),
+      findBuiltInDefault: vi.fn(async () => null)
+    }
+    const providersRepo = {
+      list: vi.fn(async () => [
+        {
+          id: 'built-in-codex-acp',
+          enabled: false,
+          selectedModel: 'default'
+        }
+      ])
+    }
+
+    await ensureBuiltInDefaultAgent({
+      assistantsRepo: assistantsRepo as unknown as AssistantsRepository,
+      providersRepo: providersRepo as unknown as ProvidersRepository,
+      userDataPath: tempRoot
+    })
+
+    expect(assistantsRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerId: 'built-in-codex-acp'
+      })
+    )
+  })
+
+  it('repairs an existing built-in default agent with no provider', async () => {
+    tempRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-default-agent-'))
+    const assistantsRepo = {
+      list: vi.fn(async () => [
+        {
+          id: 'assistant-default',
+          workspaceConfig: {
+            rootPath: resolveDefaultAgentWorkspacePath(tempRoot as string)
+          },
+          mcpConfig: {
+            [BUILT_IN_DEFAULT_AGENT_MCP_KEY]: true
+          }
+        }
+      ]),
+      create: vi.fn(),
+      update: vi.fn(async () => ({ id: 'assistant-default' })),
+      findBuiltInDefault: vi.fn(async () => ({
+        id: 'assistant-default',
+        providerId: null
+      }))
+    }
+    const providersRepo = {
+      list: vi.fn(async () => [
+        {
+          id: 'built-in-codex-acp',
+          enabled: false,
+          selectedModel: 'default'
+        }
+      ])
+    }
+
+    await ensureBuiltInDefaultAgent({
+      assistantsRepo: assistantsRepo as unknown as AssistantsRepository,
+      providersRepo: providersRepo as unknown as ProvidersRepository,
+      userDataPath: tempRoot
+    })
+
+    expect(assistantsRepo.create).not.toHaveBeenCalled()
+    expect(assistantsRepo.update).toHaveBeenCalledWith('assistant-default', {
+      providerId: 'built-in-codex-acp'
+    })
+  })
+
   it('marks legacy default assistant records as protected', async () => {
     tempRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-default-agent-'))
     const assistantsRepo = {
@@ -129,7 +205,8 @@ describe('default agent bootstrap', () => {
         }
       ]),
       create: vi.fn(),
-      update: vi.fn(async () => ({ id: 'assistant-default' }))
+      update: vi.fn(async () => ({ id: 'assistant-default' })),
+      findBuiltInDefault: vi.fn(async () => null)
     }
     const providersRepo = {
       list: vi.fn(async () => [])

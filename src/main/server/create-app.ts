@@ -21,6 +21,7 @@ import { registerChannelsRoute } from './routes/channels-route'
 import { registerChatRoute } from './routes/chat-route'
 import { registerHealthRoute } from './routes/health-route'
 import { registerMcpServersRoute } from './routes/mcp-servers-route'
+import { registerMigrationRoute } from './routes/migration-route'
 import { registerProvidersRoute } from './routes/providers-route'
 import { registerSecuritySettingsRoute } from './routes/security-settings-route'
 import { registerThreadsRoute } from './routes/threads-route'
@@ -50,6 +51,18 @@ type CreateAppOptions = {
   channelSetupRecovery?: {
     recover(channel: { id: string; type: string }): Promise<void>
   }
+  getManagedRuntimeStatus?: () => Promise<
+    Partial<
+      Record<
+        'codex-acp' | 'claude-agent-acp',
+        {
+          status: string
+          binaryPath: string | null
+          errorMessage: string | null
+        }
+      >
+    >
+  >
   whatsAppAuthStateStore?: WhatsAppAuthStateStore
   wechatAuthStateStore?: WechatAuthStateStore
 }
@@ -89,7 +102,8 @@ export function createApp(options: CreateAppOptions): Hono {
   if (options.repositories) {
     registerProvidersRoute(app, {
       providersRepo: options.repositories.providers,
-      assistantsRepo: options.repositories.assistants
+      assistantsRepo: options.repositories.assistants,
+      getManagedRuntimeStatus: options.getManagedRuntimeStatus
     })
     registerAssistantsRoute(app, {
       assistantsRepo: options.repositories.assistants
@@ -112,6 +126,13 @@ export function createApp(options: CreateAppOptions): Hono {
       channelSetupRecovery: options.channelSetupRecovery,
       whatsAppAuthStateStore: options.whatsAppAuthStateStore,
       wechatAuthStateStore: options.wechatAuthStateStore
+    })
+    registerMigrationRoute(app, {
+      assistantsRepo: options.repositories.assistants,
+      channelsRepo: options.repositories.channels,
+      channelService: options.channelService ?? {
+        reload: async () => undefined
+      }
     })
     if (options.repositories.workspaces) {
       registerWorkspacesRoute(app, {

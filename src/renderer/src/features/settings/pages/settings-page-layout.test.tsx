@@ -31,9 +31,10 @@ describe('settings page layout', () => {
     const html = renderToString(<RouterProvider router={router} />)
 
     expect(html).toContain('data-slot="sidebar"')
-    expect(html).toContain('border-r border-border/70')
+    expect(html).toContain('border-r border-[color:var(--surface-border)]')
     expect(html).toContain('Model Provider Settings')
     expect(html).toContain('Channels')
+    expect(html).toContain('Back to app')
   })
 
   it('renders translated sidebar labels from the active locale', async () => {
@@ -59,10 +60,9 @@ describe('settings page layout', () => {
 
     const html = renderToString(<RouterProvider router={router} />)
 
-    expect(html).toContain('设置')
-    expect(html).toContain('分类')
     expect(html).toContain('常规')
     expect(html).toContain('频道')
     expect(html).toContain('显示')
+    expect(html).not.toContain('工作区默认设置')
   })
 })

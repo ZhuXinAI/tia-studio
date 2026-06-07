@@ -16,7 +16,7 @@ import {
   Sparkles,
   Trash2
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '../../components/ui/button'
@@ -247,6 +247,7 @@ export function AppV2Sidebar({
   const [isWorkspacesOpen, setIsWorkspacesOpen] = useState(true)
   const [isChatsOpen, setIsChatsOpen] = useState(true)
   const [expandedWorkspaceIds, setExpandedWorkspaceIds] = useState<Set<string>>(() => new Set())
+  const workspaceSearchInputRef = useRef<HTMLInputElement | null>(null)
 
   const chatsWorkspace = useMemo(
     () => workspaces.find((workspace) => isChatsWorkspace(workspace)) ?? null,
@@ -329,6 +330,16 @@ export function AppV2Sidebar({
             <MessageSquarePlus className="size-4" />
           </NavLink>
         </Button>
+        <Button asChild variant="ghost" size="icon" className="size-8">
+          <NavLink to="/skills" aria-label="Open skills" title="Skills">
+            <Sparkles className="size-4" />
+          </NavLink>
+        </Button>
+        <Button asChild variant="ghost" size="icon" className="size-8">
+          <NavLink to="/automations" aria-label="Open automations" title="Automations">
+            <Clock3 className="size-4" />
+          </NavLink>
+        </Button>
         <Button asChild variant="ghost" size="icon" className="mt-auto size-8">
           <NavLink to="/settings/general" aria-label="Open settings" title="Open settings">
             <Settings className="size-4" />
@@ -360,11 +371,6 @@ export function AppV2Sidebar({
             >
               <PanelLeftClose className="size-4" />
             </Button>
-            <Button asChild variant="ghost" size="icon" className="no-drag">
-              <NavLink to="/settings/general" aria-label="Open settings">
-                <Settings className="size-4" />
-              </NavLink>
-            </Button>
           </div>
         </div>
 
@@ -375,14 +381,27 @@ export function AppV2Sidebar({
           </NavLink>
         </Button>
 
-        <div className="grid grid-cols-2 gap-2">
-          <Button asChild variant="outline" size="sm" className="justify-start">
+        <div className="grid gap-1.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="justify-start text-muted-foreground"
+            onClick={() => {
+              setIsWorkspacesOpen(true)
+              window.requestAnimationFrame(() => workspaceSearchInputRef.current?.focus())
+            }}
+          >
+            <Search className="size-4" />
+            Search
+          </Button>
+          <Button asChild variant="ghost" size="sm" className="justify-start text-muted-foreground">
             <NavLink to="/skills">
               <Sparkles className="size-4" />
               Skills
             </NavLink>
           </Button>
-          <Button asChild variant="outline" size="sm" className="justify-start">
+          <Button asChild variant="ghost" size="sm" className="justify-start text-muted-foreground">
             <NavLink to="/automations">
               <Clock3 className="size-4" />
               Automations
@@ -391,7 +410,7 @@ export function AppV2Sidebar({
         </div>
       </div>
 
-      <div className="chat-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-4">
+      <div className="chat-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4">
         <SidebarSection
           title="Workspaces"
           isOpen={isWorkspacesOpen}
@@ -417,6 +436,7 @@ export function AppV2Sidebar({
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
+                ref={workspaceSearchInputRef}
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search workspaces"
@@ -481,9 +501,6 @@ export function AppV2Sidebar({
           </div>
         </SidebarSection>
         {errorMessage ? <p className="mt-2 px-2 text-xs text-destructive">{errorMessage}</p> : null}
-      </div>
-
-      <div className="border-t border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-3">
         <SidebarSection
           title="Chats"
           isOpen={isChatsOpen}
@@ -517,6 +534,15 @@ export function AppV2Sidebar({
             </div>
           )}
         </SidebarSection>
+      </div>
+
+      <div className="border-t border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-3">
+        <Button asChild variant="ghost" className="w-full justify-start">
+          <NavLink to="/settings/general" aria-label="Open settings">
+            <Settings className="size-4" />
+            Settings
+          </NavLink>
+        </Button>
       </div>
     </aside>
   )

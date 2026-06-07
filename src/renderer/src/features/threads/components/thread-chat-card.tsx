@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, ChevronDown, Link2, SendHorizontal } from 'lucide-react'
+import { AlertTriangle, Check, ChevronDown, DatabaseZap, Link2, SendHorizontal } from 'lucide-react'
 import type { UIMessage } from 'ai'
 import type { UseChatHelpers } from '@ai-sdk/react'
 import {
@@ -24,7 +24,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '../../../components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '../../../components/ui/dialog'
 import { useTranslation } from '../../../i18n/use-app-translation'
+import {
+  getMigrationStatus,
+  runMigration,
+  type MigrationStatus
+} from '../../migration/migration-query'
 import type { AssistantReadiness } from '../thread-page-helpers'
 import type { ThreadRecord } from '../threads-query'
 import type { WorkspaceRecord } from '../../workspaces/workspaces-query'
@@ -223,6 +236,100 @@ function useChannelIssues(): ConfiguredChannelRecord[] {
   return channelIssues
 }
 
+function useMigrationStatus(): {
+  status: MigrationStatus | null
+  refresh: () => Promise<void>
+} {
+  const [status, setStatus] = useState<MigrationStatus | null>(null)
+
+  useEffect(() => {
+    let isActive = true
+
+    const refresh = async (): Promise<void> => {
+      try {
+        const nextStatus = await getMigrationStatus()
+        if (isActive) {
+          setStatus(nextStatus)
+        }
+      } catch {
+        if (isActive) {
+          setStatus(null)
+        }
+      }
+    }
+
+    void refresh()
+    const intervalId = window.setInterval(() => {
+      void refresh()
+    }, 60_000)
+
+    return () => {
+      isActive = false
+      window.clearInterval(intervalId)
+    }
+  }, [])
+
+  return {
+    status,
+    refresh: async () => {
+      setStatus(await getMigrationStatus())
+    }
+  }
+}
+
+function ThreadActionGroup({
+  channelIssues,
+  channelIssueTitle,
+  migrationStatus,
+  onOpenMigrationDialog,
+  children
+}: {
+  channelIssues: ConfiguredChannelRecord[]
+  channelIssueTitle: string
+  migrationStatus: MigrationStatus | null
+  onOpenMigrationDialog: () => void
+  children?: React.ReactNode
+}): React.JSX.Element | null {
+  const shouldShowMigrationAction = migrationStatus?.needsMigration === true
+  const shouldShowChannelWarning = channelIssues.length > 0
+  const shouldShowChildren = Boolean(children)
+
+  if (!shouldShowMigrationAction && !shouldShowChannelWarning && !shouldShowChildren) {
+    return null
+  }
+
+  return (
+    <div className="absolute right-3 top-3 z-20 flex items-center gap-2 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] p-1 shadow-[0_12px_36px_-28px_rgba(15,23,42,0.65)]">
+      {shouldShowChannelWarning ? (
+        <Button
+          asChild
+          variant="ghost"
+          size="icon"
+          className="size-8 text-amber-700 hover:bg-amber-400/15 dark:text-amber-200"
+        >
+          <NavLink to="/settings/channels" aria-label={channelIssueTitle} title={channelIssueTitle}>
+            <AlertTriangle className="size-4" />
+          </NavLink>
+        </Button>
+      ) : null}
+      {shouldShowMigrationAction ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-8 text-primary hover:bg-[color:var(--surface-active)]"
+          onClick={onOpenMigrationDialog}
+          aria-label="Migrate old app data"
+          title="Migrate old app data"
+        >
+          <DatabaseZap className="size-4" />
+        </Button>
+      ) : null}
+      {children}
+    </div>
+  )
+}
+
 function ThreadChatComposer({
   selectedAssistant,
   selectedThread,
@@ -410,6 +517,10 @@ export function ThreadChatCard({
   const { t, i18n } = useTranslation()
   const runtime = useAISDKRuntime(chat)
   const channelIssues = useChannelIssues()
+  const { status: migrationStatus, refresh: refreshMigrationStatus } = useMigrationStatus()
+  const [isMigrationDialogOpen, setIsMigrationDialogOpen] = useState(false)
+  const [isMigrating, setIsMigrating] = useState(false)
+  const [migrationError, setMigrationError] = useState<string | null>(null)
   const channelIssueTitle = useMemo(() => {
     if (channelIssues.length === 0) {
       return ''
@@ -435,7 +546,21 @@ export function ThreadChatCard({
   const hasRemoteBinding = Boolean(selectedThread?.channelBinding?.remoteChatId)
   const selectedThreadTitle = selectedThread?.title.trim() ?? ''
   const shouldShowThreadTitleBar = Boolean(selectedThread && selectedThreadTitle.length > 0)
-  const shouldShowTopRightActions = channelIssues.length > 0 || Boolean(topRightActions)
+
+  async function handleRunMigration(): Promise<void> {
+    setIsMigrating(true)
+    setMigrationError(null)
+
+    try {
+      await runMigration()
+      await refreshMigrationStatus()
+      setIsMigrationDialogOpen(false)
+    } catch (error) {
+      setMigrationError(error instanceof Error ? error.message : 'Migration failed')
+    } finally {
+      setIsMigrating(false)
+    }
+  }
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
@@ -444,30 +569,59 @@ export function ThreadChatCard({
         selectedThreadId={selectedThread?.id}
       />
       <Card className="relative flex min-h-0 flex-1 flex-col gap-0 rounded-none border-0 bg-transparent py-0 shadow-none">
-        {shouldShowTopRightActions ? (
-          <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
-            {channelIssues.length > 0 ? (
-              <Button
-                asChild
-                variant="outline"
-                size="icon"
-                className="size-8 border-amber-400/50 bg-amber-400/10 text-amber-700 hover:bg-amber-400/20 dark:text-amber-200"
-              >
-                <NavLink
-                  to="/settings/channels"
-                  aria-label={channelIssueTitle}
-                  title={channelIssueTitle}
-                >
-                  <AlertTriangle className="size-4" />
-                </NavLink>
-              </Button>
+        <ThreadActionGroup
+          channelIssues={channelIssues}
+          channelIssueTitle={channelIssueTitle}
+          migrationStatus={migrationStatus}
+          onOpenMigrationDialog={() => {
+            setMigrationError(null)
+            setIsMigrationDialogOpen(true)
+          }}
+        >
+          {topRightActions}
+        </ThreadActionGroup>
+        <Dialog open={isMigrationDialogOpen} onOpenChange={setIsMigrationDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Migration required</DialogTitle>
+              <DialogDescription>
+                Your app contains old version data, click migrate to keep things up to date.
+              </DialogDescription>
+            </DialogHeader>
+
+            {migrationStatus ? (
+              <p className="text-sm text-muted-foreground">
+                {migrationStatus.channelCountToRebind} channel
+                {migrationStatus.channelCountToRebind === 1 ? '' : 's'} will be bound to{' '}
+                {migrationStatus.defaultAssistantName}.
+              </p>
             ) : null}
-            {topRightActions}
-          </div>
-        ) : null}
+            {migrationError ? <p className="text-sm text-destructive">{migrationError}</p> : null}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isMigrating}
+                onClick={() => setIsMigrationDialogOpen(false)}
+              >
+                {t('common.actions.cancel')}
+              </Button>
+              <Button
+                type="button"
+                disabled={isMigrating}
+                onClick={() => {
+                  void handleRunMigration()
+                }}
+              >
+                {isMigrating ? 'Migrating...' : 'Migrate'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         {shouldShowThreadTitleBar ? (
           <CardHeader
-            className="border-b border-[color:var(--surface-border)] bg-transparent py-3 pr-24 sm:py-4"
+            className="border-b border-[color:var(--surface-border)] bg-transparent py-3 pr-36 sm:py-4"
             style={{ borderColor: 'var(--surface-border)' }}
           >
             <div className="flex h-full flex-nowrap items-center justify-between gap-3 overflow-hidden">

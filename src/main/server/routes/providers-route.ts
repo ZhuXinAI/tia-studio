@@ -11,6 +11,18 @@ import {
 type RegisterProvidersRouteOptions = {
   providersRepo: ProvidersRepository
   assistantsRepo: AssistantsRepository
+  getManagedRuntimeStatus?: () => Promise<
+    Partial<
+      Record<
+        'codex-acp' | 'claude-agent-acp',
+        {
+          status: string
+          binaryPath: string | null
+          errorMessage: string | null
+        }
+      >
+    >
+  >
 }
 
 function parseJsonBodyErrorResponse() {
@@ -109,7 +121,9 @@ export function registerProvidersRoute(app: Hono, options: RegisterProvidersRout
     }
 
     try {
-      await testProviderConnection(parsed.data)
+      await testProviderConnection(parsed.data, {
+        getManagedRuntimeStatus: options.getManagedRuntimeStatus
+      })
       return context.json({ ok: true })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Connection check failed'

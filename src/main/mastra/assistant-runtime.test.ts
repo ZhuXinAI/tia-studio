@@ -181,7 +181,7 @@ async function getAgentInstructions(agent: unknown): Promise<string> {
 }
 
 describe('AssistantRuntimeService', () => {
-  it('includes global and workspace skills directories by default', () => {
+  it('passes only workspace-relative skills directories to Mastra workspace skills', () => {
     const runtime = new AssistantRuntimeService({
       mastra: {} as Mastra,
       assistantsRepo: {} as AssistantsRepository,
@@ -203,13 +203,38 @@ describe('AssistantRuntimeService', () => {
       }
     ).resolveSkillsPaths(workspaceRoot, {})
 
-    expect(skillsPaths).toEqual(
-      expect.arrayContaining([
+    expect(skillsPaths).toEqual(['skills'])
+  })
+
+  it('filters absolute skill paths outside the workspace', () => {
+    const runtime = new AssistantRuntimeService({
+      mastra: {} as Mastra,
+      assistantsRepo: {} as AssistantsRepository,
+      providersRepo: {} as ProvidersRepository,
+      threadsRepo: {} as ThreadsRepository,
+      webSearchSettingsRepo: {} as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+
+    const workspaceRoot = '/tmp/workspace'
+    const skillsPaths = (
+      runtime as unknown as {
+        resolveSkillsPaths: (
+          workspaceRootPath: string,
+          skillsConfig: Record<string, unknown>
+        ) => string[]
+      }
+    ).resolveSkillsPaths(workspaceRoot, {
+      paths: [
         path.join(os.homedir(), '.claude', 'skills'),
-        path.join(os.homedir(), '.agent', 'skills'),
-        path.join(workspaceRoot, 'skills')
-      ])
-    )
+        path.join(workspaceRoot, 'extra-skills'),
+        './project-skills'
+      ]
+    })
+
+    expect(skillsPaths).toEqual(['skills', 'extra-skills', 'project-skills'])
   })
 
   it('registers agents with memory enabled', async () => {

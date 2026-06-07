@@ -132,7 +132,7 @@ describe('mcp servers settings page', () => {
     })
     await flushAsyncWork()
 
-    expect(container.textContent).toContain('Runtime Setup')
+    expect(container.textContent).toContain('Runtime setup')
     expect(container.textContent).toContain('managed runtimes')
   })
 

@@ -5,6 +5,7 @@ import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 
 const DEFAULT_AGENT_DIRECTORY = 'default-agent'
 const DEFAULT_AGENT_SKILLS_DIRECTORY = 'skills'
+const BUILT_IN_CODEX_PROVIDER_ID = 'built-in-codex-acp'
 export const BUILT_IN_DEFAULT_AGENT_MCP_KEY = '__tiaBuiltInDefaultAgent'
 
 export const DEFAULT_AGENT_NAME = 'Default Agent'
@@ -88,7 +89,9 @@ function pickDefaultProviderId(
     return provider.id
   }
 
-  return null
+  return providers.some((provider) => provider.id === BUILT_IN_CODEX_PROVIDER_ID)
+    ? BUILT_IN_CODEX_PROVIDER_ID
+    : null
 }
 
 export async function ensureBuiltInDefaultAgent(
@@ -99,17 +102,24 @@ export async function ensureBuiltInDefaultAgent(
   await mkdir(path.join(workspacePath, DEFAULT_AGENT_SKILLS_DIRECTORY), { recursive: true })
 
   const assistants = await options.assistantsRepo.list()
+  const providers = await options.providersRepo.list()
+  const defaultProviderId = pickDefaultProviderId(providers)
   await protectBuiltInDefaultAgent(options, assistants, workspacePath)
+  const builtInDefaultAssistant = await options.assistantsRepo.findBuiltInDefault()
+  if (builtInDefaultAssistant && !builtInDefaultAssistant.providerId && defaultProviderId) {
+    await options.assistantsRepo.update(builtInDefaultAssistant.id, {
+      providerId: defaultProviderId
+    })
+  }
+
   if (assistants.length > 0) {
     return
   }
 
-  const providers = await options.providersRepo.list()
-
   await options.assistantsRepo.create({
     name: DEFAULT_AGENT_NAME,
     instructions: DEFAULT_AGENT_PROMPT,
-    providerId: pickDefaultProviderId(providers),
+    providerId: defaultProviderId,
     workspaceConfig: {
       rootPath: workspacePath
     },

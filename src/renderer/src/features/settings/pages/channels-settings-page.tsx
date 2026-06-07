@@ -882,7 +882,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
             <Button
               id="settings-channel-remove-confirm"
               type="button"
-              disabled={channelToRemove?.assistantId !== null || isSubmitting}
+              disabled={isSubmitting}
               onClick={() => void handleRemoveChannel()}
             >
               {t('settings.channels.remove.confirm')}

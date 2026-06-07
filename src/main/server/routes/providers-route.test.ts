@@ -193,6 +193,65 @@ describe('providers route', () => {
     })
   })
 
+  it('returns a clear ACP provider connection error when the runtime is missing', async () => {
+    const acpApp = new Hono()
+    registerProvidersRoute(acpApp, {
+      providersRepo,
+      assistantsRepo,
+      getManagedRuntimeStatus: vi.fn(async () => ({
+        'codex-acp': {
+          status: 'missing',
+          binaryPath: null,
+          errorMessage: null
+        }
+      }))
+    })
+
+    const response = await acpApp.request('http://localhost/v1/providers/test-connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'codex-acp',
+        apiKey: '',
+        selectedModel: 'default'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: 'Codex ACP runtime is not ready. Install or activate it in Settings > Coding.'
+    })
+  })
+
+  it('accepts ACP provider connection checks when the managed runtime is ready', async () => {
+    const acpApp = new Hono()
+    registerProvidersRoute(acpApp, {
+      providersRepo,
+      assistantsRepo,
+      getManagedRuntimeStatus: vi.fn(async () => ({
+        'codex-acp': {
+          status: 'ready',
+          binaryPath: '/managed/codex-acp',
+          errorMessage: null
+        }
+      }))
+    })
+
+    const response = await acpApp.request('http://localhost/v1/providers/test-connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'codex-acp',
+        apiKey: '',
+        selectedModel: 'default'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ ok: true })
+  })
+
   it('deletes provider when no assistants reference it', async () => {
     const provider = await providersRepo.create({
       name: 'OpenAI',

@@ -31,6 +31,7 @@ describe('channels route', () => {
     typeof vi.fn<(channel: { id: string; type: string }) => Promise<void>>
   >
   let providerId: string
+  let defaultAssistantId: string
 
   beforeEach(async () => {
     db = await migrateAppSchema(':memory:')
@@ -55,6 +56,15 @@ describe('channels route', () => {
       selectedModel: 'gpt-5'
     })
     providerId = provider.id
+    const defaultAssistant = await assistantsRepo.create({
+      name: 'Default Agent',
+      providerId,
+      enabled: true,
+      mcpConfig: {
+        [BUILT_IN_DEFAULT_AGENT_MCP_KEY]: true
+      }
+    })
+    defaultAssistantId = defaultAssistant.id
 
     registerChannelsRoute(app, {
       assistantsRepo,
@@ -75,15 +85,7 @@ describe('channels route', () => {
     db.close()
   })
 
-  it('lists configured channels while hiding those attached to built-in assistants', async () => {
-    const builtInAssistant = await assistantsRepo.create({
-      name: 'Default Agent',
-      providerId,
-      enabled: true,
-      mcpConfig: {
-        [BUILT_IN_DEFAULT_AGENT_MCP_KEY]: true
-      }
-    })
+  it('lists configured channels attached to the built-in default assistant', async () => {
     const visibleAssistant = await assistantsRepo.create({
       name: 'Ops Assistant',
       providerId,
@@ -99,10 +101,10 @@ describe('channels route', () => {
         appSecret: 'secret-bound'
       }
     })
-    await channelsRepo.create({
+    const defaultChannel = await channelsRepo.create({
       type: 'lark',
       name: 'Built In Lark',
-      assistantId: builtInAssistant.id,
+      assistantId: defaultAssistantId,
       enabled: true,
       config: {
         appId: 'cli_builtin',
@@ -113,16 +115,26 @@ describe('channels route', () => {
     const response = await app.request('http://localhost/v1/channels')
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual([
-      expect.objectContaining({
-        id: boundChannel.id,
-        type: 'lark',
-        name: 'Bound Lark',
-        assistantId: visibleAssistant.id,
-        assistantName: 'Ops Assistant',
-        status: 'connected'
-      })
-    ])
+    await expect(response.json()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: defaultChannel.id,
+          type: 'lark',
+          name: 'Built In Lark',
+          assistantId: defaultAssistantId,
+          assistantName: 'Default Agent',
+          status: 'connected'
+        }),
+        expect.objectContaining({
+          id: boundChannel.id,
+          type: 'lark',
+          name: 'Bound Lark',
+          assistantId: visibleAssistant.id,
+          assistantName: 'Ops Assistant',
+          status: 'connected'
+        })
+      ])
+    )
   })
 
   it('creates, updates, and deletes configured channels through the live route', async () => {
@@ -141,8 +153,8 @@ describe('channels route', () => {
     expect(created).toMatchObject({
       type: 'telegram',
       name: 'Alias Telegram',
-      assistantId: null,
-      assistantName: null
+      assistantId: defaultAssistantId,
+      assistantName: 'Default Agent'
     })
 
     const updateResponse = await app.request(`http://localhost/v1/channels/${created.id}`, {

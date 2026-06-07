@@ -11,8 +11,9 @@ export function AppV2Shell(): React.JSX.Element {
   const location = useLocation()
   const isSettingsRoute = location.pathname.startsWith('/settings')
   const isChatRoute = location.pathname === '/chat' || location.pathname.startsWith('/chat/')
+  const isSidebarToolRoute = location.pathname === '/skills' || location.pathname === '/automations'
   const isWorkspaceRoute = /^\/workspaces\/[^/]+(?:\/|$)/.test(location.pathname)
-  const isConversationRoute = isChatRoute || isWorkspaceRoute
+  const shouldShowSidebar = isChatRoute || isWorkspaceRoute || isSidebarToolRoute
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   return (
@@ -24,7 +25,7 @@ export function AppV2Shell(): React.JSX.Element {
       />
       <div className="relative flex min-h-0 flex-1 overflow-hidden p-2 pt-9">
         <div className="neutral-panel flex min-h-0 flex-1 overflow-hidden rounded-[1.15rem]">
-          {isConversationRoute ? (
+          {shouldShowSidebar ? (
             <AppV2Sidebar
               isCollapsed={isSidebarCollapsed}
               onToggleCollapsed={() => setIsSidebarCollapsed((current) => !current)}

@@ -218,6 +218,7 @@ export function resolveModel(
   if (provider.type === 'codex-acp' || provider.type === 'claude-agent-acp') {
     const acpProvider = mergedFactories.acpProviderFactory({
       command: provider.type,
+      ...(provider.type === 'codex-acp' ? { authMethodId: 'chatgpt' } : {}),
       env: buildACPEnvironment(provider.type, options),
       session: {
         cwd: options.acpWorkingDirectory?.trim() || process.cwd(),

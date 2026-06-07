@@ -3,6 +3,7 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppShell } from './app-shell'
 
@@ -38,12 +39,20 @@ describe('AppShell update button', () => {
   let restartToUpdate: ReturnType<typeof vi.fn<RestartToUpdateFn>>
   let onAutoUpdateStateChanged: ReturnType<typeof vi.fn<OnAutoUpdateStateChangedFn>>
   let autoUpdateStateListener: ((state: AutoUpdateState) => void) | null
+  let queryClient: QueryClient
 
   beforeEach(() => {
     ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false
+        }
+      }
+    })
     getAutoUpdateState = vi.fn<GetAutoUpdateStateFn>(async () => ({
       enabled: true,
       status: 'idle',
@@ -104,7 +113,11 @@ describe('AppShell update button', () => {
     )
 
     await act(async () => {
-      root.render(<RouterProvider router={router} />)
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
+      )
     })
     await flushAsyncWork()
 
