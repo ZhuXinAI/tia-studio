@@ -13,6 +13,7 @@
 ### Task 1: Fix Bun release asset selection
 
 **Files:**
+
 - Modify: `src/main/runtimes/managed-runtime-service.ts`
 - Modify: `src/main/runtimes/managed-runtime-service.test.ts`
 
@@ -51,6 +52,7 @@ git commit -m "fix: prefer installable bun release assets"
 ### Task 2: Add managed Bun skill-install APIs
 
 **Files:**
+
 - Modify: `src/main/skills/skills-manager.ts`
 - Modify: `src/main/skills/skills-manager.test.ts`
 - Modify: `src/main/index.ts`
@@ -100,6 +102,7 @@ git commit -m "feat: add managed bun skill onboarding install api"
 ### Task 3: Add Bun-first onboarding UI to Runtime Setup
 
 **Files:**
+
 - Modify: `src/renderer/src/features/settings/pages/runtime-setup-page.tsx`
 - Modify: `src/renderer/src/features/settings/pages/runtime-setup-page.test.tsx`
 - Modify: `src/renderer/src/i18n/locales/en-US.json`

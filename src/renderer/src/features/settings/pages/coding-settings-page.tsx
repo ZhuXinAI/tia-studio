@@ -109,7 +109,9 @@ export function CodingSettingsPage(): React.JSX.Element {
         <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
           {t('settings.coding.title')}
         </h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">{t('settings.coding.description')}</p>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          {t('settings.coding.description')}
+        </p>
       </header>
 
       <div className="grid gap-4 xl:grid-cols-2">

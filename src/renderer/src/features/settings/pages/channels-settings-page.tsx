@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pencil, Plus } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '../../../components/ui/card'
+import { Card, CardContent, CardHeader } from '../../../components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -387,15 +381,23 @@ export function ChannelsSettingsPage(): React.JSX.Element {
         </p>
       </header>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_320px]">
+      <div className="w-full">
         <Card className="overflow-hidden border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_98%,transparent),color-mix(in_srgb,var(--surface-panel)_74%,transparent))]">
-          <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] pb-5">
-            <div className="space-y-1">
-              <p className="section-kicker">Configured inventory</p>
-              <CardTitle className="font-editorial text-[2rem] leading-none tracking-[-0.035em]">
-                {t('settings.channels.configuredTitle')}
-              </CardTitle>
-              <CardDescription>{t('settings.channels.configuredDescription')}</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between gap-4 border-b border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] py-4 px-6">
+            <div className="flex flex-row items-center gap-6">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-sm font-medium text-muted-foreground">Active Channels</span>
+                <span className="font-editorial text-xl leading-none">{activeChannelCount}</span>
+              </div>
+              <div className="h-4 w-px bg-[color:var(--surface-border)]" />
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Pairing Queues</span>
+                <span className="font-editorial text-xl leading-none">{pairingChannelCount}</span>
+              </div>
             </div>
             <Button id="settings-channels-add" type="button" onClick={openCreateDialog}>
               <Plus className="size-4" />
@@ -485,45 +487,6 @@ export function ChannelsSettingsPage(): React.JSX.Element {
             </div>
           </CardContent>
         </Card>
-
-        <div className="space-y-4">
-          <Card className="border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] shadow-none">
-            <CardHeader className="space-y-2">
-              <p className="section-kicker">Overview</p>
-              <CardTitle className="font-editorial text-[1.5rem] leading-none tracking-[-0.03em]">
-                Channel posture
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3">
-              <div className="rounded-[0.95rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-3">
-                <p className="section-kicker text-[0.64rem]">Active now</p>
-                <p className="font-editorial mt-1 text-[2rem] leading-none">{activeChannelCount}</p>
-              </div>
-              <div className="rounded-[0.95rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-3">
-                <p className="section-kicker text-[0.64rem]">Pairing queues</p>
-                <p className="font-editorial mt-1 text-[2rem] leading-none">
-                  {pairingChannelCount}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] shadow-none">
-            <CardHeader className="space-y-2">
-              <p className="section-kicker">Routing note</p>
-              <CardTitle className="font-editorial text-[1.5rem] leading-none tracking-[-0.03em]">
-                Global by design
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <p>{t('settings.channels.description')}</p>
-              <p>
-                Channels stay global here while inbound conversations continue into the built-in
-                Chats workspace.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
       </div>
 
       <Dialog

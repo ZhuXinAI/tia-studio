@@ -319,8 +319,8 @@ export function AppV2Sidebar({
     return (
       <aside
         className={cn(
-          "flex h-full w-12 shrink-0 flex-col items-center gap-2 border-r border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-panel-strong)_92%,transparent),color-mix(in_srgb,var(--surface-panel)_96%,transparent))] px-1.5 pb-3",
-          isWindowsPlatform() ? "pt-3" : "pt-12"
+          'flex h-full w-12 shrink-0 flex-col items-center gap-2 border-r border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-panel-strong)_92%,transparent),color-mix(in_srgb,var(--surface-panel)_96%,transparent))] px-1.5 pb-3',
+          isWindowsPlatform() ? 'pt-3' : 'pt-12'
         )}
       >
         <Button
@@ -361,18 +361,12 @@ export function AppV2Sidebar({
   return (
     <aside
       className={cn(
-        "flex h-full w-[18rem] shrink-0 flex-col border-r border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-panel-strong)_92%,transparent),color-mix(in_srgb,var(--surface-panel)_96%,transparent))]",
-        isWindowsPlatform() ? "pt-0" : "pt-9"
+        'flex h-full w-[18rem] shrink-0 flex-col border-r border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-panel-strong)_92%,transparent),color-mix(in_srgb,var(--surface-panel)_96%,transparent))]',
+        isWindowsPlatform() ? 'pt-0' : 'pt-9'
       )}
     >
       <div className="space-y-3 border-b border-[color:var(--surface-border)] px-3.5 pb-4 pt-3">
         <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="section-kicker">Local agent</p>
-            <h1 className="font-editorial truncate text-[1.65rem] leading-none tracking-[-0.04em]">
-              TIA Studio
-            </h1>
-          </div>
           <div className="flex shrink-0 items-center gap-1">
             <Button
               type="button"

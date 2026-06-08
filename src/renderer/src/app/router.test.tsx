@@ -74,7 +74,6 @@ describe('app router', () => {
     expect(html).toContain('Model Provider')
     expect(html).toContain('Back to app')
     expect(html).not.toContain('Workspace Defaults')
-    expect(html).not.toContain('Local agent')
   })
 
   it('renders provider settings route', () => {
@@ -130,7 +129,7 @@ describe('app router', () => {
     const html = renderRouter(['/settings/channels'])
 
     expect(html).toContain('Channels')
-    expect(html).toContain('Channel Connections')
+    expect(html).toContain('Active Channels')
     expect(html).toContain('Add Channel')
   })
 
@@ -149,7 +148,6 @@ describe('app router', () => {
     expect(html).toContain('Skills')
     expect(html).toContain('Automations')
     expect(html).toContain('aria-label="Open settings"')
-    expect(html).toContain('Local agent')
     expect(html).toContain('Create workspace')
     expect(html).toContain('Workspaces')
     expect(html).toContain('Workspace')

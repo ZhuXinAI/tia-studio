@@ -18,14 +18,14 @@ The assistant still owns identity, tools, memory, prompts, workspace, cron, and 
 
 ## Current support
 
-| Channel  | Direct Chat | Group Chat | Group Trigger                       | Notes                                                              |
-| -------- | ----------- | ---------- | ----------------------------------- | ------------------------------------------------------------------ |
-| Discord  | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
-| Lark     | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
-| Telegram | ✅          | 🚫         | Not available yet                   | Telegram is currently DM-only while group behavior is under review |
-| WhatsApp | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
-| Wecom    | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
-| Wechat-KF | ✅         | 🚫         | Not applicable                      | Relay-backed one-to-one customer-service sessions only             |
+| Channel   | Direct Chat | Group Chat | Group Trigger                       | Notes                                                              |
+| --------- | ----------- | ---------- | ----------------------------------- | ------------------------------------------------------------------ |
+| Discord   | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
+| Lark      | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
+| Telegram  | ✅          | 🚫         | Not available yet                   | Telegram is currently DM-only while group behavior is under review |
+| WhatsApp  | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
+| Wecom     | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
+| Wechat-KF | ✅          | 🚫         | Not applicable                      | Relay-backed one-to-one customer-service sessions only             |
 
 ## Group behavior
 

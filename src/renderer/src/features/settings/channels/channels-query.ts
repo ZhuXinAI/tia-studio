@@ -93,9 +93,7 @@ export async function listChannels(): Promise<ConfiguredChannelRecord[]> {
   return apiClient.get<ConfiguredChannelRecord[]>('/v1/channels')
 }
 
-export async function createChannel(
-  input: CreateChannelInput
-): Promise<ConfiguredChannelRecord> {
+export async function createChannel(input: CreateChannelInput): Promise<ConfiguredChannelRecord> {
   return apiClient.post<ConfiguredChannelRecord>('/v1/channels', input)
 }
 
@@ -110,8 +108,6 @@ export async function deleteChannel(channelId: string): Promise<void> {
   await apiClient.delete(`/v1/channels/${channelId}`)
 }
 
-export async function recoverChannelSetup(
-  channelId: string
-): Promise<ConfiguredChannelRecord> {
+export async function recoverChannelSetup(channelId: string): Promise<ConfiguredChannelRecord> {
   return apiClient.post<ConfiguredChannelRecord>(`/v1/channels/${channelId}/recover`)
 }

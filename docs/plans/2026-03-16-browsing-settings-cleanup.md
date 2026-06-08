@@ -13,6 +13,7 @@
 ### Task 1: Simplify Browsing Settings Storage
 
 **Files:**
+
 - Modify: `src/main/persistence/repos/web-search-settings-repo.ts`
 - Modify: `src/main/server/validators/web-search-validator.ts`
 - Modify: `src/main/server/routes/web-search-settings-route.ts`
@@ -45,6 +46,7 @@ git commit -m "refactor: simplify browsing settings storage"
 ### Task 2: Wire Runtime Visibility Preferences
 
 **Files:**
+
 - Modify: `src/main/tia-browser-tool.ts`
 - Modify: `src/main/tia-browser-tool-manager.ts`
 - Modify: `src/main/index.ts`
@@ -76,6 +78,7 @@ git commit -m "feat: add tia browser visibility setting"
 ### Task 3: Redesign the Settings Page as Browsing
 
 **Files:**
+
 - Modify: `src/renderer/src/features/settings/pages/web-search-settings-page.tsx`
 - Modify: `src/renderer/src/features/settings/pages/web-search-settings-page.test.tsx`
 - Modify: `src/renderer/src/features/settings/components/settings-sidebar-nav.tsx`
@@ -109,6 +112,7 @@ git commit -m "feat: simplify browsing settings UI"
 ### Task 4: Validate Integration
 
 **Files:**
+
 - Modify: any files above as needed
 
 **Step 1: Run focused tests**

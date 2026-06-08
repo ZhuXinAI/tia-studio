@@ -39,11 +39,7 @@ export type RelocateWorkspaceInput = {
 type WorkspacesRepositoryOptions = {
   assistantsRepo: Pick<
     AssistantsRepository,
-    | 'create'
-    | 'delete'
-    | 'findBuiltInDefault'
-    | 'findWorkspaceDefaultByRootPath'
-    | 'update'
+    'create' | 'delete' | 'findBuiltInDefault' | 'findWorkspaceDefaultByRootPath' | 'update'
   >
   workspaceRecordsRepo: Pick<
     WorkspaceRecordsRepository,
@@ -197,7 +193,8 @@ export class WorkspacesRepository {
       return null
     }
 
-    const builtInWorkspaceId = await this.options.workspaceRecordsRepo.getBuiltInDefaultWorkspaceId()
+    const builtInWorkspaceId =
+      await this.options.workspaceRecordsRepo.getBuiltInDefaultWorkspaceId()
     const defaultAssistantId = await this.resolveWorkspaceDefaultAssistantId(
       workspace,
       builtInWorkspaceId
@@ -245,8 +242,7 @@ export class WorkspacesRepository {
     }
 
     const nextDefaultAssistantId =
-      defaultAssistant?.id ??
-      (await this.ensureNamedWorkspaceDefaultAssistant(workspace)).id
+      defaultAssistant?.id ?? (await this.ensureNamedWorkspaceDefaultAssistant(workspace)).id
     return toWorkspace(workspace, builtInWorkspace.id, nextDefaultAssistantId)
   }
 

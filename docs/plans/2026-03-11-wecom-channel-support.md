@@ -13,6 +13,7 @@
 ### Task 1: Add the runtime adapter
 
 **Files:**
+
 - Create: `src/main/channels/wecom-channel.ts`
 - Test: `src/main/channels/wecom-channel.test.ts`
 - Modify: `src/main/channels/types.ts`
@@ -47,6 +48,7 @@ Expected: PASS
 ### Task 2: Thread WeCom through the Claws API
 
 **Files:**
+
 - Modify: `src/main/server/validators/claws-validator.ts`
 - Modify: `src/main/server/routes/claws-route.ts`
 - Test: `src/main/server/routes/claws-route.test.ts`
@@ -71,6 +73,7 @@ Expected: PASS
 ### Task 3: Expose WeCom in the renderer flows
 
 **Files:**
+
 - Modify: `src/renderer/src/features/claws/claws-query.ts`
 - Modify: `src/renderer/src/features/claws/claw-labels.ts`
 - Modify: `src/renderer/src/features/claws/components/claw-channel-selector-dialog.tsx`
@@ -102,6 +105,7 @@ Expected: PASS
 ### Task 4: Validate the integration end to end
 
 **Files:**
+
 - Modify: `docs/plans/2026-03-11-wecom-channel-support.md`
 
 **Step 1: Run targeted verification**

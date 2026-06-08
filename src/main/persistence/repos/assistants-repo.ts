@@ -164,8 +164,9 @@ export class AssistantsRepository {
   async findBuiltInDefault(): Promise<AppAssistant | null> {
     const assistants = await this.list()
     return (
-      assistants.find((assistant) => assistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] === true) ??
-      null
+      assistants.find(
+        (assistant) => assistant.mcpConfig[BUILT_IN_DEFAULT_AGENT_MCP_KEY] === true
+      ) ?? null
     )
   }
 

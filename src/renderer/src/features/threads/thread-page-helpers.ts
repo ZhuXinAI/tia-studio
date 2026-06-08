@@ -37,7 +37,9 @@ function canDeleteAssistant(assistant: AssistantRecord): boolean {
 }
 
 export function resolveChatsAssistant(assistants: AssistantRecord[]): AssistantRecord | null {
-  return assistants.find((assistant) => isBuiltInDefaultAssistant(assistant)) ?? assistants[0] ?? null
+  return (
+    assistants.find((assistant) => isBuiltInDefaultAssistant(assistant)) ?? assistants[0] ?? null
+  )
 }
 
 export function resolveWorkspaceAssistant(input: {

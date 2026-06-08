@@ -136,7 +136,9 @@ export function WebSearchSettingsPage(): React.JSX.Element {
         <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
           {t('settings.webSearch.title')}
         </h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">{t('settings.webSearch.description')}</p>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          {t('settings.webSearch.description')}
+        </p>
       </header>
 
       <Card className="border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_78%,transparent))]">

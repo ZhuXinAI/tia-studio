@@ -20,6 +20,7 @@
 ### Task 1: Define backend compaction behavior with focused failing tests
 
 **Files:**
+
 - Modify: `src/main/mastra/assistant-runtime.test.ts`
 - Modify: `src/main/server/routes/chat-route.test.ts`
 
@@ -73,6 +74,7 @@ git commit -m "test: define thread slash command compaction behavior"
 ### Task 2: Implement assistant-runtime compaction support for `/new`
 
 **Files:**
+
 - Modify: `src/main/mastra/assistant-runtime.ts`
 
 **Step 1: Add runtime surface**
@@ -147,6 +149,7 @@ git commit -m "feat: add assistant thread compaction runtime"
 ### Task 3: Add the assistant-thread command route
 
 **Files:**
+
 - Modify: `src/main/server/routes/chat-route.ts`
 - Modify: `src/main/server/routes/chat-route.test.ts`
 
@@ -197,6 +200,7 @@ git commit -m "feat: add assistant thread command route"
 ### Task 4: Intercept slash commands in the thread renderer
 
 **Files:**
+
 - Modify: `src/renderer/src/features/threads/chat-query.ts`
 - Modify: `src/renderer/src/features/threads/hooks/use-thread-page-controller.ts`
 - Modify: `src/renderer/src/features/threads/hooks/use-thread-page-controller.test.tsx`
@@ -258,6 +262,7 @@ git commit -m "feat: add assistant thread slash commands"
 ### Task 5: Verify the end-to-end slice
 
 **Files:**
+
 - Modify if needed based on failures
 
 **Step 1: Run the targeted suites**

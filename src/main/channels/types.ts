@@ -1,12 +1,6 @@
 import type { AppChannel } from '../persistence/repos/channels-repo'
 
-export type ChannelType =
-  | 'discord'
-  | 'lark'
-  | 'telegram'
-  | 'whatsapp'
-  | 'wechat'
-  | 'wecom'
+export type ChannelType = 'discord' | 'lark' | 'telegram' | 'whatsapp' | 'wechat' | 'wecom'
 
 export interface ChannelMessage {
   id: string

@@ -111,7 +111,9 @@ function mergeDisplayedThreadMessages(input: {
   return merged
 }
 
-function readThreadProviderOverride(metadata: Record<string, unknown> | undefined): ThreadProviderOverride | null {
+function readThreadProviderOverride(
+  metadata: Record<string, unknown> | undefined
+): ThreadProviderOverride | null {
   const override = metadata?.providerOverride
   if (!override || typeof override !== 'object' || Array.isArray(override)) {
     return null
@@ -146,11 +148,7 @@ function resolveDraftModel(input: {
     return normalizedDraftModel
   }
 
-  return (
-    input.providerSelectedModel?.trim() ||
-    input.providerModels?.[0] ||
-    ''
-  )
+  return input.providerSelectedModel?.trim() || input.providerModels?.[0] || ''
 }
 
 function toWorkspaceRouteScope(workspaceId: string | null | undefined): ThreadRouteScope {
@@ -282,7 +280,12 @@ export function useThreadPageController() {
     }
 
     return selectedAssistant?.providerId?.trim() ?? ''
-  }, [draftProviderId, selectedAssistant?.providerId, selectedThread, selectedThreadProviderOverride])
+  }, [
+    draftProviderId,
+    selectedAssistant?.providerId,
+    selectedThread,
+    selectedThreadProviderOverride
+  ])
   const effectiveModel = useMemo(() => {
     if (selectedThreadProviderOverride) {
       return selectedThreadProviderOverride.model
@@ -471,13 +474,14 @@ export function useThreadPageController() {
 
     const defaultProvider =
       providers.find(
-        (provider) =>
-          provider.id === workspaceDefaultAssistant?.providerId && provider.enabled
-      ) ?? providers[0] ?? null
+        (provider) => provider.id === workspaceDefaultAssistant?.providerId && provider.enabled
+      ) ??
+      providers[0] ??
+      null
     const nextProviderId =
       draftProviderId && providers.some((provider) => provider.id === draftProviderId)
         ? draftProviderId
-        : defaultProvider?.id ?? ''
+        : (defaultProvider?.id ?? '')
 
     if (nextProviderId !== draftProviderId) {
       setDraftProviderId(nextProviderId)
@@ -614,7 +618,15 @@ export function useThreadPageController() {
     }
 
     navigate(baseRoute, { replace: true })
-  }, [baseRoute, isLoadingThreads, navigate, params.threadId, selectedWorkspace, threads, threadsData])
+  }, [
+    baseRoute,
+    isLoadingThreads,
+    navigate,
+    params.threadId,
+    selectedWorkspace,
+    threads,
+    threadsData
+  ])
 
   useEffect(() => {
     const assistantId = selectedThread?.assistantId ?? selectedAssistant?.id
@@ -676,7 +688,8 @@ export function useThreadPageController() {
     const assistantIds = Array.from(
       new Set(
         [workspaceDefaultAssistant?.id, ...threads.map((thread) => thread.assistantId)].filter(
-          (assistantId): assistantId is string => typeof assistantId === 'string' && assistantId.length > 0
+          (assistantId): assistantId is string =>
+            typeof assistantId === 'string' && assistantId.length > 0
         )
       )
     )

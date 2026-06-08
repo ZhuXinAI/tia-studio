@@ -74,7 +74,9 @@ export function GeneralSettingsPage(): React.JSX.Element {
         <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
           {t('settings.general.title')}
         </h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">{t('settings.general.description')}</p>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          {t('settings.general.description')}
+        </p>
       </header>
 
       <Card className="border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_78%,transparent))]">
@@ -92,7 +94,9 @@ export function GeneralSettingsPage(): React.JSX.Element {
               <h3 className="font-editorial text-[1.35rem] leading-none tracking-[-0.025em]">
                 {t('settings.general.languageLabel')}
               </h3>
-              <p className="text-sm text-muted-foreground">{t('settings.general.languageDescription')}</p>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.languageDescription')}
+              </p>
             </div>
 
             <select

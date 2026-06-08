@@ -28,10 +28,16 @@ export function AppShell(): React.JSX.Element {
   const isAutomationsRoute = location.pathname === '/automations'
   const isSettingsRoute = location.pathname.startsWith('/settings')
   const activeWorkspace = activeWorkspaceRouteId
-    ? workspaces.find((workspace) => workspace.id === activeWorkspaceRouteId) ?? null
+    ? (workspaces.find((workspace) => workspace.id === activeWorkspaceRouteId) ?? null)
     : null
-  const activeWorkspaceName = isChatRoute ? 'Chats' : isWorkspaceRoute ? activeWorkspace?.name ?? null : null
-  const newChatHref = activeWorkspaceRouteId ? `/workspaces/${activeWorkspaceRouteId}/new` : '/chat/new'
+  const activeWorkspaceName = isChatRoute
+    ? 'Chats'
+    : isWorkspaceRoute
+      ? (activeWorkspace?.name ?? null)
+      : null
+  const newChatHref = activeWorkspaceRouteId
+    ? `/workspaces/${activeWorkspaceRouteId}/new`
+    : '/chat/new'
 
   return (
     <div className="flex min-h-screen flex-col bg-[color:var(--surface-canvas)] text-foreground transition-colors duration-200">
@@ -89,9 +95,7 @@ export function AppShell(): React.JSX.Element {
             </div>
             {activeWorkspaceName ? (
               <div className="min-w-0 rounded-[1rem] border border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_70%,transparent),var(--surface-panel-soft))] px-3.5 py-2 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_42%,transparent)]">
-                <span className="section-kicker block">
-                  Workspace
-                </span>
+                <span className="section-kicker block">Workspace</span>
                 <span className="font-editorial block truncate text-lg leading-none tracking-[-0.02em]">
                   {activeWorkspaceName}
                 </span>

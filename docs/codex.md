@@ -1485,7 +1485,7 @@ type Project = {
   git?: {
     repoRoot: string
     currentBranch: string
-    status: "clean" | "dirty"
+    status: 'clean' | 'dirty'
   }
   threads: ThreadSummary[]
 }
@@ -1494,15 +1494,15 @@ type Thread = {
   id: string
   projectId: string
   title: string
-  mode: "local" | "worktree" | "cloud"
+  mode: 'local' | 'worktree' | 'cloud'
   status:
-    | "idle"
-    | "running"
-    | "needs_approval"
-    | "needs_input"
-    | "ready_for_review"
-    | "failed"
-    | "archived"
+    | 'idle'
+    | 'running'
+    | 'needs_approval'
+    | 'needs_input'
+    | 'ready_for_review'
+    | 'failed'
+    | 'archived'
   messages: ThreadMessage[]
   worktree?: WorktreeInfo
   changedFiles: ChangedFile[]
@@ -1546,9 +1546,9 @@ The most important UX patterns to reproduce are:
 
 For your Electron clone, I would design it less like “ChatGPT with a file tree” and more like **Linear + terminal + GitHub PR review + chat timeline** in one desktop shell.
 
-[1]: https://developers.openai.com/codex/app "App – Codex | OpenAI Developers"
-[2]: https://developers.openai.com/codex/app/settings "Settings – Codex app | OpenAI Developers"
-[3]: https://openai.com/index/work-with-codex-from-anywhere/?utm_source=chatgpt.com "Work with Codex from anywhere"
-[4]: https://developers.openai.com/codex/app/features "Features – Codex app | OpenAI Developers"
-[5]: https://openai.com/index/introducing-the-codex-app/ "Introducing the Codex app | OpenAI"
-[6]: https://developers.openai.com/codex/app/computer-use?utm_source=chatgpt.com "Computer Use – Codex app"
+[1]: https://developers.openai.com/codex/app 'App – Codex | OpenAI Developers'
+[2]: https://developers.openai.com/codex/app/settings 'Settings – Codex app | OpenAI Developers'
+[3]: https://openai.com/index/work-with-codex-from-anywhere/?utm_source=chatgpt.com 'Work with Codex from anywhere'
+[4]: https://developers.openai.com/codex/app/features 'Features – Codex app | OpenAI Developers'
+[5]: https://openai.com/index/introducing-the-codex-app/ 'Introducing the Codex app | OpenAI'
+[6]: https://developers.openai.com/codex/app/computer-use?utm_source=chatgpt.com 'Computer Use – Codex app'

@@ -87,7 +87,7 @@ const sidebarMenuButtonVariants = cva(
         default:
           'border border-transparent text-muted-foreground hover:bg-[color:var(--surface-muted)] hover:text-foreground',
         active:
-          'draft-rule border-[color:var(--surface-border-strong)] bg-[color:var(--surface-active)] pl-5 text-foreground shadow-[inset_0_0_0_1px_var(--surface-active-strong)]'
+          'border-[color:var(--surface-border-strong)] bg-[color:var(--surface-active)] text-foreground shadow-[inset_0_0_0_1px_var(--surface-active-strong)]'
       }
     },
     defaultVariants: {

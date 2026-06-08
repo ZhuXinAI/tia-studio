@@ -45,26 +45,10 @@
   --input: #27272a;
   --ring: rgb(212 212 216 / 55%);
   --radius: 0.625rem;
-  --font-body:
-    'IBM Plex Sans',
-    'Inter',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
+  --font-body: 'IBM Plex Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-display:
-    'Iowan Old Style',
-    'Palatino Linotype',
-    'Book Antiqua',
-    'URW Palladio L',
-    Georgia,
-    serif;
-  --font-metadata:
-    'IBM Plex Mono',
-    'JetBrains Mono',
-    'SFMono-Regular',
-    ui-monospace,
-    monospace;
+    'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', 'URW Palladio L', Georgia, serif;
+  --font-metadata: 'IBM Plex Mono', 'JetBrains Mono', 'SFMono-Regular', ui-monospace, monospace;
   --surface-canvas: #09090b;
   --surface-panel: #18181b;
   --surface-panel-strong: #18181b;
@@ -159,7 +143,11 @@ body {
 
 .paper-panel {
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-paper) 96%, transparent), var(--surface-panel)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-paper) 96%, transparent),
+      var(--surface-panel)
+    ),
     var(--surface-panel);
   border: 1px solid var(--surface-border);
   box-shadow: var(--surface-shadow);
@@ -167,7 +155,11 @@ body {
 
 .neutral-panel {
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-subtle) 90%, transparent), var(--surface-panel)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-subtle) 90%, transparent),
+      var(--surface-panel)
+    ),
     var(--surface-panel);
   border: 1px solid var(--surface-border);
 }

@@ -13,12 +13,14 @@
 ### Task 1: Plan the runtime refactor
 
 **Files:**
+
 - Modify: `src/main/mastra/team-runtime.ts`
 - Test: `src/main/mastra/team-runtime.test.ts`
 
 **Step 1: Write the failing runtime tests**
 
 Add tests that prove:
+
 - the supervisor receives member tools instead of `agents`
 - a member tool streams through the tool writer while returning structured output
 - member results include parsed mentions for routing/status purposes
@@ -31,6 +33,7 @@ Expected: FAIL on missing member tool behavior/assertions
 **Step 3: Write minimal runtime implementation**
 
 Implement helper(s) in `src/main/mastra/team-runtime.ts` to:
+
 - build runnable member agents plus their provider/workspace metadata
 - create one streaming tool per member
 - call `agent.stream(...)` inside the tool and forward `fullStream` chunks to `context.writer`
@@ -52,6 +55,7 @@ git commit -m "feat: stream team members as supervisor tools"
 ### Task 2: Tighten prompts and status metadata
 
 **Files:**
+
 - Modify: `src/main/mastra/team-runtime.ts`
 - Modify: `src/main/server/chat/team-run-status-store.ts`
 - Test: `src/main/mastra/team-runtime.test.ts`
@@ -59,6 +63,7 @@ git commit -m "feat: stream team members as supervisor tools"
 **Step 1: Write the failing test**
 
 Add assertions that:
+
 - supervisor instructions explain tool-based delegation and mention-aware routing
 - member instructions include team context, roster guidance, and mention expectations
 - status events include member labels / mentions where available
@@ -87,6 +92,7 @@ git commit -m "feat: add routing context to team delegation"
 ### Task 3: Render member tool output in the team chat UI
 
 **Files:**
+
 - Modify: `src/renderer/src/components/assistant-ui/tool-fallback.tsx`
 - Modify: `src/renderer/src/features/team/components/team-chat-card.tsx`
 - Test: `src/renderer/src/features/team/components/team-chat-card.test.tsx`
@@ -103,6 +109,7 @@ Expected: FAIL because team member tool output is still shown with the generic f
 **Step 3: Write minimal UI implementation**
 
 Enhance the shared tool fallback (or attach a team-specific tool component) so tool results with team-member metadata render:
+
 - member name
 - streamed/final text
 - mention chips or labels
@@ -123,11 +130,13 @@ git commit -m "feat: render team member tool output in chat"
 ### Task 4: End-to-end verification
 
 **Files:**
+
 - Modify if needed: `src/renderer/src/i18n/locales/en-US.json`
 
 **Step 1: Run focused validation**
 
 Run:
+
 - `npm run test:main -- src/main/mastra/team-runtime.test.ts`
 - `npm run test -- src/renderer/src/features/team/components/team-chat-card.test.tsx`
 - `npm run typecheck`

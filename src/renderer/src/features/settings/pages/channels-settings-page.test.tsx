@@ -37,9 +37,7 @@ async function flushAsyncWork(): Promise<void> {
   })
 }
 
-function buildChannel(
-  overrides: Partial<ConfiguredChannelRecord>
-): ConfiguredChannelRecord {
+function buildChannel(overrides: Partial<ConfiguredChannelRecord>): ConfiguredChannelRecord {
   return {
     id: 'channel-1',
     type: 'lark',
@@ -102,7 +100,7 @@ describe('channels settings page', () => {
     })
     await flushAsyncWork()
 
-    expect(container.textContent).toContain('Channel Connections')
+    expect(container.textContent).toContain('Active Channels')
     expect(container.textContent).not.toContain('Configured Channels')
     expect(container.textContent).toContain('Ops Lark')
     expect(container.textContent).toContain('Add Channel')

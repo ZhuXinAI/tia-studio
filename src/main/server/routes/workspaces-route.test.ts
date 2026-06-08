@@ -5,7 +5,10 @@ import { migrateAppSchema } from '../../persistence/migrate'
 import { AssistantsRepository } from '../../persistence/repos/assistants-repo'
 import { ThreadsRepository } from '../../persistence/repos/threads-repo'
 import { WorkspaceRecordsRepository } from '../../persistence/repos/workspace-records-repo'
-import { resolveBuiltInChatsWorkspacePath, WorkspacesRepository } from '../../persistence/repos/workspaces-repo'
+import {
+  resolveBuiltInChatsWorkspacePath,
+  WorkspacesRepository
+} from '../../persistence/repos/workspaces-repo'
 import { registerWorkspacesRoute } from './workspaces-route'
 
 describe('workspaces route', () => {

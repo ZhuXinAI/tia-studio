@@ -789,9 +789,12 @@ describe('useThreadPageController', () => {
       'workspace new thread creation'
     )
 
-    expect(mockState.navigateMock).toHaveBeenCalledWith('/workspaces/workspace-1/threads/thread-9', {
-      replace: true
-    })
+    expect(mockState.navigateMock).toHaveBeenCalledWith(
+      '/workspaces/workspace-1/threads/thread-9',
+      {
+        replace: true
+      }
+    )
   })
 
   it('keeps /chat selected when Chats has no threads yet', async () => {
@@ -1407,5 +1410,4 @@ describe('useThreadPageController', () => {
       cachedInputTokens: 25
     })
   })
-
 })

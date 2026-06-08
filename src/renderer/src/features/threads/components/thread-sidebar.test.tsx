@@ -168,9 +168,9 @@ describe('thread sidebar thread navigation', () => {
       ]
     })
 
-    const searchInput = container.querySelector('input[aria-label="Search threads"]') as
-      | HTMLInputElement
-      | null
+    const searchInput = container.querySelector(
+      'input[aria-label="Search threads"]'
+    ) as HTMLInputElement | null
     expect(searchInput).not.toBeNull()
 
     act(() => {

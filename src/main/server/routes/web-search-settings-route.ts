@@ -16,10 +16,7 @@ function parseJsonBodyErrorResponse(): {
   }
 }
 
-function toWebSearchResponse(input: {
-  keepBrowserWindowOpen: boolean
-  showBrowser: boolean
-}): {
+function toWebSearchResponse(input: { keepBrowserWindowOpen: boolean; showBrowser: boolean }): {
   keepBrowserWindowOpen: boolean
   showBrowser: boolean
 } {

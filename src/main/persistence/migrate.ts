@@ -119,7 +119,9 @@ async function ensureWorkspaceTables(db: AppDatabase): Promise<void> {
   }
 
   if (!workspaceColumns.includes('supervisor_model')) {
-    await db.execute("ALTER TABLE app_workspaces ADD COLUMN supervisor_model TEXT NOT NULL DEFAULT ''")
+    await db.execute(
+      "ALTER TABLE app_workspaces ADD COLUMN supervisor_model TEXT NOT NULL DEFAULT ''"
+    )
   }
 
   await db.execute(`

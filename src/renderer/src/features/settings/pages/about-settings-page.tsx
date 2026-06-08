@@ -206,7 +206,9 @@ export function AboutSettingsPage(): React.JSX.Element {
               </div>
               <div className="min-w-0 my-2">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <p className="font-editorial truncate text-3xl leading-tight tracking-[-0.03em]">{appInfo.name}</p>
+                  <p className="font-editorial truncate text-3xl leading-tight tracking-[-0.03em]">
+                    {appInfo.name}
+                  </p>
                   <span className="border-primary/40 bg-primary/10 text-primary inline-flex rounded-md border px-2 py-1 text-xs font-medium">
                     {versionLabel}
                   </span>

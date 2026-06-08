@@ -319,7 +319,10 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
   return (
     <>
-      <div className="flex h-full min-h-0 flex-col py-8" style={{ marginLeft: -32, marginRight: -32 }}>
+      <div
+        className="flex h-full min-h-0 flex-col py-8"
+        style={{ marginLeft: -32, marginRight: -32 }}
+      >
         <div className="min-h-0 flex flex-1 overflow-hidden">
           <aside className="flex h-full min-h-0 w-[360px] flex-col overflow-hidden border-r border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel-soft)_58%,transparent))]">
             <div className="flex items-start justify-between gap-3 border-b border-[color:var(--surface-border)] px-5 py-5">
@@ -395,7 +398,9 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                       onClick={() => {
                         setSelectedProviderId(provider.id)
                       }}
-                      disabled={isSubmitting || isTestingConnection || Boolean(isDeletingProviderId)}
+                      disabled={
+                        isSubmitting || isTestingConnection || Boolean(isDeletingProviderId)
+                      }
                     >
                       <div className="flex items-start gap-3">
                         <Avatar className="h-10 w-10 shrink-0">

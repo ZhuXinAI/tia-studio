@@ -16,14 +16,13 @@ describe('assistants query api client', () => {
   })
 
   it('lists assistants through backend api', async () => {
-    const fetchSpy = vi.fn(
-      async () =>
-        Response.json([
-          {
-            id: 'assistant-1',
-            name: 'Workspace Agent'
-          }
-        ])
+    const fetchSpy = vi.fn(async () =>
+      Response.json([
+        {
+          id: 'assistant-1',
+          name: 'Workspace Agent'
+        }
+      ])
     )
     vi.stubGlobal('fetch', fetchSpy)
 

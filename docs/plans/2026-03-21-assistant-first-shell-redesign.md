@@ -20,6 +20,7 @@
 ### Task 1: Add shell-level app mode persistence and root entrance restoration
 
 **Files:**
+
 - Create: `src/renderer/src/app/navigation/app-mode-state.ts`
 - Create: `src/renderer/src/app/navigation/app-mode-state.test.ts`
 - Create: `src/renderer/src/app/routes/app-entry-route.tsx`
@@ -81,6 +82,7 @@ git commit -m "feat: restore last app mode from shell entry"
 ### Task 2: Add team selection persistence so `/team` can restore the last workspace and thread
 
 **Files:**
+
 - Create: `src/renderer/src/features/team/team-page-routing.ts`
 - Create: `src/renderer/src/features/team/team-page-routing.test.ts`
 - Modify: `src/renderer/src/features/team/hooks/use-team-page-controller.ts`
@@ -145,6 +147,7 @@ git commit -m "feat: restore last team workspace and thread"
 ### Task 3: Make chat strictly assistant-detail again and simplify `/chat` restoration
 
 **Files:**
+
 - Modify: `src/renderer/src/features/threads/hooks/use-thread-page-controller.ts`
 - Modify: `src/renderer/src/features/threads/thread-page-routing.ts`
 - Test: `src/renderer/src/features/threads/hooks/use-thread-page-controller.test.tsx`
@@ -198,6 +201,7 @@ git commit -m "feat: restore assistant detail from chat root"
 ### Task 4: Move assistant and workspace switching into the global shell
 
 **Files:**
+
 - Create: `src/renderer/src/app/layout/chat-context-switcher.tsx`
 - Create: `src/renderer/src/app/layout/chat-context-switcher.test.tsx`
 - Create: `src/renderer/src/app/layout/team-context-switcher.tsx`
@@ -294,6 +298,7 @@ git commit -m "feat: add shell-level assistant and workspace switchers"
 ### Task 5: Simplify the chat sidebar so it only handles threads for the active assistant
 
 **Files:**
+
 - Modify: `src/renderer/src/features/threads/components/thread-sidebar.tsx`
 - Test: `src/renderer/src/features/threads/components/thread-sidebar.test.tsx`
 - Modify: `src/renderer/src/features/threads/pages/thread-page.tsx`
@@ -345,6 +350,7 @@ git commit -m "feat: reduce chat sidebar to thread navigation"
 ### Task 6: Reposition Claws as assistant and channel management instead of a primary nav destination
 
 **Files:**
+
 - Modify: `src/renderer/src/features/claws/pages/claws-page.tsx`
 - Test: `src/renderer/src/features/claws/pages/claws-page.test.tsx`
 - Modify: `src/renderer/src/app/router.test.tsx`
@@ -389,6 +395,7 @@ git commit -m "feat: demote claws to assistant management surface"
 ### Task 7: Verify the full shell flow and guard against regressions
 
 **Files:**
+
 - Run-only verification across modified app-shell, router, chat, team, and claws files
 
 **Step 1: Run focused renderer tests**

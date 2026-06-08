@@ -12,7 +12,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem
 } from '../../components/ui/sidebar'
-import { useCreateWorkspace, useWorkspaces, type WorkspaceRecord } from '../../features/workspaces/workspaces-query'
+import {
+  useCreateWorkspace,
+  useWorkspaces,
+  type WorkspaceRecord
+} from '../../features/workspaces/workspaces-query'
 
 function toWorkspaceName(rootPath: string): string {
   const normalized = rootPath.replace(/[\\/]+$/, '')
@@ -61,7 +65,9 @@ export function WorkspaceSidebar(): React.JSX.Element {
       <SidebarHeader className="space-y-4 border-b border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel-soft)_50%,transparent))]">
         <div className="space-y-1">
           <p className="section-kicker">Workspace navigator</p>
-          <h1 className="font-editorial text-[1.75rem] leading-none tracking-[-0.03em]">Draft table</h1>
+          <h1 className="font-editorial text-[1.75rem] leading-none tracking-[-0.03em]">
+            Draft table
+          </h1>
           <p className="text-muted-foreground text-xs leading-5">
             {isLoading ? 'Loading workspaces...' : 'Chats plus folder-backed workspaces.'}
           </p>
@@ -94,7 +100,9 @@ export function WorkspaceSidebar(): React.JSX.Element {
                   <MessageSquare className="size-4" />
                   <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
                     <span>Chats</span>
-                    <span className="font-metadata text-[0.64rem] text-muted-foreground">Built in</span>
+                    <span className="font-metadata text-[0.64rem] text-muted-foreground">
+                      Built in
+                    </span>
                   </span>
                 </NavLink>
               </SidebarMenuButton>

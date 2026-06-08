@@ -129,9 +129,10 @@ export class WorkspaceRecordsRepository {
   }
 
   async getBuiltInDefaultWorkspaceId(): Promise<string | null> {
-    const result = await this.db.execute('SELECT value FROM app_preferences WHERE key = ? LIMIT 1', [
-      BUILT_IN_DEFAULT_WORKSPACE_PREFERENCE_KEY
-    ])
+    const result = await this.db.execute(
+      'SELECT value FROM app_preferences WHERE key = ? LIMIT 1',
+      [BUILT_IN_DEFAULT_WORKSPACE_PREFERENCE_KEY]
+    )
     const row = result.rows.at(0) as Record<string, unknown> | undefined
     const value = typeof row?.value === 'string' ? row.value.trim() : ''
 
@@ -232,9 +233,7 @@ export class WorkspaceRecordsRepository {
       [workspaceId]
     )
 
-    return result.rows.map((row) =>
-      parseWorkspaceMemberRow(row as Record<string, unknown>)
-    )
+    return result.rows.map((row) => parseWorkspaceMemberRow(row as Record<string, unknown>))
   }
 
   async replaceMembers(workspaceId: string, assistantIds: string[]): Promise<void> {

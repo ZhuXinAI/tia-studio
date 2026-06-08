@@ -21,10 +21,7 @@ function invalidBodyResponse(): { ok: false; error: string } {
   return { ok: false as const, error: 'Invalid JSON body' }
 }
 
-export function registerWorkspacesRoute(
-  app: Hono,
-  options: RegisterWorkspacesRouteOptions
-): void {
+export function registerWorkspacesRoute(app: Hono, options: RegisterWorkspacesRouteOptions): void {
   app.get('/v1/workspaces', async (context) => {
     const workspaces = await options.workspacesRepo.list()
     return context.json(workspaces)

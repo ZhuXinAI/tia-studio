@@ -7,6 +7,7 @@
 **Reset policy:** This is a clean reset with **no migration**. Existing `team`, `claws`, heartbeat, cron, legacy browser automation, and old route/state compatibility paths should be removed rather than redirected.
 
 **Key product decisions:**
+
 - `Workspace` is the only top-level work container.
 - `Chats` is a built-in, non-removable workspace for ad-hoc and channel-originated conversations.
 - Each workspace keeps one hidden default assistant in the data model, but assistant management is not a first-pass product surface.
@@ -37,11 +38,13 @@
 **Objective:** Move the runtime onto the newer Mastra surface before rebuilding product UX around it.
 
 **Primary outcomes:**
+
 - Upgrade `@mastra/*` packages to a version line that supports the official browser and channel APIs.
 - Remove `tia-browser-tool`, built-in-browser automation mode logic, and the browser-mode selection UX.
 - Standardize browser behavior around Mastra browser support.
 
 **Likely files:**
+
 - `package.json`
 - `pnpm-lock.yaml`
 - `src/main/mastra/assistant-runtime.ts`
@@ -55,6 +58,7 @@
 - related tests under `src/main` and `src/renderer`
 
 **Steps:**
+
 1. Upgrade Mastra dependencies and fix compile/runtime breakages in the assistant runtime layer first.
 2. Replace bespoke browser tool registration with the Mastra-native browser path.
 3. Delete custom browser managers, contracts, renderer helpers, and visibility/runtime-mode settings that only existed for the old stack.
@@ -62,6 +66,7 @@
 5. Run focused runtime/browser tests, then broader typecheck/build.
 
 **Exit criteria:**
+
 - No runtime code depends on `tia-browser-tool` or built-in browser automation.
 - The app has a single browser story.
 
@@ -72,11 +77,13 @@
 **Objective:** Clear out the old product model before introducing the new one.
 
 **Primary outcomes:**
+
 - Remove `team`, `claws`, heartbeat, cron, and `wechat-kf`.
 - Remove their routes, services, settings pages, data fetchers, dialogs, and navigation.
 - Keep only the pieces still needed for channels, direct chat, providers, and workspace-backed runtime behavior.
 
 **Likely files:**
+
 - `src/renderer/src/features/team/**`
 - `src/renderer/src/features/claws/**`
 - `src/renderer/src/features/settings/pages/channels-settings-page.tsx`
@@ -94,6 +101,7 @@
 - i18n locale files and tests
 
 **Steps:**
+
 1. Remove `wechat-kf` from runtime, validators, settings/forms, docs, and dependency graph.
 2. Delete heartbeat and cron services, routes, repos usage, UI pages, and related hidden-thread behavior.
 3. Delete `team` and `claws` feature areas and remove all routes/navigation pointing to them.
@@ -101,6 +109,7 @@
 5. Trim dead i18n keys and tests after each deletion wave.
 
 **Exit criteria:**
+
 - No user-facing `team` or `claws` surface remains.
 - No runtime path starts heartbeat or cron services.
 - `wechat-kf` is absent from runtime and UI.
@@ -112,12 +121,14 @@
 **Objective:** Re-center the app on `Workspace` and `Chats`.
 
 **Primary outcomes:**
+
 - Add a built-in `Chats` workspace.
 - Treat named workspaces as folder-backed containers with fixed paths.
 - Keep one hidden default assistant per workspace in the data model.
 - Support relocation for missing workspace paths.
 
 **Likely files:**
+
 - `src/main/persistence/migrations/*`
 - `src/main/persistence/repos/assistants-repo.ts`
 - `src/main/persistence/repos/threads-repo.ts`
@@ -131,6 +142,7 @@
 - related validators and tests
 
 **Steps:**
+
 1. Decide whether to reshape existing workspace/thread tables in place or replace them with cleaner workspace-first tables now that migration is not required.
 2. Model the built-in `Chats` workspace explicitly, rooted under `~/.tia-studio`.
 3. Ensure each workspace has one hidden default assistant record without exposing assistant CRUD in the new product.
@@ -138,6 +150,7 @@
 5. Make workspace deletion remove its TIA threads immediately.
 
 **Exit criteria:**
+
 - The data model has a clear workspace-first owner for threads.
 - `Chats` exists as a built-in workspace.
 - Named workspaces are folder-backed and support relocation.
@@ -149,12 +162,14 @@
 **Objective:** Make conversation flow match the new model.
 
 **Primary outcomes:**
+
 - New chat flow lets the user optionally choose a workspace and required model before first send.
 - Provider/model stays fixed after the thread has message history.
 - Channel-originated conversations route into `Chats`.
 - Remote chat to thread bindings remain persistent.
 
 **Likely files:**
+
 - `src/renderer/src/features/threads/**`
 - `src/renderer/src/app/routes/**`
 - `src/main/server/routes/chat-route.ts`
@@ -166,6 +181,7 @@
 - query hooks and tests
 
 **Steps:**
+
 1. Replace assistant-first chat restoration logic with workspace-first thread restoration.
 2. Build a dedicated `New Chat` entry screen that selects workspace optionally and model explicitly.
 3. Lock provider/model selection once a thread has persisted messages.
@@ -173,6 +189,7 @@
 5. Preserve one TIA thread per remote chat using the existing binding concept.
 
 **Exit criteria:**
+
 - Users can start a thread in a named workspace or fall back to `Chats`.
 - Providers are chosen at thread creation and cannot be changed once history exists.
 - Channel threads always land in `Chats`.
@@ -184,6 +201,7 @@
 **Objective:** Land the simplified product navigation and operations surfaces.
 
 **Primary outcomes:**
+
 - Top-left actions become `New Chat`, `Skills`, and `Automations`.
 - Sidebar shows named workspaces plus a dedicated `Chats` section.
 - Main content stays workspace-scoped.
@@ -192,6 +210,7 @@
 - Automations is a dedicated page for named workspaces only.
 
 **Likely files:**
+
 - `src/renderer/src/app/layout/**`
 - `src/renderer/src/app/router.tsx`
 - `src/renderer/src/features/settings/**`
@@ -203,6 +222,7 @@
 - `src/main/server/routes/channels*`
 
 **Steps:**
+
 1. Rebuild the shell around the new top-left action stack and workspace navigation.
 2. Add a dedicated `Skills` page backed by a curated catalog and recommended skills.
 3. Add an `Automations` page that only operates on named workspaces and creates real new threads.
@@ -210,6 +230,7 @@
 5. Ensure any workspace-local right sidebar content stays strictly scoped to the current workspace.
 
 **Exit criteria:**
+
 - The shell no longer implies multiple app modes.
 - Skills and automations have their own destinations.
 - Channels and providers are managed from settings.
@@ -221,12 +242,14 @@
 **Objective:** Generate the new visual direction on top of the final product structure.
 
 **Primary outcomes:**
+
 - A new design system for the app.
 - Two target screens designed in Stitch:
   - main interface
   - settings page
 
 **Expected workflow:**
+
 1. Create/update the Stitch design system once the IA is final.
 2. Generate the main interface screen with:
    - top-left actions
