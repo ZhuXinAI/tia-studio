@@ -2,10 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  WechatChannel,
-  type WechatChannelOptions
-} from './wechat-channel'
+import { WechatChannel, type WechatChannelOptions } from './wechat-channel'
 import { WechatAuthStateStore } from './wechat-auth-state-store'
 
 describe('WechatChannel', () => {
@@ -19,9 +16,7 @@ describe('WechatChannel', () => {
     await rm(dataDirectoryPath, { recursive: true, force: true }).catch(() => undefined)
   })
 
-  async function createChannel(
-    overrides: Partial<WechatChannelOptions> = {}
-  ): Promise<{
+  async function createChannel(overrides: Partial<WechatChannelOptions> = {}): Promise<{
     channel: WechatChannel
     authStateStore: WechatAuthStateStore
     api: NonNullable<WechatChannelOptions['api']>
@@ -254,6 +249,49 @@ describe('WechatChannel', () => {
       status: 'disconnected',
       errorMessage: null
     })
+
+    await channel.stop()
+  })
+
+  it('pauses reconnect after repeated runtime polling failures', async () => {
+    const api: NonNullable<WechatChannelOptions['api']> = {
+      fetchQRCode: vi.fn(async () => ({
+        qrcode: 'wechat-qr-token',
+        qrcode_img_content: 'https://wechat.example/qr'
+      })),
+      pollQRStatus: vi.fn(async () => ({
+        status: 'confirmed' as const,
+        bot_token: 'bot-token',
+        ilink_bot_id: 'bot-id',
+        ilink_user_id: 'wechat-user-1',
+        baseurl: 'https://ilinkai.weixin.qq.com'
+      })),
+      getUpdates: vi.fn(async () => {
+        throw new Error('Wechat getupdates failed: transient outage')
+      }),
+      getConfig: vi.fn(async () => ({
+        typing_ticket: 'typing-ticket'
+      })),
+      sendMessage: vi.fn(async () => undefined),
+      sendTyping: vi.fn(async () => undefined)
+    }
+
+    const { channel, authStateStore } = await createChannel({
+      api,
+      reconnectDelayMs: 1,
+      maxConsecutiveRuntimeFailures: 2
+    })
+
+    await channel.start()
+
+    await vi.waitFor(() => {
+      expect(authStateStore.get('channel-wechat')).toMatchObject({
+        status: 'error',
+        errorMessage: expect.stringContaining('paused after 2 failures')
+      })
+    })
+
+    expect(api.getUpdates).toHaveBeenCalledTimes(2)
 
     await channel.stop()
   })

@@ -14,6 +14,7 @@ const DEFAULT_CONFIG_TIMEOUT_MS = 15_000
 const DEFAULT_QR_POLL_TIMEOUT_MS = 35_000
 const DEFAULT_RECONNECT_DELAY_MS = 5_000
 const DEFAULT_QR_TTL_MS = 5 * 60_000
+const DEFAULT_MAX_CONSECUTIVE_RUNTIME_FAILURES = 3
 
 type WechatAccountData = {
   botToken: string
@@ -180,6 +181,7 @@ export type WechatChannelOptions = {
   longPollTimeoutMs?: number
   qrTtlMs?: number
   reconnectDelayMs?: number
+  maxConsecutiveRuntimeFailures?: number
   onFatalError?: (error: unknown) => Promise<void> | void
   onStateChange?: (state: WechatChannelStateSnapshot) => Promise<void> | void
 }
@@ -289,7 +291,10 @@ async function clearWechatAccount(dataDirectoryPath: string): Promise<void> {
 }
 
 async function loadWechatRuntimeState(dataDirectoryPath: string): Promise<WechatRuntimeState> {
-  return (await readJsonFile<WechatRuntimeState>(stateFilePath(dataDirectoryPath))) ?? createDefaultRuntimeState()
+  return (
+    (await readJsonFile<WechatRuntimeState>(stateFilePath(dataDirectoryPath))) ??
+    createDefaultRuntimeState()
+  )
 }
 
 async function saveWechatRuntimeState(
@@ -679,12 +684,14 @@ export class WechatChannel extends AbstractChannel {
   private readonly longPollTimeoutMs: number
   private readonly qrTtlMs: number
   private readonly reconnectDelayMs: number
+  private readonly maxConsecutiveRuntimeFailures: number
 
   private started = false
   private stopping = false
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private activeAbortController: AbortController | null = null
   private generation = 0
+  private consecutiveRuntimeFailures = 0
   private lastPublishedState: string | null = null
   private runtimeState: WechatRuntimeState | null = null
 
@@ -699,6 +706,8 @@ export class WechatChannel extends AbstractChannel {
     this.longPollTimeoutMs = options.longPollTimeoutMs ?? DEFAULT_LONG_POLL_TIMEOUT_MS
     this.qrTtlMs = options.qrTtlMs ?? DEFAULT_QR_TTL_MS
     this.reconnectDelayMs = options.reconnectDelayMs ?? DEFAULT_RECONNECT_DELAY_MS
+    this.maxConsecutiveRuntimeFailures =
+      options.maxConsecutiveRuntimeFailures ?? DEFAULT_MAX_CONSECUTIVE_RUNTIME_FAILURES
   }
 
   async start(): Promise<void> {
@@ -708,6 +717,7 @@ export class WechatChannel extends AbstractChannel {
 
     this.started = true
     this.stopping = false
+    this.consecutiveRuntimeFailures = 0
     this.clearReconnectTimer()
     this.authStateStore.setConnecting(this.id)
     this.publishState({
@@ -747,7 +757,8 @@ export class WechatChannel extends AbstractChannel {
     }
 
     const runtimeState = await this.getRuntimeState()
-    const contextToken = runtimeState.contextTokens[buildContextTokenKey(account.botId, remoteChatId)]
+    const contextToken =
+      runtimeState.contextTokens[buildContextTokenKey(account.botId, remoteChatId)]
 
     try {
       await this.api.sendMessage({
@@ -809,6 +820,7 @@ export class WechatChannel extends AbstractChannel {
       }
 
       if (isAuthenticationError(error)) {
+        this.consecutiveRuntimeFailures = 0
         await this.clearStoredSession()
         this.authStateStore.setDisconnected(this.id)
         this.publishState({
@@ -816,12 +828,22 @@ export class WechatChannel extends AbstractChannel {
           errorMessage: null
         })
       } else {
-        const errorMessage = toErrorMessage(error)
+        this.consecutiveRuntimeFailures += 1
+        const reachedFailureLimit =
+          this.consecutiveRuntimeFailures >= this.maxConsecutiveRuntimeFailures
+        const baseErrorMessage = toErrorMessage(error)
+        const errorMessage = reachedFailureLimit
+          ? `Wechat channel paused after ${this.consecutiveRuntimeFailures} failures. Reconnect it from Channels when ready. Last error: ${baseErrorMessage}`
+          : baseErrorMessage
         this.authStateStore.setError(this.id, errorMessage)
         this.publishState({
           status: 'error',
           errorMessage
         })
+
+        if (reachedFailureLimit) {
+          this.started = false
+        }
       }
 
       await this.options.onFatalError?.(error)
@@ -875,7 +897,9 @@ export class WechatChannel extends AbstractChannel {
 
         if (qrStatus.status === 'confirmed') {
           if (!qrStatus.bot_token || !qrStatus.ilink_bot_id || !qrStatus.ilink_user_id) {
-            throw new Error('Wechat login confirmed but the server returned incomplete account data')
+            throw new Error(
+              'Wechat login confirmed but the server returned incomplete account data'
+            )
           }
 
           const account: WechatAccountData = {
@@ -945,6 +969,8 @@ export class WechatChannel extends AbstractChannel {
         )
       }
 
+      this.consecutiveRuntimeFailures = 0
+
       if (typeof response.get_updates_buf === 'string') {
         runtimeState.updatesBuf = response.get_updates_buf
       }
@@ -964,7 +990,10 @@ export class WechatChannel extends AbstractChannel {
         )
 
         for (const message of inboundMessages) {
-          if (typeof message.from_user_id === 'string' && typeof message.context_token === 'string') {
+          if (
+            typeof message.from_user_id === 'string' &&
+            typeof message.context_token === 'string'
+          ) {
             runtimeState.contextTokens[buildContextTokenKey(account.botId, message.from_user_id)] =
               message.context_token
           }
@@ -982,7 +1011,9 @@ export class WechatChannel extends AbstractChannel {
           const contextToken =
             typeof message.context_token === 'string'
               ? message.context_token
-              : runtimeState.contextTokens[buildContextTokenKey(account.botId, message.from_user_id)]
+              : runtimeState.contextTokens[
+                  buildContextTokenKey(account.botId, message.from_user_id)
+                ]
 
           void this.sendTypingStatus({
             account,
