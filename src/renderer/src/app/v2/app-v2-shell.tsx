@@ -23,8 +23,8 @@ export function AppV2Shell(): React.JSX.Element {
           'pl-[80px]': !isWindowsPlatform()
         })}
       />
-      <div className="relative flex min-h-0 flex-1 overflow-hidden p-2 pt-9">
-        <div className="neutral-panel flex min-h-0 flex-1 overflow-hidden rounded-[1.15rem]">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
           {shouldShowSidebar ? (
             <AppV2Sidebar
               isCollapsed={isSidebarCollapsed}
@@ -33,7 +33,7 @@ export function AppV2Shell(): React.JSX.Element {
           ) : null}
           <main
             className={clsx(
-              'min-h-0 min-w-0 flex-1 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_84%,transparent))]',
+              'min-h-0 min-w-0 flex-1 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_84%,transparent))] pt-9',
               isSettingsRoute ? 'overflow-hidden' : 'overflow-hidden'
             )}
           >

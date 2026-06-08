@@ -40,6 +40,10 @@ import {
   toErrorMessage
 } from '../../features/threads/thread-page-routing'
 
+function isWindowsPlatform(): boolean {
+  return globalThis.window?.electron?.process.platform === 'win32'
+}
+
 function toWorkspaceName(rootPath: string): string {
   const normalized = rootPath.replace(/[\\/]+$/, '')
   const segments = normalized.split(/[\\/]/).filter((segment) => segment.length > 0)
@@ -313,7 +317,12 @@ export function AppV2Sidebar({
 
   if (isCollapsed) {
     return (
-      <aside className="flex h-full w-12 shrink-0 flex-col items-center gap-2 border-r border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-panel-strong)_92%,transparent),color-mix(in_srgb,var(--surface-panel)_96%,transparent))] px-1.5 py-3">
+      <aside
+        className={cn(
+          "flex h-full w-12 shrink-0 flex-col items-center gap-2 border-r border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-panel-strong)_92%,transparent),color-mix(in_srgb,var(--surface-panel)_96%,transparent))] px-1.5 pb-3",
+          isWindowsPlatform() ? "pt-3" : "pt-12"
+        )}
+      >
         <Button
           type="button"
           variant="ghost"
@@ -350,7 +359,12 @@ export function AppV2Sidebar({
   }
 
   return (
-    <aside className="flex h-full w-[18rem] shrink-0 flex-col border-r border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-panel-strong)_92%,transparent),color-mix(in_srgb,var(--surface-panel)_96%,transparent))]">
+    <aside
+      className={cn(
+        "flex h-full w-[18rem] shrink-0 flex-col border-r border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-panel-strong)_92%,transparent),color-mix(in_srgb,var(--surface-panel)_96%,transparent))]",
+        isWindowsPlatform() ? "pt-0" : "pt-9"
+      )}
+    >
       <div className="space-y-3 border-b border-[color:var(--surface-border)] px-3.5 pb-4 pt-3">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">

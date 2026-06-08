@@ -7,7 +7,7 @@ import { ThreadDetailsPanel } from './thread-details-panel'
 
 export function ThreadPageV2(): React.JSX.Element {
   const controller = useThreadPageController()
-  const [isDetailsCollapsed, setIsDetailsCollapsed] = useState(false)
+  const [isDetailsCollapsed, setIsDetailsCollapsed] = useState(true)
 
   return (
     <section className="relative flex h-full min-h-0 flex-row overflow-hidden">

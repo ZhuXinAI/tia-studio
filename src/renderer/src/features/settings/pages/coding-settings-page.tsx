@@ -103,7 +103,7 @@ export function CodingSettingsPage(): React.JSX.Element {
   }
 
   return (
-    <div className="flex flex-col gap-6 py-8">
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 py-8">
       <header className="space-y-3 border-b border-[color:var(--surface-border)] pb-5">
         <p className="section-kicker">Coding adapters</p>
         <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">

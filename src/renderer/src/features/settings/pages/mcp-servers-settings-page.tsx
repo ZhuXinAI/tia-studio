@@ -364,7 +364,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
 
   return (
     <>
-      <div className="flex flex-col gap-6 py-8">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 py-8">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
             <p className="section-kicker">Shared tool plumbing</p>

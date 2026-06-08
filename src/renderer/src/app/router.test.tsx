@@ -139,7 +139,7 @@ describe('app router', () => {
 
     expect(html).toContain('Chats')
     expect(html).toContain('What should we build')
-    expect(html).toContain('Thread Details')
+    expect(html).not.toContain('Thread Details')
   })
 
   it('renders the AppV2 shell with sidebar actions and workspace navigation', () => {
