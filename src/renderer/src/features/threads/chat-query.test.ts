@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createDesktopChatFetch,
   openAssistantMessageEventsStream,
+  openThreadMessageEventsStream,
   createThreadChatTransport,
   listThreadChatMessages,
   resolveDesktopChatUrl
@@ -182,6 +183,55 @@ describe('chat query', () => {
 
     expect(fetchSpy).toHaveBeenCalledWith(
       'http://127.0.0.1:4769/chat/assistant-1/events?profileId=profile-1',
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer chat-token'
+        })
+      })
+    )
+    expect(onEvent).toHaveBeenCalledWith(event)
+  })
+
+  it('opens profile-wide thread message events stream', async () => {
+    const event = {
+      type: 'thread-messages-updated',
+      assistantId: 'assistant-1',
+      threadId: 'thread-1',
+      profileId: 'profile-1',
+      source: 'channel',
+      createdAt: '2026-03-09T00:00:00.000Z'
+    }
+    const encoder = new TextEncoder()
+    const fetchSpy = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(
+      async () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+              controller.close()
+            }
+          }),
+          {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/event-stream; charset=utf-8'
+            }
+          }
+        )
+    )
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const onEvent = vi.fn()
+    const handle = openThreadMessageEventsStream({
+      profileId: 'profile-1',
+      onEvent
+    })
+
+    await handle.done
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'http://127.0.0.1:4769/chat/events?profileId=profile-1',
       expect.objectContaining({
         method: 'GET',
         headers: expect.objectContaining({

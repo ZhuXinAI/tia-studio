@@ -31,6 +31,7 @@ import {
   type McpServersSettings
 } from '../mcp-servers/mcp-servers-query'
 import { getRequiredManagedRuntimeKind } from '../runtimes/managed-runtimes-query'
+import { SettingsContent } from './settings-content'
 
 const nonEmptyString = z.string().trim().min(1)
 
@@ -364,7 +365,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
 
   return (
     <>
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 py-8">
+      <SettingsContent size="wide">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
             <p className="section-kicker">Shared tool plumbing</p>
@@ -620,7 +621,7 @@ export function McpServersSettingsPage(): React.JSX.Element {
             )}
           </CardContent>
         </Card>
-      </div>
+      </SettingsContent>
 
       <Dialog open={isJsonDialogOpen} onOpenChange={setIsJsonDialogOpen}>
         <DialogContent className="max-w-4xl gap-5">

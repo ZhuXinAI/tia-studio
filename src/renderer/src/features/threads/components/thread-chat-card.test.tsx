@@ -214,7 +214,7 @@ describe('ThreadChatCard', () => {
     expect(html).toContain('Remote channel')
   })
 
-  it('renders the persisted thread token totals in the header', () => {
+  it('renders the current model and persisted thread token totals in the composer footer', () => {
     mockThreadMessages.length = 0
     const html = renderToString(
       <ThreadChatCard
@@ -247,10 +247,11 @@ describe('ThreadChatCard', () => {
       />
     )
 
-    expect(html).toContain('data-testid="thread-token-usage"')
+    expect(html).toContain('gpt-5')
     expect(html).toContain('165')
     expect(html).toContain('120 in')
     expect(html).toContain('45 out')
+    expect(html).not.toContain('Messages stream in this thread.')
   })
 
   it('shows stop action while streaming a response', () => {

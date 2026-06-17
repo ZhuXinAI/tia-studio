@@ -16,6 +16,7 @@ import {
   type SupportedLocale
 } from '../../../i18n/config'
 import { i18n } from '../../../i18n'
+import { SettingsContent } from './settings-content'
 
 const systemLanguageValue = 'system'
 
@@ -68,7 +69,7 @@ export function GeneralSettingsPage(): React.JSX.Element {
   }
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 py-8">
+    <SettingsContent>
       <header className="space-y-3 border-b border-[color:var(--surface-border)] pb-5">
         <p className="section-kicker">Locale and language</p>
         <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
@@ -123,6 +124,6 @@ export function GeneralSettingsPage(): React.JSX.Element {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </SettingsContent>
   )
 }

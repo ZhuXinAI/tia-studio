@@ -19,7 +19,7 @@ export function AppV2Shell(): React.JSX.Element {
   return (
     <div className="app-v2-shell flex h-screen min-h-0 overflow-hidden bg-[color:var(--surface-canvas)] text-foreground">
       <div
-        className={clsx('drag-region fixed left-0 right-0 top-0 z-30 h-9', {
+        className={clsx('drag-region fixed left-0 right-0 top-0 z-30 h-8', {
           'pl-[80px]': !isWindowsPlatform()
         })}
       />
@@ -33,7 +33,7 @@ export function AppV2Shell(): React.JSX.Element {
           ) : null}
           <main
             className={clsx(
-              'min-h-0 min-w-0 flex-1 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_84%,transparent))] pt-9',
+              'min-h-0 min-w-0 flex-1 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_84%,transparent))] pt-8',
               isSettingsRoute ? 'overflow-hidden' : 'overflow-hidden'
             )}
           >

@@ -1,4 +1,4 @@
-import { PanelRightOpen } from 'lucide-react'
+import { PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { ThreadChatCard } from '../../features/threads/components/thread-chat-card'
@@ -40,28 +40,27 @@ export function ThreadPageV2(): React.JSX.Element {
           onDeleteWorkspace={controller.onDeleteWorkspace}
           isRelocatingWorkspace={controller.isRelocatingWorkspace}
           isDeletingWorkspace={controller.isDeletingWorkspace}
-          topRightActions={
-            isDetailsCollapsed ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="size-8"
-                onClick={() => setIsDetailsCollapsed(false)}
-                aria-label="Expand details"
-                title="Expand details"
-              >
+          headerLeadingAction={
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="no-drag size-8"
+              onClick={() => setIsDetailsCollapsed((current) => !current)}
+              aria-label={isDetailsCollapsed ? 'Expand details' : 'Collapse details'}
+              title={isDetailsCollapsed ? 'Expand details' : 'Collapse details'}
+            >
+              {isDetailsCollapsed ? (
                 <PanelRightOpen className="size-4" />
-              </Button>
-            ) : null
+              ) : (
+                <PanelRightClose className="size-4" />
+              )}
+            </Button>
           }
         />
       </div>
       {!isDetailsCollapsed ? (
-        <ThreadDetailsPanel
-          controller={controller}
-          onCollapse={() => setIsDetailsCollapsed(true)}
-        />
+        <ThreadDetailsPanel controller={controller} />
       ) : null}
     </section>
   )

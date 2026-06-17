@@ -461,6 +461,12 @@ export class ChannelMessageRouter {
         abortSignal: activeRun.abortController.signal
       })
 
+      this.publishThreadMessagesUpdated({
+        assistantId: item.assistantId,
+        threadId: item.threadId,
+        profileId: DEFAULT_PROFILE_ID
+      })
+
       const toolProgressLocale = this.options.resolveToolProgressLocale?.()
       const assistantReplyText = await drainStreamWithToolUpdates(
         stream,
@@ -476,18 +482,11 @@ export class ChannelMessageRouter {
         return
       }
 
-      try {
-        this.options.threadMessageEventsStore?.appendMessagesUpdated({
-          assistantId: item.assistantId,
-          threadId: item.threadId,
-          profileId: DEFAULT_PROFILE_ID,
-          source: 'channel'
-        })
-      } catch (error) {
-        logger.error(
-          `[ChannelMessageRouter] appendMessagesUpdated failed: ${toErrorLogMessage(error)}`
-        )
-      }
+      this.publishThreadMessagesUpdated({
+        assistantId: item.assistantId,
+        threadId: item.threadId,
+        profileId: DEFAULT_PROFILE_ID
+      })
 
       if (assistantReplyText.trim().length === 0) {
         await this.publishReply(item.event, EMPTY_ASSISTANT_REPLY_MESSAGE)
@@ -651,6 +650,25 @@ export class ChannelMessageRouter {
     return binding.threadId
   }
 
+  private publishThreadMessagesUpdated(input: {
+    assistantId: string
+    threadId: string
+    profileId: string
+  }): void {
+    try {
+      this.options.threadMessageEventsStore?.appendMessagesUpdated({
+        assistantId: input.assistantId,
+        threadId: input.threadId,
+        profileId: input.profileId,
+        source: 'channel'
+      })
+    } catch (error) {
+      logger.error(
+        `[ChannelMessageRouter] appendMessagesUpdated failed: ${toErrorLogMessage(error)}`
+      )
+    }
+  }
+
   private async createThreadBinding(input: {
     channelId: string
     assistantId: string
@@ -666,10 +684,18 @@ export class ChannelMessageRouter {
       }
     })
 
-    return this.options.bindingsRepo.upsert({
+    const binding = await this.options.bindingsRepo.upsert({
       channelId: input.channelId,
       remoteChatId: input.remoteChatId,
       threadId: thread.id
     })
+
+    this.publishThreadMessagesUpdated({
+      assistantId: input.assistantId,
+      threadId: thread.id,
+      profileId: DEFAULT_PROFILE_ID
+    })
+
+    return binding
   }
 }

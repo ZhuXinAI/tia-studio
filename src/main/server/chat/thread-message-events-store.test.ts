@@ -46,4 +46,26 @@ describe('ThreadMessageEventsStore', () => {
 
     await reader.cancel()
   })
+
+  it('streams appended events for the whole profile', async () => {
+    const store = new ThreadMessageEventsStore()
+    const stream = store.createProfileStream({
+      profileId: 'default-profile'
+    })
+
+    const reader = stream.getReader()
+
+    store.appendMessagesUpdated({
+      assistantId: 'assistant-1',
+      threadId: 'thread-1',
+      profileId: 'default-profile'
+    })
+
+    const first = await reader.read()
+    expect(first.done).toBe(false)
+    expect(first.value).toContain('"assistantId":"assistant-1"')
+    expect(first.value).toContain('"threadId":"thread-1"')
+
+    await reader.cancel()
+  })
 })

@@ -16,8 +16,12 @@ type ThreadEventsState = {
 
 const DEFAULT_MAX_BUFFERED_EVENTS = 20
 
-function toStateKey(input: { assistantId: string; profileId: string }): string {
-  return `${input.assistantId}:${input.profileId}`
+function toAssistantStateKey(input: { assistantId: string; profileId: string }): string {
+  return `assistant:${input.assistantId}:${input.profileId}`
+}
+
+function toProfileStateKey(input: { profileId: string }): string {
+  return `profile:${input.profileId}`
 }
 
 export class ThreadMessageEventsStore {
@@ -31,11 +35,6 @@ export class ThreadMessageEventsStore {
     profileId: string
     source?: ThreadMessagesUpdatedSource
   }): ThreadMessagesUpdatedEvent {
-    const state = this.getOrCreateState({
-      assistantId: input.assistantId,
-      profileId: input.profileId
-    })
-
     const event: ThreadMessagesUpdatedEvent = {
       type: 'thread-messages-updated',
       assistantId: input.assistantId,
@@ -45,6 +44,21 @@ export class ThreadMessageEventsStore {
       createdAt: new Date().toISOString()
     }
 
+    this.appendToState(this.getOrCreateAssistantState(input), event)
+    this.appendToState(this.getOrCreateProfileState(input), event)
+
+    return event
+  }
+
+  createAssistantStream(input: { assistantId: string; profileId: string }): ReadableStream<string> {
+    return this.createStream(this.getOrCreateAssistantState(input))
+  }
+
+  createProfileStream(input: { profileId: string }): ReadableStream<string> {
+    return this.createStream(this.getOrCreateProfileState(input))
+  }
+
+  private appendToState(state: ThreadEventsState, event: ThreadMessagesUpdatedEvent): void {
     state.events.push(event)
     if (state.events.length > this.maxBufferedEvents) {
       state.events.splice(0, state.events.length - this.maxBufferedEvents)
@@ -53,12 +67,9 @@ export class ThreadMessageEventsStore {
     for (const listener of state.listeners) {
       listener(event)
     }
-
-    return event
   }
 
-  createAssistantStream(input: { assistantId: string; profileId: string }): ReadableStream<string> {
-    const state = this.getOrCreateState(input)
+  private createStream(state: ThreadEventsState): ReadableStream<string> {
     let listener: ((event: ThreadMessagesUpdatedEvent) => void) | null = null
 
     return new ReadableStream<string>({
@@ -86,8 +97,18 @@ export class ThreadMessageEventsStore {
     })
   }
 
-  private getOrCreateState(input: { assistantId: string; profileId: string }): ThreadEventsState {
-    const key = toStateKey(input)
+  private getOrCreateAssistantState(input: {
+    assistantId: string
+    profileId: string
+  }): ThreadEventsState {
+    return this.getOrCreateState(toAssistantStateKey(input))
+  }
+
+  private getOrCreateProfileState(input: { profileId: string }): ThreadEventsState {
+    return this.getOrCreateState(toProfileStateKey(input))
+  }
+
+  private getOrCreateState(key: string): ThreadEventsState {
     const existing = this.states.get(key)
     if (existing) {
       return existing

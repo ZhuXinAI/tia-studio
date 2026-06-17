@@ -1,5 +1,6 @@
 import {
   Bot,
+  Cable,
   ChevronDown,
   ChevronRight,
   Clock3,
@@ -16,8 +17,9 @@ import {
   Sparkles,
   Trash2
 } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -31,8 +33,11 @@ import {
   useDeleteThread,
   useThreads,
   useUpdateThreadPinned,
+  getActiveResourceId,
+  threadKeys,
   type ThreadRecord
 } from '../../features/threads/threads-query'
+import { openThreadMessageEventsStream } from '../../features/threads/chat-query'
 import {
   getThreadDisplayTitle,
   isThreadPinned,
@@ -71,6 +76,7 @@ function ThreadLink({
 }): React.JSX.Element {
   const displayTitle = getThreadDisplayTitle(thread.title)
   const pinned = isThreadPinned(thread)
+  const hasRemoteBinding = Boolean(thread.channelBinding?.remoteChatId)
 
   return (
     <div
@@ -84,6 +90,15 @@ function ThreadLink({
       <NavLink to={href} className="flex min-w-0 flex-1 items-center gap-2 px-1 py-0.5">
         <span className="size-1.5 shrink-0 rounded-full bg-current opacity-60" />
         <span className="truncate">{displayTitle}</span>
+        {hasRemoteBinding ? (
+          <span
+            className="grid size-5 shrink-0 place-items-center rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-active)] text-primary"
+            title="Remote channel"
+            aria-label="Remote channel"
+          >
+            <Cable className="size-3" />
+          </span>
+        ) : null}
       </NavLink>
       <div
         className={cn(
@@ -244,6 +259,7 @@ export function AppV2Sidebar({
 }: AppV2SidebarProps): React.JSX.Element {
   const location = useLocation()
   const params = useParams()
+  const queryClient = useQueryClient()
   const { data: workspaces = [], isLoading } = useWorkspaces()
   const createWorkspaceMutation = useCreateWorkspace()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -252,6 +268,24 @@ export function AppV2Sidebar({
   const [isChatsOpen, setIsChatsOpen] = useState(true)
   const [expandedWorkspaceIds, setExpandedWorkspaceIds] = useState<Set<string>>(() => new Set())
   const workspaceSearchInputRef = useRef<HTMLInputElement | null>(null)
+  const profileId = useMemo(() => getActiveResourceId(), [])
+
+  useEffect(() => {
+    const streamHandle = openThreadMessageEventsStream({
+      profileId,
+      onEvent: (event) => {
+        if (event.type !== 'thread-messages-updated' || event.profileId !== profileId) {
+          return
+        }
+
+        void queryClient.invalidateQueries({ queryKey: threadKeys.lists() })
+      }
+    })
+
+    return () => {
+      streamHandle.close()
+    }
+  }, [profileId, queryClient])
 
   const chatsWorkspace = useMemo(
     () => workspaces.find((workspace) => isChatsWorkspace(workspace)) ?? null,

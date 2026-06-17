@@ -32,6 +32,7 @@ type RegisterChatRouteOptions = {
   threadsRepo?: Pick<ThreadsRepository, 'getById'>
   threadMessageEventsStore?: {
     createAssistantStream(input: { assistantId: string; profileId: string }): ReadableStream<string>
+    createProfileStream(input: { profileId: string }): ReadableStream<string>
   }
 }
 
@@ -502,7 +503,7 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
     const parsed = z
       .object({
         profileId: z.string().min(1),
-        threadId: z.string().min(1)
+        threadId: z.string().min(1).optional()
       })
       .safeParse({
         profileId: context.req.query('profileId'),
@@ -517,13 +518,16 @@ export function registerChatRoute(app: Hono, options: RegisterChatRouteOptions):
     }
 
     try {
-      const assistantId = await resolveAssistantId({
-        threadId: parsed.data.threadId
-      })
-      const stream = options.threadMessageEventsStore.createAssistantStream({
-        assistantId,
-        profileId: parsed.data.profileId
-      })
+      const stream = parsed.data.threadId
+        ? options.threadMessageEventsStore.createAssistantStream({
+            assistantId: await resolveAssistantId({
+              threadId: parsed.data.threadId
+            }),
+            profileId: parsed.data.profileId
+          })
+        : options.threadMessageEventsStore.createProfileStream({
+            profileId: parsed.data.profileId
+          })
 
       return new Response(stream.pipeThrough(new TextEncoderStream()), {
         headers: {

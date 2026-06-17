@@ -184,6 +184,33 @@ export function openAssistantMessageEventsStream(input: {
   onEvent: (event: ThreadMessageEvent) => void
   onError?: (error: unknown) => void
 }): ThreadMessageEventStreamHandle {
+  return openMessageEventsStream({
+    path: `/chat/${input.assistantId}/events`,
+    profileId: input.profileId,
+    onEvent: input.onEvent,
+    onError: input.onError
+  })
+}
+
+export function openThreadMessageEventsStream(input: {
+  profileId: string
+  onEvent: (event: ThreadMessageEvent) => void
+  onError?: (error: unknown) => void
+}): ThreadMessageEventStreamHandle {
+  return openMessageEventsStream({
+    path: '/chat/events',
+    profileId: input.profileId,
+    onEvent: input.onEvent,
+    onError: input.onError
+  })
+}
+
+function openMessageEventsStream(input: {
+  path: string
+  profileId: string
+  onEvent: (event: ThreadMessageEvent) => void
+  onError?: (error: unknown) => void
+}): ThreadMessageEventStreamHandle {
   const abortController = new AbortController()
 
   const done = (async () => {
@@ -195,16 +222,13 @@ export function openAssistantMessageEventsStream(input: {
       const params = new URLSearchParams({
         profileId: input.profileId
       })
-      const response = await fetch(
-        `${normalizedBaseUrl}/chat/${input.assistantId}/events?${params.toString()}`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${config.authToken}`
-          },
-          signal: abortController.signal
-        }
-      )
+      const response = await fetch(`${normalizedBaseUrl}${input.path}?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${config.authToken}`
+        },
+        signal: abortController.signal
+      })
 
       if (!response.ok) {
         const errorText = await response.text()

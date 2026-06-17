@@ -1,4 +1,13 @@
-import { AlertTriangle, Check, ChevronDown, DatabaseZap, Link2, SendHorizontal } from 'lucide-react'
+import {
+  AlertTriangle,
+  Bot,
+  Check,
+  ChevronDown,
+  DatabaseZap,
+  Gauge,
+  Link2,
+  SendHorizontal
+} from 'lucide-react'
 import type { UIMessage } from 'ai'
 import type { UseChatHelpers } from '@ai-sdk/react'
 import {
@@ -75,7 +84,7 @@ type ThreadChatCardProps = {
   onDeleteWorkspace: () => void
   isRelocatingWorkspace: boolean
   isDeletingWorkspace: boolean
-  topRightActions?: React.ReactNode
+  headerLeadingAction?: React.ReactNode
 }
 
 function ComposerClearer({
@@ -105,6 +114,7 @@ type ThreadChatComposerProps = Pick<
   | 'providers'
   | 'draftProviderId'
   | 'draftModel'
+  | 'tokenUsage'
   | 'onDraftProviderChange'
   | 'onDraftModelChange'
   | 'onSubmitMessage'
@@ -113,6 +123,7 @@ type ThreadChatComposerProps = Pick<
   canCompose: boolean
   selectedWorkspace: WorkspaceRecord | null
   isNewThreadRoute: boolean
+  currentModelLabel: string
 }
 
 function getProviderModels(provider: ProviderRecord | null): string[] {
@@ -127,6 +138,29 @@ function getProviderModels(provider: ProviderRecord | null): string[] {
       : []
 
   return [...new Set(models.map((model) => model.trim()).filter((model) => model.length > 0))]
+}
+
+function readThreadProviderOverride(metadata: Record<string, unknown> | undefined): {
+  providerId: string
+  model: string
+} | null {
+  const override = metadata?.providerOverride
+  if (!override || typeof override !== 'object' || Array.isArray(override)) {
+    return null
+  }
+
+  const overrideRecord = override as Record<string, unknown>
+  const providerId =
+    typeof overrideRecord.providerId === 'string' ? overrideRecord.providerId.trim() : ''
+  const model = typeof overrideRecord.model === 'string' ? overrideRecord.model.trim() : ''
+  if (providerId.length === 0 && model.length === 0) {
+    return null
+  }
+
+  return {
+    providerId,
+    model
+  }
 }
 
 function NewThreadModelPicker({
@@ -343,12 +377,14 @@ function ThreadChatComposer({
   providers,
   draftProviderId,
   draftModel,
+  tokenUsage,
+  currentModelLabel,
   onDraftProviderChange,
   onDraftModelChange,
   onSubmitMessage,
   onAbortGeneration
 }: ThreadChatComposerProps): React.JSX.Element {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const aui = useAui()
   const composerText = useAuiState((state) => (state.composer.isEditing ? state.composer.text : ''))
 
@@ -364,11 +400,19 @@ function ThreadChatComposer({
       ? t('threads.chat.composer.placeholderSelectedAssistant')
       : t('threads.chat.composer.placeholderEmpty')
 
-  const helperText = selectedThread
-    ? t('threads.chat.composer.helperSelectedThread')
-    : selectedAssistant
-      ? t('threads.chat.composer.helperSelectedAssistant')
-      : t('threads.chat.composer.helperEmpty')
+  const helperText = selectedAssistant
+    ? t('threads.chat.composer.helperSelectedAssistant')
+    : t('threads.chat.composer.helperEmpty')
+  const tokenUsageLabel = tokenUsage
+    ? `${tokenUsage.totalTokens.toLocaleString(i18n.resolvedLanguage)} ${t('threads.chat.tokens')}`
+    : 'No token usage yet'
+  const tokenUsageTitle = tokenUsage
+    ? `${t('threads.chat.tokenInput', {
+        value: tokenUsage.inputTokens.toLocaleString(i18n.resolvedLanguage)
+      })} / ${t('threads.chat.tokenOutput', {
+        value: tokenUsage.outputTokens.toLocaleString(i18n.resolvedLanguage)
+      })}`
+    : 'Usage appears after the first assistant response.'
 
   if (!selectedThread && isNewThreadRoute) {
     return (
@@ -469,7 +513,28 @@ function ThreadChatComposer({
         />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-muted-foreground text-xs">{helperText}</p>
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            {selectedThread ? (
+              <>
+                <span
+                  className="inline-flex max-w-[18rem] items-center gap-1.5 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-2.5 py-1"
+                  title={`Current model: ${currentModelLabel}`}
+                >
+                  <Bot className="size-3.5" />
+                  <span className="truncate">{currentModelLabel}</span>
+                </span>
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-2.5 py-1"
+                  title={tokenUsageTitle}
+                >
+                  <Gauge className="size-3.5" />
+                  <span>{tokenUsageLabel}</span>
+                </span>
+              </>
+            ) : (
+              <span>{helperText}</span>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {supportsVision && <ComposerAddAttachment />}
 
@@ -512,9 +577,9 @@ export function ThreadChatCard({
   onAbortGeneration,
   onDraftProviderChange,
   onDraftModelChange,
-  topRightActions
+  headerLeadingAction
 }: ThreadChatCardProps): React.JSX.Element {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const runtime = useAISDKRuntime(chat)
   const channelIssues = useChannelIssues()
   const { status: migrationStatus, refresh: refreshMigrationStatus } = useMigrationStatus()
@@ -546,6 +611,18 @@ export function ThreadChatCard({
   const hasRemoteBinding = Boolean(selectedThread?.channelBinding?.remoteChatId)
   const selectedThreadTitle = selectedThread?.title.trim() ?? ''
   const shouldShowThreadTitleBar = Boolean(selectedThread && selectedThreadTitle.length > 0)
+  const providerOverride = readThreadProviderOverride(selectedThread?.metadata)
+  const selectedProvider =
+    providers.find((provider) => provider.id === providerOverride?.providerId) ??
+    providers.find((provider) => provider.id === selectedAssistant?.providerId) ??
+    providers.find((provider) => provider.id === draftProviderId) ??
+    null
+  const currentModelLabel =
+    providerOverride?.model ||
+    (selectedThread
+      ? selectedProvider?.selectedModel
+      : draftModel || selectedProvider?.selectedModel) ||
+    'Model pending'
 
   async function handleRunMigration(): Promise<void> {
     setIsMigrating(true)
@@ -577,9 +654,7 @@ export function ThreadChatCard({
             setMigrationError(null)
             setIsMigrationDialogOpen(true)
           }}
-        >
-          {topRightActions}
-        </ThreadActionGroup>
+        />
         <Dialog open={isMigrationDialogOpen} onOpenChange={setIsMigrationDialogOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -619,55 +694,39 @@ export function ThreadChatCard({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        {headerLeadingAction ? (
+          <div className="flex items-center px-3 pb-1 pt-2 sm:px-4">
+            <div className="shrink-0">{headerLeadingAction}</div>
+          </div>
+        ) : null}
+
         {shouldShowThreadTitleBar ? (
-          <CardHeader
-            className="border-b border-[color:var(--surface-border)] bg-transparent py-3 pr-36 sm:py-4"
-            style={{ borderColor: 'var(--surface-border)' }}
-          >
-            <div className="flex h-full flex-nowrap items-center justify-between gap-3 overflow-hidden">
-              <CardTitle className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="font-editorial block truncate text-[1.9rem] leading-none tracking-[-0.035em]">
-                    {selectedThreadTitle}
-                  </span>
-                  {hasRemoteBinding ? (
-                    <span
-                      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-active)] px-2 py-0.5 text-[11px] font-medium text-primary"
-                      title={t('threads.chat.remoteBadgeTitle')}
-                      aria-label={t('threads.chat.remoteBadgeTitle')}
-                    >
-                      <Link2 className="size-3" />
-                      {t('threads.chat.remoteBadge')}
+          <>
+            <CardHeader
+              className="border-b border-[color:var(--surface-border)] bg-transparent px-4 pb-3 pt-1 pr-36 sm:pb-4 sm:pt-2"
+              style={{ borderColor: 'var(--surface-border)' }}
+            >
+              <div className="flex h-full flex-nowrap items-center justify-between gap-3 overflow-hidden">
+                <CardTitle className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="font-editorial block truncate text-[1.45rem] leading-none tracking-[-0.03em] sm:text-[1.6rem]">
+                      {selectedThreadTitle}
                     </span>
-                  ) : null}
-                </div>
-              </CardTitle>
-              {tokenUsage && (
-                <div
-                  data-testid="thread-token-usage"
-                  title="Persisted total token usage for this thread"
-                  className="text-muted-foreground inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 py-1 text-xs shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_44%,transparent)]"
-                >
-                  <span className="font-medium">
-                    {tokenUsage.totalTokens.toLocaleString(i18n.resolvedLanguage)}
-                  </span>
-                  <span className="text-muted-foreground/70">{t('threads.chat.tokens')}</span>
-                  <span className="text-muted-foreground/50">•</span>
-                  <span className="text-muted-foreground/70">
-                    {t('threads.chat.tokenInput', {
-                      value: tokenUsage.inputTokens.toLocaleString(i18n.resolvedLanguage)
-                    })}
-                  </span>
-                  <span className="text-muted-foreground/50">•</span>
-                  <span className="text-muted-foreground/70">
-                    {t('threads.chat.tokenOutput', {
-                      value: tokenUsage.outputTokens.toLocaleString(i18n.resolvedLanguage)
-                    })}
-                  </span>
-                </div>
-              )}
-            </div>
-          </CardHeader>
+                    {hasRemoteBinding ? (
+                      <span
+                        className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-active)] px-2 py-0.5 text-[11px] font-medium text-primary"
+                        title={t('threads.chat.remoteBadgeTitle')}
+                        aria-label={t('threads.chat.remoteBadgeTitle')}
+                      >
+                        <Link2 className="size-3" />
+                        {t('threads.chat.remoteBadge')}
+                      </span>
+                    ) : null}
+                  </div>
+                </CardTitle>
+              </div>
+            </CardHeader>
+          </>
         ) : null}
 
         <ThreadPrimitive.Root className="flex min-h-0 flex-1 flex-col">
@@ -712,6 +771,8 @@ export function ThreadChatCard({
             providers={providers}
             draftProviderId={draftProviderId}
             draftModel={draftModel}
+            tokenUsage={tokenUsage}
+            currentModelLabel={currentModelLabel}
             onDraftProviderChange={onDraftProviderChange}
             onDraftModelChange={onDraftModelChange}
             onSubmitMessage={onSubmitMessage}

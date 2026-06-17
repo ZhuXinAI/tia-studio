@@ -1,17 +1,14 @@
 import {
   Bot,
-  Boxes,
   Cable,
   CircleDot,
   Clock3,
   Folder,
   MessageSquare,
-  PanelRightClose,
   Sparkles
 } from 'lucide-react'
 import type { ThreadPageController } from '../../features/threads/hooks/use-thread-page-controller'
 import { getThreadDisplayTitle } from '../../features/threads/thread-page-routing'
-import { Button } from '../../components/ui/button'
 
 function readProviderOverride(metadata: Record<string, unknown> | undefined): {
   providerId: string
@@ -61,11 +58,9 @@ function DetailRow({
 }
 
 export function ThreadDetailsPanel({
-  controller,
-  onCollapse
+  controller
 }: {
   controller: ThreadPageController
-  onCollapse: () => void
 }): React.JSX.Element {
   const selectedThread = controller.selectedThread
   const selectedWorkspace = controller.selectedWorkspace
@@ -81,29 +76,15 @@ export function ThreadDetailsPanel({
     'Not selected'
   const workspaceLabel = selectedWorkspace?.name ?? 'Chats'
   const channelBinding = selectedThread?.channelBinding ?? null
-  const usageTotals = selectedThread?.usageTotals ?? null
 
   return (
     <aside className="hidden min-h-0 w-[19rem] shrink-0 flex-col border-l border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-panel-strong)_84%,transparent),color-mix(in_srgb,var(--surface-panel)_92%,transparent))] xl:flex">
       <div className="border-b border-[color:var(--surface-border)] px-4 py-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="section-kicker">Thread Details</p>
-            <h2 className="font-editorial mt-1 truncate text-[1.55rem] leading-none tracking-[-0.035em]">
-              {selectedThread ? getThreadDisplayTitle(selectedThread.title) : 'New Chat'}
-            </h2>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-8 shrink-0"
-            onClick={onCollapse}
-            aria-label="Collapse details"
-            title="Collapse details"
-          >
-            <PanelRightClose className="size-4" />
-          </Button>
+        <div className="min-w-0">
+          <p className="section-kicker">Thread Details</p>
+          <h2 className="font-editorial mt-1 truncate text-[1.25rem] leading-none tracking-[-0.03em]">
+            {selectedThread ? getThreadDisplayTitle(selectedThread.title) : 'New Chat'}
+          </h2>
         </div>
       </div>
 
@@ -122,7 +103,9 @@ export function ThreadDetailsPanel({
           icon={Bot}
           label="Provider"
           value={selectedProvider?.name ?? 'Provider pending'}
-          helper={`Model: ${modelLabel}`}
+          helper={
+            modelLabel === 'Not selected' ? 'Finish provider setup before sending.' : undefined
+          }
         />
         <DetailRow
           icon={Sparkles}
@@ -159,21 +142,6 @@ export function ThreadDetailsPanel({
             {controller.readiness.canChat
               ? 'The selected model is ready for this thread.'
               : 'Finish provider and model setup before sending.'}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-3">
-          <div className="flex items-center gap-2">
-            <Boxes className="size-4 text-muted-foreground" />
-            <p className="section-kicker text-[0.62rem]">Usage</p>
-          </div>
-          <p className="mt-2 text-sm font-medium">
-            {usageTotals ? `${usageTotals.totalTokens.toLocaleString()} tokens` : 'No usage yet'}
-          </p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            {usageTotals
-              ? `${usageTotals.inputTokens.toLocaleString()} input, ${usageTotals.outputTokens.toLocaleString()} output`
-              : 'Usage appears after the first assistant response.'}
           </p>
         </div>
 

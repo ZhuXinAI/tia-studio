@@ -15,6 +15,7 @@ import {
   updateSecuritySettings,
   type SecuritySettings
 } from '../security/security-settings-query'
+import { SettingsContent } from './settings-content'
 
 type SavingField = 'promptInjection' | 'pii' | 'provider' | null
 const securitySelectClassName =
@@ -118,7 +119,7 @@ export function SecuritySettingsPage(): React.JSX.Element {
   }
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 py-8">
+    <SettingsContent>
       <header className="space-y-3 border-b border-[color:var(--surface-border)] pb-5">
         <p className="section-kicker">Guardrails and policy</p>
         <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
@@ -230,6 +231,6 @@ export function SecuritySettingsPage(): React.JSX.Element {
           )}
         </CardContent>
       </Card>
-    </div>
+    </SettingsContent>
   )
 }

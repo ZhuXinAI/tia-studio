@@ -25,6 +25,7 @@ import {
   listChannels,
   updateChannel
 } from '../channels/channels-query'
+import { SettingsContent } from './settings-content'
 
 const settingsSelectClassName =
   'h-11 rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 py-2 text-sm shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_44%,transparent)] disabled:opacity-100'
@@ -370,7 +371,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 py-8">
+    <SettingsContent size="wide">
       <header className="space-y-3 border-b border-[color:var(--surface-border)] pb-5">
         <p className="section-kicker">Global routing and communication</p>
         <h1 className="font-editorial text-[2.8rem] leading-none tracking-[-0.045em]">
@@ -853,6 +854,6 @@ export function ChannelsSettingsPage(): React.JSX.Element {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </SettingsContent>
   )
 }

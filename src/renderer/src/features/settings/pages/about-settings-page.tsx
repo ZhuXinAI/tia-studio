@@ -8,6 +8,7 @@ import { Switch } from '../../../components/ui/switch'
 import { cn } from '../../../lib/utils'
 import { getDesktopAppInfo, type DesktopAppInfo } from '../../../lib/desktop-app-info'
 import { useAutoUpdate } from '../auto-update/use-auto-update'
+import { SettingsContent } from './settings-content'
 
 type AboutLinkItem = {
   title: string
@@ -156,7 +157,7 @@ export function AboutSettingsPage(): React.JSX.Element {
   const statusRole = autoUpdateState.status === 'error' ? 'alert' : 'status'
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 py-8">
+    <SettingsContent>
       <header className="space-y-3 border-b border-[color:var(--surface-border)] pb-5">
         <p className="section-kicker">Release and feedback</p>
         <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
@@ -275,6 +276,6 @@ export function AboutSettingsPage(): React.JSX.Element {
           ))}
         </CardContent>
       </Card>
-    </div>
+    </SettingsContent>
   )
 }

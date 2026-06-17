@@ -516,4 +516,42 @@ describe('chat route', () => {
 
     await reader!.cancel()
   })
+
+  it('streams profile-wide thread message update events', async () => {
+    const streamChat = vi.fn(async () => new ReadableStream())
+    const listThreadMessages = vi.fn(async () => [])
+    const eventsStore = new ThreadMessageEventsStore()
+    const app = new Hono()
+    registerChatRoute(app, {
+      assistantRuntime: createAssistantRuntimeStub({
+        streamChat,
+        listThreadMessages
+      }),
+      threadMessageEventsStore: eventsStore
+    })
+
+    const responsePromise = app.request('http://localhost/chat/events?profileId=profile-1')
+    await Promise.resolve()
+
+    eventsStore.appendMessagesUpdated({
+      assistantId: 'assistant-1',
+      threadId: 'thread-1',
+      profileId: 'profile-1'
+    })
+
+    const response = await responsePromise
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toContain('text/event-stream')
+
+    const reader = response.body?.getReader()
+    expect(reader).toBeDefined()
+
+    const firstChunk = await reader!.read()
+    expect(firstChunk.done).toBe(false)
+    const text = new TextDecoder().decode(firstChunk.value)
+    expect(text).toContain('"assistantId":"assistant-1"')
+    expect(text).toContain('"threadId":"thread-1"')
+
+    await reader!.cancel()
+  })
 })
