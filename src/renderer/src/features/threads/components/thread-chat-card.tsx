@@ -3,9 +3,11 @@ import {
   Bot,
   Check,
   ChevronDown,
+  CircleDot,
   DatabaseZap,
   Gauge,
   Link2,
+  MessageSquare,
   SendHorizontal
 } from 'lucide-react'
 import type { UIMessage } from 'ai'
@@ -55,6 +57,7 @@ import {
   ComposerAddAttachment,
   ComposerAttachments
 } from '@renderer/components/assistant-ui/attachment'
+import { useAppV2ShellStatusBar } from '../../../app/v2/app-v2-shell-status'
 
 type ThreadChatCardProps = {
   chatLabel: string
@@ -87,6 +90,21 @@ type ThreadChatCardProps = {
   headerLeadingAction?: React.ReactNode
 }
 
+function StatusBarItem({
+  icon: Icon,
+  label
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+}): React.JSX.Element {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-2.5 py-1 text-[11px] text-muted-foreground">
+      <Icon className="size-3.5" />
+      <span>{label}</span>
+    </span>
+  )
+}
+
 function ComposerClearer({
   selectedAssistantId,
   selectedThreadId
@@ -114,7 +132,6 @@ type ThreadChatComposerProps = Pick<
   | 'providers'
   | 'draftProviderId'
   | 'draftModel'
-  | 'tokenUsage'
   | 'onDraftProviderChange'
   | 'onDraftModelChange'
   | 'onSubmitMessage'
@@ -123,7 +140,6 @@ type ThreadChatComposerProps = Pick<
   canCompose: boolean
   selectedWorkspace: WorkspaceRecord | null
   isNewThreadRoute: boolean
-  currentModelLabel: string
 }
 
 function getProviderModels(provider: ProviderRecord | null): string[] {
@@ -377,14 +393,12 @@ function ThreadChatComposer({
   providers,
   draftProviderId,
   draftModel,
-  tokenUsage,
-  currentModelLabel,
   onDraftProviderChange,
   onDraftModelChange,
   onSubmitMessage,
   onAbortGeneration
 }: ThreadChatComposerProps): React.JSX.Element {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const aui = useAui()
   const composerText = useAuiState((state) => (state.composer.isEditing ? state.composer.text : ''))
 
@@ -403,16 +417,6 @@ function ThreadChatComposer({
   const helperText = selectedAssistant
     ? t('threads.chat.composer.helperSelectedAssistant')
     : t('threads.chat.composer.helperEmpty')
-  const tokenUsageLabel = tokenUsage
-    ? `${tokenUsage.totalTokens.toLocaleString(i18n.resolvedLanguage)} ${t('threads.chat.tokens')}`
-    : 'No token usage yet'
-  const tokenUsageTitle = tokenUsage
-    ? `${t('threads.chat.tokenInput', {
-        value: tokenUsage.inputTokens.toLocaleString(i18n.resolvedLanguage)
-      })} / ${t('threads.chat.tokenOutput', {
-        value: tokenUsage.outputTokens.toLocaleString(i18n.resolvedLanguage)
-      })}`
-    : 'Usage appears after the first assistant response.'
 
   if (!selectedThread && isNewThreadRoute) {
     return (
@@ -514,26 +518,7 @@ function ThreadChatComposer({
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            {selectedThread ? (
-              <>
-                <span
-                  className="inline-flex max-w-[18rem] items-center gap-1.5 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-2.5 py-1"
-                  title={`Current model: ${currentModelLabel}`}
-                >
-                  <Bot className="size-3.5" />
-                  <span className="truncate">{currentModelLabel}</span>
-                </span>
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-2.5 py-1"
-                  title={tokenUsageTitle}
-                >
-                  <Gauge className="size-3.5" />
-                  <span>{tokenUsageLabel}</span>
-                </span>
-              </>
-            ) : (
-              <span>{helperText}</span>
-            )}
+            {!selectedThread ? <span>{helperText}</span> : null}
           </div>
           <div className="flex items-center gap-2">
             {supportsVision && <ComposerAddAttachment />}
@@ -623,6 +608,33 @@ export function ThreadChatCard({
       ? selectedProvider?.selectedModel
       : draftModel || selectedProvider?.selectedModel) ||
     'Model pending'
+  const shellStatusContent = useMemo(() => {
+    const workspaceLabel = selectedWorkspace?.name ?? 'Chats'
+    const originLabel = hasRemoteBinding ? 'Remote channel' : 'Direct chat'
+    const stateLabel = isChatStreaming ? 'Running' : selectedThread ? 'Idle' : 'Ready to start'
+    const usageLabel = tokenUsage
+      ? `${tokenUsage.totalTokens.toLocaleString()} ${t('threads.chat.tokens')}`
+      : 'No token usage yet'
+
+    return (
+      <>
+        <StatusBarItem icon={Bot} label={currentModelLabel} />
+        <StatusBarItem icon={Gauge} label={usageLabel} />
+        <StatusBarItem icon={Link2} label={originLabel} />
+        <StatusBarItem icon={CircleDot} label={stateLabel} />
+        <StatusBarItem icon={MessageSquare} label={workspaceLabel} />
+      </>
+    )
+  }, [
+    currentModelLabel,
+    hasRemoteBinding,
+    isChatStreaming,
+    selectedThread,
+    selectedWorkspace?.name,
+    t,
+    tokenUsage
+  ])
+  useAppV2ShellStatusBar(shellStatusContent)
 
   async function handleRunMigration(): Promise<void> {
     setIsMigrating(true)
@@ -771,8 +783,6 @@ export function ThreadChatCard({
             providers={providers}
             draftProviderId={draftProviderId}
             draftModel={draftModel}
-            tokenUsage={tokenUsage}
-            currentModelLabel={currentModelLabel}
             onDraftProviderChange={onDraftProviderChange}
             onDraftModelChange={onDraftModelChange}
             onSubmitMessage={onSubmitMessage}

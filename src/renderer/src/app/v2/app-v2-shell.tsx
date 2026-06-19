@@ -1,7 +1,12 @@
 import clsx from 'clsx'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { AppV2Sidebar } from './app-v2-sidebar'
+import {
+  AppV2ShellRouteStatus,
+  AppV2ShellStatusBar,
+  AppV2ShellStatusContext
+} from './app-v2-shell-status'
 
 function isWindowsPlatform(): boolean {
   return globalThis.window?.electron?.process.platform === 'win32'
@@ -15,32 +20,63 @@ export function AppV2Shell(): React.JSX.Element {
   const isWorkspaceRoute = /^\/workspaces\/[^/]+(?:\/|$)/.test(location.pathname)
   const shouldShowSidebar = isChatRoute || isWorkspaceRoute || isSidebarToolRoute
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [statusBarContent, setStatusBarContent] = useState<React.ReactNode | null>(null)
+  const statusBarContextValue = useMemo(
+    () => ({
+      setContent: setStatusBarContent
+    }),
+    []
+  )
+  const fallbackStatusBarContent = useMemo(() => {
+    if (location.pathname === '/skills') {
+      return <AppV2ShellRouteStatus kind="skills" />
+    }
+
+    if (location.pathname === '/automations') {
+      return <AppV2ShellRouteStatus kind="automations" />
+    }
+
+    if (isSettingsRoute) {
+      return <AppV2ShellRouteStatus kind="settings" />
+    }
+
+    if (isWorkspaceRoute) {
+      return <AppV2ShellRouteStatus kind="workspace" />
+    }
+
+    return <AppV2ShellRouteStatus kind="chat" />
+  }, [isSettingsRoute, isWorkspaceRoute, location.pathname])
 
   return (
-    <div className="app-v2-shell flex h-screen min-h-0 overflow-hidden bg-[color:var(--surface-canvas)] text-foreground">
-      <div
-        className={clsx('drag-region fixed left-0 right-0 top-0 z-30 h-8', {
-          'pl-[80px]': !isWindowsPlatform()
-        })}
-      />
-      <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        <div className="flex min-h-0 flex-1 overflow-hidden">
-          {shouldShowSidebar ? (
-            <AppV2Sidebar
-              isCollapsed={isSidebarCollapsed}
-              onToggleCollapsed={() => setIsSidebarCollapsed((current) => !current)}
-            />
-          ) : null}
-          <main
-            className={clsx(
-              'min-h-0 min-w-0 flex-1 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_84%,transparent))] pt-8',
-              isSettingsRoute ? 'overflow-hidden' : 'overflow-hidden'
-            )}
-          >
-            <Outlet />
-          </main>
+    <AppV2ShellStatusContext.Provider value={statusBarContextValue}>
+      <div className="app-v2-shell flex h-screen min-h-0 overflow-hidden bg-[color:var(--surface-canvas)] text-foreground">
+        <div
+          className={clsx('drag-region fixed left-0 right-0 top-0 z-30 h-8', {
+            'pl-[80px]': !isWindowsPlatform()
+          })}
+        />
+        <div className="relative flex min-h-0 flex-1 overflow-hidden">
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            {shouldShowSidebar ? (
+              <AppV2Sidebar
+                isCollapsed={isSidebarCollapsed}
+                onToggleCollapsed={() => setIsSidebarCollapsed((current) => !current)}
+              />
+            ) : null}
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+              <main
+                className={clsx(
+                  'min-h-0 min-w-0 flex-1 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_84%,transparent))] pt-8',
+                  isSettingsRoute ? 'overflow-hidden' : 'overflow-hidden'
+                )}
+              >
+                <Outlet />
+              </main>
+              <AppV2ShellStatusBar content={statusBarContent ?? fallbackStatusBarContent} />
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </AppV2ShellStatusContext.Provider>
   )
 }
