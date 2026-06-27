@@ -21,6 +21,7 @@ import { Image } from '@renderer/components/assistant-ui/image'
 import { UserMessageAttachments } from '@renderer/components/assistant-ui/attachment'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { cn } from '../../../lib/utils'
+import { extractThreadMessageUsage } from '../thread-usage'
 
 type ThreadChatMessageListProps = {
   threadId: string | null
@@ -97,14 +98,6 @@ type DelegatedVisibleMessageBlock = {
   mentions: string[]
   status: 'running' | 'complete' | 'error'
   nestedTools: DelegatedNestedToolCall[]
-}
-
-type MessageUsage = {
-  inputTokens: number
-  outputTokens: number
-  totalTokens: number
-  reasoningTokens: number
-  cachedInputTokens: number
 }
 
 function isDelegatedAgentToolResult(value: unknown): value is DelegatedAgentToolResult {
@@ -361,52 +354,6 @@ function formatMessageTimestamp(
   })
 }
 
-function normalizeInteger(value: unknown): number {
-  const numericValue =
-    typeof value === 'number'
-      ? value
-      : typeof value === 'string' && value.trim().length > 0
-        ? Number(value)
-        : 0
-
-  if (!Number.isFinite(numericValue)) {
-    return 0
-  }
-
-  return Math.max(0, Math.round(numericValue))
-}
-
-function extractMessageUsage(metadata: unknown): MessageUsage | null {
-  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
-    return null
-  }
-
-  const usage = (metadata as Record<string, unknown>).usage
-  if (!usage || typeof usage !== 'object' || Array.isArray(usage)) {
-    return null
-  }
-
-  const parsedUsage = {
-    inputTokens: normalizeInteger((usage as Record<string, unknown>).inputTokens),
-    outputTokens: normalizeInteger((usage as Record<string, unknown>).outputTokens),
-    totalTokens: normalizeInteger((usage as Record<string, unknown>).totalTokens),
-    reasoningTokens: normalizeInteger((usage as Record<string, unknown>).reasoningTokens),
-    cachedInputTokens: normalizeInteger((usage as Record<string, unknown>).cachedInputTokens)
-  }
-
-  if (
-    parsedUsage.inputTokens === 0 &&
-    parsedUsage.outputTokens === 0 &&
-    parsedUsage.totalTokens === 0 &&
-    parsedUsage.reasoningTokens === 0 &&
-    parsedUsage.cachedInputTokens === 0
-  ) {
-    return null
-  }
-
-  return parsedUsage
-}
-
 function MessageTimestamp({ className }: { className?: string }): React.JSX.Element | null {
   const { i18n } = useTranslation()
   const createdAt = useAuiState((state) => state.message.createdAt)
@@ -439,7 +386,7 @@ function MessageUsageDetails({
   const metadata = useAuiState(
     (state) => (state.message as { metadata?: unknown }).metadata ?? null
   )
-  const usage = extractMessageUsage(metadata)
+  const usage = extractThreadMessageUsage(metadata)
 
   if (!isHovering || !usage) {
     return null

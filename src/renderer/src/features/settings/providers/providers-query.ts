@@ -18,6 +18,7 @@ export type ProviderRecord = {
   apiKey: string
   apiHost: string | null
   selectedModel: string
+  selectedModelContextWindowTokens?: number | null
   providerModels: string[] | null
   enabled: boolean
   supportsVision: boolean
@@ -34,6 +35,7 @@ export type SaveProviderInput = {
   apiKey: string
   apiHost?: string
   selectedModel: string
+  selectedModelContextWindowTokens?: number | null
   providerModels?: string[]
   enabled?: boolean
   supportsVision?: boolean
@@ -69,6 +71,12 @@ function normalizeSaveInput(input: SaveProviderInput): SaveProviderInput {
     name: input.name.trim(),
     apiHost: input.apiHost?.trim() || undefined,
     selectedModel: input.selectedModel.trim(),
+    selectedModelContextWindowTokens:
+      typeof input.selectedModelContextWindowTokens === 'number' &&
+      Number.isFinite(input.selectedModelContextWindowTokens) &&
+      input.selectedModelContextWindowTokens > 0
+        ? Math.round(input.selectedModelContextWindowTokens)
+        : undefined,
     providerModels: normalizeProviderModels(input.providerModels) ?? undefined
   }
 }
@@ -114,6 +122,7 @@ async function migrateLegacyProvidersIfNeeded(
       apiKey: provider.apiKey,
       apiHost: provider.apiHost ?? undefined,
       selectedModel: provider.selectedModel,
+      selectedModelContextWindowTokens: provider.selectedModelContextWindowTokens ?? undefined,
       providerModels: provider.providerModels ?? undefined,
       enabled: provider.enabled
     })
@@ -147,6 +156,14 @@ export async function updateProvider(
     name: input.name?.trim(),
     apiHost: input.apiHost?.trim() || input.apiHost,
     selectedModel: input.selectedModel?.trim(),
+    selectedModelContextWindowTokens:
+      input.selectedModelContextWindowTokens === undefined
+        ? undefined
+        : typeof input.selectedModelContextWindowTokens === 'number' &&
+            Number.isFinite(input.selectedModelContextWindowTokens) &&
+            input.selectedModelContextWindowTokens > 0
+          ? Math.round(input.selectedModelContextWindowTokens)
+          : null,
     providerModels:
       input.providerModels === undefined
         ? undefined

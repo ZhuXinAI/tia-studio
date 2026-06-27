@@ -41,6 +41,7 @@ describe('providers route', () => {
     const body = await response.json()
     expect(body.type).toBe('openai')
     expect(body.selectedModel).toBe('gpt-5')
+    expect(body.selectedModelContextWindowTokens).toBe(400000)
   })
 
   it('rejects provider when selected model is missing', async () => {

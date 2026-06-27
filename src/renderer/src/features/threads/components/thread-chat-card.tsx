@@ -58,6 +58,7 @@ import {
   ComposerAttachments
 } from '@renderer/components/assistant-ui/attachment'
 import { useAppV2ShellStatusBar } from '../../../app/v2/app-v2-shell-status'
+import { deriveThreadUsageFromMessages, type ThreadUsageSummary } from '../thread-usage'
 
 type ThreadChatCardProps = {
   chatLabel: string
@@ -103,6 +104,101 @@ function StatusBarItem({
       <span>{label}</span>
     </span>
   )
+}
+
+function formatCompactTokenCount(value: number): string {
+  if (value >= 1_000_000) {
+    const compactValue = value / 1_000_000
+    return `${compactValue % 1 === 0 ? compactValue.toFixed(0) : compactValue.toFixed(1)}M`
+  }
+
+  if (value >= 1_000) {
+    const compactValue = value / 1_000
+    return `${compactValue % 1 === 0 ? compactValue.toFixed(0) : compactValue.toFixed(1)}K`
+  }
+
+  return value.toString()
+}
+
+function TokenUsageStatusItem({
+  usage,
+  contextWindowTokens,
+  label
+}: {
+  usage: ThreadUsageSummary
+  contextWindowTokens: number | null
+  label: string
+}): React.JSX.Element {
+  const circleRadius = 6
+  const circumference = 2 * Math.PI * circleRadius
+  const progress =
+    contextWindowTokens && contextWindowTokens > 0
+      ? Math.min(usage.totalTokens / contextWindowTokens, 1)
+      : null
+  const progressOffset = progress === null ? circumference : circumference * (1 - progress)
+  const referenceLabel =
+    contextWindowTokens && contextWindowTokens > 0
+      ? `${usage.totalTokens.toLocaleString()} of ${contextWindowTokens.toLocaleString()} model-context tokens used`
+      : `${usage.totalTokens.toLocaleString()} tokens recorded for this thread. Add model context limits to show a true window percentage.`
+
+  return (
+    <span
+      className="inline-flex items-center gap-2 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-2.5 py-1 text-[11px] text-muted-foreground"
+      title={referenceLabel}
+      aria-label={referenceLabel}
+    >
+      <span className="relative grid size-4 place-items-center" aria-hidden="true">
+        <svg className="size-4 -rotate-90" viewBox="0 0 16 16" fill="none">
+          <circle
+            cx="8"
+            cy="8"
+            r={circleRadius}
+            stroke="color-mix(in srgb, var(--surface-border) 78%, transparent)"
+            strokeWidth="1.5"
+          />
+          <circle
+            cx="8"
+            cy="8"
+            r={circleRadius}
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeDasharray={progress === null ? '9 4' : circumference.toString()}
+            strokeDashoffset={progress === null ? '0' : progressOffset.toString()}
+          />
+        </svg>
+      </span>
+      <span>{label}</span>
+    </span>
+  )
+}
+
+function normalizeModelIdentifier(value: string): string {
+  const trimmedValue = value.trim().toLowerCase()
+  return trimmedValue.startsWith('models/') ? trimmedValue.slice('models/'.length) : trimmedValue
+}
+
+function resolveContextWindowTokens(provider: ProviderRecord | null, model: string): number | null {
+  if (!provider) {
+    return null
+  }
+
+  const selectedModelContextWindowTokens = provider.selectedModelContextWindowTokens
+  if (
+    typeof selectedModelContextWindowTokens !== 'number' ||
+    !Number.isFinite(selectedModelContextWindowTokens) ||
+    selectedModelContextWindowTokens <= 0
+  ) {
+    return null
+  }
+
+  const normalizedCurrentModel = normalizeModelIdentifier(model)
+  const normalizedProviderModel = normalizeModelIdentifier(provider.selectedModel)
+  if (normalizedCurrentModel.length === 0 || normalizedCurrentModel !== normalizedProviderModel) {
+    return null
+  }
+
+  return Math.round(selectedModelContextWindowTokens)
 }
 
 function ComposerClearer({
@@ -608,18 +704,34 @@ export function ThreadChatCard({
       ? selectedProvider?.selectedModel
       : draftModel || selectedProvider?.selectedModel) ||
     'Model pending'
+  const chatMessages = Array.isArray(chat.messages) ? chat.messages : []
+  const effectiveTokenUsage = useMemo(
+    () => tokenUsage ?? deriveThreadUsageFromMessages(chatMessages),
+    [chatMessages, tokenUsage]
+  )
   const shellStatusContent = useMemo(() => {
     const workspaceLabel = selectedWorkspace?.name ?? 'Chats'
     const originLabel = hasRemoteBinding ? 'Remote channel' : 'Direct chat'
     const stateLabel = isChatStreaming ? 'Running' : selectedThread ? 'Idle' : 'Ready to start'
-    const usageLabel = tokenUsage
-      ? `${tokenUsage.totalTokens.toLocaleString()} ${t('threads.chat.tokens')}`
+    const contextWindowTokens = resolveContextWindowTokens(selectedProvider, currentModelLabel)
+    const usageLabel = effectiveTokenUsage
+      ? contextWindowTokens && contextWindowTokens > 0
+        ? `${effectiveTokenUsage.totalTokens.toLocaleString()} / ${formatCompactTokenCount(contextWindowTokens)} ${t('threads.chat.tokens')}`
+        : `${effectiveTokenUsage.totalTokens.toLocaleString()} ${t('threads.chat.tokens')}`
       : 'No token usage yet'
 
     return (
       <>
         <StatusBarItem icon={Bot} label={currentModelLabel} />
-        <StatusBarItem icon={Gauge} label={usageLabel} />
+        {effectiveTokenUsage ? (
+          <TokenUsageStatusItem
+            usage={effectiveTokenUsage}
+            contextWindowTokens={contextWindowTokens}
+            label={usageLabel}
+          />
+        ) : (
+          <StatusBarItem icon={Gauge} label={usageLabel} />
+        )}
         <StatusBarItem icon={Link2} label={originLabel} />
         <StatusBarItem icon={CircleDot} label={stateLabel} />
         <StatusBarItem icon={MessageSquare} label={workspaceLabel} />
@@ -627,12 +739,13 @@ export function ThreadChatCard({
     )
   }, [
     currentModelLabel,
+    selectedProvider,
     hasRemoteBinding,
     isChatStreaming,
+    effectiveTokenUsage,
     selectedThread,
     selectedWorkspace?.name,
-    t,
-    tokenUsage
+    t
   ])
   useAppV2ShellStatusBar(shellStatusContent)
 

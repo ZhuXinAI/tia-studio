@@ -26,6 +26,10 @@ it('creates core app tables', async () => {
   const assistantColumns = assistantColumnsResult.rows.map((row) =>
     String((row as Record<string, unknown>).name)
   )
+  const providerColumnsResult = await db.execute("PRAGMA table_info('app_providers')")
+  const providerColumns = providerColumnsResult.rows.map((row) =>
+    String((row as Record<string, unknown>).name)
+  )
   const channelColumnsResult = await db.execute("PRAGMA table_info('app_channels')")
   const channelColumns = channelColumnsResult.rows.map((row) =>
     String((row as Record<string, unknown>).name)
@@ -68,6 +72,7 @@ it('creates core app tables', async () => {
   expect(assistantColumns).toContain('description')
   expect(assistantColumns).toContain('enabled')
   expect(assistantColumns).toContain('max_steps')
+  expect(providerColumns).toContain('selected_model_context_window_tokens')
   expect(channelColumns).toContain('assistant_id')
   expect(channelColumns).toContain('config')
   expect(channelColumns).toContain('last_error')
@@ -83,6 +88,62 @@ it('creates core app tables', async () => {
   expect(workspaceColumns).toContain('supervisor_model')
 
   await db.close()
+})
+
+it('backfills known provider context windows for legacy providers', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'tia-provider-context-migrate-'))
+  tempPaths.push(tempDir)
+  const dbPath = path.join(tempDir, 'app.db')
+  const legacyDb = createAppDatabase(dbPath)
+
+  await legacyDb.execute('PRAGMA foreign_keys = ON')
+  await legacyDb.execute(`
+    CREATE TABLE IF NOT EXISTS app_profiles (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      is_active INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await legacyDb.execute(`
+    CREATE TABLE IF NOT EXISTS app_providers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      api_key TEXT NOT NULL,
+      api_host TEXT,
+      selected_model TEXT NOT NULL,
+      provider_models TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+  await legacyDb.execute(
+    'INSERT INTO app_providers (id, name, type, api_key, api_host, selected_model, enabled) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    ['provider-openai', 'OpenAI', 'openai', 'test-key', 'https://api.openai.com/v1', 'gpt-5', 1]
+  )
+  await legacyDb.close()
+
+  const migratedDb = await migrateAppSchema(dbPath)
+  const providerColumnsResult = await migratedDb.execute("PRAGMA table_info('app_providers')")
+  const providerColumns = providerColumnsResult.rows.map((row) =>
+    String((row as Record<string, unknown>).name)
+  )
+  const providerResult = await migratedDb.execute(
+    'SELECT selected_model_context_window_tokens FROM app_providers WHERE id = ?',
+    ['provider-openai']
+  )
+
+  expect(providerColumns).toContain('selected_model_context_window_tokens')
+  expect(providerResult.rows).toEqual([
+    {
+      selected_model_context_window_tokens: 400000
+    }
+  ])
+
+  await migratedDb.close()
 })
 
 it('removes legacy group tables during migration', async () => {

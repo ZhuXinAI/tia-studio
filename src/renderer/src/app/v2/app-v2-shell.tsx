@@ -1,7 +1,8 @@
 import clsx from 'clsx'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { AppV2Sidebar } from './app-v2-sidebar'
+import { AppV2ShellRightRail, AppV2ShellRightRailContext } from './app-v2-shell-right-rail'
 import {
   AppV2ShellRouteStatus,
   AppV2ShellStatusBar,
@@ -21,11 +22,27 @@ export function AppV2Shell(): React.JSX.Element {
   const shouldShowSidebar = isChatRoute || isWorkspaceRoute || isSidebarToolRoute
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [statusBarContent, setStatusBarContent] = useState<React.ReactNode | null>(null)
+  const [isRightRailOpen, setIsRightRailOpen] = useState(false)
+  const [hasRightRailContent, setHasRightRailContent] = useState(false)
+  const [rightRailSlotElement, setRightRailSlotElement] = useState<HTMLDivElement | null>(null)
+  const toggleRightRail = useCallback(() => {
+    setIsRightRailOpen((current) => !current)
+  }, [])
   const statusBarContextValue = useMemo(
     () => ({
       setContent: setStatusBarContent
     }),
     []
+  )
+  const rightRailContextValue = useMemo(
+    () => ({
+      isOpen: isRightRailOpen,
+      setIsOpen: setIsRightRailOpen,
+      toggle: toggleRightRail,
+      setHasContent: setHasRightRailContent,
+      slotElement: rightRailSlotElement
+    }),
+    [isRightRailOpen, rightRailSlotElement, toggleRightRail]
   )
   const fallbackStatusBarContent = useMemo(() => {
     if (location.pathname === '/skills') {
@@ -48,35 +65,42 @@ export function AppV2Shell(): React.JSX.Element {
   }, [isSettingsRoute, isWorkspaceRoute, location.pathname])
 
   return (
-    <AppV2ShellStatusContext.Provider value={statusBarContextValue}>
-      <div className="app-v2-shell flex h-screen min-h-0 overflow-hidden bg-[color:var(--surface-canvas)] text-foreground">
-        <div
-          className={clsx('drag-region fixed left-0 right-0 top-0 z-30 h-8', {
-            'pl-[80px]': !isWindowsPlatform()
-          })}
-        />
-        <div className="relative flex min-h-0 flex-1 overflow-hidden">
-          <div className="flex min-h-0 flex-1 overflow-hidden">
-            {shouldShowSidebar ? (
-              <AppV2Sidebar
-                isCollapsed={isSidebarCollapsed}
-                onToggleCollapsed={() => setIsSidebarCollapsed((current) => !current)}
-              />
-            ) : null}
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-              <main
-                className={clsx(
-                  'min-h-0 min-w-0 flex-1 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_84%,transparent))] pt-8',
-                  isSettingsRoute ? 'overflow-hidden' : 'overflow-hidden'
-                )}
-              >
-                <Outlet />
-              </main>
-              <AppV2ShellStatusBar content={statusBarContent ?? fallbackStatusBarContent} />
+    <AppV2ShellRightRailContext.Provider value={rightRailContextValue}>
+      <AppV2ShellStatusContext.Provider value={statusBarContextValue}>
+        <div className="app-v2-shell flex h-screen min-h-0 overflow-hidden bg-[color:var(--surface-canvas)] text-foreground">
+          <div
+            className={clsx('drag-region fixed left-0 right-0 top-0 z-30 h-8', {
+              'pl-[80px]': !isWindowsPlatform()
+            })}
+          />
+          <div className="relative flex min-h-0 flex-1 overflow-hidden">
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              {shouldShowSidebar ? (
+                <AppV2Sidebar
+                  isCollapsed={isSidebarCollapsed}
+                  onToggleCollapsed={() => setIsSidebarCollapsed((current) => !current)}
+                />
+              ) : null}
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+                  <main
+                    className={clsx(
+                      'min-h-0 min-w-0 flex-1 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_84%,transparent))] pt-8',
+                      isSettingsRoute ? 'overflow-hidden' : 'overflow-hidden'
+                    )}
+                  >
+                    <Outlet />
+                  </main>
+                  {hasRightRailContent && isRightRailOpen ? (
+                    <AppV2ShellRightRail onSlotElementChange={setRightRailSlotElement} />
+                  ) : null}
+                </div>
+                <AppV2ShellStatusBar content={statusBarContent ?? fallbackStatusBarContent} />
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </AppV2ShellStatusContext.Provider>
+      </AppV2ShellStatusContext.Provider>
+    </AppV2ShellRightRailContext.Provider>
   )
 }

@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS app_providers (
   api_key TEXT NOT NULL,
   api_host TEXT,
   selected_model TEXT NOT NULL,
+  selected_model_context_window_tokens INTEGER,
   provider_models TEXT,
   enabled INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

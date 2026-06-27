@@ -1,12 +1,4 @@
-import {
-  Bot,
-  Cable,
-  CircleDot,
-  Clock3,
-  Folder,
-  MessageSquare,
-  Sparkles
-} from 'lucide-react'
+import { Bot, Cable, CircleDot, Clock3, Folder, MessageSquare, Sparkles } from 'lucide-react'
 import type { ThreadPageController } from '../../features/threads/hooks/use-thread-page-controller'
 import { getThreadDisplayTitle } from '../../features/threads/thread-page-routing'
 
@@ -78,7 +70,7 @@ export function ThreadDetailsPanel({
   const channelBinding = selectedThread?.channelBinding ?? null
 
   return (
-    <aside className="hidden min-h-0 w-[19rem] shrink-0 flex-col border-l border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-panel-strong)_84%,transparent),color-mix(in_srgb,var(--surface-panel)_92%,transparent))] xl:flex">
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="border-b border-[color:var(--surface-border)] px-4 py-4">
         <div className="min-w-0">
           <p className="section-kicker">Thread Details</p>
@@ -156,6 +148,6 @@ export function ThreadDetailsPanel({
           </p>
         </div>
       </div>
-    </aside>
+    </div>
   )
 }

@@ -4,6 +4,7 @@ import type { UIMessage } from 'ai'
 import type { UseChatHelpers } from '@ai-sdk/react'
 
 const mockThreadMessages: UIMessage[] = []
+const useAppV2ShellStatusBarMock = vi.fn()
 
 const useAISDKRuntimeMock = vi.fn((chat: unknown, options?: unknown) => {
   void chat
@@ -58,7 +59,18 @@ vi.mock('@assistant-ui/react', () => {
   }
 })
 
+vi.mock('../../../app/v2/app-v2-shell-status', () => ({
+  useAppV2ShellStatusBar: (content: React.ReactNode) => {
+    useAppV2ShellStatusBarMock(content)
+  }
+}))
+
 import { ThreadChatCard } from './thread-chat-card'
+
+function renderStatusBarContent(): string {
+  const content = useAppV2ShellStatusBarMock.mock.calls.at(-1)?.[0]
+  return content ? renderToString(<>{content}</>) : ''
+}
 
 function createDefaultProps() {
   return {
@@ -143,6 +155,7 @@ describe('ThreadChatCard', () => {
   it('keeps the header compact, single-line, and shows the selected assistant name', () => {
     mockThreadMessages.length = 0
     useAISDKRuntimeMock.mockClear()
+    useAppV2ShellStatusBarMock.mockClear()
 
     const html = renderToString(
       <ThreadChatCard
@@ -170,6 +183,7 @@ describe('ThreadChatCard', () => {
 
   it('does not render a title bar before the thread has a generated title', () => {
     mockThreadMessages.length = 0
+    useAppV2ShellStatusBarMock.mockClear()
     const html = renderToString(
       <ThreadChatCard
         {...createDefaultProps()}
@@ -191,6 +205,7 @@ describe('ThreadChatCard', () => {
 
   it('shows a remote channel badge when the thread is bound to a channel chat', () => {
     mockThreadMessages.length = 0
+    useAppV2ShellStatusBarMock.mockClear()
     const html = renderToString(
       <ThreadChatCard
         {...createDefaultProps()}
@@ -216,6 +231,7 @@ describe('ThreadChatCard', () => {
 
   it('removes duplicated model and token pills from the composer footer', () => {
     mockThreadMessages.length = 0
+    useAppV2ShellStatusBarMock.mockClear()
     const html = renderToString(
       <ThreadChatCard
         {...createDefaultProps()}
@@ -252,9 +268,48 @@ describe('ThreadChatCard', () => {
     expect(html).not.toContain('Messages stream in this thread.')
   })
 
+  it('shows a real context-window reference when the active model has a stored limit', () => {
+    mockThreadMessages.length = 0
+    useAppV2ShellStatusBarMock.mockClear()
+
+    renderToString(
+      <ThreadChatCard
+        {...createDefaultProps()}
+        providers={[
+          {
+            ...createDefaultProps().providers[0],
+            selectedModelContextWindowTokens: 400_000
+          }
+        ]}
+        selectedThread={{
+          id: 'thread-1',
+          assistantId: 'assistant-1',
+          resourceId: 'default-profile',
+          title: 'Usage thread',
+          lastMessageAt: '2026-03-01T00:00:00.000Z',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z'
+        }}
+        tokenUsage={{
+          assistantMessageCount: 2,
+          inputTokens: 120,
+          outputTokens: 45,
+          totalTokens: 165,
+          reasoningTokens: 9,
+          cachedInputTokens: 18
+        }}
+      />
+    )
+
+    const statusBarHtml = renderStatusBarContent()
+    expect(statusBarHtml).toContain('165 / 400K')
+    expect(statusBarHtml).toContain('165 of 400,000 model-context tokens used')
+  })
+
   it('shows stop action while streaming a response', () => {
     mockThreadMessages.length = 0
     useAISDKRuntimeMock.mockClear()
+    useAppV2ShellStatusBarMock.mockClear()
 
     const html = renderToString(
       <ThreadChatCard

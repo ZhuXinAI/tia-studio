@@ -1,6 +1,10 @@
 import { readFile } from 'node:fs/promises'
 import { createAppDatabase, type AppDatabase } from './client'
 import { APP_CORE_MIGRATION_SQL } from './migrations/0001_app_core'
+import {
+  inferKnownModelContextWindowTokens,
+  normalizeModelContextWindowTokens
+} from '../utils/model-context-windows'
 
 const MIGRATION_FILE = new URL('./migrations/0001_app_core.sql', import.meta.url)
 
@@ -88,6 +92,21 @@ async function ensureBuiltInProviderColumns(db: AppDatabase): Promise<void> {
   if (!columns.includes('official_site')) {
     await db.execute('ALTER TABLE app_providers ADD COLUMN official_site TEXT')
   }
+}
+
+async function ensureProviderSelectedModelContextWindowTokensColumn(
+  db: AppDatabase
+): Promise<void> {
+  const tableInfo = await db.execute("PRAGMA table_info('app_providers')")
+  const hasContextWindowColumn = tableInfo.rows.some((row) => {
+    return String((row as Record<string, unknown>).name) === 'selected_model_context_window_tokens'
+  })
+
+  if (hasContextWindowColumn) {
+    return
+  }
+
+  await db.execute('ALTER TABLE app_providers ADD COLUMN selected_model_context_window_tokens INTEGER')
 }
 
 async function ensureWorkspaceTables(db: AppDatabase): Promise<void> {
@@ -302,6 +321,33 @@ async function backfillAssistantEnabledFromChannels(db: AppDatabase): Promise<vo
   `)
 }
 
+async function backfillKnownProviderContextWindowTokens(db: AppDatabase): Promise<void> {
+  const providersResult = await db.execute(
+    'SELECT id, selected_model, selected_model_context_window_tokens FROM app_providers'
+  )
+
+  for (const row of providersResult.rows) {
+    const record = row as Record<string, unknown>
+    const existingContextWindowTokens = normalizeModelContextWindowTokens(
+      record.selected_model_context_window_tokens
+    )
+    if (existingContextWindowTokens) {
+      continue
+    }
+
+    const selectedModel = String(record.selected_model ?? '')
+    const inferredContextWindowTokens = inferKnownModelContextWindowTokens(selectedModel)
+    if (!inferredContextWindowTokens) {
+      continue
+    }
+
+    await db.execute(
+      'UPDATE app_providers SET selected_model_context_window_tokens = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [inferredContextWindowTokens, String(record.id)]
+    )
+  }
+}
+
 export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> {
   const db = createAppDatabase(pathOrUrl)
 
@@ -335,6 +381,7 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   await ensureAssistantEnabledColumn(db)
   await ensureAssistantMaxStepsColumn(db)
   await ensureProviderSupportsVisionColumn(db)
+  await ensureProviderSelectedModelContextWindowTokensColumn(db)
   await ensureBuiltInProviderColumns(db)
   await ensureWorkspaceTables(db)
   await removeLegacyResetTables(db)
@@ -342,6 +389,7 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   await backfillAssistantEnabledFromChannels(db)
   await ensureThreadMetadataColumn(db)
   await ensureThreadUsageTables(db)
+  await backfillKnownProviderContextWindowTokens(db)
   await removeLegacyScheduledRunTables(db)
 
   return db

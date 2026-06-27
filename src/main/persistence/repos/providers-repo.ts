@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import type { AppDatabase } from '../client'
+import {
+  inferKnownModelContextWindowTokens,
+  normalizeModelContextWindowTokens
+} from '../../utils/model-context-windows'
 
 export type ProviderType = 'openai' | 'openai-response' | 'gemini' | 'anthropic' | 'ollama' | string
 
@@ -10,6 +14,7 @@ export type AppProvider = {
   apiKey: string
   apiHost: string | null
   selectedModel: string
+  selectedModelContextWindowTokens: number | null
   providerModels: string[] | null
   enabled: boolean
   supportsVision: boolean
@@ -27,6 +32,7 @@ export type CreateProviderInput = {
   apiKey: string
   apiHost?: string | null
   selectedModel: string
+  selectedModelContextWindowTokens?: number | null
   providerModels?: string[] | null
   enabled?: boolean
   supportsVision?: boolean
@@ -45,6 +51,9 @@ function parseProviderRow(row: Record<string, unknown>): AppProvider {
     apiKey: String(row.api_key),
     apiHost: row.api_host ? String(row.api_host) : null,
     selectedModel: String(row.selected_model),
+    selectedModelContextWindowTokens: normalizeModelContextWindowTokens(
+      row.selected_model_context_window_tokens
+    ),
     providerModels:
       typeof row.provider_models === 'string'
         ? (JSON.parse(row.provider_models) as string[])
@@ -64,7 +73,7 @@ export class ProvidersRepository {
 
   async list(): Promise<AppProvider[]> {
     const result = await this.db.execute(
-      'SELECT id, name, type, api_key, api_host, selected_model, provider_models, enabled, supports_vision, is_built_in, icon, official_site, created_at, updated_at FROM app_providers ORDER BY is_built_in DESC, created_at DESC'
+      'SELECT id, name, type, api_key, api_host, selected_model, selected_model_context_window_tokens, provider_models, enabled, supports_vision, is_built_in, icon, official_site, created_at, updated_at FROM app_providers ORDER BY is_built_in DESC, created_at DESC'
     )
 
     return result.rows.map((row) => parseProviderRow(row as Record<string, unknown>))
@@ -72,7 +81,7 @@ export class ProvidersRepository {
 
   async getById(id: string): Promise<AppProvider | null> {
     const result = await this.db.execute(
-      'SELECT id, name, type, api_key, api_host, selected_model, provider_models, enabled, supports_vision, is_built_in, icon, official_site, created_at, updated_at FROM app_providers WHERE id = ? LIMIT 1',
+      'SELECT id, name, type, api_key, api_host, selected_model, selected_model_context_window_tokens, provider_models, enabled, supports_vision, is_built_in, icon, official_site, created_at, updated_at FROM app_providers WHERE id = ? LIMIT 1',
       [id]
     )
     const row = result.rows.at(0)
@@ -86,8 +95,12 @@ export class ProvidersRepository {
 
   async create(input: CreateProviderInput): Promise<AppProvider> {
     const id = input.id ?? randomUUID()
+    const selectedModelContextWindowTokens =
+      normalizeModelContextWindowTokens(input.selectedModelContextWindowTokens) ??
+      inferKnownModelContextWindowTokens(input.selectedModel)
+
     await this.db.execute(
-      'INSERT INTO app_providers (id, name, type, api_key, api_host, selected_model, provider_models, enabled, supports_vision, is_built_in, icon, official_site) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO app_providers (id, name, type, api_key, api_host, selected_model, selected_model_context_window_tokens, provider_models, enabled, supports_vision, is_built_in, icon, official_site) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
         input.name,
@@ -95,6 +108,7 @@ export class ProvidersRepository {
         input.apiKey,
         input.apiHost ?? null,
         input.selectedModel,
+        selectedModelContextWindowTokens,
         input.providerModels ? JSON.stringify(input.providerModels) : null,
         input.enabled === false ? 0 : 1,
         input.supportsVision === true ? 1 : 0,
@@ -118,14 +132,23 @@ export class ProvidersRepository {
       return null
     }
 
+    const nextSelectedModel = input.selectedModel ?? existing.selectedModel
+    const modelSelectionChanged = input.selectedModel !== undefined || input.type !== undefined
+    const selectedModelContextWindowTokens =
+      input.selectedModelContextWindowTokens !== undefined
+        ? normalizeModelContextWindowTokens(input.selectedModelContextWindowTokens)
+        : inferKnownModelContextWindowTokens(nextSelectedModel) ??
+          (modelSelectionChanged ? null : existing.selectedModelContextWindowTokens)
+
     await this.db.execute(
-      'UPDATE app_providers SET name = ?, type = ?, api_key = ?, api_host = ?, selected_model = ?, provider_models = ?, enabled = ?, supports_vision = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE app_providers SET name = ?, type = ?, api_key = ?, api_host = ?, selected_model = ?, selected_model_context_window_tokens = ?, provider_models = ?, enabled = ?, supports_vision = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [
         input.name ?? existing.name,
         input.type ?? existing.type,
         input.apiKey ?? existing.apiKey,
         input.apiHost ?? existing.apiHost,
-        input.selectedModel ?? existing.selectedModel,
+        nextSelectedModel,
+        selectedModelContextWindowTokens,
         input.providerModels
           ? JSON.stringify(input.providerModels)
           : existing.providerModels
