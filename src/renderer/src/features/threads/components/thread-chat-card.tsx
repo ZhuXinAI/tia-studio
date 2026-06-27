@@ -183,6 +183,22 @@ function resolveContextWindowTokens(provider: ProviderRecord | null, model: stri
     return null
   }
 
+  const normalizedCurrentModel = normalizeModelIdentifier(model)
+  if (normalizedCurrentModel.length === 0) {
+    return null
+  }
+
+  const exactModelContextWindowTokens = provider.modelContextWindowTokensByModel
+    ? provider.modelContextWindowTokensByModel[normalizedCurrentModel]
+    : null
+  if (
+    typeof exactModelContextWindowTokens === 'number' &&
+    Number.isFinite(exactModelContextWindowTokens) &&
+    exactModelContextWindowTokens > 0
+  ) {
+    return Math.round(exactModelContextWindowTokens)
+  }
+
   const selectedModelContextWindowTokens = provider.selectedModelContextWindowTokens
   if (
     typeof selectedModelContextWindowTokens !== 'number' ||
@@ -192,7 +208,6 @@ function resolveContextWindowTokens(provider: ProviderRecord | null, model: stri
     return null
   }
 
-  const normalizedCurrentModel = normalizeModelIdentifier(model)
   const normalizedProviderModel = normalizeModelIdentifier(provider.selectedModel)
   if (normalizedCurrentModel.length === 0 || normalizedCurrentModel !== normalizedProviderModel) {
     return null

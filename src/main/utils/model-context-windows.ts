@@ -12,6 +12,8 @@ const KNOWN_MODEL_CONTEXT_WINDOW_TOKENS = new Map<string, number>([
   ['gemini-2.5-flash', 1_048_576]
 ])
 
+export type ModelContextWindowTokensByModel = Record<string, number>
+
 function normalizeModelKey(value: string): string {
   const trimmedValue = value.trim().toLowerCase()
   return trimmedValue.startsWith('models/') ? trimmedValue.slice('models/'.length) : trimmedValue
@@ -38,4 +40,33 @@ export function normalizeModelContextWindowTokens(value: unknown): number | null
   }
 
   return Math.round(numericValue)
+}
+
+export function deriveModelContextWindowTokensByModel(input: {
+  selectedModel: string
+  selectedModelContextWindowTokens?: unknown
+  providerModels?: readonly string[] | null
+}): ModelContextWindowTokensByModel | null {
+  const entries = new Map<string, number>()
+
+  for (const model of input.providerModels ?? []) {
+    const normalizedModel = normalizeModelKey(model)
+    const inferredContextWindowTokens = inferKnownModelContextWindowTokens(model)
+    if (normalizedModel.length === 0 || !inferredContextWindowTokens) {
+      continue
+    }
+
+    entries.set(normalizedModel, inferredContextWindowTokens)
+  }
+
+  const normalizedSelectedModel = normalizeModelKey(input.selectedModel)
+  const selectedModelContextWindowTokens =
+    normalizeModelContextWindowTokens(input.selectedModelContextWindowTokens) ??
+    inferKnownModelContextWindowTokens(input.selectedModel)
+
+  if (normalizedSelectedModel.length > 0 && selectedModelContextWindowTokens) {
+    entries.set(normalizedSelectedModel, selectedModelContextWindowTokens)
+  }
+
+  return entries.size > 0 ? Object.fromEntries(entries) : null
 }

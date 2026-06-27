@@ -76,6 +76,27 @@ describe('providers route', () => {
     expect(body.providerModels).toEqual(['MiniMax-M2.5', 'MiniMax-M2.5-lightning'])
   })
 
+  it('derives exact per-model context limits from known provider presets', async () => {
+    const response = await app.request('http://localhost/v1/providers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'OpenAI',
+        type: 'openai',
+        apiKey: 'test-key',
+        selectedModel: 'gpt-5',
+        providerModels: ['gpt-5-mini', 'custom-model']
+      })
+    })
+
+    expect(response.status).toBe(201)
+    const body = await response.json()
+    expect(body.modelContextWindowTokensByModel).toEqual({
+      'gpt-5': 400000,
+      'gpt-5-mini': 400000
+    })
+  })
+
   it('creates ACP providers without an API key', async () => {
     const response = await app.request('http://localhost/v1/providers', {
       method: 'POST',

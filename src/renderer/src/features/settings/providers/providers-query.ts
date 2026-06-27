@@ -19,6 +19,7 @@ export type ProviderRecord = {
   apiHost: string | null
   selectedModel: string
   selectedModelContextWindowTokens?: number | null
+  modelContextWindowTokensByModel?: Record<string, number> | null
   providerModels: string[] | null
   enabled: boolean
   supportsVision: boolean

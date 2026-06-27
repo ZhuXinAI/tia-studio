@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import type { AppDatabase } from '../client'
 import {
+  deriveModelContextWindowTokensByModel,
   inferKnownModelContextWindowTokens,
-  normalizeModelContextWindowTokens
+  normalizeModelContextWindowTokens,
+  type ModelContextWindowTokensByModel
 } from '../../utils/model-context-windows'
 
 export type ProviderType = 'openai' | 'openai-response' | 'gemini' | 'anthropic' | 'ollama' | string
@@ -15,6 +17,7 @@ export type AppProvider = {
   apiHost: string | null
   selectedModel: string
   selectedModelContextWindowTokens: number | null
+  modelContextWindowTokensByModel?: ModelContextWindowTokensByModel | null
   providerModels: string[] | null
   enabled: boolean
   supportsVision: boolean
@@ -43,21 +46,48 @@ export type CreateProviderInput = {
 
 export type UpdateProviderInput = Partial<CreateProviderInput>
 
+function parseProviderModels(value: unknown): string[] | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (!Array.isArray(parsed)) {
+      return null
+    }
+
+    const providerModels = parsed
+      .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+      .filter((entry) => entry.length > 0)
+
+    return providerModels.length > 0 ? providerModels : null
+  } catch {
+    return null
+  }
+}
+
 function parseProviderRow(row: Record<string, unknown>): AppProvider {
+  const selectedModel = String(row.selected_model)
+  const selectedModelContextWindowTokens = normalizeModelContextWindowTokens(
+    row.selected_model_context_window_tokens
+  )
+  const providerModels = parseProviderModels(row.provider_models)
+
   return {
     id: String(row.id),
     name: String(row.name),
     type: String(row.type),
     apiKey: String(row.api_key),
     apiHost: row.api_host ? String(row.api_host) : null,
-    selectedModel: String(row.selected_model),
-    selectedModelContextWindowTokens: normalizeModelContextWindowTokens(
-      row.selected_model_context_window_tokens
-    ),
-    providerModels:
-      typeof row.provider_models === 'string'
-        ? (JSON.parse(row.provider_models) as string[])
-        : null,
+    selectedModel,
+    selectedModelContextWindowTokens,
+    modelContextWindowTokensByModel: deriveModelContextWindowTokensByModel({
+      selectedModel,
+      selectedModelContextWindowTokens,
+      providerModels
+    }),
+    providerModels,
     enabled: Number(row.enabled) === 1,
     supportsVision: Number(row.supports_vision) === 1,
     isBuiltIn: Number(row.is_built_in) === 1,

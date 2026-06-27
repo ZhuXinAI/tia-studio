@@ -306,6 +306,103 @@ describe('ThreadChatCard', () => {
     expect(statusBarHtml).toContain('165 of 400,000 model-context tokens used')
   })
 
+  it('shows a real context-window reference for thread override models with exact metadata', () => {
+    mockThreadMessages.length = 0
+    useAppV2ShellStatusBarMock.mockClear()
+
+    renderToString(
+      <ThreadChatCard
+        {...createDefaultProps()}
+        providers={[
+          {
+            ...createDefaultProps().providers[0],
+            selectedModelContextWindowTokens: 400_000,
+            providerModels: ['gpt-5', 'gpt-5-mini'],
+            modelContextWindowTokensByModel: {
+              'gpt-5': 400_000,
+              'gpt-5-mini': 400_000
+            }
+          }
+        ]}
+        selectedThread={{
+          id: 'thread-1',
+          assistantId: 'assistant-1',
+          resourceId: 'default-profile',
+          title: 'Usage thread',
+          lastMessageAt: '2026-03-01T00:00:00.000Z',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+          metadata: {
+            providerOverride: {
+              providerId: 'provider-1',
+              model: 'gpt-5-mini'
+            }
+          }
+        }}
+        tokenUsage={{
+          assistantMessageCount: 2,
+          inputTokens: 120,
+          outputTokens: 45,
+          totalTokens: 165,
+          reasoningTokens: 9,
+          cachedInputTokens: 18
+        }}
+      />
+    )
+
+    const statusBarHtml = renderStatusBarContent()
+    expect(statusBarHtml).toContain('gpt-5-mini')
+    expect(statusBarHtml).toContain('165 / 400K')
+    expect(statusBarHtml).toContain('165 of 400,000 model-context tokens used')
+  })
+
+  it('keeps raw token counts when the active model has no exact context metadata', () => {
+    mockThreadMessages.length = 0
+    useAppV2ShellStatusBarMock.mockClear()
+
+    renderToString(
+      <ThreadChatCard
+        {...createDefaultProps()}
+        providers={[
+          {
+            ...createDefaultProps().providers[0],
+            selectedModelContextWindowTokens: 400_000,
+            modelContextWindowTokensByModel: {
+              'gpt-5': 400_000
+            }
+          }
+        ]}
+        selectedThread={{
+          id: 'thread-1',
+          assistantId: 'assistant-1',
+          resourceId: 'default-profile',
+          title: 'Usage thread',
+          lastMessageAt: '2026-03-01T00:00:00.000Z',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+          metadata: {
+            providerOverride: {
+              providerId: 'provider-1',
+              model: 'gpt-5.4'
+            }
+          }
+        }}
+        tokenUsage={{
+          assistantMessageCount: 2,
+          inputTokens: 120,
+          outputTokens: 45,
+          totalTokens: 165,
+          reasoningTokens: 9,
+          cachedInputTokens: 18
+        }}
+      />
+    )
+
+    const statusBarHtml = renderStatusBarContent()
+    expect(statusBarHtml).toContain('165 tokens')
+    expect(statusBarHtml).not.toContain('165 / 400K')
+  })
+
   it('shows stop action while streaming a response', () => {
     mockThreadMessages.length = 0
     useAISDKRuntimeMock.mockClear()
