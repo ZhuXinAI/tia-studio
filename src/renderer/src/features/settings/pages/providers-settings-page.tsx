@@ -1,4 +1,4 @@
-import { Check, Search, Trash2 } from 'lucide-react'
+import { Check, Plus, Search, Sparkles, Star, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { toast } from 'sonner'
@@ -43,7 +43,10 @@ type ProviderFormInitialValue = {
   providerModelsText: string
   supportsVision: boolean
   enabled: boolean
+  isDefault: boolean
 }
+
+type CreateProviderMode = 'preset' | 'custom'
 
 function toProviderTypeLabel(type: ProviderRecord['type'], t: (key: string) => string): string {
   switch (type) {
@@ -73,7 +76,6 @@ function getProviderAvatarPath(icon: string | null): string | null {
     return null
   }
 
-  // Map icon names to imported image modules
   const iconMap: Record<string, string> = {
     minimax: minimaxLogo,
     glm: glmLogo,
@@ -94,6 +96,24 @@ function getProviderInitials(name: string): string {
     .join('')
     .toUpperCase()
     .slice(0, 2)
+}
+
+function isVisibleProvider(provider: ProviderRecord): boolean {
+  return provider.isAdded !== false
+}
+
+function sortProviders(providers: ProviderRecord[]): ProviderRecord[] {
+  return [...providers].sort((left, right) => {
+    if (Boolean(left.isDefault) !== Boolean(right.isDefault)) {
+      return left.isDefault ? -1 : 1
+    }
+
+    if (left.enabled !== right.enabled) {
+      return left.enabled ? -1 : 1
+    }
+
+    return left.name.localeCompare(right.name)
+  })
 }
 
 function toErrorMessage(
@@ -134,7 +154,26 @@ function toInitialFormValue(provider: ProviderRecord | null): ProviderFormInitia
     selectedModel: provider.selectedModel,
     providerModelsText: provider.providerModels?.join('\n') ?? '',
     supportsVision: provider.supportsVision,
-    enabled: provider.enabled
+    enabled: provider.enabled,
+    isDefault: provider.isDefault === true
+  }
+}
+
+function toPresetFormValue(provider: ProviderRecord | null): ProviderFormInitialValue | undefined {
+  if (!provider) {
+    return undefined
+  }
+
+  return {
+    name: provider.name,
+    type: provider.type,
+    apiKey: provider.apiKey,
+    apiHost: provider.apiHost ?? '',
+    selectedModel: provider.selectedModel,
+    providerModelsText: provider.providerModels?.join('\n') ?? '',
+    supportsVision: provider.supportsVision,
+    enabled: true,
+    isDefault: false
   }
 }
 
@@ -148,60 +187,107 @@ export function ProvidersSettingsPage(): React.JSX.Element {
   const [isTestingConnection, setIsTestingConnection] = useState(false)
   const [isDeletingProviderId, setIsDeletingProviderId] = useState<string | null>(null)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [createMode, setCreateMode] = useState<CreateProviderMode>('preset')
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null)
+
+  const visibleProviders = useMemo(
+    () => sortProviders(providers.filter((provider) => isVisibleProvider(provider))),
+    [providers]
+  )
+  const presetProviders = useMemo(
+    () => sortProviders(providers.filter((provider) => provider.isBuiltIn)),
+    [providers]
+  )
+  const availablePresetProviders = useMemo(
+    () => presetProviders.filter((provider) => !provider.isAdded),
+    [presetProviders]
+  )
 
   const selectedProvider = useMemo(() => {
     if (!selectedProviderId) {
       return null
     }
 
-    return providers.find((provider) => provider.id === selectedProviderId) ?? null
-  }, [providers, selectedProviderId])
+    return visibleProviders.find((provider) => provider.id === selectedProviderId) ?? null
+  }, [selectedProviderId, visibleProviders])
 
   const filteredProviders = useMemo(() => {
     const query = providerSearchQuery.trim().toLowerCase()
-    let filtered = providers
-
-    if (query.length > 0) {
-      filtered = providers.filter((provider) => {
-        return [provider.name, provider.selectedModel, toProviderTypeLabel(provider.type, t)].some(
-          (value) => value.toLowerCase().includes(query)
-        )
-      })
+    if (query.length === 0) {
+      return visibleProviders
     }
 
-    // Sort: enabled first, then alphabetically by name
-    return filtered.sort((a, b) => {
-      if (a.enabled !== b.enabled) {
-        return a.enabled ? -1 : 1
-      }
-      return a.name.localeCompare(b.name)
+    return visibleProviders.filter((provider) => {
+      return [provider.name, provider.selectedModel, toProviderTypeLabel(provider.type, t)].some(
+        (value) => value.toLowerCase().includes(query)
+      )
     })
-  }, [providerSearchQuery, providers, t])
+  }, [providerSearchQuery, t, visibleProviders])
+
+  const selectedPresetProvider = useMemo(() => {
+    if (!selectedPresetId) {
+      return availablePresetProviders.at(0) ?? null
+    }
+
+    return availablePresetProviders.find((provider) => provider.id === selectedPresetId) ?? null
+  }, [availablePresetProviders, selectedPresetId])
+
+  const syncProviders = useCallback((nextProviders: ProviderRecord[]): void => {
+    queryClient.setQueryData(providerKeys.lists(), nextProviders)
+    setProviders(nextProviders)
+  }, [])
 
   const refreshProviders = useCallback(async () => {
     setIsLoading(true)
     try {
       const nextProviders = await listProviders()
-      queryClient.setQueryData(providerKeys.lists(), nextProviders)
-      setProviders(nextProviders)
+      const nextVisibleProviders = sortProviders(
+        nextProviders.filter((provider) => isVisibleProvider(provider))
+      )
+      syncProviders(nextProviders)
       setSelectedProviderId((currentProviderId) => {
         if (
           currentProviderId &&
-          nextProviders.some((provider) => provider.id === currentProviderId)
+          nextVisibleProviders.some((provider) => provider.id === currentProviderId)
         ) {
           return currentProviderId
         }
 
-        return nextProviders.at(0)?.id ?? null
+        return nextVisibleProviders.at(0)?.id ?? null
       })
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [syncProviders])
 
   useEffect(() => {
     void refreshProviders()
   }, [refreshProviders])
+
+  useEffect(() => {
+    if (!isCreateDialogOpen) {
+      return
+    }
+
+    if (createMode === 'preset' && availablePresetProviders.length === 0) {
+      setCreateMode('custom')
+      setSelectedPresetId(null)
+      return
+    }
+
+    if (
+      createMode === 'preset' &&
+      !availablePresetProviders.some((provider) => provider.id === selectedPresetId)
+    ) {
+      setSelectedPresetId(availablePresetProviders.at(0)?.id ?? null)
+    }
+  }, [availablePresetProviders, createMode, isCreateDialogOpen, selectedPresetId])
+
+  const openCreateDialog = (): void => {
+    setCreateMode(availablePresetProviders.length > 0 ? 'preset' : 'custom')
+    setSelectedPresetId(availablePresetProviders.at(0)?.id ?? null)
+    setIsCreateDialogOpen(true)
+  }
 
   const closeCreateDialog = (): void => {
     if (isSubmitting || isTestingConnection) {
@@ -223,10 +309,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
     setIsSubmitting(true)
 
     try {
-      const updatedProvider = await updateProvider(selectedProvider.id, {
-        ...values,
-        enabled: true
-      })
+      const updatedProvider = await updateProvider(selectedProvider.id, values)
       setProviders((currentProviders) => {
         const nextProviders = currentProviders.map((provider) =>
           provider.id === updatedProvider.id ? updatedProvider : provider
@@ -248,13 +331,46 @@ export function ProvidersSettingsPage(): React.JSX.Element {
     setIsSubmitting(true)
 
     try {
-      const createdProvider = await createProvider(values)
+      const createdProvider = await createProvider({
+        ...values,
+        isAdded: true
+      })
       setProviders((currentProviders) => {
         const nextProviders = [createdProvider, ...currentProviders]
         queryClient.setQueryData(providerKeys.lists(), nextProviders)
         return nextProviders
       })
       setSelectedProviderId(createdProvider.id)
+      setIsCreateDialogOpen(false)
+      toast.success(t('settings.providers.toasts.providerCreated'))
+    } catch (error) {
+      toast.error(toErrorMessage(error, t))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleAddPresetProvider = async (values: SaveProviderInput): Promise<void> => {
+    if (!selectedPresetProvider) {
+      toast.error(t('settings.providers.toasts.providerNotFound'))
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      const updatedProvider = await updateProvider(selectedPresetProvider.id, {
+        ...values,
+        isAdded: true
+      })
+      setProviders((currentProviders) => {
+        const nextProviders = currentProviders.map((provider) =>
+          provider.id === updatedProvider.id ? updatedProvider : provider
+        )
+        queryClient.setQueryData(providerKeys.lists(), nextProviders)
+        return nextProviders
+      })
+      setSelectedProviderId(updatedProvider.id)
       setIsCreateDialogOpen(false)
       toast.success(t('settings.providers.toasts.providerCreated'))
     } catch (error) {
@@ -299,12 +415,15 @@ export function ProvidersSettingsPage(): React.JSX.Element {
       setProviders((currentProviders) => {
         const nextProviders = currentProviders.filter((item) => item.id !== selectedProvider.id)
         queryClient.setQueryData(providerKeys.lists(), nextProviders)
+        const nextVisibleProviders = sortProviders(
+          nextProviders.filter((provider) => isVisibleProvider(provider))
+        )
         setSelectedProviderId((currentProviderId) => {
           if (currentProviderId !== selectedProvider.id) {
             return currentProviderId
           }
 
-          return nextProviders.at(0)?.id ?? null
+          return nextVisibleProviders.at(0)?.id ?? null
         })
 
         return nextProviders
@@ -326,13 +445,12 @@ export function ProvidersSettingsPage(): React.JSX.Element {
         <div className="min-h-0 flex flex-1 overflow-hidden">
           <aside className="flex h-full min-h-0 w-[360px] flex-col overflow-hidden border-r border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel-soft)_58%,transparent))]">
             <div className="flex items-start justify-between gap-3 border-b border-[color:var(--surface-border)] px-5 py-5">
-              <div className="space-y-2">
-                <p className="section-kicker">Model catalog</p>
+              <div className="space-y-1">
                 <h2 className="font-editorial text-[1.55rem] leading-none tracking-[-0.03em]">
-                  {t('settings.providers.sidebarTitle')}
+                  Added providers
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Local provider profiles for Chats and workspace drafting.
+                  {visibleProviders.length} saved {visibleProviders.length === 1 ? 'provider' : 'providers'}
                 </p>
               </div>
               <Button
@@ -340,17 +458,16 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                 variant="outline"
                 size="sm"
                 className="mt-1 shrink-0"
-                onClick={() => {
-                  setIsCreateDialogOpen(true)
-                }}
+                onClick={openCreateDialog}
               >
-                {t('settings.providers.newButton')}
+                <Plus className="size-4" />
+                Add Provider
               </Button>
             </div>
 
             <div className="border-b border-[color:var(--surface-border)] px-4 py-4">
               <div className="relative rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-1 py-1 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_44%,transparent)]">
-                <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2" />
+                <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   data-provider-search-input
                   placeholder={t('settings.providers.searchPlaceholder')}
@@ -363,17 +480,21 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
             <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
               {isLoading ? (
-                <p className="text-muted-foreground px-2 py-3 text-sm">
+                <p className="px-2 py-3 text-sm text-muted-foreground">
                   {t('settings.providers.loading')}
                 </p>
               ) : null}
-              {!isLoading && providers.length === 0 ? (
-                <p className="text-muted-foreground px-2 py-3 text-sm">
-                  {t('settings.providers.empty')}
-                </p>
+              {!isLoading && visibleProviders.length === 0 ? (
+                <div className="space-y-3 px-2 py-3 text-sm text-muted-foreground">
+                  <p>{t('settings.providers.empty')}</p>
+                  <Button type="button" variant="outline" size="sm" onClick={openCreateDialog}>
+                    <Plus className="size-4" />
+                    Add your first provider
+                  </Button>
+                </div>
               ) : null}
-              {!isLoading && providers.length > 0 && filteredProviders.length === 0 ? (
-                <p className="text-muted-foreground px-2 py-3 text-sm">
+              {!isLoading && visibleProviders.length > 0 && filteredProviders.length === 0 ? (
+                <p className="px-2 py-3 text-sm text-muted-foreground">
                   {t('settings.providers.emptySearch')}
                 </p>
               ) : null}
@@ -410,15 +531,27 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                           </AvatarFallback>
                         </Avatar>
                         <div className="space-y-1">
-                          <p className="text-base font-semibold">{provider.name}</p>
-                          <p className="text-muted-foreground text-sm">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-base font-semibold">{provider.name}</p>
+                            {provider.isDefault ? (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-2 py-0.5 text-[10px] font-medium text-foreground">
+                                <Star className="size-3" />
+                                Default
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
                             {toProviderTypeLabel(provider.type, t)} / {provider.selectedModel}
                           </p>
                         </div>
                       </div>
                       {provider.enabled ? (
-                        <Check className="text-primary mt-1 size-4 shrink-0" />
-                      ) : null}
+                        <Check className="mt-1 size-4 shrink-0 text-primary" />
+                      ) : (
+                        <span className="mt-1 rounded-full bg-[color:var(--surface-muted)] px-2 py-0.5 text-[10px] text-muted-foreground">
+                          Disabled
+                        </span>
+                      )}
                     </button>
                   )
                 })}
@@ -426,17 +559,16 @@ export function ProvidersSettingsPage(): React.JSX.Element {
             </div>
           </aside>
 
-          <Card className="rounded-none border-none flex h-full min-h-0 flex-1 flex-col bg-transparent py-0 shadow-none">
+          <Card className="flex h-full min-h-0 flex-1 flex-col rounded-none border-none bg-transparent py-0 shadow-none">
             <CardHeader className="border-b border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_90%,transparent),color-mix(in_srgb,var(--surface-panel-soft)_54%,transparent))] py-5">
               <div className="space-y-2">
-                <p className="section-kicker">Credential editing</p>
                 <CardTitle className="font-editorial text-[1.9rem] leading-none tracking-[-0.03em]">
                   {selectedProvider?.name ?? 'Provider details'}
                 </CardTitle>
                 <p className="max-w-2xl text-sm text-muted-foreground">
                   {selectedProvider
-                    ? 'Adjust model routing, credentials, and capability flags without leaving this workspace-first shell.'
-                    : t('settings.providers.selectPrompt')}
+                    ? 'Update credentials, model routing, and default behavior without leaving this shell.'
+                    : 'Add a preset or custom provider to make it available for new chats.'}
                 </p>
               </div>
             </CardHeader>
@@ -454,11 +586,17 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                         Current model: {selectedProvider.selectedModel}
                       </p>
                     </div>
-                    {selectedProvider.enabled ? (
-                      <span className="text-primary inline-flex items-center rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 py-1 text-xs font-medium">
-                        Enabled
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 py-1 text-xs font-medium text-foreground">
+                        {selectedProvider.enabled ? 'Enabled' : 'Disabled'}
                       </span>
-                    ) : null}
+                      {selectedProvider.isDefault ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 py-1 text-xs font-medium text-foreground">
+                          <Star className="size-3.5" />
+                          Default
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
 
                   {selectedProvider.isBuiltIn && selectedProvider.officialSite ? (
@@ -516,9 +654,25 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                   ) : null}
                 </div>
               ) : (
-                <p className="text-muted-foreground text-sm">
-                  {t('settings.providers.selectPrompt')}
-                </p>
+                <div className="flex min-h-full items-center justify-center">
+                  <div className="space-y-4 rounded-[1.4rem] border border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_98%,transparent),color-mix(in_srgb,var(--surface-panel)_68%,transparent))] px-8 py-8 text-center">
+                    <div className="mx-auto grid size-12 place-items-center rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)]">
+                      <Sparkles className="size-5 text-primary" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-editorial text-[1.4rem] leading-none tracking-[-0.02em]">
+                        No provider selected
+                      </p>
+                      <p className="max-w-md text-sm text-muted-foreground">
+                        Add a preset or custom provider, then pick the one you want to manage.
+                      </p>
+                    </div>
+                    <Button type="button" variant="outline" onClick={openCreateDialog}>
+                      <Plus className="size-4" />
+                      Add Provider
+                    </Button>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -529,15 +683,15 @@ export function ProvidersSettingsPage(): React.JSX.Element {
         open={isCreateDialogOpen}
         onOpenChange={(open) => {
           if (open) {
-            setIsCreateDialogOpen(true)
+            openCreateDialog()
             return
           }
 
           closeCreateDialog()
         }}
       >
-        <DialogContent className="max-w-4xl gap-5">
-          <DialogHeader className="space-y-2">
+        <DialogContent className="flex max-h-[80vh] max-w-5xl flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="space-y-2 border-b border-[color:var(--surface-border)] px-6 py-5">
             <p className="section-kicker">New credential set</p>
             <DialogTitle>{t('settings.providers.createDialog.title')}</DialogTitle>
             <DialogDescription>
@@ -545,14 +699,106 @@ export function ProvidersSettingsPage(): React.JSX.Element {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="rounded-[1.1rem] border border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel-soft)_70%,transparent))] p-4">
-            <ProvidersForm
-              key="new-provider"
-              isSubmitting={isSubmitting}
-              isTestingConnection={isTestingConnection}
-              onSubmit={handleCreateProvider}
-              onTestConnection={handleTestConnection}
-            />
+          <div
+            data-provider-create-dialog-body="true"
+            className="min-h-0 flex-1 overflow-y-auto px-6 py-5"
+          >
+            <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  className={cn(
+                    'w-full rounded-[1.1rem] border px-4 py-4 text-left transition-colors',
+                    createMode === 'custom'
+                      ? 'border-[color:var(--surface-border-strong)] bg-[color:var(--surface-active)] shadow-[inset_0_0_0_1px_var(--surface-active-strong)]'
+                      : 'border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] hover:bg-[color:var(--surface-muted)]'
+                  )}
+                  onClick={() => {
+                    setCreateMode('custom')
+                  }}
+                >
+                  <p className="font-editorial text-[1.2rem] leading-none tracking-[-0.02em]">
+                    Custom provider
+                  </p>
+                  <p className="pt-2 text-sm text-muted-foreground">
+                    Start from scratch with your own provider name, type, and endpoint.
+                  </p>
+                </button>
+
+                <div className="space-y-2">
+                  <p className="section-kicker">Presets</p>
+                  {availablePresetProviders.length > 0 ? (
+                    availablePresetProviders.map((provider) => {
+                      const avatarPath = getProviderAvatarPath(provider.icon)
+                      const initials = getProviderInitials(provider.name)
+                      const isActive =
+                        createMode === 'preset' && selectedPresetProvider?.id === provider.id
+
+                      return (
+                        <button
+                          key={provider.id}
+                          type="button"
+                          className={cn(
+                            'flex w-full items-start gap-3 rounded-[1rem] border px-4 py-3 text-left transition-colors',
+                            isActive
+                              ? 'border-[color:var(--surface-border-strong)] bg-[color:var(--surface-active)] shadow-[inset_0_0_0_1px_var(--surface-active-strong)]'
+                              : 'border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] hover:bg-[color:var(--surface-muted)]'
+                          )}
+                          onClick={() => {
+                            setCreateMode('preset')
+                            setSelectedPresetId(provider.id)
+                          }}
+                        >
+                          <Avatar className="h-10 w-10 shrink-0">
+                            {avatarPath ? (
+                              <AvatarImage src={avatarPath} alt={provider.name} />
+                            ) : null}
+                            <AvatarFallback className="text-xs font-semibold">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="space-y-1">
+                            <p className="font-medium text-foreground">{provider.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {provider.selectedModel}
+                            </p>
+                          </div>
+                        </button>
+                      )
+                    })
+                  ) : (
+                    <p className="rounded-[1rem] border border-dashed border-[color:var(--surface-border)] px-4 py-4 text-sm text-muted-foreground">
+                      All preset providers are already added. Create a custom provider if you need another profile.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-[1.1rem] border border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel-soft)_70%,transparent))] p-4">
+                {createMode === 'custom' || !selectedPresetProvider ? (
+                  <ProvidersForm
+                    key="new-provider"
+                    isSubmitting={isSubmitting}
+                    isTestingConnection={isTestingConnection}
+                    stickyActions
+                    onSubmit={handleCreateProvider}
+                    onTestConnection={handleTestConnection}
+                  />
+                ) : (
+                  <ProvidersForm
+                    key={selectedPresetProvider.id}
+                    initialValue={toPresetFormValue(selectedPresetProvider)}
+                    isPrebuilt={Boolean(selectedPresetProvider.providerModels?.length)}
+                    isBuiltIn
+                    isSubmitting={isSubmitting}
+                    isTestingConnection={isTestingConnection}
+                    stickyActions
+                    onSubmit={handleAddPresetProvider}
+                    onTestConnection={handleTestConnection}
+                  />
+                )}
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

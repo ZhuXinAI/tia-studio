@@ -158,7 +158,7 @@ describe('providers settings page', () => {
     await flushAsyncWork()
 
     const newProviderButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('+ New')
+      button.textContent?.includes('Add Provider')
     )
     expect(newProviderButton).toBeDefined()
 
@@ -170,6 +170,44 @@ describe('providers settings page', () => {
     expect(document.body.textContent).toContain('New Model Provider')
     expect(document.body.textContent).toContain('Provider Name')
     expect(document.body.textContent).toContain('Save Provider')
+  })
+
+  it('keeps the create-provider dialog viewport-safe with a sticky action row', async () => {
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ProvidersSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const newProviderButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Add Provider')
+    )
+    expect(newProviderButton).toBeDefined()
+
+    await act(async () => {
+      newProviderButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    const dialog = document.body.querySelector('[role="dialog"]') as HTMLElement | null
+    expect(dialog).not.toBeNull()
+    expect(dialog?.className).toContain('max-h-[80vh]')
+
+    const dialogBody = dialog?.querySelector(
+      '[data-provider-create-dialog-body="true"]'
+    ) as HTMLElement | null
+    expect(dialogBody).not.toBeNull()
+    expect(dialogBody?.className).toContain('overflow-y-auto')
+
+    const actions = dialog?.querySelector(
+      '[data-provider-form-actions="sticky"]'
+    ) as HTMLElement | null
+    expect(actions).not.toBeNull()
+    expect(actions?.className).toContain('sticky')
+    expect(actions?.textContent).toContain('Save Provider')
   })
 
   it('shows searchable provider sidebar without legacy heading copy', async () => {
@@ -229,7 +267,7 @@ describe('providers settings page', () => {
     await flushAsyncWork()
 
     const newProviderButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('+ New')
+      button.textContent?.includes('Add Provider')
     )
     expect(newProviderButton).toBeDefined()
 
