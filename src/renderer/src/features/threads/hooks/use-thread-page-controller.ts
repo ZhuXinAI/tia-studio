@@ -476,6 +476,7 @@ export function useThreadPageController() {
       providers.find(
         (provider) => provider.id === workspaceDefaultAssistant?.providerId && provider.enabled
       ) ??
+      providers.find((provider) => provider.isDefault && provider.enabled) ??
       providers[0] ??
       null
     const nextProviderId =

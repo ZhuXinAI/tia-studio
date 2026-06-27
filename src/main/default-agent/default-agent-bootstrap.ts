@@ -75,8 +75,21 @@ function pickDefaultProviderId(
     id: string
     enabled: boolean
     selectedModel: string
+    isDefault?: boolean
   }>
 ): string | null {
+  for (const provider of providers) {
+    if (!provider.isDefault || !provider.enabled) {
+      continue
+    }
+
+    if (provider.selectedModel.trim().length === 0) {
+      continue
+    }
+
+    return provider.id
+  }
+
   for (const provider of providers) {
     if (!provider.enabled) {
       continue

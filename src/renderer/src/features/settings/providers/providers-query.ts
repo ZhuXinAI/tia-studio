@@ -24,6 +24,8 @@ export type ProviderRecord = {
   enabled: boolean
   supportsVision: boolean
   isBuiltIn: boolean
+  isAdded?: boolean
+  isDefault?: boolean
   icon: string | null
   officialSite: string | null
   createdAt: string
@@ -40,6 +42,8 @@ export type SaveProviderInput = {
   providerModels?: string[]
   enabled?: boolean
   supportsVision?: boolean
+  isAdded?: boolean
+  isDefault?: boolean
 }
 
 type ProviderConnectionTestResult = {

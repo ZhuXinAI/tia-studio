@@ -3,11 +3,9 @@ import {
   Bot,
   Check,
   ChevronDown,
-  CircleDot,
   DatabaseZap,
   Gauge,
   Link2,
-  MessageSquare,
   SendHorizontal
 } from 'lucide-react'
 import type { UIMessage } from 'ai'
@@ -725,9 +723,7 @@ export function ThreadChatCard({
     [chatMessages, tokenUsage]
   )
   const shellStatusContent = useMemo(() => {
-    const workspaceLabel = selectedWorkspace?.name ?? 'Chats'
     const originLabel = hasRemoteBinding ? 'Remote channel' : 'Direct chat'
-    const stateLabel = isChatStreaming ? 'Running' : selectedThread ? 'Idle' : 'Ready to start'
     const contextWindowTokens = resolveContextWindowTokens(selectedProvider, currentModelLabel)
     const usageLabel = effectiveTokenUsage
       ? contextWindowTokens && contextWindowTokens > 0
@@ -748,18 +744,13 @@ export function ThreadChatCard({
           <StatusBarItem icon={Gauge} label={usageLabel} />
         )}
         <StatusBarItem icon={Link2} label={originLabel} />
-        <StatusBarItem icon={CircleDot} label={stateLabel} />
-        <StatusBarItem icon={MessageSquare} label={workspaceLabel} />
       </>
     )
   }, [
     currentModelLabel,
     selectedProvider,
     hasRemoteBinding,
-    isChatStreaming,
     effectiveTokenUsage,
-    selectedThread,
-    selectedWorkspace?.name,
     t
   ])
   useAppV2ShellStatusBar(shellStatusContent)

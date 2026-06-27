@@ -384,7 +384,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
 
       <div className="w-full">
         <Card className="overflow-hidden border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_98%,transparent),color-mix(in_srgb,var(--surface-panel)_74%,transparent))]">
-          <CardHeader className="flex flex-row items-center justify-between gap-4 border-b border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] py-4 px-6">
+          <CardHeader className="flex flex-row items-center justify-between gap-4 border-b border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-panel-strong)_74%,transparent),color-mix(in_srgb,var(--surface-panel)_94%,transparent))] px-6 py-4">
             <div className="flex flex-row items-center gap-6">
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2 w-2">

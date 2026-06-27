@@ -91,8 +91,8 @@ export function SettingsSidebarNav(): React.JSX.Element {
   }
 
   return (
-    <Sidebar className="h-full border-b-0 border-r border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)]">
-      <SidebarHeader className="space-y-3 border-b border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)]">
+    <Sidebar className="h-full border-b-0 border-r border-[color:var(--surface-border)]">
+      <SidebarHeader className="space-y-3 border-b border-[color:var(--surface-border)]">
         <Button
           asChild
           variant="ghost"

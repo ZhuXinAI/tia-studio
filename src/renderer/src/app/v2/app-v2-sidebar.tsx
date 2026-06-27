@@ -1,5 +1,4 @@
 import {
-  Bot,
   Cable,
   ChevronDown,
   ChevronRight,
@@ -58,6 +57,8 @@ function toWorkspaceName(rootPath: string): string {
 function isChatsWorkspace(workspace: WorkspaceRecord): boolean {
   return workspace.builtInKind === 'chats'
 }
+
+const sidebarActionButtonClassName = 'h-10 justify-start rounded-xl px-3 text-sm'
 
 function ThreadLink({
   thread,
@@ -416,7 +417,18 @@ export function AppV2Sidebar({
           </div>
         </div>
 
-        <Button asChild className="w-full justify-start">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            ref={workspaceSearchInputRef}
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search workspaces"
+            className="h-10 rounded-xl pl-8 text-sm"
+          />
+        </div>
+
+        <Button asChild className={cn('w-full', sidebarActionButtonClassName)}>
           <NavLink to={newChatHref}>
             <MessageSquarePlus className="size-4" />
             New Chat
@@ -425,25 +437,20 @@ export function AppV2Sidebar({
 
         <div className="grid gap-1.5">
           <Button
-            type="button"
+            asChild
             variant="ghost"
-            size="sm"
-            className="justify-start text-muted-foreground"
-            onClick={() => {
-              setIsWorkspacesOpen(true)
-              window.requestAnimationFrame(() => workspaceSearchInputRef.current?.focus())
-            }}
+            className={cn(sidebarActionButtonClassName, 'text-muted-foreground')}
           >
-            <Search className="size-4" />
-            Search
-          </Button>
-          <Button asChild variant="ghost" size="sm" className="justify-start text-muted-foreground">
             <NavLink to="/skills">
               <Sparkles className="size-4" />
               Skills
             </NavLink>
           </Button>
-          <Button asChild variant="ghost" size="sm" className="justify-start text-muted-foreground">
+          <Button
+            asChild
+            variant="ghost"
+            className={cn(sidebarActionButtonClassName, 'text-muted-foreground')}
+          >
             <NavLink to="/automations">
               <Clock3 className="size-4" />
               Automations
@@ -475,17 +482,6 @@ export function AppV2Sidebar({
           }
         >
           <div className="space-y-3">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                ref={workspaceSearchInputRef}
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search workspaces"
-                className="h-9 pl-8 text-xs"
-              />
-            </div>
-
             <div className="space-y-1">
               {isLoading ? (
                 <p className="px-2 text-xs text-muted-foreground">Loading workspaces...</p>
@@ -569,12 +565,7 @@ export function AppV2Sidebar({
               activeThreadId={isChatsActive ? activeThreadId : null}
               isOpen={isChatsOpen}
             />
-          ) : (
-            <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
-              <Bot className="size-3.5" />
-              <span>Preparing Chats...</span>
-            </div>
-          )}
+          ) : null}
         </SidebarSection>
       </div>
 

@@ -22,6 +22,8 @@ export type AppProvider = {
   enabled: boolean
   supportsVision: boolean
   isBuiltIn: boolean
+  isAdded: boolean
+  isDefault: boolean
   icon: string | null
   officialSite: string | null
   createdAt: string
@@ -40,6 +42,8 @@ export type CreateProviderInput = {
   enabled?: boolean
   supportsVision?: boolean
   isBuiltIn?: boolean
+  isAdded?: boolean
+  isDefault?: boolean
   icon?: string | null
   officialSite?: string | null
 }
@@ -91,6 +95,8 @@ function parseProviderRow(row: Record<string, unknown>): AppProvider {
     enabled: Number(row.enabled) === 1,
     supportsVision: Number(row.supports_vision) === 1,
     isBuiltIn: Number(row.is_built_in) === 1,
+    isAdded: Number(row.is_added) === 1,
+    isDefault: Number(row.is_default) === 1,
     icon: row.icon ? String(row.icon) : null,
     officialSite: row.official_site ? String(row.official_site) : null,
     createdAt: String(row.created_at),
@@ -103,7 +109,7 @@ export class ProvidersRepository {
 
   async list(): Promise<AppProvider[]> {
     const result = await this.db.execute(
-      'SELECT id, name, type, api_key, api_host, selected_model, selected_model_context_window_tokens, provider_models, enabled, supports_vision, is_built_in, icon, official_site, created_at, updated_at FROM app_providers ORDER BY is_built_in DESC, created_at DESC'
+      'SELECT id, name, type, api_key, api_host, selected_model, selected_model_context_window_tokens, provider_models, enabled, supports_vision, is_built_in, is_added, is_default, icon, official_site, created_at, updated_at FROM app_providers ORDER BY is_default DESC, is_added DESC, is_built_in DESC, created_at DESC'
     )
 
     return result.rows.map((row) => parseProviderRow(row as Record<string, unknown>))
@@ -111,7 +117,7 @@ export class ProvidersRepository {
 
   async getById(id: string): Promise<AppProvider | null> {
     const result = await this.db.execute(
-      'SELECT id, name, type, api_key, api_host, selected_model, selected_model_context_window_tokens, provider_models, enabled, supports_vision, is_built_in, icon, official_site, created_at, updated_at FROM app_providers WHERE id = ? LIMIT 1',
+      'SELECT id, name, type, api_key, api_host, selected_model, selected_model_context_window_tokens, provider_models, enabled, supports_vision, is_built_in, is_added, is_default, icon, official_site, created_at, updated_at FROM app_providers WHERE id = ? LIMIT 1',
       [id]
     )
     const row = result.rows.at(0)
@@ -128,9 +134,14 @@ export class ProvidersRepository {
     const selectedModelContextWindowTokens =
       normalizeModelContextWindowTokens(input.selectedModelContextWindowTokens) ??
       inferKnownModelContextWindowTokens(input.selectedModel)
+    const isDefault = input.isDefault === true
+
+    if (isDefault) {
+      await this.db.execute('UPDATE app_providers SET is_default = 0 WHERE is_default = 1')
+    }
 
     await this.db.execute(
-      'INSERT INTO app_providers (id, name, type, api_key, api_host, selected_model, selected_model_context_window_tokens, provider_models, enabled, supports_vision, is_built_in, icon, official_site) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO app_providers (id, name, type, api_key, api_host, selected_model, selected_model_context_window_tokens, provider_models, enabled, supports_vision, is_built_in, is_added, is_default, icon, official_site) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
         input.name,
@@ -143,6 +154,8 @@ export class ProvidersRepository {
         input.enabled === false ? 0 : 1,
         input.supportsVision === true ? 1 : 0,
         input.isBuiltIn === true ? 1 : 0,
+        input.isAdded === false ? 0 : 1,
+        isDefault ? 1 : 0,
         input.icon ?? null,
         input.officialSite ?? null
       ]
@@ -169,9 +182,14 @@ export class ProvidersRepository {
         ? normalizeModelContextWindowTokens(input.selectedModelContextWindowTokens)
         : inferKnownModelContextWindowTokens(nextSelectedModel) ??
           (modelSelectionChanged ? null : existing.selectedModelContextWindowTokens)
+    const nextIsDefault = input.isDefault === undefined ? existing.isDefault : input.isDefault
+
+    if (nextIsDefault) {
+      await this.db.execute('UPDATE app_providers SET is_default = 0 WHERE id <> ?', [id])
+    }
 
     await this.db.execute(
-      'UPDATE app_providers SET name = ?, type = ?, api_key = ?, api_host = ?, selected_model = ?, selected_model_context_window_tokens = ?, provider_models = ?, enabled = ?, supports_vision = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE app_providers SET name = ?, type = ?, api_key = ?, api_host = ?, selected_model = ?, selected_model_context_window_tokens = ?, provider_models = ?, enabled = ?, supports_vision = ?, is_added = ?, is_default = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [
         input.name ?? existing.name,
         input.type ?? existing.type,
@@ -192,6 +210,8 @@ export class ProvidersRepository {
           : input.supportsVision
             ? 1
             : 0,
+        input.isAdded === undefined ? (existing.isAdded ? 1 : 0) : input.isAdded ? 1 : 0,
+        nextIsDefault ? 1 : 0,
         id
       ]
     )

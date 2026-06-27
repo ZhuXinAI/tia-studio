@@ -20,6 +20,8 @@ export async function ensureBuiltInProviders(providersRepo: ProvidersRepository)
       enabled: false,
       supportsVision: builtInConfig.supportsVision,
       isBuiltIn: true,
+      isAdded: false,
+      isDefault: false,
       icon: builtInConfig.icon,
       officialSite: builtInConfig.officialSite
     })

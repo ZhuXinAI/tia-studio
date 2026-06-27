@@ -46,7 +46,9 @@ const providerFieldsSchema = z.object({
   selectedModelContextWindowTokens: z.number().int().positive().nullable().optional(),
   providerModels: z.array(z.string().min(1)).optional(),
   enabled: z.boolean().optional(),
-  supportsVision: z.boolean().optional()
+  supportsVision: z.boolean().optional(),
+  isAdded: z.boolean().optional(),
+  isDefault: z.boolean().optional()
 })
 
 export const createProviderSchema = providerFieldsSchema.superRefine((input, context) => {

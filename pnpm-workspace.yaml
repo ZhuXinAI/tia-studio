@@ -1,15 +1,19 @@
 packages:
   - .
 
+allowBuilds:
+  '@whiskeysockets/baileys': true
+  bufferutil: true
+  electron: true
+  electron-winstaller: true
+  esbuild: true
+  protobufjs: true
+  sharp: true
+  wechat-kf-relay: true
+
 onlyBuiltDependencies:
   - wechat-kf-relay
 
 supportedArchitectures:
-  os:
-    - current
-    - darwin
-    - win32
-  cpu:
-    - current
-    - x64
-    - arm64
+  cpu: [current, x64, arm64]
+  os: [current, darwin, win32]

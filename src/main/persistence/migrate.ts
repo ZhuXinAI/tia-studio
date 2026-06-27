@@ -94,6 +94,22 @@ async function ensureBuiltInProviderColumns(db: AppDatabase): Promise<void> {
   }
 }
 
+async function ensureProviderManagementColumns(db: AppDatabase): Promise<void> {
+  const tableInfo = await db.execute("PRAGMA table_info('app_providers')")
+  const columns = tableInfo.rows.map((row) => String((row as Record<string, unknown>).name))
+
+  if (!columns.includes('is_added')) {
+    await db.execute('ALTER TABLE app_providers ADD COLUMN is_added INTEGER NOT NULL DEFAULT 1')
+    await db.execute(
+      "UPDATE app_providers SET is_added = CASE WHEN is_built_in = 1 AND enabled = 0 AND trim(coalesce(api_key, '')) = '' THEN 0 ELSE 1 END"
+    )
+  }
+
+  if (!columns.includes('is_default')) {
+    await db.execute('ALTER TABLE app_providers ADD COLUMN is_default INTEGER NOT NULL DEFAULT 0')
+  }
+}
+
 async function ensureProviderSelectedModelContextWindowTokensColumn(
   db: AppDatabase
 ): Promise<void> {
@@ -383,6 +399,7 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   await ensureProviderSupportsVisionColumn(db)
   await ensureProviderSelectedModelContextWindowTokensColumn(db)
   await ensureBuiltInProviderColumns(db)
+  await ensureProviderManagementColumns(db)
   await ensureWorkspaceTables(db)
   await removeLegacyResetTables(db)
   await ensureChannelsTables(db)

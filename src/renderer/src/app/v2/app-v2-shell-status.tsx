@@ -78,12 +78,7 @@ export function AppV2ShellRouteStatus({
     )
   }
 
-  return (
-    <>
-      <StatusItem icon={MessageSquare} label="Chats workspace" />
-      <StatusItem icon={Cable} label="Shell ready" />
-    </>
-  )
+  return <StatusItem icon={Cable} label="Direct chat" />
 }
 
 export function useAppV2ShellStatusBar(content: ReactNode | null): void {
