@@ -8,9 +8,10 @@ import {
   AppV2ShellStatusBar,
   AppV2ShellStatusContext
 } from './app-v2-shell-status'
+import { isDesktopWindowsPlatform } from '../../lib/desktop-bootstrap'
 
 function isWindowsPlatform(): boolean {
-  return globalThis.window?.electron?.process.platform === 'win32'
+  return isDesktopWindowsPlatform()
 }
 
 export function AppV2Shell(): React.JSX.Element {

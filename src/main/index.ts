@@ -2,7 +2,6 @@ import {
   app,
   shell,
   BrowserWindow,
-  ipcMain,
   dialog,
   Menu,
   Tray,
@@ -63,12 +62,14 @@ import { registerSingleInstanceApp } from './single-instance'
 import {
   getInstalledRecommendedSkills,
   installRecommendedSkillsWithBunx,
-  listAssistantSkills,
-  removeWorkspaceSkill,
   type RecommendedSkillId
 } from './skills/skills-manager'
 import { bringWindowToFront, buildTrayMenuTemplate } from './tray'
 import { UiConfigStore } from './ui-config'
+import {
+  desktopBootstrapQueryParam,
+  type DesktopBootstrap
+} from '../shared/desktop-bootstrap'
 
 const hasSingleInstanceLock = registerSingleInstanceApp({
   app,
@@ -78,17 +79,13 @@ const hasSingleInstanceLock = registerSingleInstanceApp({
 })
 
 let serverConfig = resolveServerConfig({})
+const annotationAllowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173']
+const isBrowserAnnotationModeEnabled =
+  is.dev && !app.isPackaged && process.env['TIA_ENABLE_BROWSER_ANNOTATION'] === '1'
 const autoUpdateService = new AutoUpdateService({
   app,
   updater: autoUpdater,
-  logger,
-  onStateChange: (state) => {
-    for (const window of BrowserWindow.getAllWindows()) {
-      if (!window.isDestroyed()) {
-        window.webContents.send('tia:auto-update-state-changed', state)
-      }
-    }
-  }
+  logger
 })
 let localApiServer: ServerType | null = null
 let persistenceDatabasePath: string | null = null
@@ -118,34 +115,141 @@ function resolveUiConfigStore(): UiConfigStore {
 
 let isTransparentWindow = Boolean(resolveUiConfigStore().getConfig().transparent)
 
-function assertManagedRuntimeKind(value: unknown): ManagedRuntimeKind {
-  if (
-    value === 'bun' ||
-    value === 'uv' ||
-    value === 'agent-browser' ||
-    value === 'codex-acp' ||
-    value === 'claude-agent-acp'
-  ) {
-    return value
-  }
+function resolveDesktopBootstrap(): DesktopBootstrap {
+  const authMode = isBrowserAnnotationModeEnabled ? 'none' : 'bearer'
+  const platform =
+    process.platform === 'darwin' || process.platform === 'win32' ? process.platform : 'linux'
 
-  throw new Error(
-    'Managed runtime kind must be "bun", "uv", "agent-browser", "codex-acp", or "claude-agent-acp"'
-  )
+  return {
+    apiBaseUrl: `http://${serverConfig.host}:${serverConfig.port}`,
+    authMode,
+    authToken: authMode === 'bearer' ? serverConfig.token : undefined,
+    app: {
+      name: 'TIA Studio',
+      version: app.getVersion(),
+      platform
+    },
+    capabilities: {
+      autoUpdate: true,
+      managedRuntimes: true,
+      nativeDirectoryPicker: true,
+      runtimeOnboarding: true
+    }
+  }
 }
 
-function assertRecommendedSkillIds(value: unknown): RecommendedSkillId[] {
-  if (!Array.isArray(value)) {
-    throw new Error('Recommended skill ids must be an array')
+function encodeDesktopBootstrapQueryValue(bootstrap: DesktopBootstrap): string {
+  return Buffer.from(JSON.stringify(bootstrap), 'utf8').toString('base64url')
+}
+
+function attachDesktopBootstrapToRendererUrl(rawUrl: string): string {
+  const url = new URL(rawUrl)
+  url.searchParams.set(
+    desktopBootstrapQueryParam,
+    encodeDesktopBootstrapQueryValue(resolveDesktopBootstrap())
+  )
+  return url.toString()
+}
+
+function resolveDialogParentWindow(): BrowserWindow | undefined {
+  const focusedWindow = BrowserWindow.getFocusedWindow()
+  if (focusedWindow && !focusedWindow.isDestroyed()) {
+    return focusedWindow
   }
 
-  return value.map((entry) => {
-    if (entry === 'agent-browser' || entry === 'find-skills') {
-      return entry
-    }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    return mainWindow
+  }
 
-    throw new Error('Recommended skill id is invalid')
+  return BrowserWindow.getAllWindows().find((window) => !window.isDestroyed())
+}
+
+function getRuntimeDisplayName(kind: ManagedRuntimeKind): string {
+  if (kind === 'bun') {
+    return 'Bun'
+  }
+
+  if (kind === 'uv') {
+    return 'UV'
+  }
+
+  if (kind === 'agent-browser') {
+    return 'Agent Browser'
+  }
+
+  if (kind === 'codex-acp') {
+    return 'Codex ACP'
+  }
+
+  return 'Claude Agent ACP'
+}
+
+function updateUiConfig(config: Parameters<UiConfigStore['updateConfig']>[0]) {
+  const nextConfig = resolveUiConfigStore().updateConfig(config)
+  isTransparentWindow = Boolean(nextConfig.transparent)
+  return nextConfig
+}
+
+async function pickCustomManagedRuntime(
+  kind: ManagedRuntimeKind
+): Promise<Awaited<ReturnType<ManagedRuntimeService['getStatus']>> | null> {
+  const currentWindow = resolveDialogParentWindow()
+  const openDialogOptions: OpenDialogOptions = {
+    title: `Select ${getRuntimeDisplayName(kind)} Binary`,
+    properties: ['openFile']
+  }
+  const result = currentWindow
+    ? await dialog.showOpenDialog(currentWindow, openDialogOptions)
+    : await dialog.showOpenDialog(openDialogOptions)
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null
+  }
+
+  const state = await resolveManagedRuntimeService().setCustomRuntime(kind, result.filePaths[0])
+  await syncManagedRuntimeProcessEnv()
+  return state
+}
+
+async function installRuntimeOnboardingSkillsWithManagedBun(
+  skillIds: RecommendedSkillId[]
+): Promise<RecommendedSkillId[]> {
+  const managedRuntimeState = await resolveManagedRuntimeService().getStatus()
+  const bunRecord = managedRuntimeState.bun
+  const isBunReady =
+    typeof bunRecord.binaryPath === 'string' &&
+    (bunRecord.status === 'ready' ||
+      bunRecord.status === 'custom-ready' ||
+      bunRecord.status === 'update-available')
+
+  if (!isBunReady) {
+    throw new Error('Install bun in Runtime Setup before installing recommended skills')
+  }
+
+  const bunxCommand = await resolveManagedRuntimeService().resolveManagedCommand('bunx', [])
+  return installRecommendedSkillsWithBunx({
+    bunxPath: bunxCommand.command,
+    bunxArgs: bunxCommand.args,
+    env: bunxCommand.env,
+    skillIds
   })
+}
+
+async function pickDirectory(): Promise<string | null> {
+  const currentWindow = resolveDialogParentWindow()
+  const openDialogOptions: OpenDialogOptions = {
+    title: 'Select Workspace Folder',
+    properties: ['openDirectory', 'createDirectory']
+  }
+  const result = currentWindow
+    ? await dialog.showOpenDialog(currentWindow, openDialogOptions)
+    : await dialog.showOpenDialog(openDialogOptions)
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null
+  }
+
+  return result.filePaths[0]
 }
 
 function resolveManagedRuntimeService(): ManagedRuntimeService {
@@ -181,6 +285,12 @@ async function startLocalApiServer(): Promise<void> {
     preferredPort: serverConfig.port
   })
   if (resolvedPort !== serverConfig.port) {
+    if (isBrowserAnnotationModeEnabled) {
+      throw new Error(
+        `Browser annotation mode requires http://${serverConfig.host}:${serverConfig.port}; stop the process using that port and retry.`
+      )
+    }
+
     logger.warn(
       `TIA local API default port ${serverConfig.port} was already in use, falling back to ${resolvedPort}`
     )
@@ -362,6 +472,41 @@ async function startLocalApiServer(): Promise<void> {
 
   const apiApp = createApp({
     token: serverConfig.token,
+    annotationMode: {
+      enabled: isBrowserAnnotationModeEnabled,
+      allowedOrigins: annotationAllowedOrigins
+    },
+    desktop: {
+      getDesktopBootstrap: () => resolveDesktopBootstrap(),
+      getUiConfig: () => resolveUiConfigStore().getConfig(),
+      setUiConfig: (config) => updateUiConfig(config),
+      getSystemLocale: () => app.getLocale(),
+      getAutoUpdateState: () => autoUpdateService.getState(),
+      setAutoUpdateEnabled: async (enabled) => autoUpdateService.setEnabled(enabled),
+      checkForUpdates: async () => autoUpdateService.checkForUpdates(),
+      restartToUpdate: () => autoUpdateService.restartToUpdate(),
+      getManagedRuntimeStatus: async () => resolveManagedRuntimeService().getStatus(),
+      checkManagedRuntimeLatest: async (kind) => {
+        const state = await resolveManagedRuntimeService().checkLatest(kind)
+        await syncManagedRuntimeProcessEnv()
+        return state
+      },
+      installManagedRuntime: async (kind) => {
+        const state = await resolveManagedRuntimeService().installManagedRuntime(kind)
+        await syncManagedRuntimeProcessEnv()
+        return state
+      },
+      pickCustomRuntime: async (kind) => pickCustomManagedRuntime(kind),
+      clearManagedRuntime: async (kind) => {
+        const state = await resolveManagedRuntimeService().clearRuntime(kind)
+        await syncManagedRuntimeProcessEnv()
+        return state
+      },
+      getRuntimeOnboardingSkillsStatus: async () => getInstalledRecommendedSkills(),
+      installRuntimeOnboardingSkills: async (skillIds) =>
+        installRuntimeOnboardingSkillsWithManagedBun(skillIds),
+      pickDirectory: async () => pickDirectory()
+    },
     repositories: {
       providers: providersRepo,
       assistants: assistantsRepo,
@@ -495,9 +640,15 @@ function createMainWindow(): BrowserWindow {
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    browserWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    browserWindow.loadURL(
+      attachDesktopBootstrapToRendererUrl(process.env['ELECTRON_RENDERER_URL'])
+    )
   } else {
-    browserWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    browserWindow.loadFile(join(__dirname, '../renderer/index.html'), {
+      query: {
+        [desktopBootstrapQueryParam]: encodeDesktopBootstrapQueryValue(resolveDesktopBootstrap())
+      }
+    })
   }
 
   return browserWindow
@@ -567,158 +718,6 @@ if (hasSingleInstanceLock) {
       optimizer.watchWindowShortcuts(window)
     })
 
-    // IPC test
-    ipcMain.on('ping', () => logger.debug('pong'))
-    ipcMain.handle('tia:get-desktop-config', () => {
-      return {
-        baseUrl: `http://${serverConfig.host}:${serverConfig.port}`,
-        authToken: serverConfig.token
-      }
-    })
-    ipcMain.handle('tia:get-ui-config', () => {
-      return resolveUiConfigStore().getConfig()
-    })
-    ipcMain.handle('tia:set-ui-config', (_event, config) => {
-      const nextConfig = resolveUiConfigStore().updateConfig(config)
-      isTransparentWindow = Boolean(nextConfig.transparent)
-      return nextConfig
-    })
-    ipcMain.handle('tia:get-system-locale', () => {
-      return app.getLocale()
-    })
-    ipcMain.handle('tia:get-app-info', () => {
-      return {
-        name: app.getName(),
-        version: app.getVersion()
-      }
-    })
-    ipcMain.handle('tia:get-auto-update-state', () => {
-      return autoUpdateService.getState()
-    })
-    ipcMain.handle('tia:set-auto-update-enabled', async (_event, enabled) => {
-      if (typeof enabled !== 'boolean') {
-        throw new Error('Auto update flag must be a boolean')
-      }
-
-      return autoUpdateService.setEnabled(enabled)
-    })
-    ipcMain.handle('tia:check-for-updates', () => {
-      return autoUpdateService.checkForUpdates()
-    })
-    ipcMain.handle('tia:restart-to-update', () => {
-      autoUpdateService.restartToUpdate()
-    })
-    ipcMain.handle('tia:get-managed-runtime-status', () => {
-      return resolveManagedRuntimeService().getStatus()
-    })
-    ipcMain.handle('tia:check-managed-runtime-latest', async (_event, rawKind) => {
-      const kind = assertManagedRuntimeKind(rawKind)
-      const state = await resolveManagedRuntimeService().checkLatest(kind)
-      await syncManagedRuntimeProcessEnv()
-      return state
-    })
-    ipcMain.handle('tia:install-managed-runtime', async (_event, rawKind) => {
-      const kind = assertManagedRuntimeKind(rawKind)
-      const state = await resolveManagedRuntimeService().installManagedRuntime(kind)
-      await syncManagedRuntimeProcessEnv()
-      return state
-    })
-    ipcMain.handle('tia:pick-custom-runtime', async (event, rawKind) => {
-      const kind = assertManagedRuntimeKind(rawKind)
-      const currentWindow = BrowserWindow.fromWebContents(event.sender)
-      const runtimeDisplayName =
-        kind === 'bun'
-          ? 'Bun'
-          : kind === 'uv'
-            ? 'UV'
-            : kind === 'agent-browser'
-              ? 'Agent Browser'
-              : kind === 'codex-acp'
-                ? 'Codex ACP'
-                : 'Claude Agent ACP'
-      const openDialogOptions: OpenDialogOptions = {
-        title: `Select ${runtimeDisplayName} Binary`,
-        properties: ['openFile']
-      }
-      const result = currentWindow
-        ? await dialog.showOpenDialog(currentWindow, openDialogOptions)
-        : await dialog.showOpenDialog(openDialogOptions)
-
-      if (result.canceled || result.filePaths.length === 0) {
-        return null
-      }
-
-      const state = await resolveManagedRuntimeService().setCustomRuntime(kind, result.filePaths[0])
-      await syncManagedRuntimeProcessEnv()
-      return state
-    })
-    ipcMain.handle('tia:clear-managed-runtime', async (_event, rawKind) => {
-      const kind = assertManagedRuntimeKind(rawKind)
-      const state = await resolveManagedRuntimeService().clearRuntime(kind)
-      await syncManagedRuntimeProcessEnv()
-      return state
-    })
-    ipcMain.handle('tia:get-runtime-onboarding-skills-status', async () => {
-      return getInstalledRecommendedSkills()
-    })
-    ipcMain.handle('tia:install-runtime-onboarding-skills', async (_event, rawSkillIds) => {
-      const skillIds = assertRecommendedSkillIds(rawSkillIds)
-      const managedRuntimeState = await resolveManagedRuntimeService().getStatus()
-      const bunRecord = managedRuntimeState.bun
-      const isBunReady =
-        typeof bunRecord.binaryPath === 'string' &&
-        (bunRecord.status === 'ready' ||
-          bunRecord.status === 'custom-ready' ||
-          bunRecord.status === 'update-available')
-
-      if (!isBunReady) {
-        throw new Error('Install bun in Runtime Setup before installing recommended skills')
-      }
-
-      const bunxCommand = await resolveManagedRuntimeService().resolveManagedCommand('bunx', [])
-      return installRecommendedSkillsWithBunx({
-        bunxPath: bunxCommand.command,
-        bunxArgs: bunxCommand.args,
-        env: bunxCommand.env,
-        skillIds
-      })
-    })
-    ipcMain.handle('tia:pick-directory', async (event) => {
-      const currentWindow = BrowserWindow.fromWebContents(event.sender)
-      const openDialogOptions: OpenDialogOptions = {
-        title: 'Select Workspace Folder',
-        properties: ['openDirectory', 'createDirectory']
-      }
-      const result = currentWindow
-        ? await dialog.showOpenDialog(currentWindow, openDialogOptions)
-        : await dialog.showOpenDialog(openDialogOptions)
-
-      if (result.canceled || result.filePaths.length === 0) {
-        return null
-      }
-
-      return result.filePaths[0]
-    })
-    ipcMain.handle('tia:list-assistant-skills', async (_event, workspaceRootPath) => {
-      if (typeof workspaceRootPath !== 'string') {
-        throw new Error('Workspace root path must be a string')
-      }
-
-      return listAssistantSkills(workspaceRootPath)
-    })
-    ipcMain.handle(
-      'tia:remove-assistant-workspace-skill',
-      async (_event, workspaceRootPath, relativePath) => {
-        if (typeof workspaceRootPath !== 'string') {
-          throw new Error('Workspace root path must be a string')
-        }
-        if (typeof relativePath !== 'string') {
-          throw new Error('Relative skill path must be a string')
-        }
-
-        await removeWorkspaceSkill(workspaceRootPath, relativePath)
-      }
-    )
     await startLocalApiServer()
     openMainWindow()
     createTray()

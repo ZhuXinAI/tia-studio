@@ -22,6 +22,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
+import { isDesktopWindowsPlatform } from '../../lib/desktop-bootstrap'
+import { pickDirectory } from '../../lib/desktop-features'
 import { cn } from '../../lib/utils'
 import {
   useCreateWorkspace,
@@ -45,7 +47,7 @@ import {
 } from '../../features/threads/thread-page-routing'
 
 function isWindowsPlatform(): boolean {
-  return globalThis.window?.electron?.process.platform === 'win32'
+  return isDesktopWindowsPlatform()
 }
 
 function toWorkspaceName(rootPath: string): string {
@@ -336,7 +338,7 @@ export function AppV2Sidebar({
     setErrorMessage(null)
 
     try {
-      const selectedPath = await window.tiaDesktop?.pickDirectory()
+      const selectedPath = await pickDirectory()
       if (!selectedPath) {
         return
       }

@@ -6,7 +6,7 @@ import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Switch } from '../../../components/ui/switch'
 import { cn } from '../../../lib/utils'
-import { getDesktopAppInfo, type DesktopAppInfo } from '../../../lib/desktop-app-info'
+import { getDesktopAppInfo, type DesktopAppInfo } from '../../../lib/desktop-features'
 import { useAutoUpdate } from '../auto-update/use-auto-update'
 import { SettingsContent } from './settings-content'
 
@@ -104,7 +104,7 @@ export function AboutSettingsPage(): React.JSX.Element {
     toggleAutoUpdate,
     checkForUpdates,
     restartToUpdate
-  } = useAutoUpdate()
+  } = useAutoUpdate({ poll: true })
   const aboutLinks: AboutLinkItem[] = [
     {
       title: t('settings.about.links.docs.title'),

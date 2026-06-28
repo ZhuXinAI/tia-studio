@@ -17,6 +17,7 @@ import {
   useWorkspaces,
   type WorkspaceRecord
 } from '../../features/workspaces/workspaces-query'
+import { pickDirectory } from '../../lib/desktop-features'
 
 function toWorkspaceName(rootPath: string): string {
   const normalized = rootPath.replace(/[\\/]+$/, '')
@@ -45,7 +46,7 @@ export function WorkspaceSidebar(): React.JSX.Element {
     setErrorMessage(null)
 
     try {
-      const selectedPath = await window.tiaDesktop?.pickDirectory()
+      const selectedPath = await pickDirectory()
       if (!selectedPath) {
         return
       }

@@ -7,6 +7,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { localeOptions } from '../../../i18n/config'
 import { i18n } from '../../../i18n'
 import { GeneralSettingsPage } from './general-settings-page'
+import { getSystemLocale, getUiConfig, setUiConfig } from '../ui-config'
+
+vi.mock('../ui-config', () => ({
+  getUiConfig: vi.fn(),
+  setUiConfig: vi.fn(),
+  getSystemLocale: vi.fn()
+}))
 
 async function flushAsyncWork(): Promise<void> {
   await act(async () => {
@@ -24,19 +31,11 @@ describe('general settings page', () => {
     document.body.appendChild(container)
     root = createRoot(container)
     void i18n.changeLanguage('en-US')
-
-    window.tiaDesktop = {
-      getConfig: vi.fn(async () => ({
-        baseUrl: 'http://127.0.0.1:4769',
-        authToken: 'token'
-      })),
-      getUiConfig: vi.fn(async () => ({
-        language: null
-      })),
-      setUiConfig: vi.fn(async (config) => config),
-      getSystemLocale: vi.fn(async () => 'en-US'),
-      pickDirectory: vi.fn(async () => null)
-    }
+    vi.mocked(getUiConfig).mockResolvedValue({
+      language: null
+    })
+    vi.mocked(setUiConfig).mockImplementation(async (config) => config)
+    vi.mocked(getSystemLocale).mockResolvedValue('en-US')
   })
 
   afterEach(() => {
@@ -70,8 +69,8 @@ describe('general settings page', () => {
   })
 
   it('switches the page copy when the selected language changes', async () => {
-    const setUiConfig = vi.fn(async (config: { language?: string | null }) => config)
-    window.tiaDesktop.setUiConfig = setUiConfig
+    const setUiConfigSpy = vi.fn(async (config: { language?: string | null }) => config)
+    vi.mocked(setUiConfig).mockImplementation(setUiConfigSpy)
 
     await act(async () => {
       root.render(
@@ -97,7 +96,7 @@ describe('general settings page', () => {
     })
     await flushAsyncWork()
 
-    expect(setUiConfig).toHaveBeenCalledWith({ language: 'zh-CN' })
+    expect(setUiConfigSpy).toHaveBeenCalledWith({ language: 'zh-CN' })
     expect(container.textContent).toContain('常规设置')
     expect(container.textContent).toContain('语言')
   })

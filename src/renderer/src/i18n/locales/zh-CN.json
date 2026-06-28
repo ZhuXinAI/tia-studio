@@ -726,7 +726,9 @@
     },
     "toolGroup": {
       "label_one": "{{count}} 次工具调用",
-      "label_other": "{{count}} 次工具调用"
+      "label_other": "{{count}} 次工具调用",
+      "labelWithNames": "{{label}} · {{names}}",
+      "more": "等 {{count}} 项"
     },
     "image": {
       "contentAlt": "图片内容",

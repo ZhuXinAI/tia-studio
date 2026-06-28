@@ -13,13 +13,6 @@ import {
 describe('chat query', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
-    window.tiaDesktop = {
-      getConfig: vi.fn(async () => ({
-        baseUrl: 'http://127.0.0.1:4769',
-        authToken: 'chat-token'
-      })),
-      pickDirectory: vi.fn(async () => null)
-    }
   })
 
   it('resolves relative chat paths against desktop base url', () => {
@@ -52,7 +45,7 @@ describe('chat query', () => {
         method: 'POST'
       })
     )
-    expect(requestHeaders.get('Authorization')).toBe('Bearer chat-token')
+    expect(requestHeaders.get('Authorization')).toBe('Bearer test-token')
   })
 
   it('loads thread history through the authenticated desktop proxy', async () => {
@@ -186,7 +179,7 @@ describe('chat query', () => {
       expect.objectContaining({
         method: 'GET',
         headers: expect.objectContaining({
-          Authorization: 'Bearer chat-token'
+          Authorization: 'Bearer test-token'
         })
       })
     )
@@ -235,7 +228,7 @@ describe('chat query', () => {
       expect.objectContaining({
         method: 'GET',
         headers: expect.objectContaining({
-          Authorization: 'Bearer chat-token'
+          Authorization: 'Bearer test-token'
         })
       })
     )

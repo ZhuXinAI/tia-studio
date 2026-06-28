@@ -5,11 +5,12 @@ import { Button } from '../../components/ui/button'
 import { cn } from '../../lib/utils'
 import clsx from 'clsx'
 import { useAutoUpdate } from '../../features/settings/auto-update/use-auto-update'
+import { isDesktopWindowsPlatform } from '../../lib/desktop-bootstrap'
 import { WorkspaceSidebar } from './workspace-sidebar'
 import { useWorkspaces } from '../../features/workspaces/workspaces-query'
 
 function isWindowsPlatform(): boolean {
-  return globalThis.window?.electron?.process.platform === 'win32'
+  return isDesktopWindowsPlatform()
 }
 
 export function AppShell(): React.JSX.Element {

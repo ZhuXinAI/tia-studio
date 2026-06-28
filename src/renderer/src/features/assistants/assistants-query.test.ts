@@ -6,13 +6,6 @@ import { listAssistants } from './assistants-query'
 describe('assistants query api client', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
-    window.tiaDesktop = {
-      getConfig: vi.fn(async () => ({
-        baseUrl: 'http://127.0.0.1:4769',
-        authToken: 'test-token'
-      })),
-      pickDirectory: vi.fn(async () => null)
-    }
   })
 
   it('lists assistants through backend api', async () => {

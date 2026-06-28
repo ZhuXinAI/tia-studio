@@ -18,6 +18,7 @@
     "ci:release": "npm run lint && npm run typecheck && npm run test && npm run build",
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
+    "dev:annotate": "TIA_ENABLE_BROWSER_ANNOTATION=1 electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && node ./scripts/run-electron-builder.mjs --dir",

@@ -6,25 +6,11 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppShell } from './app-shell'
+import { useAutoUpdate } from '../../features/settings/auto-update/use-auto-update'
 
-type AutoUpdateState = {
-  enabled: boolean
-  status:
-    | 'idle'
-    | 'checking'
-    | 'update-available'
-    | 'update-downloaded'
-    | 'up-to-date'
-    | 'unsupported'
-    | 'error'
-  availableVersion: string | null
-  lastCheckedAt: string | null
-  message: string | null
-}
-
-type GetAutoUpdateStateFn = () => Promise<AutoUpdateState>
-type RestartToUpdateFn = () => Promise<void>
-type OnAutoUpdateStateChangedFn = (listener: (state: AutoUpdateState) => void) => () => void
+vi.mock('../../features/settings/auto-update/use-auto-update', () => ({
+  useAutoUpdate: vi.fn()
+}))
 
 async function flushAsyncWork(): Promise<void> {
   await act(async () => {
@@ -35,10 +21,7 @@ async function flushAsyncWork(): Promise<void> {
 describe('AppShell update button', () => {
   let container: HTMLDivElement
   let root: Root
-  let getAutoUpdateState: ReturnType<typeof vi.fn<GetAutoUpdateStateFn>>
-  let restartToUpdate: ReturnType<typeof vi.fn<RestartToUpdateFn>>
-  let onAutoUpdateStateChanged: ReturnType<typeof vi.fn<OnAutoUpdateStateChangedFn>>
-  let autoUpdateStateListener: ((state: AutoUpdateState) => void) | null
+  let restartToUpdate: ReturnType<typeof vi.fn<() => Promise<void>>>
   let queryClient: QueryClient
 
   beforeEach(() => {
@@ -53,35 +36,7 @@ describe('AppShell update button', () => {
         }
       }
     })
-    getAutoUpdateState = vi.fn<GetAutoUpdateStateFn>(async () => ({
-      enabled: true,
-      status: 'idle',
-      availableVersion: null,
-      lastCheckedAt: null,
-      message: null
-    }))
-    restartToUpdate = vi.fn<RestartToUpdateFn>(async () => undefined)
-    autoUpdateStateListener = null
-    onAutoUpdateStateChanged = vi.fn<OnAutoUpdateStateChangedFn>((listener) => {
-      autoUpdateStateListener = listener
-
-      return () => {
-        if (autoUpdateStateListener === listener) {
-          autoUpdateStateListener = null
-        }
-      }
-    })
-
-    window.tiaDesktop = {
-      getConfig: vi.fn(async () => ({
-        baseUrl: 'http://127.0.0.1:4769',
-        authToken: 'token'
-      })),
-      pickDirectory: vi.fn(async () => null),
-      getAutoUpdateState,
-      restartToUpdate,
-      onAutoUpdateStateChanged
-    }
+    restartToUpdate = vi.fn(async () => undefined)
   })
 
   afterEach(() => {
@@ -94,6 +49,23 @@ describe('AppShell update button', () => {
   })
 
   it('shows the update button when a downloaded update is reported and restarts on click', async () => {
+    vi.mocked(useAutoUpdate).mockReturnValue({
+      autoUpdateState: {
+        enabled: true,
+        status: 'update-downloaded',
+        availableVersion: '0.2.2',
+        lastCheckedAt: '2026-03-17T00:00:00.000Z',
+        message: 'Update 0.2.2 is ready to install. Restart TIA Studio to finish updating.'
+      },
+      hasDownloadedUpdate: true,
+      isSavingAutoUpdate: false,
+      isCheckingForUpdates: false,
+      isRestartingToUpdate: false,
+      toggleAutoUpdate: vi.fn(async () => undefined),
+      checkForUpdates: vi.fn(async () => undefined),
+      restartToUpdate
+    })
+
     const router = createMemoryRouter(
       [
         {
@@ -120,19 +92,6 @@ describe('AppShell update button', () => {
       )
     })
     await flushAsyncWork()
-
-    expect(getAutoUpdateState).toHaveBeenCalledTimes(1)
-    expect(container.textContent).not.toContain('Update')
-
-    await act(async () => {
-      autoUpdateStateListener?.({
-        enabled: true,
-        status: 'update-downloaded',
-        availableVersion: '0.2.2',
-        lastCheckedAt: '2026-03-17T00:00:00.000Z',
-        message: 'Update 0.2.2 is ready to install. Restart TIA Studio to finish updating.'
-      })
-    })
 
     const updateButton = Array.from(container.querySelectorAll('button')).find((button) =>
       button.textContent?.includes('Update')

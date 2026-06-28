@@ -1,4 +1,4 @@
-import { getDesktopConfig } from './desktop-config'
+import { getDesktopBootstrap } from './desktop-bootstrap'
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
 
@@ -14,13 +14,18 @@ async function request<T>(
   path: string,
   body?: Record<string, unknown>
 ): Promise<T> {
-  const config = await getDesktopConfig()
-  const response = await fetch(joinUrl(config.baseUrl, path), {
+  const bootstrap = await getDesktopBootstrap()
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  }
+
+  if (bootstrap.authMode === 'bearer' && bootstrap.authToken?.trim()) {
+    headers.Authorization = `Bearer ${bootstrap.authToken}`
+  }
+
+  const response = await fetch(joinUrl(bootstrap.apiBaseUrl, path), {
     method,
-    headers: {
-      Authorization: `Bearer ${config.authToken}`,
-      'Content-Type': 'application/json'
-    },
+    headers,
     body: body ? JSON.stringify(body) : undefined
   })
 

@@ -726,7 +726,9 @@
     },
     "toolGroup": {
       "label_one": "{{count}} tool call",
-      "label_other": "{{count}} tool calls"
+      "label_other": "{{count}} tool calls",
+      "labelWithNames": "{{label}} · {{names}}",
+      "more": "+{{count}} more"
     },
     "image": {
       "contentAlt": "Image content",

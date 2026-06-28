@@ -14,11 +14,12 @@ import type { WorkspacesRepository } from '../persistence/repos/workspaces-repo'
 import type { AssistantRuntime } from '../mastra/assistant-runtime'
 import type { WhatsAppAuthStateStore } from '../channels/whatsapp-auth-state-store'
 import type { WechatAuthStateStore } from '../channels/wechat-auth-state-store'
-import { createBearerAuthMiddleware } from './auth-middleware'
+import { createBearerAuthMiddlewareWithOptions } from './auth-middleware'
 import type { ThreadMessageEventsStore } from './chat/thread-message-events-store'
 import { registerAssistantsRoute } from './routes/assistants-route'
 import { registerChannelsRoute } from './routes/channels-route'
 import { registerChatRoute } from './routes/chat-route'
+import { registerDesktopRoute } from './routes/desktop-route'
 import { registerHealthRoute } from './routes/health-route'
 import { registerMcpServersRoute } from './routes/mcp-servers-route'
 import { registerMigrationRoute } from './routes/migration-route'
@@ -27,9 +28,36 @@ import { registerSecuritySettingsRoute } from './routes/security-settings-route'
 import { registerThreadsRoute } from './routes/threads-route'
 import { registerWebSearchSettingsRoute } from './routes/web-search-settings-route'
 import { registerWorkspacesRoute } from './routes/workspaces-route'
+import type { DesktopBootstrap } from '../../shared/desktop-bootstrap'
+import type { UiConfig } from '../ui-config'
+import type { AutoUpdateState } from '../auto-updater'
+import type { ManagedRuntimeKind, ManagedRuntimesState } from '../persistence/repos/managed-runtimes-repo'
+import type { RecommendedSkillId } from '../skills/skills-manager'
 
 type CreateAppOptions = {
   token: string
+  annotationMode?: {
+    enabled: boolean
+    allowedOrigins: string[]
+  }
+  desktop?: {
+    getDesktopBootstrap: () => DesktopBootstrap
+    getUiConfig: () => UiConfig
+    setUiConfig: (config: UiConfig) => UiConfig
+    getSystemLocale: () => string
+    getAutoUpdateState: () => AutoUpdateState
+    setAutoUpdateEnabled: (enabled: boolean) => Promise<AutoUpdateState>
+    checkForUpdates: () => Promise<AutoUpdateState>
+    restartToUpdate: () => void
+    getManagedRuntimeStatus: () => Promise<ManagedRuntimesState>
+    checkManagedRuntimeLatest: (kind: ManagedRuntimeKind) => Promise<ManagedRuntimesState>
+    installManagedRuntime: (kind: ManagedRuntimeKind) => Promise<ManagedRuntimesState>
+    pickCustomRuntime: (kind: ManagedRuntimeKind) => Promise<ManagedRuntimesState | null>
+    clearManagedRuntime: (kind: ManagedRuntimeKind) => Promise<ManagedRuntimesState>
+    getRuntimeOnboardingSkillsStatus: () => Promise<RecommendedSkillId[]>
+    installRuntimeOnboardingSkills: (skillIds: RecommendedSkillId[]) => Promise<RecommendedSkillId[]>
+    pickDirectory: () => Promise<string | null>
+  }
   repositories?: {
     providers: ProvidersRepository
     assistants: AssistantsRepository
@@ -69,6 +97,9 @@ type CreateAppOptions = {
 
 export function createApp(options: CreateAppOptions): Hono {
   const app = new Hono()
+  const allowUnauthenticatedOrigins = options.annotationMode?.enabled
+    ? options.annotationMode.allowedOrigins
+    : []
 
   app.use(
     '/v1/*',
@@ -78,7 +109,12 @@ export function createApp(options: CreateAppOptions): Hono {
       allowHeaders: ['Authorization', 'Content-Type']
     })
   )
-  app.use('/v1/*', createBearerAuthMiddleware(options.token))
+  app.use(
+    '/v1/*',
+    createBearerAuthMiddlewareWithOptions(options.token, {
+      allowUnauthenticatedOrigins
+    })
+  )
   app.use(
     '/chat',
     cors({
@@ -95,9 +131,23 @@ export function createApp(options: CreateAppOptions): Hono {
       allowHeaders: ['Authorization', 'Content-Type']
     })
   )
-  app.use('/chat', createBearerAuthMiddleware(options.token))
-  app.use('/chat/*', createBearerAuthMiddleware(options.token))
+  app.use(
+    '/chat',
+    createBearerAuthMiddlewareWithOptions(options.token, {
+      allowUnauthenticatedOrigins
+    })
+  )
+  app.use(
+    '/chat/*',
+    createBearerAuthMiddlewareWithOptions(options.token, {
+      allowUnauthenticatedOrigins
+    })
+  )
   registerHealthRoute(app)
+
+  if (options.desktop) {
+    registerDesktopRoute(app, options.desktop)
+  }
 
   if (options.repositories) {
     registerProvidersRoute(app, {

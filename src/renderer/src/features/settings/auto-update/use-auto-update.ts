@@ -1,5 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { useTranslation } from '../../../i18n/use-app-translation'
+import {
+  checkForUpdates as checkForDesktopUpdates,
+  getAutoUpdateState as getDesktopAutoUpdateState,
+  getDesktopCapabilities,
+  restartToUpdate as restartDesktopToUpdate,
+  setAutoUpdateEnabled as setDesktopAutoUpdateEnabled
+} from '../../../lib/desktop-features'
 
 export type AutoUpdateStatus =
   | 'idle'
@@ -26,7 +33,7 @@ const fallbackAutoUpdateState: AutoUpdateState = {
   message: null
 }
 
-export function useAutoUpdate(): {
+export function useAutoUpdate(options?: { poll?: boolean }): {
   autoUpdateState: AutoUpdateState
   hasDownloadedUpdate: boolean
   isSavingAutoUpdate: boolean
@@ -41,52 +48,50 @@ export function useAutoUpdate(): {
   const [isSavingAutoUpdate, setIsSavingAutoUpdate] = useState(false)
   const [isCheckingForUpdates, setIsCheckingForUpdates] = useState(false)
   const [isRestartingToUpdate, setIsRestartingToUpdate] = useState(false)
+  const autoUpdateSupported = getDesktopCapabilities().autoUpdate
 
-  useEffect(() => {
-    let cancelled = false
-    const getAutoUpdateState = window.tiaDesktop?.getAutoUpdateState
-
-    if (!getAutoUpdateState) {
+  const loadAutoUpdateState = useEffectEvent(async (): Promise<void> => {
+    if (!autoUpdateSupported) {
       return
     }
 
-    void getAutoUpdateState()
-      .then((nextState) => {
-        if (!cancelled) {
-          setAutoUpdateState(nextState)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setAutoUpdateState((current) => ({
-            ...current,
-            status: 'error',
-            message: t('settings.about.autoUpdate.loadError')
-          }))
-        }
-      })
-
-    return () => {
-      cancelled = true
+    try {
+      const nextState = await getDesktopAutoUpdateState()
+      setAutoUpdateState(nextState)
+    } catch {
+      setAutoUpdateState((current) => ({
+        ...current,
+        status: 'error',
+        message: t('settings.about.autoUpdate.loadError')
+      }))
     }
-  }, [t])
+  })
 
   useEffect(() => {
-    const unsubscribe = window.tiaDesktop?.onAutoUpdateStateChanged?.((nextState) => {
-      setAutoUpdateState(nextState)
-    })
+    if (!autoUpdateSupported) {
+      return
+    }
+
+    void loadAutoUpdateState()
+
+    if (!options?.poll) {
+      return
+    }
+
+    const interval = window.setInterval(() => {
+      void loadAutoUpdateState()
+    }, 15000)
 
     return () => {
-      unsubscribe?.()
+      window.clearInterval(interval)
     }
-  }, [])
+  }, [autoUpdateSupported, options?.poll])
 
   const hasDownloadedUpdate = autoUpdateState.status === 'update-downloaded'
 
   const toggleAutoUpdate = async (): Promise<void> => {
-    const setAutoUpdateEnabled = window.tiaDesktop?.setAutoUpdateEnabled
     if (
-      !setAutoUpdateEnabled ||
+      !autoUpdateSupported ||
       isSavingAutoUpdate ||
       isCheckingForUpdates ||
       isRestartingToUpdate
@@ -96,7 +101,7 @@ export function useAutoUpdate(): {
 
     setIsSavingAutoUpdate(true)
     try {
-      const nextState = await setAutoUpdateEnabled(!autoUpdateState.enabled)
+      const nextState = await setDesktopAutoUpdateEnabled(!autoUpdateState.enabled)
       setAutoUpdateState(nextState)
     } catch {
       setAutoUpdateState((current) => ({
@@ -110,9 +115,8 @@ export function useAutoUpdate(): {
   }
 
   const checkForUpdates = async (): Promise<void> => {
-    const checkForUpdatesInDesktop = window.tiaDesktop?.checkForUpdates
     if (
-      !checkForUpdatesInDesktop ||
+      !autoUpdateSupported ||
       isSavingAutoUpdate ||
       isCheckingForUpdates ||
       isRestartingToUpdate
@@ -122,7 +126,7 @@ export function useAutoUpdate(): {
 
     setIsCheckingForUpdates(true)
     try {
-      const nextState = await checkForUpdatesInDesktop()
+      const nextState = await checkForDesktopUpdates()
       setAutoUpdateState(nextState)
     } catch {
       setAutoUpdateState((current) => ({
@@ -136,9 +140,8 @@ export function useAutoUpdate(): {
   }
 
   const restartToUpdate = async (): Promise<void> => {
-    const restartToUpdateInDesktop = window.tiaDesktop?.restartToUpdate
     if (
-      !restartToUpdateInDesktop ||
+      !autoUpdateSupported ||
       !hasDownloadedUpdate ||
       isSavingAutoUpdate ||
       isCheckingForUpdates ||
@@ -149,7 +152,7 @@ export function useAutoUpdate(): {
 
     setIsRestartingToUpdate(true)
     try {
-      await restartToUpdateInDesktop()
+      await restartDesktopToUpdate()
     } catch {
       setAutoUpdateState((current) => ({
         ...current,

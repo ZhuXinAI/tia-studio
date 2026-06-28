@@ -1,9 +1,9 @@
 'use client'
 
-import { memo, useCallback, useRef, useState, type FC, type PropsWithChildren } from 'react'
+import { memo, useCallback, useMemo, useRef, useState, type FC, type PropsWithChildren } from 'react'
 import { ChevronDownIcon, LoaderIcon } from 'lucide-react'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { useScrollLock } from '@assistant-ui/react'
+import { useAuiState, useScrollLock } from '@assistant-ui/react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
 import { useTranslation } from '../../i18n/use-app-translation'
 import { cn } from '../../lib/utils'
@@ -30,6 +30,49 @@ export type ToolGroupRootProps = Omit<
     onOpenChange?: (open: boolean) => void
     defaultOpen?: boolean
   }
+
+type ToolGroupMessagePart = {
+  type: string
+  toolName?: string
+  status?: {
+    type?: string
+  }
+}
+
+type ToolNamePreview = {
+  visibleLabels: string[]
+  remainingCount: number
+}
+
+function formatToolName(value: string): string {
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+export function buildToolNamePreview(toolNames: readonly string[], limit = 3): ToolNamePreview {
+  const counts = new Map<string, number>()
+
+  for (const toolName of toolNames) {
+    const formattedName = formatToolName(toolName)
+    if (!formattedName) {
+      continue
+    }
+
+    counts.set(formattedName, (counts.get(formattedName) ?? 0) + 1)
+  }
+
+  const visibleLabels = Array.from(counts.entries())
+    .map(([label, count]) => (count > 1 ? `${label} x${count}` : label))
+    .slice(0, limit)
+
+  return {
+    visibleLabels,
+    remainingCount: Math.max(0, counts.size - visibleLabels.length)
+  }
+}
 
 function ToolGroupRoot({
   className,
@@ -83,14 +126,22 @@ function ToolGroupRoot({
 function ToolGroupTrigger({
   count,
   active = false,
+  summary,
   className,
   ...props
 }: React.ComponentProps<typeof CollapsibleTrigger> & {
   count: number
   active?: boolean
+  summary?: string
 }) {
   const { t } = useTranslation()
-  const label = t('assistantUi.toolGroup.label', { count })
+  const baseLabel = t('assistantUi.toolGroup.label', { count })
+  const label = summary
+    ? t('assistantUi.toolGroup.labelWithNames', {
+        label: baseLabel,
+        names: summary
+      })
+    : baseLabel
 
   return (
     <CollapsibleTrigger
@@ -175,22 +226,60 @@ function ToolGroupContent({
   )
 }
 
-type ToolGroupComponent = FC<PropsWithChildren<{ startIndex: number; endIndex: number }>> & {
+type ToolGroupComponent = FC<
+  PropsWithChildren<{ startIndex: number; endIndex: number; indices?: number[] }>
+> & {
   Root: typeof ToolGroupRoot
   Trigger: typeof ToolGroupTrigger
   Content: typeof ToolGroupContent
 }
 
-const ToolGroupImpl: FC<PropsWithChildren<{ startIndex: number; endIndex: number }>> = ({
+const ToolGroupImpl: FC<
+  PropsWithChildren<{ startIndex: number; endIndex: number; indices?: number[] }>
+> = ({
   children,
   startIndex,
-  endIndex
+  endIndex,
+  indices
 }) => {
-  const toolCount = endIndex - startIndex + 1
+  const { t } = useTranslation()
+  const resolvedIndices = useMemo(
+    () =>
+      indices ??
+      Array.from({ length: endIndex - startIndex + 1 }, (_, offset) => startIndex + offset),
+    [endIndex, indices, startIndex]
+  )
+  const messageParts = useAuiState(
+    (state) => state.message.parts as readonly ToolGroupMessagePart[]
+  )
+  const toolParts = useMemo(
+    () =>
+      resolvedIndices
+        .map((index) => messageParts[index])
+        .filter(
+          (part): part is ToolGroupMessagePart =>
+            part?.type === 'tool-call' && typeof part.toolName === 'string'
+        ),
+    [messageParts, resolvedIndices]
+  )
+  const toolCount = toolParts.length || resolvedIndices.length
+  const active = toolParts.some((part) => part.status?.type === 'running')
+  const preview = buildToolNamePreview(toolParts.map((part) => part.toolName ?? ''))
+  const summary =
+    preview.visibleLabels.length > 0
+      ? [
+          preview.visibleLabels.join(', '),
+          preview.remainingCount > 0
+            ? t('assistantUi.toolGroup.more', { count: preview.remainingCount })
+            : null
+        ]
+          .filter((segment): segment is string => Boolean(segment))
+          .join(' ')
+      : undefined
 
   return (
     <ToolGroupRoot>
-      <ToolGroupTrigger count={toolCount} />
+      <ToolGroupTrigger active={active} count={toolCount} summary={summary} />
       <ToolGroupContent>{children}</ToolGroupContent>
     </ToolGroupRoot>
   )

@@ -27,13 +27,6 @@ describe('security settings page', () => {
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
-    window.tiaDesktop = {
-      getConfig: vi.fn(async () => ({
-        baseUrl: 'http://127.0.0.1:3456',
-        authToken: 'token'
-      })),
-      pickDirectory: vi.fn(async () => null)
-    }
 
     vi.mocked(getSecuritySettings).mockResolvedValue({
       promptInjectionEnabled: true,

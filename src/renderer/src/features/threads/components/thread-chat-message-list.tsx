@@ -81,6 +81,9 @@ type AssistantMessagePart =
       data: unknown
     }
   | {
+      type: 'step-start'
+    }
+  | {
       type: string
       [key: string]: unknown
     }
@@ -128,6 +131,19 @@ function isCompletionToolPart(
   part: AssistantMessagePart
 ): part is Extract<AssistantMessagePart, { type: 'tool-call' }> {
   return part.type === 'tool-call' && part.toolName === 'complete'
+}
+
+function isStandardToolPart(
+  part: AssistantMessagePart
+): part is Extract<AssistantMessagePart, { type: 'tool-call' }> {
+  return part.type === 'tool-call' && !isDelegationToolPart(part) && !isCompletionToolPart(part)
+}
+
+function isStepStartPart(part: AssistantMessagePart): part is Extract<
+  AssistantMessagePart,
+  { type: 'step-start' }
+> {
+  return part.type === 'step-start'
 }
 
 function isToolAgentDataPart(part: AssistantMessagePart): part is Extract<
@@ -333,6 +349,101 @@ function buildDelegatedVisibleBlocks(
     .filter((block): block is DelegatedVisibleMessageBlock => block !== null)
 }
 
+type CompletedMessagePartGroup = {
+  groupKey: string | undefined
+  indices: number[]
+}
+
+function findNextNonStepStartIndex(
+  parts: readonly AssistantMessagePart[],
+  startIndex: number
+): number | null {
+  for (let index = startIndex; index < parts.length; index += 1) {
+    if (!isStepStartPart(parts[index]!)) {
+      return index
+    }
+  }
+
+  return null
+}
+
+export function groupCompletedAssistantMessageParts(
+  parts: readonly AssistantMessagePart[]
+): CompletedMessagePartGroup[] {
+  const groups: CompletedMessagePartGroup[] = []
+
+  for (let index = 0; index < parts.length; ) {
+    const part = parts[index]!
+
+    if (isStepStartPart(part)) {
+      index += 1
+      continue
+    }
+
+    if (part.type === 'reasoning') {
+      const indices = [index]
+      let cursor = index + 1
+      while (cursor < parts.length && parts[cursor]?.type === 'reasoning') {
+        indices.push(cursor)
+        cursor += 1
+      }
+
+      groups.push({
+        groupKey: `reasoning:${indices[0]}`,
+        indices
+      })
+      index = cursor
+      continue
+    }
+
+    if (isStandardToolPart(part)) {
+      const indices = [index]
+      let cursor = index + 1
+      let lastToolIndex = index
+
+      while (cursor < parts.length) {
+        const candidate = parts[cursor]!
+
+        if (isStandardToolPart(candidate)) {
+          indices.push(cursor)
+          lastToolIndex = cursor
+          cursor += 1
+          continue
+        }
+
+        if (isStepStartPart(candidate)) {
+          const nextIndex = findNextNonStepStartIndex(parts, cursor + 1)
+          if (nextIndex === null || !isStandardToolPart(parts[nextIndex]!)) {
+            break
+          }
+
+          indices.push(nextIndex)
+          lastToolIndex = nextIndex
+          cursor = nextIndex + 1
+          continue
+        }
+
+        break
+      }
+
+      groups.push({
+        groupKey: `tool:${indices[0]}`,
+        indices
+      })
+      index = lastToolIndex + 1
+      continue
+    }
+
+    groups.push({
+      groupKey: undefined,
+      indices: [index]
+    })
+    index += 1
+  }
+
+  return groups
+}
+
 function formatMessageTimestamp(
   value: Date | string | null | undefined,
   locale: string | undefined
@@ -487,6 +598,55 @@ const assistantPartsComponents = {
   ToolGroup: ToolGroup
 } as const
 
+function CompletedAssistantMessageGroup({
+  children,
+  indices
+}: {
+  children: React.ReactNode
+  indices: number[]
+}): React.JSX.Element {
+  const parts = useAuiState(
+    (state) => state.message.parts as unknown as readonly AssistantMessagePart[]
+  )
+  const firstIndex = indices[0]
+  const lastIndex = indices[indices.length - 1]
+  const groupParts = indices
+    .map((index) => parts[index])
+    .filter((part): part is AssistantMessagePart => part !== undefined)
+
+  if (groupParts.length > 0 && groupParts.every((part) => part.type === 'reasoning')) {
+    return (
+      <ReasoningGroup endIndex={lastIndex} startIndex={firstIndex}>
+        {children}
+      </ReasoningGroup>
+    )
+  }
+
+  if (groupParts.length > 0 && groupParts.every((part) => isStandardToolPart(part))) {
+    return (
+      <ToolGroup endIndex={lastIndex} indices={indices} startIndex={firstIndex}>
+        {children}
+      </ToolGroup>
+    )
+  }
+
+  return <>{children}</>
+}
+
+const completedAssistantPartsComponents = {
+  Reasoning: Reasoning,
+  Text: MarkdownText,
+  data: {
+    by_name: {
+      'tool-agent': ToolAgentStreamPart
+    }
+  },
+  tools: {
+    Fallback: ToolFallback
+  },
+  Group: CompletedAssistantMessageGroup
+} as const
+
 function ToolAgentStreamPart({
   data
 }: DataMessagePartProps<ToolAgentStreamData>): React.JSX.Element | null {
@@ -582,12 +742,27 @@ function AssistantMessageActions(): React.JSX.Element {
 
 function StandardAssistantMessageBubble(): React.JSX.Element {
   const assistantName = useContext(AssistantNameContext)
+  const parts = useAuiState(
+    (state) => state.message.parts as unknown as readonly AssistantMessagePart[]
+  )
+  const messageStatus = useAuiState((state) => state.message.status?.type)
+  const shouldRenderCompletedToolGroups =
+    messageStatus !== 'running' &&
+    messageStatus !== 'requires-action' &&
+    parts.some(isStandardToolPart)
 
   return (
     <MessagePrimitive.Root className="max-w-3xl px-4 py-3">
       <div className="space-y-3 rounded-[28px] bg-[color:var(--surface-panel-soft)] px-4 py-4">
         <AssistantMessageHeader assistantName={assistantName} />
-        <MessagePrimitive.Parts components={assistantPartsComponents} />
+        {shouldRenderCompletedToolGroups ? (
+          <MessagePrimitive.Unstable_PartsGrouped
+            components={completedAssistantPartsComponents}
+            groupingFunction={groupCompletedAssistantMessageParts}
+          />
+        ) : (
+          <MessagePrimitive.Parts components={assistantPartsComponents} />
+        )}
         <AssistantMessageActions />
       </div>
     </MessagePrimitive.Root>

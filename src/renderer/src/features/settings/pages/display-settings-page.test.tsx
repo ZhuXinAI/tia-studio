@@ -7,6 +7,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { i18n } from '../../../i18n'
 import { ThemeProvider } from '../../../components/theme-provider'
 import { DisplaySettingsPage } from './display-settings-page'
+import { getSystemLocale, getUiConfig, setUiConfig } from '../ui-config'
+
+vi.mock('../ui-config', () => ({
+  getUiConfig: vi.fn(),
+  setUiConfig: vi.fn(),
+  getSystemLocale: vi.fn()
+}))
 
 async function flushAsyncWork(): Promise<void> {
   await act(async () => {
@@ -39,18 +46,11 @@ describe('display settings page', () => {
       }))
     })
 
-    window.tiaDesktop = {
-      getConfig: vi.fn(async () => ({
-        baseUrl: 'http://127.0.0.1:4769',
-        authToken: 'token'
-      })),
-      getUiConfig: vi.fn(async () => ({
-        transparent: false
-      })),
-      setUiConfig: vi.fn(async (config) => config),
-      getSystemLocale: vi.fn(async () => 'en-US'),
-      pickDirectory: vi.fn(async () => null)
-    }
+    vi.mocked(getUiConfig).mockResolvedValue({
+      transparent: false
+    })
+    vi.mocked(setUiConfig).mockImplementation(async (config) => config)
+    vi.mocked(getSystemLocale).mockResolvedValue('en-US')
   })
 
   afterEach(() => {

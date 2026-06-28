@@ -6,13 +6,6 @@ import { createApiClient } from './api-client'
 describe('api client', () => {
   beforeEach(() => {
     vi.resetAllMocks()
-    window.tiaDesktop = {
-      getConfig: vi.fn(async () => ({
-        baseUrl: 'http://127.0.0.1:4769',
-        authToken: 'test-token'
-      })),
-      pickDirectory: vi.fn(async () => null)
-    }
   })
 
   it('includes bearer auth header on requests', async () => {

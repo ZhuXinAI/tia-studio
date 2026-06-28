@@ -1,3 +1,5 @@
+import { createApiClient } from '../../../lib/api-client'
+
 export type ManagedRuntimeKind = 'agent-browser' | 'bun' | 'uv' | 'codex-acp' | 'claude-agent-acp'
 export type ManagedRuntimeSource = 'managed' | 'custom' | 'none'
 export type ManagedRuntimeStatus =
@@ -32,6 +34,7 @@ export const managedRuntimeKinds: ManagedRuntimeKind[] = [
   ...runtimeSetupKinds,
   ...codingRuntimeKinds
 ]
+const apiClient = createApiClient()
 
 function createDefaultRecord(): ManagedRuntimeRecord {
   return {
@@ -57,51 +60,51 @@ export function createDefaultManagedRuntimesState(): ManagedRuntimesState {
   }
 }
 
-function requireDesktopMethod<Key extends keyof NonNullable<typeof window.tiaDesktop>>(
-  key: Key
-): NonNullable<NonNullable<typeof window.tiaDesktop>[Key]> {
-  const method = window.tiaDesktop?.[key]
-  if (!method) {
-    throw new Error(`Desktop bridge method "${String(key)}" is unavailable`)
-  }
-
-  return method as NonNullable<NonNullable<typeof window.tiaDesktop>[Key]>
-}
-
 export async function getManagedRuntimeStatus(): Promise<ManagedRuntimesState> {
-  return requireDesktopMethod('getManagedRuntimeStatus')()
+  return apiClient.get<ManagedRuntimesState>('/v1/desktop/managed-runtimes')
 }
 
 export async function checkManagedRuntimeLatest(
   kind: ManagedRuntimeKind
 ): Promise<ManagedRuntimesState> {
-  return requireDesktopMethod('checkManagedRuntimeLatest')(kind)
+  return apiClient.post<ManagedRuntimesState>(`/v1/desktop/managed-runtimes/${kind}/check-latest`)
 }
 
 export async function installManagedRuntime(
   kind: ManagedRuntimeKind
 ): Promise<ManagedRuntimesState> {
-  return requireDesktopMethod('installManagedRuntime')(kind)
+  return apiClient.post<ManagedRuntimesState>(`/v1/desktop/managed-runtimes/${kind}/install`)
 }
 
 export async function pickCustomRuntime(
   kind: ManagedRuntimeKind
 ): Promise<ManagedRuntimesState | null> {
-  return requireDesktopMethod('pickCustomRuntime')(kind)
+  return apiClient.post<ManagedRuntimesState | null>(
+    `/v1/desktop/managed-runtimes/${kind}/pick-custom`
+  )
 }
 
 export async function clearManagedRuntime(kind: ManagedRuntimeKind): Promise<ManagedRuntimesState> {
-  return requireDesktopMethod('clearManagedRuntime')(kind)
+  return apiClient.delete<ManagedRuntimesState>(`/v1/desktop/managed-runtimes/${kind}/custom`)
 }
 
 export async function getRuntimeOnboardingSkillsStatus(): Promise<RuntimeOnboardingSkillId[]> {
-  return requireDesktopMethod('getRuntimeOnboardingSkillsStatus')()
+  const response = await apiClient.get<{ skillIds: RuntimeOnboardingSkillId[] }>(
+    '/v1/desktop/runtime-onboarding-skills'
+  )
+  return response.skillIds
 }
 
 export async function installRuntimeOnboardingSkills(
   skillIds: RuntimeOnboardingSkillId[]
 ): Promise<RuntimeOnboardingSkillId[]> {
-  return requireDesktopMethod('installRuntimeOnboardingSkills')(skillIds)
+  const response = await apiClient.post<{ skillIds: RuntimeOnboardingSkillId[] }>(
+    '/v1/desktop/runtime-onboarding-skills/install',
+    {
+      skillIds
+    }
+  )
+  return response.skillIds
 }
 
 export function getRequiredManagedRuntimeKind(

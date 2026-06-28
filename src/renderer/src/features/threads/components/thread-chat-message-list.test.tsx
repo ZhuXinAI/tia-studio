@@ -3,7 +3,10 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ThreadChatMessageList } from './thread-chat-message-list'
+import {
+  ThreadChatMessageList,
+  groupCompletedAssistantMessageParts
+} from './thread-chat-message-list'
 
 const threadMessagesComponentsMock = vi.fn((components: unknown) => {
   void components
@@ -25,7 +28,8 @@ const messageState = {
     createdAt: new Date('2026-03-01T12:34:00.000Z'),
     isHovering: true,
     metadata: null as Record<string, unknown> | null,
-    parts: [] as unknown[]
+    parts: [] as unknown[],
+    status: { type: 'complete' as const }
   },
   thread: {
     messages: [{}, {}]
@@ -91,6 +95,68 @@ vi.mock('react-virtuoso', () => ({
 }))
 
 vi.mock('@assistant-ui/react', () => {
+  const renderGroupedParts = (props: {
+    groupingFunction: (parts: unknown[]) => Array<{ groupKey?: string; indices: number[] }>
+    components?: {
+      Group?: React.ComponentType<{
+        children?: React.ReactNode
+        groupKey?: string
+        indices: number[]
+      }>
+      tools?: {
+        Fallback?: React.ComponentType<{
+          toolName: string
+          status?: { type?: string }
+          result?: unknown
+          argsText?: string
+        }>
+      }
+    }
+  }) => {
+    messagePartsPropsMock(props)
+
+    const groups = props.groupingFunction(messageState.message.parts)
+    const Group = props.components?.Group ?? (({ children }: { children?: React.ReactNode }) => <>{children}</>)
+    const ToolFallback = props.components?.tools?.Fallback
+
+    return (
+      <div data-testid="grouped-message-parts">
+        {groups.map((group, groupIndex) => (
+          <Group
+            key={`group-${groupIndex}-${group.groupKey ?? 'ungrouped'}`}
+            groupKey={group.groupKey}
+            indices={group.indices}
+          >
+            {group.indices.map((partIndex) => {
+              const part = messageState.message.parts[partIndex] as
+                | {
+                    type?: string
+                    toolName?: string
+                    status?: { type?: string }
+                    result?: unknown
+                  }
+                | undefined
+
+              if (!part || part.type !== 'tool-call' || !ToolFallback || !part.toolName) {
+                return null
+              }
+
+              return (
+                <ToolFallback
+                  key={partIndex}
+                  argsText={undefined}
+                  result={part.result}
+                  status={part.status}
+                  toolName={part.toolName}
+                />
+              )
+            })}
+          </Group>
+        ))}
+      </div>
+    )
+  }
+
   return {
     AuiIf: ({
       children,
@@ -100,6 +166,7 @@ vi.mock('@assistant-ui/react', () => {
       condition: (state: typeof messageState) => boolean
     }) => (condition(messageState) ? <>{children}</> : null),
     useAuiState: <T,>(selector: (state: typeof messageState) => T): T => selector(messageState),
+    useScrollLock: () => () => undefined,
     ActionBarPrimitive: {
       Root: (props: { children?: React.ReactNode; autohide?: string }) => {
         actionBarRootPropsMock(props)
@@ -131,7 +198,8 @@ vi.mock('@assistant-ui/react', () => {
       Parts: (props: unknown) => {
         messagePartsPropsMock(props)
         return null
-      }
+      },
+      Unstable_PartsGrouped: renderGroupedParts
     },
     ThreadPrimitive: {
       MessageByIndex: ({
@@ -173,6 +241,7 @@ describe('thread chat message list', () => {
     messageState.message.isHovering = true
     messageState.message.metadata = null
     messageState.message.parts = []
+    messageState.message.status = { type: 'complete' }
     messageState.thread.messages = [{}, {}]
   })
 
@@ -268,6 +337,53 @@ describe('thread chat message list', () => {
       | undefined
 
     expect(dataConfig?.by_name?.['tool-agent']).toBeTypeOf('function')
+  })
+
+  it('merges completed step-separated tool runs into one summarized group', async () => {
+    messageState.message.status = { type: 'complete' }
+    messageState.message.parts = [
+      {
+        type: 'tool-call',
+        toolName: 'search_code',
+        toolCallId: 'tool-1',
+        status: { type: 'complete' }
+      },
+      {
+        type: 'step-start'
+      },
+      {
+        type: 'tool-call',
+        toolName: 'read_file',
+        toolCallId: 'tool-2',
+        status: { type: 'complete' }
+      },
+      {
+        type: 'step-start'
+      },
+      {
+        type: 'tool-call',
+        toolName: 'shell_command',
+        toolCallId: 'tool-3',
+        status: { type: 'complete' }
+      }
+    ]
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    expect(container.textContent).toContain('3 tool calls')
+    expect(container.textContent).toContain('Search Code, Read File, Shell Command')
+    expect(container.textContent).not.toContain('1 tool call')
   })
 
   it('renders delegated turns as member blocks and hides the supervisor summary text', async () => {
@@ -806,5 +922,42 @@ describe('thread chat message list', () => {
     })
 
     expect(container.querySelector('[data-testid="message-usage"]')).toBeNull()
+  })
+})
+
+describe('groupCompletedAssistantMessageParts', () => {
+  it('ignores step-start separators between consecutive tool calls', () => {
+    expect(
+      groupCompletedAssistantMessageParts([
+        {
+          type: 'tool-call',
+          toolName: 'search_code',
+          toolCallId: 'tool-1',
+          status: { type: 'complete' }
+        },
+        {
+          type: 'step-start'
+        },
+        {
+          type: 'tool-call',
+          toolName: 'read_file',
+          toolCallId: 'tool-2',
+          status: { type: 'complete' }
+        },
+        {
+          type: 'text',
+          text: 'Done.'
+        }
+      ])
+    ).toEqual([
+      {
+        groupKey: 'tool:0',
+        indices: [0, 2]
+      },
+      {
+        groupKey: undefined,
+        indices: [3]
+      }
+    ])
   })
 })

@@ -1,5 +1,5 @@
 import { DefaultChatTransport, type UIMessage } from 'ai'
-import { getDesktopConfig } from '../../lib/desktop-config'
+import { getDesktopBootstrap } from '../../lib/desktop-bootstrap'
 
 type ThreadChatTransportInput = {
   threadId: string
@@ -100,13 +100,13 @@ export function resolveDesktopChatUrl(baseUrl: string, input: string): string {
 
 export function createDesktopChatFetch(): DesktopChatFetch {
   return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const config = await getDesktopConfig()
+    const bootstrap = await getDesktopBootstrap()
     const requestUrl =
       typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
-    const resolvedUrl = resolveDesktopChatUrl(config.baseUrl, requestUrl)
+    const resolvedUrl = resolveDesktopChatUrl(bootstrap.apiBaseUrl, requestUrl)
     const headers = new Headers(init?.headers)
-    if (config.authToken.trim().length > 0) {
-      headers.set('Authorization', `Bearer ${config.authToken}`)
+    if (bootstrap.authMode === 'bearer' && bootstrap.authToken?.trim().length) {
+      headers.set('Authorization', `Bearer ${bootstrap.authToken}`)
     }
 
     return fetch(resolvedUrl, {
@@ -215,18 +215,20 @@ function openMessageEventsStream(input: {
 
   const done = (async () => {
     try {
-      const config = await getDesktopConfig()
-      const normalizedBaseUrl = config.baseUrl.endsWith('/')
-        ? config.baseUrl.slice(0, -1)
-        : config.baseUrl
+      const bootstrap = await getDesktopBootstrap()
+      const normalizedBaseUrl = bootstrap.apiBaseUrl.endsWith('/')
+        ? bootstrap.apiBaseUrl.slice(0, -1)
+        : bootstrap.apiBaseUrl
       const params = new URLSearchParams({
         profileId: input.profileId
       })
+      const headers: Record<string, string> = {}
+      if (bootstrap.authMode === 'bearer' && bootstrap.authToken?.trim().length) {
+        headers.Authorization = `Bearer ${bootstrap.authToken}`
+      }
       const response = await fetch(`${normalizedBaseUrl}${input.path}?${params.toString()}`, {
         method: 'GET',
-        headers: {
-          Authorization: `Bearer ${config.authToken}`
-        },
+        headers,
         signal: abortController.signal
       })
 

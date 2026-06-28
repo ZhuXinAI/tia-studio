@@ -3,6 +3,7 @@ import { useChat, type UIMessage } from '@ai-sdk/react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useTranslation } from '../../../i18n/use-app-translation'
+import { pickDirectory } from '../../../lib/desktop-features'
 import { useAssistants } from '../../assistants/assistants-query'
 import { useProviders } from '../../settings/providers/providers-query'
 import {
@@ -958,7 +959,7 @@ export function useThreadPageController() {
       return
     }
 
-    const nextRootPath = await window.tiaDesktop?.pickDirectory()
+    const nextRootPath = await pickDirectory()
     if (!nextRootPath) {
       return
     }
