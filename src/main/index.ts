@@ -66,10 +66,7 @@ import {
 } from './skills/skills-manager'
 import { bringWindowToFront, buildTrayMenuTemplate } from './tray'
 import { UiConfigStore } from './ui-config'
-import {
-  desktopBootstrapQueryParam,
-  type DesktopBootstrap
-} from '../shared/desktop-bootstrap'
+import { desktopBootstrapQueryParam, type DesktopBootstrap } from '../shared/desktop-bootstrap'
 
 const hasSingleInstanceLock = registerSingleInstanceApp({
   app,
@@ -113,7 +110,17 @@ function resolveUiConfigStore(): UiConfigStore {
   return uiConfigStore
 }
 
-let isTransparentWindow = Boolean(resolveUiConfigStore().getConfig().transparent)
+function resolveTransparentWindowEnabled(
+  config: { transparent?: boolean } | null | undefined
+): boolean {
+  if (typeof config?.transparent === 'boolean') {
+    return config.transparent
+  }
+
+  return process.platform === 'darwin' || process.platform === 'win32'
+}
+
+let isTransparentWindow = resolveTransparentWindowEnabled(resolveUiConfigStore().getConfig())
 
 function resolveDesktopBootstrap(): DesktopBootstrap {
   const authMode = isBrowserAnnotationModeEnabled ? 'none' : 'bearer'
@@ -186,7 +193,7 @@ function getRuntimeDisplayName(kind: ManagedRuntimeKind): string {
 
 function updateUiConfig(config: Parameters<UiConfigStore['updateConfig']>[0]) {
   const nextConfig = resolveUiConfigStore().updateConfig(config)
-  isTransparentWindow = Boolean(nextConfig.transparent)
+  isTransparentWindow = resolveTransparentWindowEnabled(nextConfig)
   return nextConfig
 }
 
@@ -589,6 +596,7 @@ function stopLocalApiServer(): void {
 
 function createMainWindow(): BrowserWindow {
   const isMac = process.platform === 'darwin'
+  const isWindows = process.platform === 'win32'
   // Create the browser window.
   const browserWindow = new BrowserWindow({
     width: 1280,
@@ -602,15 +610,24 @@ function createMainWindow(): BrowserWindow {
           titleBarStyle: 'hidden' as const,
           ...(isTransparentWindow
             ? {
-                vibrancy: 'sidebar',
+                vibrancy: 'under-window',
                 transparent: true,
                 visualEffectState: 'active',
                 backgroundColor: '#00000000'
               }
-            : { backgroundColor: '#ffffff' })
+            : { backgroundColor: '#09090b' })
         }
-      : { backgroundColor: '#ffffff' }),
-    ...(process.platform === 'linux' ? { icon, backgroundColor: '#ffffff' } : {}),
+      : isWindows
+        ? {
+            ...(isTransparentWindow
+              ? {
+                  backgroundMaterial: 'mica' as const,
+                  backgroundColor: '#00000000'
+                }
+              : { backgroundColor: '#09090b' })
+          }
+        : { backgroundColor: isTransparentWindow ? '#00000000' : '#09090b' }),
+    ...(process.platform === 'linux' ? { icon, backgroundColor: '#09090b' } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -640,9 +657,7 @@ function createMainWindow(): BrowserWindow {
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    browserWindow.loadURL(
-      attachDesktopBootstrapToRendererUrl(process.env['ELECTRON_RENDERER_URL'])
-    )
+    browserWindow.loadURL(attachDesktopBootstrapToRendererUrl(process.env['ELECTRON_RENDERER_URL']))
   } else {
     browserWindow.loadFile(join(__dirname, '../renderer/index.html'), {
       query: {

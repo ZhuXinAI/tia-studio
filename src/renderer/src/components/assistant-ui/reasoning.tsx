@@ -14,6 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/colla
 import { cn } from '../../lib/utils'
 
 const ANIMATION_DURATION = 200
+const REASONING_SUMMARY_MAX_LENGTH = 96
 
 const reasoningVariants = cva('aui-reasoning-root mb-4 w-full', {
   variants: {
@@ -39,6 +40,51 @@ export type ReasoningRootProps = Omit<
     onOpenChange?: (open: boolean) => void
     defaultOpen?: boolean
   }
+
+type ReasoningMessagePart = {
+  type?: string
+  text?: string
+}
+
+function normalizeReasoningLine(value: string): string | null {
+  const normalized = value
+    .replace(/\s+/g, ' ')
+    .replace(/^[>\-*\d.)\s]+/, '')
+    .trim()
+
+  return normalized.length > 0 ? normalized : null
+}
+
+function truncateReasoningSummary(value: string): string {
+  if (value.length <= REASONING_SUMMARY_MAX_LENGTH) {
+    return value
+  }
+
+  return `${value.slice(0, REASONING_SUMMARY_MAX_LENGTH - 3)}...`
+}
+
+function extractReasoningSummary(
+  parts: readonly ReasoningMessagePart[],
+  startIndex: number,
+  endIndex: number
+): string | null {
+  for (let index = endIndex; index >= startIndex; index -= 1) {
+    const part = parts[index]
+    if (part?.type !== 'reasoning' || typeof part.text !== 'string') {
+      continue
+    }
+
+    const lines = part.text.split(/\r?\n/)
+    for (let lineIndex = lines.length - 1; lineIndex >= 0; lineIndex -= 1) {
+      const normalizedLine = normalizeReasoningLine(lines[lineIndex] ?? '')
+      if (normalizedLine) {
+        return truncateReasoningSummary(normalizedLine)
+      }
+    }
+  }
+
+  return null
+}
 
 function ReasoningRoot({
   className,
@@ -113,13 +159,15 @@ function ReasoningFade({ className, ...props }: React.ComponentProps<'div'>) {
 function ReasoningTrigger({
   active,
   duration,
+  summary,
   className,
   ...props
 }: React.ComponentProps<typeof CollapsibleTrigger> & {
   active?: boolean
   duration?: number
+  summary?: string
 }) {
-  const durationText = duration ? ` (${duration}s)` : ''
+  const label = summary ? `Reasoning · ${summary}` : `Reasoning${duration ? ` (${duration}s)` : ''}`
 
   return (
     <CollapsibleTrigger
@@ -138,14 +186,14 @@ function ReasoningTrigger({
         data-slot="reasoning-trigger-label"
         className="aui-reasoning-trigger-label-wrapper relative inline-block leading-none"
       >
-        <span>Reasoning{durationText}</span>
+        <span>{label}</span>
         {active ? (
           <span
             aria-hidden
             data-slot="reasoning-trigger-shimmer"
             className="aui-reasoning-trigger-shimmer shimmer pointer-events-none absolute inset-0 motion-reduce:animate-none"
           >
-            Reasoning{durationText}
+            {label}
           </span>
         ) : null}
       </span>
@@ -214,6 +262,13 @@ function ReasoningText({ className, ...props }: React.ComponentProps<'div'>) {
 const ReasoningImpl: ReasoningMessagePartComponent = () => <MarkdownText />
 
 const ReasoningGroupImpl: ReasoningGroupComponent = ({ children, startIndex, endIndex }) => {
+  const reasoningSummary = useAuiState((state) =>
+    extractReasoningSummary(
+      state.message.parts as readonly ReasoningMessagePart[],
+      startIndex,
+      endIndex
+    )
+  )
   const isReasoningStreaming = useAuiState((s) => {
     if (s.message.status?.type !== 'running') return false
     const lastIndex = s.message.parts.length - 1
@@ -224,8 +279,8 @@ const ReasoningGroupImpl: ReasoningGroupComponent = ({ children, startIndex, end
   })
 
   return (
-    <ReasoningRoot defaultOpen={isReasoningStreaming}>
-      <ReasoningTrigger active={isReasoningStreaming} />
+    <ReasoningRoot defaultOpen={false}>
+      <ReasoningTrigger active={isReasoningStreaming} summary={reasoningSummary ?? undefined} />
       <ReasoningContent aria-busy={isReasoningStreaming}>
         <ReasoningText>{children}</ReasoningText>
       </ReasoningContent>

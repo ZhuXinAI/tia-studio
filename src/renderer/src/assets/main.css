@@ -110,8 +110,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: var(--surface-canvas);
-  background-image: none;
+  background: transparent;
   color: var(--foreground);
   font-family: var(--font-body);
   text-rendering: optimizeLegibility;
@@ -120,7 +119,10 @@ body {
 }
 
 #root {
-  min-height: 100vh;
+  min-height: 100dvh;
+  position: relative;
+  isolation: isolate;
+  background: transparent;
 }
 
 .font-editorial {
@@ -206,4 +208,66 @@ body {
 
 .chat-scrollbar::-webkit-scrollbar-thumb:hover {
   background: color-mix(in srgb, var(--foreground) 38%, transparent);
+}
+
+.app-window-ambient {
+  background:
+    radial-gradient(
+      circle at 14% 16%,
+      color-mix(in srgb, var(--primary) 18%, transparent) 0,
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 82% 12%,
+      color-mix(in srgb, var(--foreground) 12%, transparent) 0,
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 52% 108%,
+      color-mix(in srgb, var(--surface-muted) 94%, transparent) 0,
+      transparent 42%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-canvas) 48%, transparent),
+      color-mix(in srgb, var(--surface-canvas) 86%, transparent)
+    );
+}
+
+.glass-pane-surface {
+  position: relative;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-paper) 78%, transparent),
+      color-mix(in srgb, var(--surface-panel) 58%, transparent)
+    ),
+    color-mix(in srgb, var(--surface-panel) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface-border-strong) 82%, transparent);
+  box-shadow:
+    0 24px 70px -48px rgb(15 23 42 / 0.65),
+    inset 0 1px 0 color-mix(in srgb, white 16%, transparent);
+  backdrop-filter: blur(24px) saturate(135%);
+  -webkit-backdrop-filter: blur(24px) saturate(135%);
+}
+
+.glass-pane-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.24), rgb(255 255 255 / 0.04));
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.82;
+}
+
+.glass-pane-surface > * {
+  position: relative;
+  z-index: 1;
 }

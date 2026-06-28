@@ -9,7 +9,7 @@ import {
   useMessagePartFile
 } from '@assistant-ui/react'
 import { Virtuoso, type IndexLocationWithAlign } from 'react-virtuoso'
-import { Copy, File, LoaderIcon, MoreHorizontal, RotateCw } from 'lucide-react'
+import { ChevronDownIcon, Copy, File, LoaderIcon, MoreHorizontal, RotateCw } from 'lucide-react'
 import { createContext, useContext, useMemo } from 'react'
 import { toErrorMessage } from '../thread-page-routing'
 import { Reasoning, ReasoningGroup } from '../../../components/assistant-ui/reasoning'
@@ -17,6 +17,11 @@ import { MarkdownText } from '../../../components/assistant-ui/markdown-text'
 import { ToolFallback } from '../../../components/assistant-ui/tool-fallback'
 import { ToolGroup } from '../../../components/assistant-ui/tool-group'
 import { Button } from '../../../components/ui/button'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from '../../../components/ui/collapsible'
 import { Image } from '@renderer/components/assistant-ui/image'
 import { UserMessageAttachments } from '@renderer/components/assistant-ui/attachment'
 import { useTranslation } from '../../../i18n/use-app-translation'
@@ -35,6 +40,7 @@ type ThreadChatMessageListProps = {
 const AssistantNameContext = createContext('Assistant')
 const ESTIMATED_MESSAGE_HEIGHT = 160
 const DELEGATION_ERROR_MESSAGE_MAX_LENGTH = 50
+const ACTIVITY_SUMMARY_MAX_LENGTH = 96
 
 type DelegatedAgentToolResult = {
   kind: 'delegated-agent-result'
@@ -139,10 +145,9 @@ function isStandardToolPart(
   return part.type === 'tool-call' && !isDelegationToolPart(part) && !isCompletionToolPart(part)
 }
 
-function isStepStartPart(part: AssistantMessagePart): part is Extract<
-  AssistantMessagePart,
-  { type: 'step-start' }
-> {
+function isStepStartPart(
+  part: AssistantMessagePart
+): part is Extract<AssistantMessagePart, { type: 'step-start' }> {
   return part.type === 'step-start'
 }
 
@@ -154,6 +159,12 @@ function isToolAgentDataPart(part: AssistantMessagePart): part is Extract<
   data: ToolAgentStreamData
 } {
   return part.type === 'data' && part.name === 'tool-agent'
+}
+
+function isInvisibleMetadataDataPart(
+  part: AssistantMessagePart
+): part is Extract<AssistantMessagePart, { type: 'data'; name: string; data: unknown }> {
+  return part.type === 'data' && part.name !== 'tool-agent'
 }
 
 function formatLabelFromToken(value: string): string {
@@ -251,6 +262,63 @@ function truncateErrorMessage(value: string): string {
   }
 
   return `${value.slice(0, DELEGATION_ERROR_MESSAGE_MAX_LENGTH - 3)}...`
+}
+
+function normalizeActivityLine(value: string): string | null {
+  const normalized = value
+    .replace(/\s+/g, ' ')
+    .replace(/^[>\-*\d.)\s]+/, '')
+    .trim()
+
+  return normalized.length > 0 ? normalized : null
+}
+
+function truncateActivitySummary(value: string): string {
+  if (value.length <= ACTIVITY_SUMMARY_MAX_LENGTH) {
+    return value
+  }
+
+  return `${value.slice(0, ACTIVITY_SUMMARY_MAX_LENGTH - 3)}...`
+}
+
+function extractLatestActionSummary(value: string): string | null {
+  const lines = value.split(/\r?\n/)
+
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const normalizedLine = normalizeActivityLine(lines[index] ?? '')
+    if (normalizedLine) {
+      return truncateActivitySummary(normalizedLine)
+    }
+  }
+
+  return null
+}
+
+function getLatestNestedToolName(nestedTools: readonly DelegatedNestedToolCall[]): string | null {
+  for (let index = nestedTools.length - 1; index >= 0; index -= 1) {
+    const tool = nestedTools[index]
+    if (tool?.status === 'running') {
+      return tool.name
+    }
+  }
+
+  return nestedTools[nestedTools.length - 1]?.name ?? null
+}
+
+function summarizeDelegatedVisibleBlock(block: DelegatedVisibleMessageBlock): {
+  actionCount: number | null
+  summary: string
+} {
+  const textSummary = extractLatestActionSummary(block.text)
+  const nestedToolSummary = getLatestNestedToolName(block.nestedTools)
+
+  return {
+    actionCount: block.nestedTools.length > 0 ? block.nestedTools.length : null,
+    summary:
+      textSummary ??
+      nestedToolSummary ??
+      (block.status === 'error' ? 'Delegated task failed' : 'Working...')
+  }
 }
 
 function extractDelegationToolErrorMessage(
@@ -375,7 +443,7 @@ export function groupCompletedAssistantMessageParts(
   for (let index = 0; index < parts.length; ) {
     const part = parts[index]!
 
-    if (isStepStartPart(part)) {
+    if (isStepStartPart(part) || isInvisibleMetadataDataPart(part)) {
       index += 1
       continue
     }
@@ -423,6 +491,11 @@ export function groupCompletedAssistantMessageParts(
           continue
         }
 
+        if (isInvisibleMetadataDataPart(candidate)) {
+          cursor += 1
+          continue
+        }
+
         break
       }
 
@@ -442,6 +515,41 @@ export function groupCompletedAssistantMessageParts(
   }
 
   return groups
+}
+
+function isAssistantActivityGroup(
+  parts: readonly AssistantMessagePart[],
+  group: CompletedMessagePartGroup
+): boolean {
+  return group.indices.every((index) => {
+    const part = parts[index]
+    return part?.type === 'reasoning' || (part ? isStandardToolPart(part) : false)
+  })
+}
+
+function groupAssistantActivityParts(
+  parts: readonly AssistantMessagePart[]
+): CompletedMessagePartGroup[] {
+  return groupCompletedAssistantMessageParts(parts).filter((group) =>
+    isAssistantActivityGroup(parts, group)
+  )
+}
+
+function isVisibleAssistantBodyPart(part: AssistantMessagePart): boolean {
+  if (isStepStartPart(part) || isInvisibleMetadataDataPart(part) || isToolAgentDataPart(part)) {
+    return false
+  }
+
+  if (
+    part.type === 'reasoning' ||
+    isStandardToolPart(part) ||
+    isDelegationToolPart(part) ||
+    isCompletionToolPart(part)
+  ) {
+    return false
+  }
+
+  return true
 }
 
 function formatMessageTimestamp(
@@ -583,26 +691,11 @@ function UserMessageBubble(): React.JSX.Element {
   )
 }
 
-const assistantPartsComponents = {
-  Reasoning: Reasoning,
-  ReasoningGroup: ReasoningGroup,
-  Text: MarkdownText,
-  data: {
-    by_name: {
-      'tool-agent': ToolAgentStreamPart
-    }
-  },
-  tools: {
-    Fallback: ToolFallback
-  },
-  ToolGroup: ToolGroup
-} as const
-
 function CompletedAssistantMessageGroup({
   children,
   indices
 }: {
-  children: React.ReactNode
+  children?: React.ReactNode
   indices: number[]
 }): React.JSX.Element {
   const parts = useAuiState(
@@ -647,6 +740,20 @@ const completedAssistantPartsComponents = {
   Group: CompletedAssistantMessageGroup
 } as const
 
+const assistantTextOnlyComponents = {
+  Text: MarkdownText,
+  Image: Image,
+  data: {
+    by_name: {
+      'tool-agent': () => null
+    }
+  },
+  tools: {
+    Fallback: () => null
+  },
+  Reasoning: () => null
+} as const
+
 function ToolAgentStreamPart({
   data
 }: DataMessagePartProps<ToolAgentStreamData>): React.JSX.Element | null {
@@ -666,28 +773,24 @@ function ToolAgentStreamPart({
   )
 }
 
-function AssistantMessageHeader({ assistantName }: { assistantName: string }): React.JSX.Element {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="size-1.5 rounded-full bg-primary/60" />
-      <p className="text-muted-foreground text-[11px] font-medium uppercase tracking-[0.18em]">
-        {assistantName}
-      </p>
-    </div>
-  )
-}
-
-function AssistantMessageActions(): React.JSX.Element {
+function AssistantMessageActions({
+  withSeparator = true
+}: {
+  withSeparator?: boolean
+} = {}): React.JSX.Element {
   const { t } = useTranslation()
 
   return (
-    <div className="mt-4 space-y-2 border-t border-[color:var(--surface-border)] pt-3">
+    <div
+      className={cn(
+        'mt-4 space-y-2',
+        withSeparator && 'border-t border-[color:var(--surface-border)] pt-3'
+      )}
+    >
       <div className="flex flex-wrap items-center gap-2">
-        <MessageTimestamp />
-
         <ActionBarPrimitive.Root
           autohide="never"
-          className="ml-auto flex items-center gap-1 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] p-1"
+          className="flex items-center gap-1 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] p-1"
         >
           <ActionBarPrimitive.Copy asChild>
             <Button
@@ -741,29 +844,33 @@ function AssistantMessageActions(): React.JSX.Element {
 }
 
 function StandardAssistantMessageBubble(): React.JSX.Element {
-  const assistantName = useContext(AssistantNameContext)
   const parts = useAuiState(
     (state) => state.message.parts as unknown as readonly AssistantMessagePart[]
   )
-  const messageStatus = useAuiState((state) => state.message.status?.type)
-  const shouldRenderCompletedToolGroups =
-    messageStatus !== 'running' &&
-    messageStatus !== 'requires-action' &&
-    parts.some(isStandardToolPart)
+  const shouldRenderGroupedActivities = parts.some(
+    (part) => isStandardToolPart(part) || part.type === 'reasoning'
+  )
+  const hasVisibleBody = parts.some(isVisibleAssistantBodyPart)
+  const shouldRenderBodyCard = hasVisibleBody || !shouldRenderGroupedActivities
 
   return (
-    <MessagePrimitive.Root className="max-w-3xl px-4 py-3">
-      <div className="space-y-3 rounded-[28px] bg-[color:var(--surface-panel-soft)] px-4 py-4">
-        <AssistantMessageHeader assistantName={assistantName} />
-        {shouldRenderCompletedToolGroups ? (
+    <MessagePrimitive.Root className="w-full px-4 py-3">
+      <div className="space-y-3">
+        {shouldRenderGroupedActivities ? (
           <MessagePrimitive.Unstable_PartsGrouped
             components={completedAssistantPartsComponents}
-            groupingFunction={groupCompletedAssistantMessageParts}
+            groupingFunction={groupAssistantActivityParts}
           />
-        ) : (
-          <MessagePrimitive.Parts components={assistantPartsComponents} />
-        )}
-        <AssistantMessageActions />
+        ) : null}
+
+        {shouldRenderBodyCard ? (
+          <div className="glass-pane-surface w-full space-y-3 rounded-[28px] px-4 py-4 text-[14px]">
+            <MessagePrimitive.Parts components={assistantTextOnlyComponents} />
+            <AssistantMessageActions />
+          </div>
+        ) : shouldRenderGroupedActivities ? (
+          <AssistantMessageActions withSeparator={false} />
+        ) : null}
       </div>
     </MessagePrimitive.Root>
   )
@@ -774,13 +881,22 @@ function DelegatedVisibleMessageCard({
 }: {
   block: DelegatedVisibleMessageBlock
 }): React.JSX.Element {
+  const { actionCount, summary } = summarizeDelegatedVisibleBlock(block)
+
   return (
-    <div className="rounded-[24px] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-strong)] px-4 py-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+    <Collapsible defaultOpen={false} className="glass-pane-surface rounded-[24px]">
+      <CollapsibleTrigger
+        data-slot="delegated-activity-trigger"
+        className="group/delegated-trigger flex w-full items-start gap-3 px-4 py-4 text-left"
+      >
+        {actionCount ? (
+          <span className="inline-flex min-w-9 items-center justify-center rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-2 py-1 text-sm font-medium tabular-nums text-foreground">
+            {actionCount}
+          </span>
+        ) : (
           <span
             className={cn(
-              'size-2 rounded-full',
+              'mt-2 size-2 shrink-0 rounded-full',
               block.status === 'running'
                 ? 'bg-blue-500/80'
                 : block.status === 'error'
@@ -788,56 +904,86 @@ function DelegatedVisibleMessageCard({
                   : 'bg-emerald-500/70'
             )}
           />
-          <p className="text-muted-foreground text-[11px] font-medium uppercase tracking-[0.18em]">
-            {block.assistantName}
-          </p>
-        </div>
-        {block.status === 'running' ? (
-          <LoaderIcon className="text-muted-foreground size-3.5 animate-spin" />
-        ) : null}
-      </div>
+        )}
 
-      {block.text ? (
-        <div
-          className={
-            block.status === 'error'
-              ? 'text-destructive whitespace-pre-wrap text-sm leading-7'
-              : 'whitespace-pre-wrap text-sm leading-7'
-          }
-        >
-          {block.text}
-        </div>
-      ) : (
-        <p className="text-muted-foreground text-sm">Working...</p>
-      )}
-
-      {block.mentions.length > 0 ? (
-        <p className="text-muted-foreground mt-4 inline-flex rounded-full bg-[color:var(--surface-panel)] px-2.5 py-1 text-xs">
-          Suggested next: {block.mentions.join(', ')}
-        </p>
-      ) : null}
-
-      {block.nestedTools.length > 0 ? (
-        <div className="mt-4 rounded-[20px] bg-[color:var(--surface-panel-soft)] p-3">
-          <p className="text-muted-foreground mb-2 text-[11px] font-medium uppercase tracking-[0.18em]">
-            Tools
-          </p>
-          <div className="space-y-2">
-            {block.nestedTools.map((tool) => (
-              <div
-                key={tool.key}
-                className="flex items-center justify-between gap-3 rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-3 py-2 text-sm"
-              >
-                <span>{tool.name}</span>
-                <span className="text-muted-foreground text-xs uppercase tracking-[0.18em]">
-                  {tool.status}
-                </span>
-              </div>
-            ))}
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <p className="text-muted-foreground text-[11px] font-medium uppercase tracking-[0.18em]">
+              {block.assistantName}
+            </p>
+            {block.status === 'running' ? (
+              <LoaderIcon className="text-muted-foreground size-3.5 animate-spin" />
+            ) : null}
           </div>
+          <p
+            className={cn(
+              'truncate text-sm leading-6 text-foreground',
+              block.status === 'error' && 'text-destructive'
+            )}
+          >
+            {summary}
+          </p>
         </div>
-      ) : null}
-    </div>
+
+        <ChevronDownIcon className="text-muted-foreground mt-1 size-4 shrink-0 transition-transform duration-200 group-data-[state=open]/delegated-trigger:rotate-180" />
+      </CollapsibleTrigger>
+
+      <CollapsibleContent
+        data-slot="delegated-activity-content"
+        className={cn(
+          'overflow-hidden px-4 pb-4 text-sm outline-none ease-out',
+          'data-[state=closed]:animate-collapsible-up',
+          'data-[state=open]:animate-collapsible-down',
+          'data-[state=closed]:fill-mode-forwards',
+          'data-[state=closed]:pointer-events-none',
+          'data-[state=open]:duration-200',
+          'data-[state=closed]:duration-200'
+        )}
+      >
+        <div className="border-t border-[color:var(--surface-border)] pt-4">
+          {block.text ? (
+            <div
+              className={
+                block.status === 'error'
+                  ? 'text-destructive whitespace-pre-wrap text-sm leading-7'
+                  : 'whitespace-pre-wrap text-sm leading-7'
+              }
+            >
+              {block.text}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">Working...</p>
+          )}
+
+          {block.mentions.length > 0 ? (
+            <p className="text-muted-foreground mt-4 inline-flex rounded-full bg-[color:var(--surface-panel)] px-2.5 py-1 text-xs">
+              Suggested next: {block.mentions.join(', ')}
+            </p>
+          ) : null}
+
+          {block.nestedTools.length > 0 ? (
+            <div className="mt-4 rounded-[20px] bg-[color:var(--surface-panel-soft)] p-3">
+              <p className="text-muted-foreground mb-2 text-[11px] font-medium uppercase tracking-[0.18em]">
+                Tools
+              </p>
+              <div className="space-y-2">
+                {block.nestedTools.map((tool) => (
+                  <div
+                    key={tool.key}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-3 py-2 text-sm"
+                  >
+                    <span>{tool.name}</span>
+                    <span className="text-muted-foreground text-xs uppercase tracking-[0.18em]">
+                      {tool.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 
@@ -861,8 +1007,8 @@ function DelegationAwareAssistantMessageBubble(): React.JSX.Element | null {
   }
 
   return (
-    <MessagePrimitive.Root className="max-w-3xl px-4 py-3">
-      <div className="space-y-4 rounded-[28px] bg-[color:var(--surface-panel-soft)] px-4 py-4">
+    <MessagePrimitive.Root className="w-full px-4 py-3">
+      <div className="glass-pane-surface w-full space-y-4 rounded-[28px] px-4 py-4 text-[14px]">
         {visibleBlocks.map((block) => (
           <DelegatedVisibleMessageCard key={block.key} block={block} />
         ))}
@@ -999,7 +1145,7 @@ export function ThreadChatMessageList({
           Footer
         }}
         itemContent={(index) => (
-          <div className="flex pb-4">
+          <div className="flex w-full pb-4">
             <ThreadPrimitive.MessageByIndex index={index} components={messageComponents} />
           </div>
         )}

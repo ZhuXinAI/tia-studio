@@ -6,6 +6,7 @@ import {
   DatabaseZap,
   Gauge,
   Link2,
+  LoaderIcon,
   SendHorizontal
 } from 'lucide-react'
 import type { UIMessage } from 'ai'
@@ -100,6 +101,61 @@ function StatusBarItem({
     <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-2.5 py-1 text-[11px] text-muted-foreground">
       <Icon className="size-3.5" />
       <span>{label}</span>
+    </span>
+  )
+}
+
+function formatWorkingDuration(value: number): string {
+  const hours = Math.floor(value / 3600)
+  const minutes = Math.floor((value % 3600) / 60)
+  const seconds = value % 60
+
+  if (hours > 0) {
+    return `${hours}h ${minutes.toString().padStart(2, '0')}m`
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds.toString().padStart(2, '0')}s`
+  }
+
+  return `${seconds}s`
+}
+
+function useWorkingTimerSeconds(active: boolean): number {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+
+  useEffect(() => {
+    if (!active) {
+      setElapsedSeconds(0)
+      return
+    }
+
+    const startedAt = Date.now()
+    const update = (): void => {
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)))
+    }
+
+    update()
+    const intervalId = window.setInterval(update, 1000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [active])
+
+  return elapsedSeconds
+}
+
+function WorkingStatusItem({ elapsedSeconds }: { elapsedSeconds: number }): React.JSX.Element {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--surface-border-strong)] bg-[color:var(--surface-paper)] px-2 py-1 text-[11px] text-muted-foreground">
+      <span className="inline-flex items-center gap-1.5 rounded-md bg-[color:var(--surface-active)] px-2 py-1 text-primary">
+        <LoaderIcon className="size-3.5 animate-spin" />
+        <span>Working...</span>
+      </span>
+      <span className="font-medium tabular-nums text-foreground">
+        {formatWorkingDuration(elapsedSeconds)}
+      </span>
     </span>
   )
 }
@@ -247,6 +303,7 @@ type ThreadChatComposerProps = Pick<
   | 'onAbortGeneration'
 > & {
   canCompose: boolean
+  currentModelLabel: string
   selectedWorkspace: WorkspaceRecord | null
   isNewThreadRoute: boolean
 }
@@ -307,7 +364,7 @@ function NewThreadModelPicker({
         <Button
           type="button"
           variant="ghost"
-          className="h-9 max-w-[14rem] justify-start gap-2 px-2.5 text-muted-foreground"
+          className="h-9 max-w-[14rem] justify-start gap-2 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 text-muted-foreground hover:bg-[color:var(--surface-muted)]"
           disabled={providers.length === 0}
           aria-label="Select model for new chat"
           title="Select model for new chat"
@@ -351,6 +408,80 @@ function NewThreadModelPicker({
                 <p className="px-8 py-1 text-xs text-muted-foreground">No saved model</p>
               )}
             </div>
+          )
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+type ApprovalMode = 'ask' | 'approve' | 'full'
+
+const approvalModeOptions: Array<{ value: ApprovalMode; label: string }> = [
+  { value: 'ask', label: 'Ask for approval' },
+  { value: 'approve', label: 'Approve for me' },
+  { value: 'full', label: 'Full access' }
+]
+
+function ReadOnlyModelBadge({ label }: { label: string }): React.JSX.Element {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      className="h-9 max-w-[14rem] cursor-default justify-start gap-2 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 text-muted-foreground hover:bg-[color:var(--surface-paper)]"
+      aria-label={`Current model: ${label}`}
+      title={`Current model: ${label}`}
+    >
+      <span className="truncate text-xs font-medium text-foreground">{label}</span>
+    </Button>
+  )
+}
+
+function ApprovalModePicker({
+  value,
+  onChange
+}: {
+  value: ApprovalMode
+  onChange: (value: ApprovalMode) => void
+}): React.JSX.Element {
+  const selectedOption =
+    approvalModeOptions.find((option) => option.value === value) ?? approvalModeOptions[2]
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-9 max-w-[14rem] justify-start gap-2 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 text-muted-foreground hover:bg-[color:var(--surface-muted)]"
+          aria-label="Select approval mode"
+          title="Select approval mode"
+        >
+          <span className="truncate text-xs font-medium text-foreground">
+            {selectedOption.label}
+          </span>
+          <ChevronDown className="size-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" side="top" className="w-56">
+        <DropdownMenuLabel className="text-xs text-muted-foreground">
+          Approval mode
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {approvalModeOptions.map((option) => {
+          const isSelected = option.value === value
+
+          return (
+            <DropdownMenuItem
+              key={option.value}
+              onSelect={() => onChange(option.value)}
+              className="gap-2"
+            >
+              <span className="grid size-4 place-items-center">
+                {isSelected ? <Check className="size-3.5" /> : null}
+              </span>
+              <span className="min-w-0 flex-1 truncate">{option.label}</span>
+            </DropdownMenuItem>
           )
         })}
       </DropdownMenuContent>
@@ -496,6 +627,7 @@ function ThreadChatComposer({
   isChatStreaming,
   canAbortGeneration,
   canCompose,
+  currentModelLabel,
   supportsVision,
   selectedWorkspace,
   isNewThreadRoute,
@@ -510,6 +642,7 @@ function ThreadChatComposer({
   const { t } = useTranslation()
   const aui = useAui()
   const composerText = useAuiState((state) => (state.composer.isEditing ? state.composer.text : ''))
+  const [approvalMode, setApprovalMode] = useState<ApprovalMode>('full')
 
   const canSendMessage =
     Boolean(selectedAssistant && readiness.canChat) &&
@@ -527,6 +660,18 @@ function ThreadChatComposer({
     ? t('threads.chat.composer.helperSelectedAssistant')
     : t('threads.chat.composer.helperEmpty')
 
+  const modelControl = selectedThread ? (
+    <ReadOnlyModelBadge label={currentModelLabel} />
+  ) : (
+    <NewThreadModelPicker
+      providers={providers}
+      draftProviderId={draftProviderId}
+      draftModel={draftModel}
+      onDraftProviderChange={onDraftProviderChange}
+      onDraftModelChange={onDraftModelChange}
+    />
+  )
+
   if (!selectedThread && isNewThreadRoute) {
     return (
       <div className="flex justify-center px-5 pb-8">
@@ -543,16 +688,16 @@ function ThreadChatComposer({
             await onSubmitMessage(text)
           }}
         >
-          <div className="overflow-hidden rounded-[1.35rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] shadow-[0_24px_70px_-46px_rgba(15,23,42,0.55)]">
+          <div className="glass-pane-surface overflow-hidden rounded-[1.5rem]">
             <ComposerAttachments />
             <ComposerPrimitive.Input
               minRows={5}
               disabled={!canCompose || !readiness.canChat}
               placeholder="Do anything"
               aria-label={t('threads.chat.composer.ariaLabel')}
-              className="placeholder:text-muted-foreground/70 flex w-full resize-none bg-transparent px-5 py-5 text-lg outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="placeholder:text-muted-foreground/70 flex w-full resize-none bg-transparent px-5 py-5 text-[15px] leading-7 outline-none disabled:cursor-not-allowed disabled:opacity-50"
             />
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_68%,transparent),color-mix(in_srgb,var(--surface-panel)_84%,transparent))] px-4 py-3">
               <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 <span className="inline-flex min-w-0 items-center gap-2 rounded-full px-2 py-1">
                   <span className="truncate">{selectedWorkspace?.name ?? 'Chats'}</span>
@@ -564,20 +709,15 @@ function ThreadChatComposer({
                   </span>
                 ) : null}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-end gap-2">
                 {supportsVision && <ComposerAddAttachment />}
-                <NewThreadModelPicker
-                  providers={providers}
-                  draftProviderId={draftProviderId}
-                  draftModel={draftModel}
-                  onDraftProviderChange={onDraftProviderChange}
-                  onDraftModelChange={onDraftModelChange}
-                />
+                <ApprovalModePicker value={approvalMode} onChange={setApprovalMode} />
+                {modelControl}
                 <ComposerPrimitive.Send asChild>
                   <Button
                     type="submit"
                     size="icon"
-                    className="size-10 rounded-full"
+                    className="size-10 rounded-full shadow-[0_14px_30px_-22px_rgba(15,23,42,0.72)]"
                     disabled={!canSendMessage}
                     aria-label={t('common.actions.send')}
                     title={t('common.actions.send')}
@@ -615,34 +755,45 @@ function ThreadChatComposer({
           await onSubmitMessage(text)
         }}
       >
-        <ComposerAttachments />
+        <div className="glass-pane-surface overflow-hidden rounded-[1.5rem]">
+          <ComposerAttachments />
 
-        <ComposerPrimitive.Input
-          minRows={3}
-          disabled={!canCompose || !readiness.canChat}
-          placeholder={placeholder}
-          aria-label={t('threads.chat.composer.ariaLabel')}
-          className="placeholder:text-muted-foreground focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive flex w-full rounded-[1.1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-3 text-base shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_44%,transparent)] outline-none transition-[color,box-shadow,border-color,background-color] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:ring-[3px]"
-        />
+          <ComposerPrimitive.Input
+            minRows={3}
+            disabled={!canCompose || !readiness.canChat}
+            placeholder={placeholder}
+            aria-label={t('threads.chat.composer.ariaLabel')}
+            className="placeholder:text-muted-foreground/70 focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive flex w-full bg-transparent px-5 py-4 text-[15px] leading-7 outline-none transition-[color,box-shadow,border-color,background-color] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-[3px]"
+          />
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            {!selectedThread ? <span>{helperText}</span> : null}
-          </div>
-          <div className="flex items-center gap-2">
-            {supportsVision && <ComposerAddAttachment />}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_68%,transparent),color-mix(in_srgb,var(--surface-panel)_84%,transparent))] px-4 py-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              {supportsVision ? <ComposerAddAttachment /> : null}
+              {!selectedThread ? <span>{helperText}</span> : null}
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <ApprovalModePicker value={approvalMode} onChange={setApprovalMode} />
+              {modelControl}
 
-            {isChatStreaming ? (
-              <Button type="button" disabled={!canAbortGeneration} onClick={onAbortGeneration}>
-                {t('common.actions.stop')}
-              </Button>
-            ) : (
-              <ComposerPrimitive.Send asChild>
-                <Button type="submit" disabled={!canSendMessage}>
-                  {t('common.actions.send')}
+              {isChatStreaming ? (
+                <Button type="button" disabled={!canAbortGeneration} onClick={onAbortGeneration}>
+                  {t('common.actions.stop')}
                 </Button>
-              </ComposerPrimitive.Send>
-            )}
+              ) : (
+                <ComposerPrimitive.Send asChild>
+                  <Button
+                    type="submit"
+                    size="icon"
+                    className="size-10 rounded-full shadow-[0_14px_30px_-22px_rgba(15,23,42,0.72)]"
+                    disabled={!canSendMessage}
+                    aria-label={t('common.actions.send')}
+                    title={t('common.actions.send')}
+                  >
+                    <SendHorizontal className="size-4" />
+                  </Button>
+                </ComposerPrimitive.Send>
+              )}
+            </div>
           </div>
         </div>
       </ComposerPrimitive.Root>
@@ -722,6 +873,7 @@ export function ThreadChatCard({
     () => tokenUsage ?? deriveThreadUsageFromMessages(chatMessages),
     [chatMessages, tokenUsage]
   )
+  const workingTimerSeconds = useWorkingTimerSeconds(isChatStreaming)
   const shellStatusContent = useMemo(() => {
     const originLabel = hasRemoteBinding ? 'Remote channel' : 'Direct chat'
     const contextWindowTokens = resolveContextWindowTokens(selectedProvider, currentModelLabel)
@@ -733,6 +885,7 @@ export function ThreadChatCard({
 
     return (
       <>
+        {isChatStreaming ? <WorkingStatusItem elapsedSeconds={workingTimerSeconds} /> : null}
         <StatusBarItem icon={Bot} label={currentModelLabel} />
         {effectiveTokenUsage ? (
           <TokenUsageStatusItem
@@ -751,6 +904,8 @@ export function ThreadChatCard({
     selectedProvider,
     hasRemoteBinding,
     effectiveTokenUsage,
+    isChatStreaming,
+    workingTimerSeconds,
     t
   ])
   useAppV2ShellStatusBar(shellStatusContent)
@@ -897,6 +1052,7 @@ export function ThreadChatCard({
             isChatStreaming={isChatStreaming}
             canAbortGeneration={canAbortGeneration}
             canCompose={canCompose}
+            currentModelLabel={currentModelLabel}
             supportsVision={supportsVision}
             isNewThreadRoute={isNewThreadRoute}
             providers={providers}

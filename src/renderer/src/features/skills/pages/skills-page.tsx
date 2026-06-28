@@ -294,7 +294,8 @@ export function SkillsPage(): React.JSX.Element {
           <div className="grid gap-4 xl:grid-cols-3">
             {visibleSkills.map((skill) => {
               const isInstalled =
-                installedSkillIds.includes(skill.id) || uploadedSkills.some((item) => item.id === skill.id)
+                installedSkillIds.includes(skill.id) ||
+                uploadedSkills.some((item) => item.id === skill.id)
 
               return (
                 <article
@@ -303,10 +304,10 @@ export function SkillsPage(): React.JSX.Element {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
-                      <p className="font-editorial text-[1.35rem] leading-none tracking-[-0.025em]">
+                      <p className="font-editorial text-[1.225rem] leading-none tracking-[-0.025em]">
                         {skill.title}
                       </p>
-                      <p className="text-sm text-muted-foreground">{skill.provider}</p>
+                      <p className="text-xs text-muted-foreground">{skill.provider}</p>
                     </div>
                     <Button
                       type="button"
@@ -323,19 +324,19 @@ export function SkillsPage(): React.JSX.Element {
                     </Button>
                   </div>
 
-                  <p className="pt-4 text-sm leading-6 text-muted-foreground">{skill.summary}</p>
+                  <p className="pt-4 text-xs leading-6 text-muted-foreground">{skill.summary}</p>
 
                   <div className="pt-5">
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1.5">
-                        <Download className="size-4" />
+                        <Download className="size-3.5" />
                         {skill.downloads}
                       </span>
                       <span className="inline-flex items-center gap-1.5">
-                        <Star className="size-4" />
+                        <Star className="size-3.5" />
                         {skill.stars}
                       </span>
-                      <span className="rounded-full bg-[color:var(--surface-muted)] px-2.5 py-1 text-[11px] uppercase tracking-[0.08em]">
+                      <span className="rounded-full bg-[color:var(--surface-muted)] px-2.5 py-1 text-[9px] uppercase tracking-[0.08em]">
                         {skill.category}
                       </span>
                     </div>

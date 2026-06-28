@@ -19,6 +19,8 @@ const fallbackDesktopBootstrap: DesktopBootstrap = {
   }
 }
 
+const desktopBootstrapStorageKey = 'tia.desktopBootstrap'
+
 let cachedDesktopBootstrapPromise: Promise<DesktopBootstrap> | null = null
 let cachedDesktopBootstrapValue: DesktopBootstrap | null = null
 
@@ -89,6 +91,49 @@ function parseDesktopBootstrapQueryValue(value: string): DesktopBootstrap | null
   }
 }
 
+function getSessionStorage(): Storage | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    return window.sessionStorage
+  } catch {
+    return null
+  }
+}
+
+function persistDesktopBootstrap(bootstrap: DesktopBootstrap): void {
+  const storage = getSessionStorage()
+  if (!storage) {
+    return
+  }
+
+  try {
+    storage.setItem(desktopBootstrapStorageKey, JSON.stringify(bootstrap))
+  } catch {
+    // Ignore storage write failures and continue with the in-memory cache.
+  }
+}
+
+function readPersistedDesktopBootstrap(): DesktopBootstrap | null {
+  const storage = getSessionStorage()
+  if (!storage) {
+    return null
+  }
+
+  try {
+    const rawValue = storage.getItem(desktopBootstrapStorageKey)
+    if (!rawValue) {
+      return null
+    }
+
+    return JSON.parse(rawValue) as DesktopBootstrap
+  } catch {
+    return null
+  }
+}
+
 async function loadDesktopBootstrapFromLocalApi(): Promise<DesktopBootstrap | null> {
   try {
     const response = await fetch(`${fallbackDesktopBootstrap.apiBaseUrl}/v1/desktop/bootstrap`, {
@@ -121,8 +166,11 @@ export function getDesktopBootstrapSnapshot(): DesktopBootstrap {
       const parsedBootstrap = parseDesktopBootstrapQueryValue(queryValue)
       if (parsedBootstrap) {
         cachedDesktopBootstrapValue = parsedBootstrap
+        persistDesktopBootstrap(parsedBootstrap)
         stripBootstrapQueryParam()
       }
+    } else {
+      cachedDesktopBootstrapValue = readPersistedDesktopBootstrap()
     }
   }
 
@@ -143,12 +191,22 @@ export async function getDesktopBootstrap(): Promise<DesktopBootstrap> {
           stripBootstrapQueryParam()
           if (parsedBootstrap) {
             cachedDesktopBootstrapValue = parsedBootstrap
+            persistDesktopBootstrap(parsedBootstrap)
             return parsedBootstrap
           }
+        }
+
+        const persistedBootstrap = readPersistedDesktopBootstrap()
+        if (persistedBootstrap) {
+          cachedDesktopBootstrapValue = persistedBootstrap
+          return persistedBootstrap
         }
       }
 
       const apiBootstrap = await loadDesktopBootstrapFromLocalApi()
+      if (apiBootstrap) {
+        persistDesktopBootstrap(apiBootstrap)
+      }
       cachedDesktopBootstrapValue = apiBootstrap ?? fallbackDesktopBootstrap
       return cachedDesktopBootstrapValue
     })()

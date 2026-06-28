@@ -403,6 +403,31 @@ describe('ThreadChatCard', () => {
     expect(statusBarHtml).not.toContain('165 / 400K')
   })
 
+  it('shows a working timer in the shell status bar while streaming', () => {
+    mockThreadMessages.length = 0
+    useAppV2ShellStatusBarMock.mockClear()
+
+    renderToString(
+      <ThreadChatCard
+        {...createDefaultProps()}
+        selectedThread={{
+          id: 'thread-1',
+          assistantId: 'assistant-1',
+          resourceId: 'default-profile',
+          title: 'Streaming thread',
+          lastMessageAt: '2026-03-01T00:00:00.000Z',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z'
+        }}
+        isChatStreaming={true}
+      />
+    )
+
+    const statusBarHtml = renderStatusBarContent()
+    expect(statusBarHtml).toContain('Working...')
+    expect(statusBarHtml).toContain('0s')
+  })
+
   it('shows stop action while streaming a response', () => {
     mockThreadMessages.length = 0
     useAISDKRuntimeMock.mockClear()

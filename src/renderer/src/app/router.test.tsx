@@ -79,7 +79,7 @@ describe('app router', () => {
   it('renders provider settings route', () => {
     const html = renderRouter(['/settings/providers'])
 
-    expect(html).toContain('PROVIDERS')
+    expect(html).toContain('Added providers')
     expect(html).toContain('Search providers...')
     expect(html).toContain('Model Provider')
     expect(html).toContain('Security &amp; Privacy')
@@ -158,16 +158,16 @@ describe('app router', () => {
   it('renders the dedicated skills route', () => {
     const html = renderRouter(['/skills'])
 
-    expect(html).toContain('Curated skill catalog')
-    expect(html).toContain('Agent Browser')
-    expect(html).toContain('Install recommended skills')
+    expect(html).toContain('Skill market')
+    expect(html).toContain('Add Skill Zip')
+    expect(html).toContain('web-tools-guide')
   })
 
   it('renders the dedicated automations route', () => {
     const html = renderRouter(['/automations'])
 
-    expect(html).toContain('Time-based workspace runs')
-    expect(html).toContain('Named workspaces')
-    expect(html).toContain('Built-in Chats')
+    expect(html).toContain('Manage scheduled tasks and review the runs that matter right now.')
+    expect(html).toContain('Weekly review')
+    expect(html).toContain('Nightly triage')
   })
 })

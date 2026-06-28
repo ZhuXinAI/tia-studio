@@ -29,7 +29,7 @@ const messageState = {
     isHovering: true,
     metadata: null as Record<string, unknown> | null,
     parts: [] as unknown[],
-    status: { type: 'complete' as const }
+    status: { type: 'complete' as 'complete' | 'running' }
   },
   thread: {
     messages: [{}, {}]
@@ -381,9 +381,121 @@ describe('thread chat message list', () => {
       )
     })
 
-    expect(container.textContent).toContain('3 tool calls')
-    expect(container.textContent).toContain('Search Code, Read File, Shell Command')
-    expect(container.textContent).not.toContain('1 tool call')
+    const toolGroupTrigger = container.querySelector('[data-slot="tool-group-trigger"]')
+    expect(toolGroupTrigger?.textContent).toContain('3 tool calls')
+    expect(toolGroupTrigger?.textContent).toContain('Shell Command')
+    expect(toolGroupTrigger?.textContent).not.toContain('Search Code, Read File')
+  })
+
+  it('merges tool runs separated by hidden workspace metadata into one summarized group', async () => {
+    messageState.message.status = { type: 'complete' }
+    messageState.message.parts = [
+      {
+        type: 'tool-call',
+        toolName: 'mastra_workspace_mkdir',
+        toolCallId: 'tool-1',
+        status: { type: 'complete' }
+      },
+      {
+        type: 'data',
+        name: 'workspace-metadata',
+        data: {
+          toolCallId: 'tool-1'
+        }
+      },
+      {
+        type: 'step-start'
+      },
+      {
+        type: 'tool-call',
+        toolName: 'mastra_workspace_write_file',
+        toolCallId: 'tool-2',
+        status: { type: 'complete' }
+      },
+      {
+        type: 'data',
+        name: 'workspace-metadata',
+        data: {
+          toolCallId: 'tool-2'
+        }
+      },
+      {
+        type: 'step-start'
+      },
+      {
+        type: 'tool-call',
+        toolName: 'mastra_workspace_edit_file',
+        toolCallId: 'tool-3',
+        status: { type: 'complete' }
+      },
+      {
+        type: 'data',
+        name: 'workspace-metadata',
+        data: {
+          toolCallId: 'tool-3'
+        }
+      },
+      {
+        type: 'step-start'
+      },
+      {
+        type: 'tool-call',
+        toolName: 'mastra_workspace_write_file',
+        toolCallId: 'tool-4',
+        status: { type: 'complete' }
+      },
+      {
+        type: 'text',
+        text: 'Fish TTS skill done.'
+      }
+    ]
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="TIA"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    const toolGroupTrigger = container.querySelector('[data-slot="tool-group-trigger"]')
+    expect(toolGroupTrigger?.textContent).toContain('4 tool calls')
+    expect(toolGroupTrigger?.textContent).toContain('Mastra Workspace Write File')
+  })
+
+  it('keeps running standard tool activity inside a summarized collapsible group', async () => {
+    messageState.message.status = { type: 'running' }
+    messageState.message.parts = [
+      {
+        type: 'tool-call',
+        toolName: 'shell_command',
+        toolCallId: 'tool-1',
+        status: { type: 'running' }
+      }
+    ]
+
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Planner"
+          isLoadingChatHistory={false}
+          isChatStreaming={true}
+          loadError={null}
+          chatError={null}
+        />
+      )
+    })
+
+    const toolGroupTrigger = container.querySelector('[data-slot="tool-group-trigger"]')
+    expect(toolGroupTrigger?.getAttribute('aria-expanded')).toBe('false')
+    expect(toolGroupTrigger?.textContent).toContain('1 tool call')
+    expect(toolGroupTrigger?.textContent).toContain('Shell Command')
   })
 
   it('renders delegated turns as member blocks and hides the supervisor summary text', async () => {
@@ -424,11 +536,13 @@ describe('thread chat message list', () => {
       )
     })
 
-    expect(container.textContent).toContain('Researcher')
-    expect(container.textContent).toContain(
+    const delegatedTrigger = container.querySelector('[data-slot="delegated-activity-trigger"]')
+    expect(delegatedTrigger?.getAttribute('aria-expanded')).toBe('false')
+    expect(delegatedTrigger?.textContent).toContain('Researcher')
+    expect(delegatedTrigger?.textContent).toContain(
       'I verified the facts and flagged the unsupported claims.'
     )
-    expect(container.textContent).toContain('Suggested next: Planner')
+    expect(container.textContent).not.toContain('Suggested next: Planner')
     expect(container.textContent).not.toContain('Should I ask Planner if they want another round?')
   })
 
@@ -472,10 +586,11 @@ describe('thread chat message list', () => {
       )
     })
 
-    expect(container.textContent).toContain('Researcher')
-    expect(container.textContent).toContain('Gathering sources for the release note.')
-    expect(container.textContent).toContain('Tools')
-    expect(container.textContent).toContain('Web Search')
+    const delegatedTrigger = container.querySelector('[data-slot="delegated-activity-trigger"]')
+    expect(delegatedTrigger?.getAttribute('aria-expanded')).toBe('false')
+    expect(delegatedTrigger?.textContent).toContain('Researcher')
+    expect(delegatedTrigger?.textContent).toContain('Gathering sources for the release note.')
+    expect(delegatedTrigger?.textContent).toContain('1')
   })
 
   it('keeps the live delegated stream attached to the unfinished member block', async () => {

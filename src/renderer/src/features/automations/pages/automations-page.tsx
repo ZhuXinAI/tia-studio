@@ -249,209 +249,224 @@ export function AutomationsPage(): React.JSX.Element {
       </section>
 
       <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
-        <DialogContent className="max-w-5xl gap-5">
-          <DialogHeader className="space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <DialogTitle className="text-[2.5rem]">
-                {editorMode === 'edit' ? 'Edit automation task' : 'Create automation task'}
-              </DialogTitle>
-              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                <span>Created 6/27/2026</span>
-                <span>{draftAutomation.runCount} runs</span>
-                <span className="inline-flex items-center gap-2">
-                  <span
-                    className={cn(
-                      'inline-flex size-3 rounded-full',
-                      draftAutomation.status === 'running' ? 'bg-emerald-500' : 'bg-amber-400'
-                    )}
-                  />
-                  {draftAutomation.status === 'running' ? 'Running' : 'Paused'}
-                </span>
-              </div>
-            </div>
-            <DialogDescription>
-              Keep the schedule simple now. We can wire the real backend automation editor later.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-5">
-            <div className="space-y-2">
-              <label htmlFor="automation-name" className="text-sm font-medium text-foreground">
-                Name
-              </label>
-              <Input
-                id="automation-name"
-                value={draftAutomation.name}
-                onChange={(event) =>
-                  setDraftAutomation((current) => ({ ...current, name: event.target.value }))
-                }
-                placeholder="Weekly review"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label
-                htmlFor="automation-workspace"
-                className="text-sm font-medium text-foreground"
-              >
-                Workspace
-              </label>
-              <select
-                id="automation-workspace"
-                className="h-11 w-full rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 text-sm"
-                value={draftAutomation.workspaceName}
-                onChange={(event) =>
-                  setDraftAutomation((current) => ({
-                    ...current,
-                    workspaceName: event.target.value
-                  }))
-                }
-              >
-                {namedWorkspaceNames.map((workspaceName) => (
-                  <option key={workspaceName} value={workspaceName}>
-                    {workspaceName}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="automation-prompt" className="text-sm font-medium text-foreground">
-                Prompt
-              </label>
-              <Textarea
-                id="automation-prompt"
-                value={draftAutomation.prompt}
-                onChange={(event) =>
-                  setDraftAutomation((current) => ({ ...current, prompt: event.target.value }))
-                }
-                className="min-h-[16rem]"
-                placeholder="Summarize the latest workspace activity."
-              />
-              <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                <span>Auto</span>
-                <span>Skills</span>
-                <span>Experts</span>
-                <span>{draftAutomation.accessLevel === 'full' ? 'Full access' : 'Confirm use'}</span>
-              </div>
-            </div>
-
-            <div className="grid gap-5 lg:grid-cols-2">
-              <div className="space-y-2">
-                <label
-                  htmlFor="automation-connector"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Connector
-                </label>
-                <select
-                  id="automation-connector"
-                  className="h-11 w-full rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 text-sm"
-                  value={draftAutomation.connectorName}
-                  onChange={(event) =>
-                    setDraftAutomation((current) => ({
-                      ...current,
-                      connectorName: event.target.value
-                    }))
-                  }
-                >
-                  {['None selected', 'Slack', 'Linear', 'Google Drive'].map((connector) => (
-                    <option key={connector} value={connector}>
-                      {connector}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <span className="text-sm font-medium text-foreground">Execution frequency</span>
-                <div className="flex gap-2">
-                  {[
-                    { value: 'weekly', label: 'Weekly' },
-                    { value: 'interval', label: 'Interval' },
-                    { value: 'once', label: 'Once' }
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
+        <DialogContent className="glass-pane-surface max-w-5xl gap-0 overflow-hidden border-none bg-transparent p-0 shadow-none">
+          <div className="flex max-h-[80vh] flex-col">
+            <DialogHeader className="space-y-2 border-b border-[color:var(--surface-border)] px-6 py-6 sm:text-left">
+              <div className="flex flex-wrap items-center justify-between gap-3 pr-10">
+                <DialogTitle className="text-[2.5rem]">
+                  {editorMode === 'edit' ? 'Edit automation task' : 'Create automation task'}
+                </DialogTitle>
+                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                  <span>Created 6/27/2026</span>
+                  <span>{draftAutomation.runCount} runs</span>
+                  <span className="inline-flex items-center gap-2">
+                    <span
                       className={cn(
-                        'rounded-xl px-4 py-2 text-sm transition-colors',
-                        draftAutomation.frequencyMode === option.value
-                          ? 'bg-[color:var(--surface-active)] text-foreground'
-                          : 'bg-[color:var(--surface-paper)] text-muted-foreground hover:bg-[color:var(--surface-muted)] hover:text-foreground'
+                        'inline-flex size-3 rounded-full',
+                        draftAutomation.status === 'running' ? 'bg-emerald-500' : 'bg-amber-400'
                       )}
-                      onClick={() =>
+                    />
+                    {draftAutomation.status === 'running' ? 'Running' : 'Paused'}
+                  </span>
+                </div>
+              </div>
+              <DialogDescription>
+                Keep the schedule simple now. We can wire the real backend automation editor later.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+              <div className="grid gap-5">
+                <div className="space-y-2">
+                  <label htmlFor="automation-name" className="text-sm font-medium text-foreground">
+                    Name
+                  </label>
+                  <Input
+                    id="automation-name"
+                    value={draftAutomation.name}
+                    onChange={(event) =>
+                      setDraftAutomation((current) => ({ ...current, name: event.target.value }))
+                    }
+                    placeholder="Weekly review"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="automation-workspace"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Workspace
+                  </label>
+                  <select
+                    id="automation-workspace"
+                    className="h-11 w-full rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 text-sm"
+                    value={draftAutomation.workspaceName}
+                    onChange={(event) =>
+                      setDraftAutomation((current) => ({
+                        ...current,
+                        workspaceName: event.target.value
+                      }))
+                    }
+                  >
+                    {namedWorkspaceNames.map((workspaceName) => (
+                      <option key={workspaceName} value={workspaceName}>
+                        {workspaceName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="automation-prompt"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Prompt
+                  </label>
+                  <Textarea
+                    id="automation-prompt"
+                    value={draftAutomation.prompt}
+                    onChange={(event) =>
+                      setDraftAutomation((current) => ({ ...current, prompt: event.target.value }))
+                    }
+                    className="min-h-[16rem]"
+                    placeholder="Summarize the latest workspace activity."
+                  />
+                  <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                    <span>Auto</span>
+                    <span>Skills</span>
+                    <span>Experts</span>
+                    <span>
+                      {draftAutomation.accessLevel === 'full' ? 'Full access' : 'Confirm use'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid gap-5 lg:grid-cols-2">
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="automation-connector"
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Connector
+                    </label>
+                    <select
+                      id="automation-connector"
+                      className="h-11 w-full rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 text-sm"
+                      value={draftAutomation.connectorName}
+                      onChange={(event) =>
                         setDraftAutomation((current) => ({
                           ...current,
-                          frequencyMode: option.value as AutomationFrequencyMode,
-                          frequencyLabel:
-                            option.value === 'weekly'
-                              ? 'Every Monday'
-                              : option.value === 'interval'
-                                ? 'Every 12 hours'
-                                : 'Run once'
+                          connectorName: event.target.value
                         }))
                       }
                     >
-                      {option.label}
-                    </button>
-                  ))}
+                      {['None selected', 'Slack', 'Linear', 'Google Drive'].map((connector) => (
+                        <option key={connector} value={connector}>
+                          {connector}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium text-foreground">Execution frequency</span>
+                    <div className="flex gap-2">
+                      {[
+                        { value: 'weekly', label: 'Weekly' },
+                        { value: 'interval', label: 'Interval' },
+                        { value: 'once', label: 'Once' }
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          className={cn(
+                            'rounded-xl px-4 py-2 text-sm transition-colors',
+                            draftAutomation.frequencyMode === option.value
+                              ? 'bg-[color:var(--surface-active)] text-foreground'
+                              : 'bg-[color:var(--surface-paper)] text-muted-foreground hover:bg-[color:var(--surface-muted)] hover:text-foreground'
+                          )}
+                          onClick={() =>
+                            setDraftAutomation((current) => ({
+                              ...current,
+                              frequencyMode: option.value as AutomationFrequencyMode,
+                              frequencyLabel:
+                                option.value === 'weekly'
+                                  ? 'Every Monday'
+                                  : option.value === 'interval'
+                                    ? 'Every 12 hours'
+                                    : 'Run once'
+                            }))
+                          }
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="automation-frequency-label"
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Schedule
+                    </label>
+                    <Input
+                      id="automation-frequency-label"
+                      value={draftAutomation.frequencyLabel}
+                      onChange={(event) =>
+                        setDraftAutomation((current) => ({
+                          ...current,
+                          frequencyLabel: event.target.value
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="automation-time"
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Time
+                    </label>
+                    <Input
+                      id="automation-time"
+                      value={draftAutomation.time}
+                      onChange={(event) =>
+                        setDraftAutomation((current) => ({ ...current, time: event.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="automation-start-date"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Start date
+                  </label>
+                  <Input
+                    id="automation-start-date"
+                    value={draftAutomation.startDate}
+                    onChange={(event) =>
+                      setDraftAutomation((current) => ({
+                        ...current,
+                        startDate: event.target.value
+                      }))
+                    }
+                    placeholder="Optional"
+                  />
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
-              <div className="space-y-2">
-                <label
-                  htmlFor="automation-frequency-label"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Schedule
-                </label>
-                <Input
-                  id="automation-frequency-label"
-                  value={draftAutomation.frequencyLabel}
-                  onChange={(event) =>
-                    setDraftAutomation((current) => ({
-                      ...current,
-                      frequencyLabel: event.target.value
-                    }))
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="automation-time" className="text-sm font-medium text-foreground">
-                  Time
-                </label>
-                <Input
-                  id="automation-time"
-                  value={draftAutomation.time}
-                  onChange={(event) =>
-                    setDraftAutomation((current) => ({ ...current, time: event.target.value }))
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label
-                htmlFor="automation-start-date"
-                className="text-sm font-medium text-foreground"
-              >
-                Start date
-              </label>
-              <Input
-                id="automation-start-date"
-                value={draftAutomation.startDate}
-                onChange={(event) =>
-                  setDraftAutomation((current) => ({ ...current, startDate: event.target.value }))
-                }
-                placeholder="Optional"
-              />
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_72%,transparent),color-mix(in_srgb,var(--surface-panel)_90%,transparent))] px-6 py-4 backdrop-blur-xl">
               <div className="flex flex-wrap gap-3">
                 <Button type="button" variant="destructive">
                   Delete

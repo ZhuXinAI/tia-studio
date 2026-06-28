@@ -20,6 +20,16 @@ import {
   type AppearanceTokens
 } from '../appearance-tokens'
 import { SettingsContent } from './settings-content'
+import { getDesktopBootstrapSnapshot } from '../../../lib/desktop-bootstrap'
+
+function resolveTransparentWindowDefault(): boolean {
+  const platform = getDesktopBootstrapSnapshot().app.platform
+  return platform === 'darwin' || platform === 'win32'
+}
+
+function resolveTransparentToggleState(value: boolean | undefined): boolean {
+  return typeof value === 'boolean' ? value : resolveTransparentWindowDefault()
+}
 
 function ThemePreview({ theme }: { theme: Theme }): React.JSX.Element {
   if (theme === 'light') {
@@ -91,7 +101,7 @@ function ThemePreview({ theme }: { theme: Theme }): React.JSX.Element {
 export function DisplaySettingsPage(): React.JSX.Element {
   const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
-  const [isTransparent, setIsTransparent] = useState(false)
+  const [isTransparent, setIsTransparent] = useState(resolveTransparentWindowDefault)
   const [appearanceTokens, setAppearanceTokensState] = useState<AppearanceTokens>(() =>
     getAppearanceTokens()
   )
@@ -110,7 +120,7 @@ export function DisplaySettingsPage(): React.JSX.Element {
           return
         }
 
-        setIsTransparent(Boolean(config.transparent))
+        setIsTransparent(resolveTransparentToggleState(config.transparent))
       })
       .catch(() => {})
 

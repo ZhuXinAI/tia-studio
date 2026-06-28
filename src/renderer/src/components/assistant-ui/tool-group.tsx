@@ -264,7 +264,13 @@ const ToolGroupImpl: FC<
   )
   const toolCount = toolParts.length || resolvedIndices.length
   const active = toolParts.some((part) => part.status?.type === 'running')
-  const preview = buildToolNamePreview(toolParts.map((part) => part.toolName ?? ''))
+  const preview = buildToolNamePreview(
+    toolParts
+      .map((part) => part.toolName ?? '')
+      .filter((toolName) => toolName.length > 0)
+      .reverse(),
+    1
+  )
   const summary =
     preview.visibleLabels.length > 0
       ? [
