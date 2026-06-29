@@ -85,6 +85,30 @@ describe('chat query', () => {
     )
   })
 
+  it('parses structured thread history errors without leaking raw payloads', async () => {
+    const fetchSpy = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(
+      async () =>
+        new Response(
+          JSON.stringify({
+            ok: false,
+            error: 'Assistant workspace is not configured'
+          }),
+          {
+            status: 409,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
+    )
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await expect(
+      listThreadChatMessages({
+        threadId: 'thread-1',
+        profileId: 'profile-1'
+      })
+    ).rejects.toThrow('Assistant workspace is not configured (status 409)')
+  })
+
   it('sends only the latest message in transport request bodies', async () => {
     const fetchSpy = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(
       async () => new Response('server error', { status: 500 })

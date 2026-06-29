@@ -454,4 +454,32 @@ describe('ThreadChatCard', () => {
     expect(html).toContain('Stop')
     expect(html).not.toContain('Sending...')
   })
+
+  it('centers the new workspace empty state with a smaller hero title above the composer', () => {
+    mockThreadMessages.length = 0
+    useAISDKRuntimeMock.mockClear()
+    useAppV2ShellStatusBarMock.mockClear()
+
+    const html = renderToString(
+      <ThreadChatCard
+        {...createDefaultProps()}
+        isNewThreadRoute={true}
+        selectedThread={null}
+        selectedWorkspace={{
+          id: 'workspace-1',
+          name: 'speechify-windows-app',
+          rootPath: '/workspace/demo',
+          builtInKind: null,
+          defaultAssistantId: 'assistant-1',
+          isMissing: false
+        }}
+      />
+    )
+
+    expect(html).toContain('What should we build in ')
+    expect(html).toContain('speechify-windows-app')
+    expect(html).toContain('items-center justify-center px-5 py-10')
+    expect(html).toContain('text-[clamp(1.75rem,3.1vw,2.45rem)]')
+    expect(html).not.toContain('items-end justify-center px-5 pb-10')
+  })
 })

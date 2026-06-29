@@ -177,7 +177,8 @@ export function useThreadPageController() {
   const {
     data: assistants = [],
     isLoading: isLoadingAssistants,
-    error: assistantsError
+    error: assistantsError,
+    refetch: refetchAssistants
   } = useAssistants()
   const {
     data: allProviders = [],
@@ -215,6 +216,7 @@ export function useThreadPageController() {
   const [draftProviderId, setDraftProviderId] = useState('')
   const [draftModel, setDraftModel] = useState('')
   const hasLoadedInitialMessagesRef = useRef(false)
+  const attemptedWorkspaceAssistantRecoveryKeyRef = useRef<string | null>(null)
   const profileId = useMemo(() => getActiveResourceId(), [])
 
   const chatsWorkspace = useMemo(
@@ -267,6 +269,29 @@ export function useThreadPageController() {
       workspaceDefaultAssistant
     )
   }, [assistants, selectedThread, workspaceDefaultAssistant])
+
+  useEffect(() => {
+    const workspaceId = selectedWorkspace?.id?.trim() ?? ''
+    const defaultAssistantId = selectedWorkspace?.defaultAssistantId?.trim() ?? ''
+
+    if (workspaceId.length === 0 || defaultAssistantId.length === 0) {
+      attemptedWorkspaceAssistantRecoveryKeyRef.current = null
+      return
+    }
+
+    if (assistants.some((assistant) => assistant.id === defaultAssistantId)) {
+      attemptedWorkspaceAssistantRecoveryKeyRef.current = null
+      return
+    }
+
+    const recoveryKey = `${workspaceId}:${defaultAssistantId}`
+    if (attemptedWorkspaceAssistantRecoveryKeyRef.current === recoveryKey) {
+      return
+    }
+
+    attemptedWorkspaceAssistantRecoveryKeyRef.current = recoveryKey
+    void refetchAssistants().catch(() => undefined)
+  }, [assistants, refetchAssistants, selectedWorkspace?.defaultAssistantId, selectedWorkspace?.id])
   const selectedThreadProviderOverride = useMemo(
     () => readThreadProviderOverride(selectedThread?.metadata),
     [selectedThread?.metadata]

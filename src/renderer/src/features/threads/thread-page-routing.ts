@@ -1,5 +1,6 @@
 import type { ThreadRecord } from './threads-query'
 import { i18n } from '../../i18n'
+import { describeRequestError } from '../../lib/request-errors'
 
 export type ThreadRouteScope =
   | {
@@ -11,11 +12,7 @@ export type ThreadRouteScope =
     }
 
 export function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message
-  }
-
-  return i18n.t('common.errors.unexpectedRequest')
+  return describeRequestError(error, i18n.t('common.errors.unexpectedRequest'))
 }
 
 export function routeToThread(scope: ThreadRouteScope, threadId?: string): string {

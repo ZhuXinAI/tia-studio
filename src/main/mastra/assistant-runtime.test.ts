@@ -1685,6 +1685,113 @@ describe('AssistantRuntimeService', () => {
     })
   })
 
+  it('records usage when the AI SDK finish chunk carries usage in message metadata', async () => {
+    handleChatStreamMock.mockReset()
+    handleChatStreamMock.mockImplementation(async (options: unknown) => {
+      const messageMetadata = (
+        options as {
+          messageMetadata?: (input: { part: Record<string, unknown> }) => unknown
+        }
+      ).messageMetadata
+
+      return new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.enqueue({
+            type: 'start',
+            messageId: 'assistant-msg-v6'
+          } as UIMessageChunk)
+          controller.enqueue({
+            type: 'finish',
+            messageMetadata: messageMetadata?.({
+              part: {
+                type: 'finish',
+                totalUsage: {
+                  inputTokens: 88,
+                  outputTokens: 22,
+                  totalTokens: 110,
+                  reasoningTokens: 7,
+                  cachedInputTokens: 11
+                }
+              }
+            }),
+            finishReason: 'stop'
+          } as UIMessageChunk)
+          controller.close()
+        }
+      })
+    })
+
+    const assistant = buildAssistant()
+    const recordMessageUsage = vi.fn(async () => undefined)
+    const runtime = new AssistantRuntimeService({
+      mastra: {
+        getStorage: () => null
+      } as unknown as Mastra,
+      assistantsRepo: {
+        getById: vi.fn(async () => assistant)
+      } as unknown as AssistantsRepository,
+      providersRepo: {
+        getById: vi.fn(async () => buildProvider())
+      } as unknown as ProvidersRepository,
+      threadsRepo: {
+        getById: vi.fn(async () => ({
+          id: 'thread-1',
+          assistantId: assistant.id,
+          resourceId: 'profile-1',
+          title: 'Usage metadata thread',
+          lastMessageAt: null,
+          createdAt: '2026-03-02T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z'
+        })),
+        touchLastMessageAt: vi.fn(async () => undefined)
+      } as unknown as ThreadsRepository,
+      threadUsageRepo: {
+        recordMessageUsage
+      },
+      webSearchSettingsRepo: {
+        getDefaultEngine: vi.fn(async () => 'bing'),
+        getKeepBrowserWindowOpen: vi.fn(async () => false)
+      } as unknown as WebSearchSettingsRepository,
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never
+    })
+    ;(
+      runtime as unknown as {
+        ensureAgentRegistered: () => Promise<void>
+      }
+    ).ensureAgentRegistered = vi.fn(async () => undefined)
+
+    await drainStream(
+      await runtime.streamChat({
+        assistantId: assistant.id,
+        threadId: 'thread-1',
+        profileId: 'profile-1',
+        messages: []
+      })
+    )
+
+    expect(recordMessageUsage).toHaveBeenCalledWith({
+      messageId: 'assistant-msg-v6',
+      threadId: 'thread-1',
+      assistantId: assistant.id,
+      resourceId: 'profile-1',
+      providerId: 'provider-1',
+      model: 'gpt-4.1',
+      source: 'chat',
+      usage: {
+        inputTokens: 88,
+        outputTokens: 22,
+        totalTokens: 110,
+        reasoningTokens: 7,
+        cachedInputTokens: 11
+      },
+      stepCount: 0,
+      finishReason: 'stop',
+      createdAt: expect.any(String)
+    })
+  })
+
   it('does not record usage when a streamed chat is aborted', async () => {
     handleChatStreamMock.mockReset()
     handleChatStreamMock.mockResolvedValue(
@@ -1910,6 +2017,7 @@ describe('AssistantRuntimeService', () => {
       createdAt: '2026-03-02T00:00:00.000Z',
       updatedAt: '2026-03-02T00:00:00.000Z'
     }))
+    const appendMessagesUpdated = vi.fn()
 
     const runtime = new AssistantRuntimeService({
       mastra: {
@@ -1950,7 +2058,10 @@ describe('AssistantRuntimeService', () => {
       } as unknown as WebSearchSettingsRepository,
       mcpServersRepo: {
         getSettings: vi.fn(async () => ({ mcpServers: {} }))
-      } as never
+      } as never,
+      threadMessageEventsStore: {
+        appendMessagesUpdated
+      }
     })
     ;(
       runtime as unknown as {
@@ -1968,6 +2079,12 @@ describe('AssistantRuntimeService', () => {
     )
 
     expect(updateTitle).toHaveBeenCalledWith('thread-1', 'Release plan checklist')
+    expect(appendMessagesUpdated).toHaveBeenCalledWith({
+      assistantId: assistant.id,
+      threadId: 'thread-1',
+      profileId: 'profile-1',
+      source: 'command'
+    })
   })
 
   it('does not overwrite custom app thread titles when mastra generates one', async () => {

@@ -29,9 +29,13 @@ import { registerThreadsRoute } from './routes/threads-route'
 import { registerWebSearchSettingsRoute } from './routes/web-search-settings-route'
 import { registerWorkspacesRoute } from './routes/workspaces-route'
 import type { DesktopBootstrap } from '../../shared/desktop-bootstrap'
+import type { DesktopAutomationRecord, DesktopSkillRecord } from '../../shared/desktop-discovery'
 import type { UiConfig } from '../ui-config'
 import type { AutoUpdateState } from '../auto-updater'
-import type { ManagedRuntimeKind, ManagedRuntimesState } from '../persistence/repos/managed-runtimes-repo'
+import type {
+  ManagedRuntimeKind,
+  ManagedRuntimesState
+} from '../persistence/repos/managed-runtimes-repo'
 import type { RecommendedSkillId } from '../skills/skills-manager'
 
 type CreateAppOptions = {
@@ -55,7 +59,11 @@ type CreateAppOptions = {
     pickCustomRuntime: (kind: ManagedRuntimeKind) => Promise<ManagedRuntimesState | null>
     clearManagedRuntime: (kind: ManagedRuntimeKind) => Promise<ManagedRuntimesState>
     getRuntimeOnboardingSkillsStatus: () => Promise<RecommendedSkillId[]>
-    installRuntimeOnboardingSkills: (skillIds: RecommendedSkillId[]) => Promise<RecommendedSkillId[]>
+    installRuntimeOnboardingSkills: (
+      skillIds: RecommendedSkillId[]
+    ) => Promise<RecommendedSkillId[]>
+    listSkills: () => Promise<DesktopSkillRecord[]>
+    listAutomations: () => Promise<DesktopAutomationRecord[]>
     pickDirectory: () => Promise<string | null>
   }
   repositories?: {

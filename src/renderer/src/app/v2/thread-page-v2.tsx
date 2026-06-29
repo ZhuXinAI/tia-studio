@@ -10,14 +10,15 @@ import { ThreadDetailsPanel } from './thread-details-panel'
 export function ThreadPageV2(): React.JSX.Element {
   const controller = useThreadPageController()
   const { isOpen, setIsOpen, setHasContent, slotElement } = useAppV2ShellRightRail()
+  const hasThreadDetails = Boolean(controller.selectedThread)
 
   useEffect(() => {
-    setHasContent(true)
+    setHasContent(hasThreadDetails)
 
     return () => {
       setHasContent(false)
     }
-  }, [setHasContent])
+  }, [hasThreadDetails, setHasContent])
 
   return (
     <>
@@ -52,21 +53,23 @@ export function ThreadPageV2(): React.JSX.Element {
             isRelocatingWorkspace={controller.isRelocatingWorkspace}
             isDeletingWorkspace={controller.isDeletingWorkspace}
             headerLeadingAction={
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="no-drag size-8"
-                onClick={() => setIsOpen(!isOpen)}
-                aria-label={isOpen ? 'Collapse details' : 'Expand details'}
-                title={isOpen ? 'Collapse details' : 'Expand details'}
-              >
-                {isOpen ? (
-                  <PanelRightClose className="size-4" />
-                ) : (
-                  <PanelRightOpen className="size-4" />
-                )}
-              </Button>
+              hasThreadDetails ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="no-drag size-8"
+                  onClick={() => setIsOpen(!isOpen)}
+                  aria-label={isOpen ? 'Collapse details' : 'Expand details'}
+                  title={isOpen ? 'Collapse details' : 'Expand details'}
+                >
+                  {isOpen ? (
+                    <PanelRightClose className="size-4" />
+                  ) : (
+                    <PanelRightOpen className="size-4" />
+                  )}
+                </Button>
+              ) : undefined
             }
           />
         </div>

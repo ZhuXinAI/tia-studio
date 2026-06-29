@@ -15,6 +15,7 @@ const mockState = vi.hoisted(() => {
     chatStatus: 'ready' as 'ready' | 'submitted' | 'streaming',
     chatMessages: [] as Array<Record<string, unknown>>,
     assistantsData: [] as Array<Record<string, unknown>>,
+    refetchAssistantsMock: vi.fn(),
     workspacesData: [] as Array<Record<string, unknown>>,
     providersData: [] as Array<Record<string, unknown>>,
     threadsData: [] as Array<Record<string, unknown>>,
@@ -76,7 +77,8 @@ vi.mock('../../assistants/assistants-query', () => ({
   useAssistants: () => ({
     data: mockState.assistantsData,
     isLoading: false,
-    error: null
+    error: null,
+    refetch: mockState.refetchAssistantsMock
   }),
   useCreateAssistant: () => ({
     isPending: false,
@@ -330,6 +332,10 @@ describe('useThreadPageController', () => {
         updatedAt: '2026-03-01T00:00:00.000Z'
       }
     ]
+    mockState.refetchAssistantsMock.mockReset()
+    mockState.refetchAssistantsMock.mockResolvedValue({
+      data: mockState.assistantsData
+    })
     mockState.createAssistantMock.mockReset()
     mockState.createAssistantMock.mockResolvedValue({
       id: 'assistant-2',
@@ -848,6 +854,97 @@ describe('useThreadPageController', () => {
         controller?.selectedAssistant === null,
       'chat route without assistants'
     )
+  })
+
+  it('refetches assistants when a named workspace references a hidden default assistant that was created after the initial assistants query', async () => {
+    applyRoute('/workspaces/workspace-1/new')
+    mockState.assistantsData = [
+      {
+        id: 'assistant-1',
+        name: 'Planner',
+        instructions: 'Keep responses concise.',
+        providerId: 'provider-1',
+        workspaceConfig: { rootPath: '/workspace/other' },
+        skillsConfig: {},
+        mcpConfig: {},
+        maxSteps: 100,
+        memoryConfig: null,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z'
+      }
+    ]
+    mockState.workspacesData = [
+      {
+        id: 'workspace-chats',
+        name: 'Chats',
+        rootPath: '/tmp/tia-studio/chats',
+        builtInKind: 'chats',
+        defaultAssistantId: null,
+        isMissing: false
+      },
+      {
+        id: 'workspace-1',
+        name: 'speechify-windows-app',
+        rootPath: '/workspace/demo',
+        builtInKind: null,
+        defaultAssistantId: 'assistant-hidden',
+        isMissing: false
+      }
+    ]
+    mockState.refetchAssistantsMock.mockImplementation(async () => {
+      mockState.assistantsData = [
+        ...mockState.assistantsData,
+        {
+          id: 'assistant-hidden',
+          name: 'speechify-windows-app',
+          instructions: 'Use workspace tools for local tasks.',
+          providerId: 'provider-1',
+          workspaceConfig: { rootPath: '/workspace/demo' },
+          skillsConfig: {},
+          mcpConfig: {
+            __tiaWorkspaceDefaultAgent: true
+          },
+          maxSteps: 100,
+          memoryConfig: null,
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z'
+        }
+      ]
+
+      return {
+        data: mockState.assistantsData
+      }
+    })
+
+    await act(async () => {
+      root.render(
+        <Harness
+          onControllerChange={(value) => {
+            controller = value
+          }}
+          onForceRerenderReady={(value) => {
+            forceRerender = value
+          }}
+        />
+      )
+    })
+
+    await waitForCondition(
+      () => mockState.refetchAssistantsMock.mock.calls.length > 0,
+      'workspace assistant refetch'
+    )
+
+    act(() => {
+      forceRerender?.()
+    })
+
+    await waitForCondition(
+      () => controller?.selectedAssistant?.id === 'assistant-hidden',
+      'workspace assistant recovery'
+    )
+
+    expect(mockState.refetchAssistantsMock).toHaveBeenCalledTimes(1)
+    expect(controller?.readiness.canChat).toBe(true)
   })
 
   it('resumes an active stream after selected thread history loads', async () => {

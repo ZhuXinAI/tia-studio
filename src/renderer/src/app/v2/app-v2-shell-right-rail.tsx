@@ -20,8 +20,11 @@ export function AppV2ShellRightRail({
   onSlotElementChange: (element: HTMLDivElement | null) => void
 }): React.JSX.Element {
   return (
-    <aside className="app-shell-pane hidden min-h-0 w-[19rem] shrink-0 border-l border-[color:var(--chat-surface-border)] xl:flex">
-      <div ref={onSlotElementChange} className="flex min-h-0 flex-1 flex-col" />
+    <aside className="app-shell-pane hidden min-h-0 min-w-0 w-80 max-w-80 shrink-0 overflow-hidden border-l border-[color:var(--chat-surface-border)] xl:flex">
+      <div
+        ref={onSlotElementChange}
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      />
     </aside>
   )
 }

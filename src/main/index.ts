@@ -34,6 +34,7 @@ import { WhatsAppAuthStateStore } from './channels/whatsapp-auth-state-store'
 import { WhatsAppChannel } from './channels/whatsapp-channel'
 import { AssistantRuntimeService } from './mastra/assistant-runtime'
 import { createMastraInstance } from './mastra/store'
+import { listDesktopAutomations } from './desktop/desktop-automations'
 import { migrateAppSchema } from './persistence/migrate'
 import { AssistantsRepository } from './persistence/repos/assistants-repo'
 import { ChannelPairingsRepository } from './persistence/repos/channel-pairings-repo'
@@ -62,6 +63,7 @@ import { registerSingleInstanceApp } from './single-instance'
 import {
   getInstalledRecommendedSkills,
   installRecommendedSkillsWithBunx,
+  listDiscoveredSkills,
   type RecommendedSkillId
 } from './skills/skills-manager'
 import { bringWindowToFront, buildTrayMenuTemplate } from './tray'
@@ -498,6 +500,12 @@ async function startLocalApiServer(): Promise<void> {
       getRuntimeOnboardingSkillsStatus: async () => getInstalledRecommendedSkills(),
       installRuntimeOnboardingSkills: async (skillIds) =>
         installRuntimeOnboardingSkillsWithManagedBun(skillIds),
+      listSkills: async () =>
+        listDiscoveredSkills({
+          workspaceRootPath: process.cwd(),
+          includeWorkspaceSource: false
+        }),
+      listAutomations: async () => listDesktopAutomations(),
       pickDirectory: async () => pickDirectory()
     },
     repositories: {
@@ -597,7 +605,9 @@ function createMainWindow(): BrowserWindow {
           backgroundColor: desktopWindowBackgroundColor
         }
       : { backgroundColor: desktopWindowBackgroundColor }),
-    ...(process.platform === 'linux' ? { icon, backgroundColor: desktopWindowBackgroundColor } : {}),
+    ...(process.platform === 'linux'
+      ? { icon, backgroundColor: desktopWindowBackgroundColor }
+      : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false

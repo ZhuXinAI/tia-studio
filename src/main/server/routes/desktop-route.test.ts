@@ -5,6 +5,7 @@ import type {
   ManagedRuntimeKind,
   ManagedRuntimesState
 } from '../../persistence/repos/managed-runtimes-repo'
+import type { DesktopAutomationRecord, DesktopSkillRecord } from '../../../shared/desktop-discovery'
 import { registerDesktopRoute } from './desktop-route'
 
 function createManagedRuntimeState(): ManagedRuntimesState {
@@ -49,13 +50,17 @@ describe('desktop route', () => {
 
   let app: Hono
   let managedRuntimeState: ManagedRuntimesState
-  let setAutoUpdateEnabled: ReturnType<typeof vi.fn<(enabled: boolean) => Promise<{
-    enabled: boolean
-    status: 'idle'
-    availableVersion: null
-    lastCheckedAt: null
-    message: null
-  }>>>
+  let setAutoUpdateEnabled: ReturnType<
+    typeof vi.fn<
+      (enabled: boolean) => Promise<{
+        enabled: boolean
+        status: 'idle'
+        availableVersion: null
+        lastCheckedAt: null
+        message: null
+      }>
+    >
+  >
   let checkManagedRuntimeLatest: ReturnType<
     typeof vi.fn<(kind: ManagedRuntimeKind) => Promise<ManagedRuntimesState>>
   >
@@ -69,8 +74,14 @@ describe('desktop route', () => {
     typeof vi.fn<(kind: ManagedRuntimeKind) => Promise<ManagedRuntimesState>>
   >
   let installRuntimeOnboardingSkills: ReturnType<
-    typeof vi.fn<(skillIds: Array<'agent-browser' | 'find-skills'>) => Promise<Array<'agent-browser' | 'find-skills'>>>
+    typeof vi.fn<
+      (
+        skillIds: Array<'agent-browser' | 'find-skills'>
+      ) => Promise<Array<'agent-browser' | 'find-skills'>>
+    >
   >
+  let listSkills: ReturnType<typeof vi.fn<() => Promise<DesktopSkillRecord[]>>>
+  let listAutomations: ReturnType<typeof vi.fn<() => Promise<DesktopAutomationRecord[]>>>
   let restartToUpdate: ReturnType<typeof vi.fn<() => void>>
   let pickDirectory: ReturnType<typeof vi.fn<() => Promise<string | null>>>
 
@@ -90,6 +101,37 @@ describe('desktop route', () => {
     installRuntimeOnboardingSkills = vi.fn(
       async (skillIds: Array<'agent-browser' | 'find-skills'>) => skillIds
     )
+    listSkills = vi.fn(async () => [
+      {
+        id: 'global-codex:agents-sdk',
+        name: 'agents-sdk',
+        description: 'Build AI agents.',
+        source: 'global-codex',
+        sourceRootPath: '/Users/demo/.codex/skills',
+        directoryPath: '/Users/demo/.codex/skills/agents-sdk',
+        relativePath: 'agents-sdk',
+        skillFilePath: '/Users/demo/.codex/skills/agents-sdk/SKILL.md',
+        canDelete: false
+      }
+    ])
+    listAutomations = vi.fn(async () => [
+      {
+        id: 'daily-remote-job-scan',
+        kind: 'cron',
+        name: 'Daily remote job scan',
+        prompt: 'Run the daily scan.',
+        status: 'ACTIVE',
+        rrule: 'RRULE:FREQ=WEEKLY;BYHOUR=9;BYMINUTE=0;BYDAY=MO,WE,FR',
+        model: 'gpt-5.4',
+        reasoningEffort: 'medium',
+        executionEnvironment: 'local',
+        cwds: ['/Users/demo/project'],
+        createdAt: '2026-06-27T00:00:00.000Z',
+        updatedAt: '2026-06-29T00:00:00.000Z',
+        directoryPath: '/Users/demo/.codex/automations/daily-remote-job-scan',
+        filePath: '/Users/demo/.codex/automations/daily-remote-job-scan/automation.toml'
+      }
+    ])
     restartToUpdate = vi.fn(() => undefined)
     pickDirectory = vi.fn(async () => '/Users/demo/workspace')
 
@@ -125,6 +167,8 @@ describe('desktop route', () => {
       clearManagedRuntime,
       getRuntimeOnboardingSkillsStatus: async () => ['agent-browser'],
       installRuntimeOnboardingSkills,
+      listSkills,
+      listAutomations,
       pickDirectory
     })
   })
@@ -322,12 +366,29 @@ describe('desktop route', () => {
     )
 
     expect(installResponse.status).toBe(200)
-    expect(installRuntimeOnboardingSkills).toHaveBeenCalledWith([
-      'agent-browser',
-      'find-skills'
-    ])
+    expect(installRuntimeOnboardingSkills).toHaveBeenCalledWith(['agent-browser', 'find-skills'])
     await expect(installResponse.json()).resolves.toEqual({
       skillIds: ['agent-browser', 'find-skills']
+    })
+  })
+
+  it('returns discovered desktop skills', async () => {
+    const response = await app.request('http://localhost/v1/desktop/skills')
+
+    expect(response.status).toBe(200)
+    expect(listSkills).toHaveBeenCalledTimes(1)
+    await expect(response.json()).resolves.toEqual({
+      skills: await listSkills()
+    })
+  })
+
+  it('returns discovered desktop automations', async () => {
+    const response = await app.request('http://localhost/v1/desktop/automations')
+
+    expect(response.status).toBe(200)
+    expect(listAutomations).toHaveBeenCalledTimes(1)
+    await expect(response.json()).resolves.toEqual({
+      automations: await listAutomations()
     })
   })
 

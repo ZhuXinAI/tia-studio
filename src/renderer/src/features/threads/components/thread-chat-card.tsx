@@ -43,6 +43,7 @@ import {
   DialogTitle
 } from '../../../components/ui/dialog'
 import { useTranslation } from '../../../i18n/use-app-translation'
+import { cn } from '../../../lib/utils'
 import {
   getMigrationStatus,
   runMigration,
@@ -202,11 +203,7 @@ function TokenUsageStatusItem({
       : `${usage.totalTokens.toLocaleString()} tokens recorded for this thread. Add model context limits to show a true window percentage.`
 
   return (
-    <ChatMetaPill
-      className="gap-2"
-      title={referenceLabel}
-      aria-label={referenceLabel}
-    >
+    <ChatMetaPill className="gap-2" title={referenceLabel} aria-label={referenceLabel}>
       <span className="relative grid size-4 place-items-center" aria-hidden="true">
         <svg className="size-4 -rotate-90" viewBox="0 0 16 16" fill="none">
           <circle
@@ -312,6 +309,7 @@ type ThreadChatComposerProps = Pick<
   currentModelLabel: string
   selectedWorkspace: WorkspaceRecord | null
   isNewThreadRoute: boolean
+  layout?: 'docked' | 'centered'
 }
 
 function getProviderModels(provider: ProviderRecord | null): string[] {
@@ -639,6 +637,7 @@ function ThreadChatComposer({
   supportsVision,
   selectedWorkspace,
   isNewThreadRoute,
+  layout = 'docked',
   providers,
   draftProviderId,
   draftModel,
@@ -681,64 +680,92 @@ function ThreadChatComposer({
   )
 
   if (!selectedThread && isNewThreadRoute) {
+    const newThreadComposer = (
+      <ComposerPrimitive.Root
+        className="w-full space-y-4"
+        onSubmit={async (event) => {
+          event.preventDefault()
+          const text = composerText.trim()
+          if (text.length === 0) {
+            return
+          }
+
+          aui.composer().setText('')
+          await onSubmitMessage(text)
+        }}
+      >
+        <ChatComposerPanel>
+          <ComposerAttachments />
+          <ComposerPrimitive.Input
+            minRows={5}
+            disabled={!canCompose || !readiness.canChat}
+            placeholder="Do anything"
+            aria-label={t('threads.chat.composer.ariaLabel')}
+            className="placeholder:text-muted-foreground/70 flex w-full resize-none bg-transparent px-5 py-5 text-[15px] leading-7 outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          />
+          <ChatSurfaceFooter className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span className="inline-flex min-w-0 items-center gap-2 rounded-full px-2 py-1">
+                <span className="truncate">{selectedWorkspace?.name ?? 'Chats'}</span>
+              </span>
+              {selectedWorkspace?.isMissing && selectedWorkspace.builtInKind !== 'chats' ? (
+                <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300">
+                  <AlertTriangle className="size-3.5" />
+                  Relocate workspace
+                </span>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {supportsVision ? <ComposerAddAttachment /> : null}
+              <ApprovalModePicker value={approvalMode} onChange={setApprovalMode} />
+              {modelControl}
+              <ComposerPrimitive.Send asChild>
+                <Button
+                  type="submit"
+                  size="icon"
+                  className="size-10 rounded-full shadow-[0_12px_24px_-20px_rgba(15,23,42,0.52)]"
+                  disabled={!canSendMessage}
+                  aria-label={t('common.actions.send')}
+                  title={t('common.actions.send')}
+                >
+                  <SendHorizontal className="size-4" />
+                </Button>
+              </ComposerPrimitive.Send>
+            </div>
+          </ChatSurfaceFooter>
+        </ChatComposerPanel>
+      </ComposerPrimitive.Root>
+    )
+
+    if (layout === 'centered') {
+      return (
+        <div className="flex min-h-0 flex-1 items-center justify-center px-5 py-10">
+          <ChatCenteredContent className="flex flex-col items-center gap-6">
+            <h1 className="max-w-4xl text-center text-[clamp(1.75rem,3.1vw,2.45rem)] font-medium leading-tight tracking-[-0.03em]">
+              What should we build in {selectedWorkspace?.name ?? 'tia-studio'}?
+            </h1>
+
+            {!readiness.canChat && selectedAssistant ? (
+              <p className="text-muted-foreground rounded-lg border border-amber-300/40 bg-amber-400/10 px-3 py-2 text-xs">
+                {t('threads.chat.setupIncomplete')}
+              </p>
+            ) : null}
+
+            {selectedWorkspace?.isMissing && selectedWorkspace.builtInKind !== 'chats' ? (
+              <div className="w-full rounded-lg border border-amber-400/45 bg-amber-400/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
+                Relocate this workspace before starting a new project thread.
+              </div>
+            ) : null}
+
+            {newThreadComposer}
+          </ChatCenteredContent>
+        </div>
+      )
+    }
+
     return (
       <div className="px-5 pb-8">
-        <ChatCenteredContent>
-          <ComposerPrimitive.Root
-            className="w-full space-y-4"
-            onSubmit={async (event) => {
-              event.preventDefault()
-              const text = composerText.trim()
-              if (text.length === 0) {
-                return
-              }
-
-              aui.composer().setText('')
-              await onSubmitMessage(text)
-            }}
-          >
-            <ChatComposerPanel>
-              <ComposerAttachments />
-              <ComposerPrimitive.Input
-                minRows={5}
-                disabled={!canCompose || !readiness.canChat}
-                placeholder="Do anything"
-                aria-label={t('threads.chat.composer.ariaLabel')}
-                className="placeholder:text-muted-foreground/70 flex w-full resize-none bg-transparent px-5 py-5 text-[15px] leading-7 outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              />
-              <ChatSurfaceFooter className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <span className="inline-flex min-w-0 items-center gap-2 rounded-full px-2 py-1">
-                    <span className="truncate">{selectedWorkspace?.name ?? 'Chats'}</span>
-                  </span>
-                  {selectedWorkspace?.isMissing && selectedWorkspace.builtInKind !== 'chats' ? (
-                    <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300">
-                      <AlertTriangle className="size-3.5" />
-                      Relocate workspace
-                    </span>
-                  ) : null}
-                </div>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  {supportsVision ? <ComposerAddAttachment /> : null}
-                  <ApprovalModePicker value={approvalMode} onChange={setApprovalMode} />
-                  {modelControl}
-                  <ComposerPrimitive.Send asChild>
-                    <Button
-                      type="submit"
-                      size="icon"
-                      className="size-10 rounded-full shadow-[0_12px_24px_-20px_rgba(15,23,42,0.52)]"
-                      disabled={!canSendMessage}
-                      aria-label={t('common.actions.send')}
-                      title={t('common.actions.send')}
-                    >
-                      <SendHorizontal className="size-4" />
-                    </Button>
-                  </ComposerPrimitive.Send>
-                </div>
-              </ChatSurfaceFooter>
-            </ChatComposerPanel>
-          </ComposerPrimitive.Root>
-        </ChatCenteredContent>
+        <ChatCenteredContent>{newThreadComposer}</ChatCenteredContent>
       </div>
     )
   }
@@ -868,6 +895,7 @@ export function ThreadChatCard({
   const hasRemoteBinding = Boolean(selectedThread?.channelBinding?.remoteChatId)
   const selectedThreadTitle = selectedThread?.title.trim() ?? ''
   const shouldShowThreadTitleBar = Boolean(selectedThread && selectedThreadTitle.length > 0)
+  const shouldShowCenteredNewThreadState = !selectedThread && isNewThreadRoute
   const providerOverride = readThreadProviderOverride(selectedThread?.metadata)
   const selectedProvider =
     providers.find((provider) => provider.id === providerOverride?.providerId) ??
@@ -992,17 +1020,9 @@ export function ThreadChatCard({
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        {headerLeadingAction ? (
-          <div className="flex items-center px-3 pb-1 pt-2 sm:px-4">
-            <div className="shrink-0">{headerLeadingAction}</div>
-          </div>
-        ) : null}
-
         {shouldShowThreadTitleBar ? (
           <>
-            <CardHeader
-              className="border-b border-[color:var(--chat-surface-border)] bg-transparent px-5 pb-3 pt-2 pr-36 sm:pb-4"
-            >
+            <CardHeader className="border-b border-[color:var(--chat-surface-border)] bg-transparent px-5 pb-3 pt-2 sm:pb-4">
               <ChatCenteredContent>
                 <div className="flex h-full flex-nowrap items-center justify-between gap-3 overflow-hidden">
                   <CardTitle className="min-w-0 flex-1">
@@ -1022,6 +1042,9 @@ export function ThreadChatCard({
                       ) : null}
                     </div>
                   </CardTitle>
+                  {headerLeadingAction ? (
+                    <div className="shrink-0">{headerLeadingAction}</div>
+                  ) : null}
                 </div>
               </ChatCenteredContent>
             </CardHeader>
@@ -1029,55 +1052,79 @@ export function ThreadChatCard({
         ) : null}
 
         <ThreadPrimitive.Root className="flex min-h-0 flex-1 flex-col">
-          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent px-0 pb-0 pt-6">
-            {!selectedThread && isNewThreadRoute ? (
-              <ChatCenteredContent className="flex flex-1 items-end justify-center px-5 pb-10">
-                <h1 className="text-center text-[clamp(2rem,4vw,3.25rem)] font-medium leading-tight">
-                  What should we build in {selectedWorkspace?.name ?? 'tia-studio'}?
-                </h1>
-              </ChatCenteredContent>
-            ) : null}
-
-            {!readiness.canChat && selectedAssistant ? (
-              <ChatCenteredContent className="mb-4 px-5">
-                <p className="text-muted-foreground rounded-lg border border-amber-300/40 bg-amber-400/10 px-3 py-2 text-xs">
-                  {t('threads.chat.setupIncomplete')}
-                </p>
-              </ChatCenteredContent>
-            ) : null}
-
-            {selectedThread ? (
-              <ThreadChatMessageList
-                key={selectedThread.id}
-                threadId={selectedThread.id}
-                assistantName={assistantName}
-                isLoadingChatHistory={isLoadingChatHistory}
+          <CardContent
+            className={cn(
+              'flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent px-0 pb-0',
+              shouldShowCenteredNewThreadState ? 'pt-0' : 'pt-6'
+            )}
+          >
+            {shouldShowCenteredNewThreadState ? (
+              <ThreadChatComposer
+                selectedWorkspace={selectedWorkspace}
+                selectedAssistant={selectedAssistant}
+                selectedThread={selectedThread}
+                readiness={readiness}
                 isChatStreaming={isChatStreaming}
-                loadError={loadError}
-                chatError={chatError}
+                canAbortGeneration={canAbortGeneration}
+                canCompose={canCompose}
+                currentModelLabel={currentModelLabel}
+                supportsVision={supportsVision}
+                isNewThreadRoute={isNewThreadRoute}
+                layout="centered"
+                providers={providers}
+                draftProviderId={draftProviderId}
+                draftModel={draftModel}
+                onDraftProviderChange={onDraftProviderChange}
+                onDraftModelChange={onDraftModelChange}
+                onSubmitMessage={onSubmitMessage}
+                onAbortGeneration={onAbortGeneration}
               />
-            ) : null}
+            ) : (
+              <>
+                {!readiness.canChat && selectedAssistant ? (
+                  <ChatCenteredContent className="mb-4 px-5">
+                    <p className="text-muted-foreground rounded-lg border border-amber-300/40 bg-amber-400/10 px-3 py-2 text-xs">
+                      {t('threads.chat.setupIncomplete')}
+                    </p>
+                  </ChatCenteredContent>
+                ) : null}
+
+                {selectedThread ? (
+                  <ThreadChatMessageList
+                    key={selectedThread.id}
+                    threadId={selectedThread.id}
+                    assistantName={assistantName}
+                    isLoadingChatHistory={isLoadingChatHistory}
+                    isChatStreaming={isChatStreaming}
+                    loadError={loadError}
+                    chatError={chatError}
+                  />
+                ) : null}
+              </>
+            )}
           </CardContent>
 
-          <ThreadChatComposer
-            selectedWorkspace={selectedWorkspace}
-            selectedAssistant={selectedAssistant}
-            selectedThread={selectedThread}
-            readiness={readiness}
-            isChatStreaming={isChatStreaming}
-            canAbortGeneration={canAbortGeneration}
-            canCompose={canCompose}
-            currentModelLabel={currentModelLabel}
-            supportsVision={supportsVision}
-            isNewThreadRoute={isNewThreadRoute}
-            providers={providers}
-            draftProviderId={draftProviderId}
-            draftModel={draftModel}
-            onDraftProviderChange={onDraftProviderChange}
-            onDraftModelChange={onDraftModelChange}
-            onSubmitMessage={onSubmitMessage}
-            onAbortGeneration={onAbortGeneration}
-          />
+          {shouldShowCenteredNewThreadState ? null : (
+            <ThreadChatComposer
+              selectedWorkspace={selectedWorkspace}
+              selectedAssistant={selectedAssistant}
+              selectedThread={selectedThread}
+              readiness={readiness}
+              isChatStreaming={isChatStreaming}
+              canAbortGeneration={canAbortGeneration}
+              canCompose={canCompose}
+              currentModelLabel={currentModelLabel}
+              supportsVision={supportsVision}
+              isNewThreadRoute={isNewThreadRoute}
+              providers={providers}
+              draftProviderId={draftProviderId}
+              draftModel={draftModel}
+              onDraftProviderChange={onDraftProviderChange}
+              onDraftModelChange={onDraftModelChange}
+              onSubmitMessage={onSubmitMessage}
+              onAbortGeneration={onAbortGeneration}
+            />
+          )}
         </ThreadPrimitive.Root>
       </Card>
     </AssistantRuntimeProvider>

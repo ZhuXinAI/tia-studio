@@ -1,6 +1,12 @@
 import type { Hono } from 'hono'
-import { type WhatsAppAuthStateStore } from '../../channels/whatsapp-auth-state-store'
-import { type WechatAuthStateStore } from '../../channels/wechat-auth-state-store'
+import {
+  type WhatsAppAuthStateStore,
+  type WhatsAppChannelAuthState
+} from '../../channels/whatsapp-auth-state-store'
+import {
+  type WechatAuthStateStore,
+  type WechatChannelAuthState
+} from '../../channels/wechat-auth-state-store'
 import { resolveGroupRequireMention } from '../../channels/channel-config'
 import {
   BUILT_IN_DEFAULT_AGENT_MCP_KEY,
@@ -46,6 +52,16 @@ type ConfiguredChannelResponse = {
   errorMessage: string | null
   pairedCount: number
   pendingPairingCount: number
+  authState: ChannelAuthStateResponse | null
+}
+
+type ChannelAuthStateResponse = {
+  status: 'disconnected' | 'connecting' | 'qr_ready' | 'connected' | 'error'
+  qrCodeDataUrl: string | null
+  qrCodeValue: string | null
+  accountLabel: string | null
+  errorMessage: string | null
+  updatedAt: string
 }
 
 function invalidBodyResponse() {
@@ -209,7 +225,8 @@ async function listConfiguredChannels(
         status: await toChannelStatus(channel, assistant?.enabled ?? false, options),
         errorMessage: channel.lastError,
         pairedCount: counts.pairedCount,
-        pendingPairingCount: counts.pendingPairingCount
+        pendingPairingCount: counts.pendingPairingCount,
+        authState: toChannelAuthStateResponse(channel, options)
       }
     })
   )
@@ -242,8 +259,58 @@ async function toConfiguredChannelResponse(
     status: await toChannelStatus(channel, assistant?.enabled ?? false, options),
     errorMessage: channel.lastError,
     pairedCount: counts.pairedCount,
-    pendingPairingCount: counts.pendingPairingCount
+    pendingPairingCount: counts.pendingPairingCount,
+    authState: toChannelAuthStateResponse(channel, options)
   }
+}
+
+function toWhatsAppAuthStateResponse(
+  authState: WhatsAppChannelAuthState | null
+): ChannelAuthStateResponse | null {
+  if (!authState) {
+    return null
+  }
+
+  return {
+    status: authState.status,
+    qrCodeDataUrl: authState.qrCodeDataUrl,
+    qrCodeValue: authState.qrCodeValue,
+    accountLabel: authState.phoneNumber,
+    errorMessage: authState.errorMessage,
+    updatedAt: authState.updatedAt
+  }
+}
+
+function toWechatAuthStateResponse(
+  authState: WechatChannelAuthState | null
+): ChannelAuthStateResponse | null {
+  if (!authState) {
+    return null
+  }
+
+  return {
+    status: authState.status,
+    qrCodeDataUrl: authState.qrCodeDataUrl,
+    qrCodeValue: authState.qrCodeValue,
+    accountLabel: authState.accountId,
+    errorMessage: authState.errorMessage,
+    updatedAt: authState.updatedAt
+  }
+}
+
+function toChannelAuthStateResponse(
+  channel: Pick<AppChannel, 'id' | 'type'>,
+  options: RegisterChannelsRouteOptions
+): ChannelAuthStateResponse | null {
+  if (channel.type === 'whatsapp') {
+    return toWhatsAppAuthStateResponse(options.whatsAppAuthStateStore?.get(channel.id) ?? null)
+  }
+
+  if (channel.type === 'wechat') {
+    return toWechatAuthStateResponse(options.wechatAuthStateStore?.get(channel.id) ?? null)
+  }
+
+  return null
 }
 
 async function loadVisibleConfiguredChannelById(

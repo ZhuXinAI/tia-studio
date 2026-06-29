@@ -4,8 +4,9 @@ import path from 'node:path'
 import { readdir, readFile, realpath, rm, stat } from 'node:fs/promises'
 import type { Dirent } from 'node:fs'
 import { promisify } from 'node:util'
+import type { DesktopSkillRecord, DesktopSkillSource } from '../../shared/desktop-discovery'
 
-type SkillSource = 'global-claude' | 'global-agent' | 'workspace'
+type SkillSource = DesktopSkillSource
 export type RecommendedSkillId = 'agent-browser' | 'find-skills'
 
 type SkillSourceDefinition = {
@@ -25,17 +26,7 @@ type ResolvedDirectoryEntry = {
   isFile: boolean
 }
 
-export type AssistantSkillRecord = {
-  id: string
-  name: string
-  description: string | null
-  source: SkillSource
-  sourceRootPath: string
-  directoryPath: string
-  relativePath: string
-  skillFilePath: string
-  canDelete: boolean
-}
+export type AssistantSkillRecord = DesktopSkillRecord
 
 type RecommendedSkillDefinition = {
   id: RecommendedSkillId
@@ -69,9 +60,11 @@ const recommendedSkillDefinitions: RecommendedSkillDefinition[] = [
 ]
 
 const skillSourceOrder: Record<SkillSource, number> = {
-  'global-claude': 0,
-  'global-agent': 1,
-  workspace: 2
+  'global-codex': 0,
+  'global-claude': 1,
+  'global-agent': 2,
+  'global-agent-legacy': 3,
+  workspace: 4
 }
 
 function parseFrontmatter(content: string): Record<string, string> {
@@ -121,9 +114,16 @@ function toNonEmptyString(value: unknown): string | null {
   return normalized.length > 0 ? normalized : null
 }
 
-function toSkillSources(workspaceRootPath: string): SkillSourceDefinition[] {
-  const workspacePath = path.resolve(workspaceRootPath)
-  return [
+function toSkillSources(input: {
+  workspaceRootPath?: string | null
+  includeWorkspaceSource: boolean
+}): SkillSourceDefinition[] {
+  const sources: SkillSourceDefinition[] = [
+    {
+      source: 'global-codex',
+      rootPath: path.join(os.homedir(), '.codex', 'skills'),
+      canDelete: false
+    },
     {
       source: 'global-claude',
       rootPath: path.join(os.homedir(), '.claude', 'skills'),
@@ -131,15 +131,83 @@ function toSkillSources(workspaceRootPath: string): SkillSourceDefinition[] {
     },
     {
       source: 'global-agent',
-      rootPath: path.join(os.homedir(), '.agent', 'skills'),
+      rootPath: path.join(os.homedir(), '.agents', 'skills'),
       canDelete: false
     },
     {
+      source: 'global-agent-legacy',
+      rootPath: path.join(os.homedir(), '.agent', 'skills'),
+      canDelete: false
+    }
+  ]
+
+  const normalizedWorkspaceRoot = toNonEmptyString(input.workspaceRootPath)
+  if (!input.includeWorkspaceSource || !normalizedWorkspaceRoot) {
+    return sources
+  }
+
+  return [
+    ...sources,
+    {
       source: 'workspace',
-      rootPath: path.join(workspacePath, 'skills'),
+      rootPath: path.join(path.resolve(normalizedWorkspaceRoot), 'skills'),
       canDelete: true
     }
   ]
+}
+
+export async function listDiscoveredSkills(input?: {
+  workspaceRootPath?: string | null
+  includeWorkspaceSource?: boolean
+}): Promise<AssistantSkillRecord[]> {
+  const includeWorkspaceSource = input?.includeWorkspaceSource !== false
+  const skills: AssistantSkillRecord[] = []
+  const skillSources = toSkillSources({
+    workspaceRootPath: input?.workspaceRootPath,
+    includeWorkspaceSource
+  })
+
+  for (const source of skillSources) {
+    const directories = await collectSkillDirectories(source.rootPath)
+    for (const directory of directories) {
+      const skillFilePath = path.join(directory.absolutePath, 'SKILL.md')
+
+      let metadata: Awaited<ReturnType<typeof readSkillMetadata>>
+      try {
+        metadata = await readSkillMetadata(skillFilePath)
+      } catch (error) {
+        if (isFileMissingError(error)) {
+          continue
+        }
+
+        throw error
+      }
+
+      const relativePath =
+        directory.relativePath.length > 0 ? directory.relativePath : path.basename(source.rootPath)
+
+      skills.push({
+        id: `${source.source}:${relativePath}`,
+        name: metadata.name ?? path.basename(directory.absolutePath),
+        description: metadata.description,
+        source: source.source,
+        sourceRootPath: source.rootPath,
+        directoryPath: directory.absolutePath,
+        relativePath,
+        skillFilePath,
+        canDelete: source.canDelete
+      })
+    }
+  }
+
+  return skills.sort((left, right) => {
+    const sourceOrder = skillSourceOrder[left.source] - skillSourceOrder[right.source]
+    if (sourceOrder !== 0) {
+      return sourceOrder
+    }
+
+    return left.relativePath.localeCompare(right.relativePath)
+  })
 }
 
 function isFileMissingError(error: unknown): boolean {
@@ -285,54 +353,13 @@ async function readSkillMetadata(skillFilePath: string): Promise<{
 export async function listAssistantSkills(
   workspaceRootPath: string
 ): Promise<AssistantSkillRecord[]> {
-  const normalizedWorkspaceRoot = toNonEmptyString(workspaceRootPath)
-  if (!normalizedWorkspaceRoot) {
+  if (!toNonEmptyString(workspaceRootPath)) {
     return []
   }
 
-  const skills: AssistantSkillRecord[] = []
-  const skillSources = toSkillSources(normalizedWorkspaceRoot)
-
-  for (const source of skillSources) {
-    const directories = await collectSkillDirectories(source.rootPath)
-    for (const directory of directories) {
-      const skillFilePath = path.join(directory.absolutePath, 'SKILL.md')
-
-      let metadata: Awaited<ReturnType<typeof readSkillMetadata>>
-      try {
-        metadata = await readSkillMetadata(skillFilePath)
-      } catch (error) {
-        if (isFileMissingError(error)) {
-          continue
-        }
-
-        throw error
-      }
-
-      const relativePath =
-        directory.relativePath.length > 0 ? directory.relativePath : path.basename(source.rootPath)
-
-      skills.push({
-        id: `${source.source}:${relativePath}`,
-        name: metadata.name ?? path.basename(directory.absolutePath),
-        description: metadata.description,
-        source: source.source,
-        sourceRootPath: source.rootPath,
-        directoryPath: directory.absolutePath,
-        relativePath,
-        skillFilePath,
-        canDelete: source.canDelete
-      })
-    }
-  }
-
-  return skills.sort((left, right) => {
-    const sourceOrder = skillSourceOrder[left.source] - skillSourceOrder[right.source]
-    if (sourceOrder !== 0) {
-      return sourceOrder
-    }
-
-    return left.relativePath.localeCompare(right.relativePath)
+  return listDiscoveredSkills({
+    workspaceRootPath,
+    includeWorkspaceSource: true
   })
 }
 
@@ -469,10 +496,11 @@ function normalizeSkillKey(value: string): string {
 }
 
 export async function getInstalledRecommendedSkills(): Promise<RecommendedSkillId[]> {
-  const skills = await listAssistantSkills(os.homedir())
-  const globalClaudeSkills = skills.filter((skill) => skill.source === 'global-claude')
+  const skills = await listDiscoveredSkills({
+    includeWorkspaceSource: false
+  })
   const normalizedNames = new Set(
-    globalClaudeSkills.flatMap((skill) => [
+    skills.flatMap((skill) => [
       normalizeSkillKey(skill.name),
       normalizeSkillKey(path.basename(skill.relativePath))
     ])

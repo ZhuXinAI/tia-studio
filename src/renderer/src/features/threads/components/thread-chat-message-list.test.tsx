@@ -689,6 +689,32 @@ describe('thread chat message list', () => {
     )
   })
 
+  it('shows sanitized chat errors instead of raw stack traces', async () => {
+    await act(async () => {
+      root.render(
+        <ThreadChatMessageList
+          threadId="thread-1"
+          assistantName="Workspace Supervisor"
+          isLoadingChatHistory={false}
+          isChatStreaming={false}
+          loadError={null}
+          chatError={{
+            statusCode: 409,
+            data: {
+              error: {
+                message: 'Assistant workspace is not configured',
+                stack: 'Error: Assistant workspace is not configured\n    at runtime.ts:1:1'
+              }
+            }
+          }}
+        />
+      )
+    })
+
+    expect(container.textContent).toContain('Assistant workspace is not configured (status 409)')
+    expect(container.textContent).not.toContain('runtime.ts:1:1')
+  })
+
   it('hides completion-only supervisor turns', async () => {
     messageState.message.parts = [
       {

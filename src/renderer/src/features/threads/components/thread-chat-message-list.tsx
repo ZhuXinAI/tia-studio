@@ -792,7 +792,7 @@ function AssistantMessageActions({
       <div className="flex flex-wrap items-center gap-2">
         <ActionBarPrimitive.Root
           autohide="never"
-          className={`${chatSurfaceStyles.panelSubtle} flex items-center gap-1 rounded-full p-1 shadow-none`}
+          className="flex items-center gap-1 rounded-full bg-[color:var(--chat-surface-bg-subtle)] p-1 shadow-none"
         >
           <ActionBarPrimitive.Copy asChild>
             <Button
@@ -866,7 +866,9 @@ function StandardAssistantMessageBubble(): React.JSX.Element {
         ) : null}
 
         {shouldRenderBodyCard ? (
-          <div className={`${chatSurfaceStyles.panelElevated} w-full space-y-3 rounded-[28px] px-4 py-4 text-[14px]`}>
+          <div
+            className={`${chatSurfaceStyles.panelElevated} w-full space-y-3 rounded-[28px] px-4 py-4 text-[14px]`}
+          >
             <MessagePrimitive.Parts components={assistantTextOnlyComponents} />
             <AssistantMessageActions />
           </div>
@@ -1010,7 +1012,9 @@ function DelegationAwareAssistantMessageBubble(): React.JSX.Element | null {
 
   return (
     <MessagePrimitive.Root className="w-full px-4 py-3">
-      <div className={`${chatSurfaceStyles.panelElevated} w-full space-y-4 rounded-[28px] px-4 py-4 text-[14px]`}>
+      <div
+        className={`${chatSurfaceStyles.panelElevated} w-full space-y-4 rounded-[28px] px-4 py-4 text-[14px]`}
+      >
         {visibleBlocks.map((block) => (
           <DelegatedVisibleMessageCard key={block.key} block={block} />
         ))}

@@ -49,6 +49,7 @@ function buildChannel(overrides: Partial<ConfiguredChannelRecord>): ConfiguredCh
     errorMessage: null,
     pairedCount: 0,
     pendingPairingCount: 0,
+    authState: null,
     ...overrides
   }
 }
@@ -414,6 +415,40 @@ describe('channels settings page', () => {
       name: 'Ops Wechat'
     })
     expect(container.textContent).toContain('Ops Wechat')
+  })
+
+  it('renders a visible wechat QR code when auth state is ready', async () => {
+    vi.mocked(listChannels).mockResolvedValueOnce([
+      buildChannel({
+        id: 'channel-wechat',
+        type: 'wechat',
+        name: 'Ops Wechat',
+        authState: {
+          status: 'qr_ready',
+          qrCodeDataUrl: 'data:image/png;base64,wechat-qr',
+          qrCodeValue: 'https://wechat.example/qr',
+          accountLabel: null,
+          errorMessage: null,
+          updatedAt: '2026-03-10T00:00:00.000Z'
+        }
+      })
+    ])
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ChannelsSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    expect(container.textContent).toContain('Wechat login QR code')
+    expect(container.textContent).toContain('Scan this QR code to finish setup.')
+    const qrImage = container.querySelector('img[alt="Ops Wechat login QR code"]')
+    expect(qrImage?.getAttribute('src')).toBe('data:image/png;base64,wechat-qr')
+    const qrLink = container.querySelector('a[href="https://wechat.example/qr"]')
+    expect(qrLink?.textContent).toContain('Open QR link')
   })
 
   it('creates a configured wecom channel with bot credentials', async () => {

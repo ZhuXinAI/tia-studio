@@ -1,5 +1,14 @@
 import { createApiClient } from '../../../lib/api-client'
 
+export type ChannelAuthStateRecord = {
+  status: 'disconnected' | 'connecting' | 'qr_ready' | 'connected' | 'error'
+  qrCodeDataUrl: string | null
+  qrCodeValue: string | null
+  accountLabel: string | null
+  errorMessage: string | null
+  updatedAt: string
+}
+
 export type ConfiguredChannelRecord = {
   id: string
   type: string
@@ -11,6 +20,7 @@ export type ConfiguredChannelRecord = {
   errorMessage: string | null
   pairedCount: number
   pendingPairingCount: number
+  authState: ChannelAuthStateRecord | null
 }
 
 export type CreateChannelInput =

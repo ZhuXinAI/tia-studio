@@ -8,6 +8,7 @@ import type { RecommendedSkillId } from '../../skills/skills-manager'
 import { supportedUiLanguages, type UiConfig } from '../../ui-config'
 import type { AutoUpdateState } from '../../auto-updater'
 import type { DesktopBootstrap } from '../../../shared/desktop-bootstrap'
+import type { DesktopAutomationRecord, DesktopSkillRecord } from '../../../shared/desktop-discovery'
 
 const uiConfigSchema = z.object({
   transparent: z.boolean().optional(),
@@ -48,6 +49,8 @@ type RegisterDesktopRouteOptions = {
   clearManagedRuntime: (kind: ManagedRuntimeKind) => Promise<ManagedRuntimesState>
   getRuntimeOnboardingSkillsStatus: () => Promise<RecommendedSkillId[]>
   installRuntimeOnboardingSkills: (skillIds: RecommendedSkillId[]) => Promise<RecommendedSkillId[]>
+  listSkills: () => Promise<DesktopSkillRecord[]>
+  listAutomations: () => Promise<DesktopAutomationRecord[]>
   pickDirectory: () => Promise<string | null>
 }
 
@@ -87,13 +90,15 @@ async function readValidatedJsonBody<T>(
   return { ok: true, data: parsed.data }
 }
 
-function readManagedRuntimeKind(context: Context): {
-  ok: true
-  kind: ManagedRuntimeKind
-} | {
-  ok: false
-  response: Response
-} {
+function readManagedRuntimeKind(context: Context):
+  | {
+      ok: true
+      kind: ManagedRuntimeKind
+    }
+  | {
+      ok: false
+      response: Response
+    } {
   const parsed = managedRuntimeKindSchema.safeParse(context.req.param('kind'))
   if (!parsed.success) {
     return {
@@ -209,6 +214,18 @@ export function registerDesktopRoute(app: Hono, options: RegisterDesktopRouteOpt
 
     return context.json({
       skillIds: await options.installRuntimeOnboardingSkills(parsed.data.skillIds)
+    })
+  })
+
+  app.get('/v1/desktop/skills', async (context) => {
+    return context.json({
+      skills: await options.listSkills()
+    })
+  })
+
+  app.get('/v1/desktop/automations', async (context) => {
+    return context.json({
+      automations: await options.listAutomations()
     })
   })
 

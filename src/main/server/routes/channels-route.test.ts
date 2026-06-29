@@ -137,6 +137,37 @@ describe('channels route', () => {
     )
   })
 
+  it('includes live wechat auth state in channel responses', async () => {
+    const channel = await channelsRepo.create({
+      type: 'wechat',
+      name: 'Ops Wechat',
+      assistantId: defaultAssistantId,
+      enabled: true,
+      config: {}
+    })
+    wechatAuthStateStore.setQrCode(channel.id, {
+      qrCodeValue: 'https://wechat.example/qr',
+      qrCodeDataUrl: 'data:image/png;base64,wechat-qr'
+    })
+
+    const response = await app.request('http://localhost/v1/channels')
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: channel.id,
+          type: 'wechat',
+          authState: expect.objectContaining({
+            status: 'qr_ready',
+            qrCodeValue: 'https://wechat.example/qr',
+            qrCodeDataUrl: 'data:image/png;base64,wechat-qr'
+          })
+        })
+      ])
+    )
+  })
+
   it('creates, updates, and deletes configured channels through the live route', async () => {
     const createResponse = await app.request('http://localhost/v1/channels', {
       method: 'POST',

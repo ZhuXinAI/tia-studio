@@ -44,6 +44,7 @@ import { createCodingAgentDelegateTool } from './tools/coding-agent-tools'
 import { createWebFetchTool } from './tools/web-fetch-tool'
 import { createChannelTools } from './tools/channel-tools'
 import { createMemorySessionTools } from './tools/memory-session-tools'
+import { createThreadNamingTool } from './tools/thread-naming-tool'
 import {
   assistantWorkspaceContextInputProcessor,
   createSoulMemoryTools
@@ -333,6 +334,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
           }
         }
       },
+      messageMetadata: ({ part }) => this.buildStreamMessageMetadata(part),
       sendReasoning: true
     })
 
@@ -490,7 +492,15 @@ export class AssistantRuntimeService implements AssistantRuntime {
   }): Promise<void> {
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
     await this.options.threadsRepo.touchLastMessageAt(params.threadId, now).catch(() => undefined)
-    await this.syncGeneratedThreadTitle(params).catch(() => undefined)
+    const renamedThread = await this.syncGeneratedThreadTitle(params).catch(() => null)
+    if (renamedThread) {
+      this.options.threadMessageEventsStore?.appendMessagesUpdated({
+        assistantId: renamedThread.assistantId,
+        threadId: renamedThread.id,
+        profileId: params.profileId,
+        source: 'command'
+      })
+    }
   }
 
   private async publishChannelReplyChunk(input: {
@@ -523,24 +533,24 @@ export class AssistantRuntimeService implements AssistantRuntime {
   private async syncGeneratedThreadTitle(params: {
     threadId: string
     profileId: string
-  }): Promise<void> {
+  }): Promise<AppThread | null> {
     const appThread = await this.options.threadsRepo.getById(params.threadId)
     if (!appThread || appThread.resourceId !== params.profileId) {
-      return
+      return null
     }
 
     if (!this.shouldReplaceThreadTitle(appThread.title)) {
-      return
+      return null
     }
 
     const storage = this.options.mastra.getStorage()
     if (!storage) {
-      return
+      return null
     }
 
     const memoryStore = await storage.getStore('memory')
     if (!memoryStore || typeof memoryStore.getThreadById !== 'function') {
-      return
+      return null
     }
 
     const memoryThread = await memoryStore.getThreadById({
@@ -548,10 +558,10 @@ export class AssistantRuntimeService implements AssistantRuntime {
     })
     const generatedTitle = this.toNonEmptyString(memoryThread?.title)
     if (!generatedTitle || appThread.title.trim() === generatedTitle) {
-      return
+      return null
     }
 
-    await this.options.threadsRepo.updateTitle(params.threadId, generatedTitle)
+    return this.options.threadsRepo.updateTitle(params.threadId, generatedTitle)
   }
 
   private shouldReplaceThreadTitle(title: string): boolean {
@@ -954,11 +964,44 @@ export class AssistantRuntimeService implements AssistantRuntime {
     }
   }
 
+  private buildStreamMessageMetadata(part: unknown): Record<string, unknown> | undefined {
+    if (!part || typeof part !== 'object' || Array.isArray(part)) {
+      return undefined
+    }
+
+    const partRecord = part as Record<string, unknown>
+    const existingMetadata =
+      partRecord.messageMetadata &&
+      typeof partRecord.messageMetadata === 'object' &&
+      !Array.isArray(partRecord.messageMetadata)
+        ? { ...(partRecord.messageMetadata as Record<string, unknown>) }
+        : {}
+    const usage = this.normalizeUsageMetrics(partRecord.totalUsage)
+
+    if (!usage && Object.keys(existingMetadata).length === 0) {
+      return undefined
+    }
+
+    return usage
+      ? {
+          ...existingMetadata,
+          usage
+        }
+      : existingMetadata
+  }
+
   private observeStreamChunk(
     observation: StreamUsageObservation,
     chunk: UIMessageChunk
   ): UIMessageChunk {
     const chunkRecord = chunk as Record<string, unknown>
+
+    const existingMetadata =
+      chunkRecord.messageMetadata &&
+      typeof chunkRecord.messageMetadata === 'object' &&
+      !Array.isArray(chunkRecord.messageMetadata)
+        ? (chunkRecord.messageMetadata as Record<string, unknown>)
+        : {}
 
     if (chunkRecord.type === 'start') {
       if (typeof chunkRecord.messageId === 'string' && chunkRecord.messageId.trim().length > 0) {
@@ -982,7 +1025,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       return chunk
     }
 
-    const usage = this.normalizeUsageMetrics(chunkRecord.totalUsage)
+    const usage = this.normalizeUsageMetrics(chunkRecord.totalUsage ?? existingMetadata.usage)
     if (!usage) {
       if (typeof chunkRecord.finishReason === 'string') {
         observation.finishReason = chunkRecord.finishReason
@@ -992,17 +1035,10 @@ export class AssistantRuntimeService implements AssistantRuntime {
     }
 
     observation.totalUsage = usage
-    observation.rawUsage = chunkRecord.totalUsage
+    observation.rawUsage = chunkRecord.totalUsage ?? existingMetadata.usage
     if (typeof chunkRecord.finishReason === 'string') {
       observation.finishReason = chunkRecord.finishReason
     }
-
-    const existingMetadata =
-      chunkRecord.messageMetadata &&
-      typeof chunkRecord.messageMetadata === 'object' &&
-      !Array.isArray(chunkRecord.messageMetadata)
-        ? (chunkRecord.messageMetadata as Record<string, unknown>)
-        : {}
 
     return {
       ...(chunkRecord as UIMessageChunk),
@@ -1328,6 +1364,11 @@ export class AssistantRuntimeService implements AssistantRuntime {
       : {}
 
     const memorySessionTools = createMemorySessionTools(memory)
+    const threadNamingTools = createThreadNamingTool({
+      assistantId: assistant.id,
+      threadsRepo: this.options.threadsRepo,
+      threadMessageEventsStore: this.options.threadMessageEventsStore
+    })
     const codingAgentTools: ToolsInput = {}
     if (codingAgents.length > 0) {
       codingAgentTools.useCodingAgent = createCodingAgentDelegateTool({
@@ -1358,6 +1399,7 @@ export class AssistantRuntimeService implements AssistantRuntime {
       ...workLogTools,
       ...channelTools,
       ...memorySessionTools,
+      ...threadNamingTools,
       ...mcpTools
     }
     const now = new Date()
@@ -1384,13 +1426,15 @@ export class AssistantRuntimeService implements AssistantRuntime {
       codingAgents.length > 0
         ? `\nCoding agent mode:\n- A use-coding-agent tool is available for code changes, debugging, repository analysis, tests, and implementation work.\n- Available coding targets: ${codingAgents.map(({ kind }) => kind).join(', ')}.\n- Set the target when you want a specific coding subagent. If omitted, the tool chooses the default enabled coding target.\n- After the coding subagent returns, summarize the useful result for the user.\n`
         : ''
+    const threadNamingInstructions =
+      '\nThread naming:\n- A thread-naming tool is available.\n- Use it when the current title is blank, generic, outdated, or when the user asks to rename the thread.\n- Keep thread titles short, concrete, and aligned with the main user goal.\n'
     const channelImageGuidance = buildChannelImageSupportGuidance(options.channelType)
       .map((line) => `${line}\n`)
       .join('')
     const channelInstructions = options.channelDeliveryEnabled
       ? `\nChannel delivery guidelines:\n- ${CHANNEL_SPLITTER_INSTRUCTION}\n- Keep channel replies short and natural.\n- Do not mention [[BR]] to the user.\n${channelImageGuidance}`
       : ''
-    const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${webFetchInstructions}${codingAgentInstructions}${channelInstructions}\n`
+    const agentInstructions = `${baseInstructions}${onboardingInstructions}\n\nCurrent date and time: ${currentDateTime}\n${webFetchInstructions}${codingAgentInstructions}${threadNamingInstructions}${channelInstructions}\n`
     const workspace = await this.buildWorkspace(
       assistant.workspaceConfig ?? {},
       assistant.skillsConfig ?? {}

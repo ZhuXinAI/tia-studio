@@ -1,265 +1,83 @@
-import { Check, Download, Plus, Search, Sparkles, Star, Upload } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
-import { Button } from '../../../components/ui/button'
+import { Search, Sparkles } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Input } from '../../../components/ui/input'
 import { cn } from '../../../lib/utils'
+import { useDesktopSkills } from '../skills-query'
+import type { DesktopSkillSource } from '../../../../../shared/desktop-discovery'
 
-type SkillCategory =
-  | 'All'
-  | 'Recommended'
-  | 'Productivity'
-  | 'Content'
-  | 'Development'
-  | 'Data'
-  | 'Design'
+type SourceFilter = 'all' | DesktopSkillSource
 
-type SkillCardRecord = {
-  id: string
-  title: string
-  summary: string
-  provider: string
-  category: Exclude<SkillCategory, 'All'>
-  downloads: string
-  stars: number
-  source: 'market' | 'upload'
+const sourceLabels: Record<DesktopSkillSource, string> = {
+  'global-codex': 'Codex',
+  'global-claude': 'Claude',
+  'global-agent': 'Agents',
+  'global-agent-legacy': 'Agent legacy',
+  workspace: 'Workspace'
 }
 
-const catalogSkills: SkillCardRecord[] = [
-  {
-    id: 'skill-web-tools-guide',
-    title: 'web-tools-guide',
-    summary: 'Mandatory browsing and fetching helper for tasks that need web context.',
-    provider: 'docs.internal',
-    category: 'Recommended',
-    downloads: '164k',
-    stars: 77,
-    source: 'market'
-  },
-  {
-    id: 'skill-kdocs',
-    title: 'kdocs skill',
-    summary: 'Search, read, and work with KDocs and WPS cloud documents.',
-    provider: '365.kdocs.cn',
-    category: 'Productivity',
-    downloads: '31k',
-    stars: 54,
-    source: 'market'
-  },
-  {
-    id: 'skill-tencent-docs',
-    title: 'Tencent Docs',
-    summary: 'Manage Tencent Docs content, permissions, and shared drafting workflows.',
-    provider: 'docs.qq.com',
-    category: 'Productivity',
-    downloads: '100k',
-    stars: 163,
-    source: 'market'
-  },
-  {
-    id: 'skill-anysearch',
-    title: 'AnySearch',
-    summary: 'Real-time search engine with web, news, and structured result modes.',
-    provider: 'search.anysearch.ai',
-    category: 'Data',
-    downloads: '17k',
-    stars: 36,
-    source: 'market'
-  },
-  {
-    id: 'skill-pptx',
-    title: 'pptx',
-    summary: 'Generate slide decks and presentation-ready outlines from prompts.',
-    provider: 'slides.tools',
-    category: 'Content',
-    downloads: '17k',
-    stars: 10,
-    source: 'market'
-  },
-  {
-    id: 'skill-cos',
-    title: 'Tencent COS',
-    summary: 'Store and retrieve large files, artifacts, and generated outputs.',
-    provider: 'cloud.tencent.com',
-    category: 'Development',
-    downloads: '14k',
-    stars: 9,
-    source: 'market'
-  },
-  {
-    id: 'skill-lighthouse',
-    title: 'Tencent Cloud Lighthouse',
-    summary: 'Launch lightweight compute tasks and deployment helpers.',
-    provider: 'cloud.tencent.com',
-    category: 'Development',
-    downloads: '17k',
-    stars: 7,
-    source: 'market'
-  },
-  {
-    id: 'skill-poster',
-    title: 'poster-studio',
-    summary: 'Prepare polished poster and visual layout drafts for quick campaign work.',
-    provider: 'design.tools',
-    category: 'Design',
-    downloads: '8.8k',
-    stars: 38,
-    source: 'market'
-  },
-  {
-    id: 'skill-copy-lab',
-    title: 'copy-lab',
-    summary: 'Rewrite, tone-shift, and clean editorial copy with less AI residue.',
-    provider: 'copy.tools',
-    category: 'Content',
-    downloads: '17k',
-    stars: 99,
-    source: 'market'
-  }
-]
+function formatErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unable to load skills.'
+}
 
-const categoryOptions: SkillCategory[] = [
-  'All',
-  'Recommended',
-  'Productivity',
-  'Content',
-  'Development',
-  'Data',
-  'Design'
-]
-
-function buildUploadedSkill(file: File): SkillCardRecord {
-  const normalizedTitle = file.name.replace(/\.zip$/i, '')
-  return {
-    id: `upload-${file.name}-${file.lastModified}`,
-    title: normalizedTitle,
-    summary: 'Uploaded from a local zip package.',
-    provider: 'Local zip',
-    category: 'Development',
-    downloads: 'local',
-    stars: 0,
-    source: 'upload'
-  }
+function describeSkillScope(canDelete: boolean): string {
+  return canDelete ? 'Repo-local skill folder' : 'Global skill folder'
 }
 
 export function SkillsPage(): React.JSX.Element {
-  const [activeTab, setActiveTab] = useState<'market' | 'installed'>('market')
-  const [activeCategory, setActiveCategory] = useState<SkillCategory>('All')
+  const { data: skills = [], isLoading, error } = useDesktopSkills()
+  const [activeSource, setActiveSource] = useState<SourceFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [installedSkillIds, setInstalledSkillIds] = useState<string[]>([
-    'skill-web-tools-guide',
-    'skill-tencent-docs',
-    'skill-anysearch'
-  ])
-  const [uploadedSkills, setUploadedSkills] = useState<SkillCardRecord[]>([])
-  const zipInputRef = useRef<HTMLInputElement | null>(null)
 
-  const installedSkills = useMemo(() => {
-    return [
-      ...catalogSkills.filter((skill) => installedSkillIds.includes(skill.id)),
-      ...uploadedSkills
-    ]
-  }, [installedSkillIds, uploadedSkills])
+  const availableSources = useMemo(() => {
+    return Array.from(new Set(skills.map((skill) => skill.source)))
+  }, [skills])
+
+  const filters = useMemo<SourceFilter[]>(() => {
+    return ['all', ...availableSources]
+  }, [availableSources])
 
   const visibleSkills = useMemo(() => {
-    const baseSkills = activeTab === 'market' ? catalogSkills : installedSkills
     const normalizedQuery = searchQuery.trim().toLowerCase()
 
-    return baseSkills.filter((skill) => {
-      const matchesCategory = activeCategory === 'All' || skill.category === activeCategory
+    return skills.filter((skill) => {
+      const matchesSource = activeSource === 'all' || skill.source === activeSource
       const matchesQuery =
         normalizedQuery.length === 0 ||
-        [skill.title, skill.summary, skill.provider].some((value) =>
-          value.toLowerCase().includes(normalizedQuery)
+        [skill.name, skill.description ?? '', skill.relativePath, skill.sourceRootPath].some(
+          (value) => value.toLowerCase().includes(normalizedQuery)
         )
 
-      return matchesCategory && matchesQuery
+      return matchesSource && matchesQuery
     })
-  }, [activeCategory, activeTab, installedSkills, searchQuery])
-
-  const handleInstallSkill = (skillId: string): void => {
-    setInstalledSkillIds((current) => (current.includes(skillId) ? current : [...current, skillId]))
-    setActiveTab('installed')
-  }
-
-  const handleUploadZip = (event: React.ChangeEvent<HTMLInputElement>): void => {
-    const files = Array.from(event.target.files ?? [])
-    if (files.length === 0) {
-      return
-    }
-
-    setUploadedSkills((current) => {
-      const next = [...current]
-      for (const file of files) {
-        next.unshift(buildUploadedSkill(file))
-      }
-      return next
-    })
-    setActiveTab('installed')
-    event.target.value = ''
-  }
+  }, [activeSource, searchQuery, skills])
 
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="border-b border-[color:var(--surface-border)] px-8 py-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className={cn(
-                'inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm transition-colors',
-                activeTab === 'market'
-                  ? 'border-[color:var(--surface-border-strong)] bg-[color:var(--surface-active)] text-foreground shadow-[inset_0_0_0_1px_var(--surface-active-strong)]'
-                  : 'border-transparent text-muted-foreground hover:bg-[color:var(--surface-muted)] hover:text-foreground'
-              )}
-              onClick={() => setActiveTab('market')}
-            >
-              <Sparkles className="size-4" />
-              Skill market
-            </button>
-            <button
-              type="button"
-              className={cn(
-                'inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm transition-colors',
-                activeTab === 'installed'
-                  ? 'border-[color:var(--surface-border-strong)] bg-[color:var(--surface-active)] text-foreground shadow-[inset_0_0_0_1px_var(--surface-active-strong)]'
-                  : 'border-transparent text-muted-foreground hover:bg-[color:var(--surface-muted)] hover:text-foreground'
-              )}
-              onClick={() => setActiveTab('installed')}
-            >
-              <Check className="size-4" />
-              Installed
-              <span className="rounded-full bg-[color:var(--surface-muted)] px-2 py-0.5 text-[11px] text-muted-foreground">
-                {installedSkills.length}
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="font-editorial text-[2.6rem] leading-none tracking-[-0.04em]">
+                Skills
+              </h1>
+              <span className="rounded-full bg-[color:var(--surface-muted)] px-3 py-1 text-[11px] text-muted-foreground">
+                {skills.length} detected
               </span>
-            </button>
+            </div>
+            <p className="max-w-3xl text-sm text-muted-foreground">
+              Local skill directories discovered from the real machine sources TIA Studio can see.
+              The list is read-only for now so we do not pretend installs succeeded when nothing was
+              actually written.
+            </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative w-full sm:w-[22rem]">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search skills"
-                className="h-11 rounded-xl pl-9"
-              />
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 rounded-xl px-4"
-              onClick={() => zipInputRef.current?.click()}
-            >
-              <Upload className="size-4" />
-              Add Skill Zip
-            </Button>
-            <input
-              ref={zipInputRef}
-              type="file"
-              accept=".zip,application/zip"
-              multiple
-              className="hidden"
-              onChange={handleUploadZip}
+          <div className="relative w-full xl:w-[24rem]">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search detected skills"
+              className="h-11 rounded-xl pl-9"
             />
           </div>
         </div>
@@ -267,85 +85,106 @@ export function SkillsPage(): React.JSX.Element {
 
       <div className="border-b border-[color:var(--surface-border)] px-8 py-4">
         <div className="flex flex-wrap gap-2">
-          {categoryOptions.map((category) => (
-            <button
-              key={category}
-              type="button"
-              className={cn(
-                'rounded-xl px-4 py-2 text-sm transition-colors',
-                activeCategory === category
-                  ? 'bg-[color:var(--surface-active)] text-foreground'
-                  : 'text-muted-foreground hover:bg-[color:var(--surface-muted)] hover:text-foreground'
-              )}
-              onClick={() => setActiveCategory(category)}
-            >
-              {category}
-            </button>
-          ))}
+          {filters.map((source) => {
+            const label = source === 'all' ? 'All sources' : sourceLabels[source]
+            const count =
+              source === 'all'
+                ? skills.length
+                : skills.filter((skill) => skill.source === source).length
+
+            return (
+              <button
+                key={source}
+                type="button"
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition-colors',
+                  activeSource === source
+                    ? 'bg-[color:var(--surface-active)] text-foreground'
+                    : 'text-muted-foreground hover:bg-[color:var(--surface-muted)] hover:text-foreground'
+                )}
+                onClick={() => setActiveSource(source)}
+              >
+                <span>{label}</span>
+                <span className="rounded-full bg-[color:var(--surface-paper)] px-2 py-0.5 text-[11px] text-muted-foreground">
+                  {count}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
-        {visibleSkills.length === 0 ? (
+        {isLoading ? (
           <div className="rounded-[1.4rem] border border-dashed border-[color:var(--surface-border)] px-6 py-10 text-center text-sm text-muted-foreground">
-            No skills match this view.
+            Loading detected skills...
+          </div>
+        ) : error ? (
+          <div className="rounded-[1.4rem] border border-dashed border-[color:var(--surface-border)] px-6 py-10 text-center text-sm text-muted-foreground">
+            {formatErrorMessage(error)}
+          </div>
+        ) : visibleSkills.length === 0 ? (
+          <div className="rounded-[1.4rem] border border-dashed border-[color:var(--surface-border)] px-6 py-10 text-center text-sm text-muted-foreground">
+            No detected skills match this filter.
           </div>
         ) : (
-          <div className="grid gap-4 xl:grid-cols-3">
-            {visibleSkills.map((skill) => {
-              const isInstalled =
-                installedSkillIds.includes(skill.id) ||
-                uploadedSkills.some((item) => item.id === skill.id)
-
-              return (
-                <article
-                  key={skill.id}
-                  className="rounded-[1.4rem] border border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_98%,transparent),color-mix(in_srgb,var(--surface-panel)_70%,transparent))] p-5 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_40%,transparent)]"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <p className="font-editorial text-[1.225rem] leading-none tracking-[-0.025em]">
-                        {skill.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{skill.provider}</p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant={isInstalled ? 'secondary' : 'outline'}
-                      size="icon"
-                      className="size-10 rounded-xl"
-                      onClick={() => {
-                        if (!isInstalled) {
-                          handleInstallSkill(skill.id)
-                        }
-                      }}
-                    >
-                      {isInstalled ? <Check className="size-4" /> : <Plus className="size-4" />}
-                    </Button>
-                  </div>
-
-                  <p className="pt-4 text-xs leading-6 text-muted-foreground">{skill.summary}</p>
-
-                  <div className="pt-5">
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1.5">
-                        <Download className="size-3.5" />
-                        {skill.downloads}
+          <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+            {visibleSkills.map((skill) => (
+              <article
+                key={skill.id}
+                className="rounded-[1.4rem] border border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_98%,transparent),color-mix(in_srgb,var(--surface-panel)_70%,transparent))] p-5 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_40%,transparent)]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-1">
+                    <p className="font-editorial text-[1.225rem] leading-none tracking-[-0.025em]">
+                      {skill.name}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span className="rounded-full bg-[color:var(--surface-muted)] px-2.5 py-1 text-[10px] uppercase tracking-[0.08em]">
+                        {sourceLabels[skill.source]}
                       </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <Star className="size-3.5" />
-                        {skill.stars}
-                      </span>
-                      <span className="rounded-full bg-[color:var(--surface-muted)] px-2.5 py-1 text-[9px] uppercase tracking-[0.08em]">
-                        {skill.category}
-                      </span>
+                      <span>{describeSkillScope(skill.canDelete)}</span>
                     </div>
                   </div>
-                </article>
-              )
-            })}
+                  <span className="rounded-full bg-[color:var(--surface-panel-soft)] px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                    SKILL.md
+                  </span>
+                </div>
+
+                <p className="pt-4 text-sm leading-6 text-muted-foreground">
+                  {skill.description ?? 'No description found in SKILL.md yet.'}
+                </p>
+
+                <div className="mt-5 space-y-3 rounded-[1.1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-4">
+                  <div className="space-y-1">
+                    <p className="section-kicker text-[0.62rem]">Relative path</p>
+                    <p className="break-words text-sm font-medium text-foreground">
+                      {skill.relativePath}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="section-kicker text-[0.62rem]">Source root</p>
+                    <p className="break-all text-xs leading-5 text-muted-foreground">
+                      {skill.sourceRootPath}
+                    </p>
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
         )}
+
+        {!isLoading && !error && skills.length > 0 ? (
+          <div className="pt-6">
+            <div className="flex flex-wrap items-center gap-2 rounded-[1.2rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] px-4 py-3 text-sm text-muted-foreground">
+              <Sparkles className="size-4 text-primary" />
+              <span>
+                This view now reads actual local skill folders instead of placeholder marketplace
+                cards.
+              </span>
+            </div>
+          </div>
+        ) : null}
       </div>
     </section>
   )

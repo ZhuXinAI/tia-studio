@@ -29,6 +29,7 @@ import { SettingsContent } from './settings-content'
 
 const settingsSelectClassName =
   'h-11 rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 py-2 text-sm shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_44%,transparent)] disabled:opacity-100'
+const QR_AUTH_POLL_INTERVAL_MS = 2000
 
 const SUPPORTED_CHANNEL_TYPES = [
   'discord',
@@ -63,6 +64,17 @@ function canEditChannel(channel: ConfiguredChannelRecord): boolean {
 
 function supportsGroupMentionSetting(type: ChannelType): boolean {
   return type === 'discord' || type === 'lark' || type === 'whatsapp' || type === 'wecom'
+}
+
+function supportsQrAuth(type: string): boolean {
+  return type === 'wechat' || type === 'whatsapp'
+}
+
+function shouldPollChannelAuthState(channel: ConfiguredChannelRecord): boolean {
+  return (
+    supportsQrAuth(channel.type) &&
+    (channel.authState?.status === 'connecting' || channel.authState?.status === 'qr_ready')
+  )
 }
 
 function emptyFormState(): ChannelFormState {
@@ -223,8 +235,10 @@ export function ChannelsSettingsPage(): React.JSX.Element {
   const [channelToRemove, setChannelToRemove] = useState<ConfiguredChannelRecord | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
 
-  const refreshChannels = useCallback(async (): Promise<void> => {
-    setIsLoading(true)
+  const refreshChannels = useCallback(async (options?: { background?: boolean }): Promise<void> => {
+    if (!options?.background) {
+      setIsLoading(true)
+    }
     setErrorMessage(null)
 
     try {
@@ -232,7 +246,9 @@ export function ChannelsSettingsPage(): React.JSX.Element {
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : t('settings.channels.loadFailed'))
     } finally {
-      setIsLoading(false)
+      if (!options?.background) {
+        setIsLoading(false)
+      }
     }
   }, [t])
 
@@ -257,6 +273,20 @@ export function ChannelsSettingsPage(): React.JSX.Element {
       ).length,
     [sortedChannels]
   )
+
+  useEffect(() => {
+    if (!sortedChannels.some(shouldPollChannelAuthState)) {
+      return
+    }
+
+    const timerId = window.setInterval(() => {
+      void refreshChannels({ background: true })
+    }, QR_AUTH_POLL_INTERVAL_MS)
+
+    return () => {
+      window.clearInterval(timerId)
+    }
+  }, [refreshChannels, sortedChannels])
 
   function resetForm(): void {
     setFormMode('create')
@@ -454,6 +484,65 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                             pendingCount: channel.pendingPairingCount
                           })}
                         </p>
+                      ) : null}
+
+                      {supportsQrAuth(channel.type) && channel.authState ? (
+                        <div className="rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-4">
+                          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium">
+                                {channel.type === 'wechat'
+                                  ? 'Wechat login QR code'
+                                  : 'WhatsApp login QR code'}
+                              </p>
+                              {channel.authState.status === 'qr_ready' ? (
+                                <p className="text-sm text-muted-foreground">
+                                  Scan this QR code to finish setup.
+                                </p>
+                              ) : channel.authState.status === 'connecting' ? (
+                                <p className="text-sm text-muted-foreground">
+                                  Preparing a fresh login QR code...
+                                </p>
+                              ) : channel.authState.status === 'connected' ? (
+                                <p className="text-sm text-muted-foreground">
+                                  {channel.authState.accountLabel
+                                    ? `Connected as ${channel.authState.accountLabel}.`
+                                    : 'Channel is connected.'}
+                                </p>
+                              ) : channel.authState.status === 'error' ? (
+                                <p className="text-sm text-destructive">
+                                  {channel.authState.errorMessage ??
+                                    channel.errorMessage ??
+                                    'Channel authentication failed.'}
+                                </p>
+                              ) : (
+                                <p className="text-sm text-muted-foreground">
+                                  Save or reconnect this channel to generate a login QR code.
+                                </p>
+                              )}
+                              {channel.authState.qrCodeValue ? (
+                                <a
+                                  href={channel.authState.qrCodeValue}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex text-xs font-medium text-foreground underline underline-offset-4"
+                                >
+                                  Open QR link
+                                </a>
+                              ) : null}
+                            </div>
+
+                            {channel.authState.qrCodeDataUrl ? (
+                              <div className="w-fit rounded-[1rem] border border-[color:var(--surface-border)] bg-white p-3 shadow-sm">
+                                <img
+                                  src={channel.authState.qrCodeDataUrl}
+                                  alt={`${channel.name} login QR code`}
+                                  className="h-40 w-40 rounded-lg object-contain"
+                                />
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
                       ) : null}
                     </div>
 

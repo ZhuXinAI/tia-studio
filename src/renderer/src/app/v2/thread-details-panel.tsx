@@ -34,15 +34,17 @@ function DetailRow({
   helper?: string
 }): React.JSX.Element {
   return (
-    <div className="rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-3">
+    <div className="overflow-hidden rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-3">
       <div className="flex items-start gap-3">
         <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-[color:var(--surface-muted)]">
           <Icon className="size-4 text-muted-foreground" />
         </div>
         <div className="min-w-0 space-y-1">
           <p className="section-kicker text-[0.62rem]">{label}</p>
-          <p className="truncate text-sm font-medium">{value}</p>
-          {helper ? <p className="text-xs leading-5 text-muted-foreground">{helper}</p> : null}
+          <p className="break-words text-sm font-medium">{value}</p>
+          {helper ? (
+            <p className="break-words text-xs leading-5 text-muted-foreground">{helper}</p>
+          ) : null}
         </div>
       </div>
     </div>
@@ -70,7 +72,7 @@ export function ThreadDetailsPanel({
   const channelBinding = selectedThread?.channelBinding ?? null
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <div className="border-b border-[color:var(--surface-border)] px-4 py-4">
         <div className="min-w-0">
           <p className="section-kicker">Thread Details</p>
@@ -80,7 +82,7 @@ export function ThreadDetailsPanel({
         </div>
       </div>
 
-      <div className="chat-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+      <div className="chat-scrollbar min-h-0 min-w-0 flex-1 space-y-3 overflow-y-auto p-4">
         <DetailRow
           icon={Folder}
           label="Workspace"

@@ -1,4 +1,5 @@
 import { getDesktopBootstrap } from './desktop-bootstrap'
+import { createHttpError } from './request-errors'
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
 
@@ -31,7 +32,7 @@ async function request<T>(
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(errorText || `Request failed with status ${response.status}`)
+    throw createHttpError(response.status, errorText)
   }
 
   const contentType = response.headers.get('Content-Type') ?? ''

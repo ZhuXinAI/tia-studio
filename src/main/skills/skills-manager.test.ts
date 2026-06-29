@@ -42,6 +42,15 @@ describe('skills manager', () => {
 
   it('lists skills from global and workspace directories', async () => {
     await createSkill(
+      path.join(homeDirectory, '.codex', 'skills'),
+      'web-perf',
+      `---
+name: Web Perf
+description: Measures production performance.
+---
+`
+    )
+    await createSkill(
       path.join(homeDirectory, '.claude', 'skills'),
       'research-helper',
       `---
@@ -51,7 +60,7 @@ description: Finds docs and summarizes them.
 `
     )
     await createSkill(
-      path.join(homeDirectory, '.agent', 'skills'),
+      path.join(homeDirectory, '.agents', 'skills'),
       'deploy/checklist',
       `---
 name: Deploy Checklist
@@ -71,9 +80,16 @@ description: Keeps workspace linting rules.
 
     const skills = await listAssistantSkills(workspaceDirectory)
 
-    expect(skills).toHaveLength(3)
+    expect(skills).toHaveLength(4)
     expect(skills).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          source: 'global-codex',
+          name: 'Web Perf',
+          description: 'Measures production performance.',
+          canDelete: false,
+          relativePath: 'web-perf'
+        }),
         expect.objectContaining({
           source: 'global-claude',
           name: 'Research Helper',
@@ -212,7 +228,7 @@ description: Keeps workspace linting rules.
 
   it('detects installed recommended skills in global claude directory', async () => {
     await createSkill(
-      path.join(homeDirectory, '.claude', 'skills'),
+      path.join(homeDirectory, '.codex', 'skills'),
       'agent-browser',
       `---
 name: agent-browser
@@ -221,7 +237,7 @@ description: Browser automation skill.
 `
     )
     await createSkill(
-      path.join(homeDirectory, '.agent', 'skills'),
+      path.join(homeDirectory, '.agents', 'skills'),
       'find-skills',
       `---
 name: find-skills
@@ -232,6 +248,6 @@ description: Helper skill.
 
     const installed = await getInstalledRecommendedSkills()
 
-    expect(installed).toEqual(['agent-browser'])
+    expect(installed).toEqual(['agent-browser', 'find-skills'])
   })
 })

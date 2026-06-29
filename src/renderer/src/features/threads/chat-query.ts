@@ -1,5 +1,6 @@
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { getDesktopBootstrap } from '../../lib/desktop-bootstrap'
+import { createHttpError } from '../../lib/request-errors'
 
 type ThreadChatTransportInput = {
   threadId: string
@@ -128,7 +129,7 @@ export async function listThreadChatMessages(input: ThreadChatHistoryInput): Pro
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(errorText || `Request failed with status ${response.status}`)
+    throw createHttpError(response.status, errorText)
   }
 
   return (await response.json()) as UIMessage[]
@@ -150,7 +151,7 @@ export async function runThreadCommand(input: RunThreadCommandInput): Promise<Th
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(errorText || `Request failed with status ${response.status}`)
+    throw createHttpError(response.status, errorText)
   }
 
   return (await response.json()) as ThreadCommandResult
@@ -234,7 +235,7 @@ function openMessageEventsStream(input: {
 
       if (!response.ok) {
         const errorText = await response.text()
-        throw new Error(errorText || `Request failed with status ${response.status}`)
+        throw createHttpError(response.status, errorText)
       }
 
       if (!response.body) {
