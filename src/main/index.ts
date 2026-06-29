@@ -110,18 +110,6 @@ function resolveUiConfigStore(): UiConfigStore {
   return uiConfigStore
 }
 
-function resolveTransparentWindowEnabled(
-  config: { transparent?: boolean } | null | undefined
-): boolean {
-  if (typeof config?.transparent === 'boolean') {
-    return config.transparent
-  }
-
-  return process.platform === 'darwin' || process.platform === 'win32'
-}
-
-let isTransparentWindow = resolveTransparentWindowEnabled(resolveUiConfigStore().getConfig())
-
 function resolveDesktopBootstrap(): DesktopBootstrap {
   const authMode = isBrowserAnnotationModeEnabled ? 'none' : 'bearer'
   const platform =
@@ -192,9 +180,7 @@ function getRuntimeDisplayName(kind: ManagedRuntimeKind): string {
 }
 
 function updateUiConfig(config: Parameters<UiConfigStore['updateConfig']>[0]) {
-  const nextConfig = resolveUiConfigStore().updateConfig(config)
-  isTransparentWindow = resolveTransparentWindowEnabled(nextConfig)
-  return nextConfig
+  return resolveUiConfigStore().updateConfig(config)
 }
 
 async function pickCustomManagedRuntime(
@@ -596,7 +582,7 @@ function stopLocalApiServer(): void {
 
 function createMainWindow(): BrowserWindow {
   const isMac = process.platform === 'darwin'
-  const isWindows = process.platform === 'win32'
+  const desktopWindowBackgroundColor = '#101214'
   // Create the browser window.
   const browserWindow = new BrowserWindow({
     width: 1280,
@@ -608,26 +594,10 @@ function createMainWindow(): BrowserWindow {
     ...(isMac
       ? {
           titleBarStyle: 'hidden' as const,
-          ...(isTransparentWindow
-            ? {
-                vibrancy: 'under-window',
-                transparent: true,
-                visualEffectState: 'active',
-                backgroundColor: '#00000000'
-              }
-            : { backgroundColor: '#09090b' })
+          backgroundColor: desktopWindowBackgroundColor
         }
-      : isWindows
-        ? {
-            ...(isTransparentWindow
-              ? {
-                  backgroundMaterial: 'mica' as const,
-                  backgroundColor: '#00000000'
-                }
-              : { backgroundColor: '#09090b' })
-          }
-        : { backgroundColor: isTransparentWindow ? '#00000000' : '#09090b' }),
-    ...(process.platform === 'linux' ? { icon, backgroundColor: '#09090b' } : {}),
+      : { backgroundColor: desktopWindowBackgroundColor }),
+    ...(process.platform === 'linux' ? { icon, backgroundColor: desktopWindowBackgroundColor } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false

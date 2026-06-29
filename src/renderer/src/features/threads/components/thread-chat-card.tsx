@@ -58,6 +58,13 @@ import {
 } from '@renderer/components/assistant-ui/attachment'
 import { useAppV2ShellStatusBar } from '../../../app/v2/app-v2-shell-status'
 import { deriveThreadUsageFromMessages, type ThreadUsageSummary } from '../thread-usage'
+import {
+  ChatCenteredContent,
+  ChatComposerPanel,
+  ChatMetaPill,
+  ChatSurfaceFooter,
+  chatSurfaceStyles
+} from '../../../components/assistant-ui/chat-surface'
 
 type ThreadChatCardProps = {
   chatLabel: string
@@ -98,10 +105,9 @@ function StatusBarItem({
   label: string
 }): React.JSX.Element {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-2.5 py-1 text-[11px] text-muted-foreground">
-      <Icon className="size-3.5" />
+    <ChatMetaPill icon={Icon}>
       <span>{label}</span>
-    </span>
+    </ChatMetaPill>
   )
 }
 
@@ -148,7 +154,7 @@ function useWorkingTimerSeconds(active: boolean): number {
 
 function WorkingStatusItem({ elapsedSeconds }: { elapsedSeconds: number }): React.JSX.Element {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--surface-border-strong)] bg-[color:var(--surface-paper)] px-2 py-1 text-[11px] text-muted-foreground">
+    <ChatMetaPill className="gap-2 border-[color:var(--chat-surface-border-strong)] pr-2 text-foreground">
       <span className="inline-flex items-center gap-1.5 rounded-md bg-[color:var(--surface-active)] px-2 py-1 text-primary">
         <LoaderIcon className="size-3.5 animate-spin" />
         <span>Working...</span>
@@ -156,7 +162,7 @@ function WorkingStatusItem({ elapsedSeconds }: { elapsedSeconds: number }): Reac
       <span className="font-medium tabular-nums text-foreground">
         {formatWorkingDuration(elapsedSeconds)}
       </span>
-    </span>
+    </ChatMetaPill>
   )
 }
 
@@ -196,8 +202,8 @@ function TokenUsageStatusItem({
       : `${usage.totalTokens.toLocaleString()} tokens recorded for this thread. Add model context limits to show a true window percentage.`
 
   return (
-    <span
-      className="inline-flex items-center gap-2 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-2.5 py-1 text-[11px] text-muted-foreground"
+    <ChatMetaPill
+      className="gap-2"
       title={referenceLabel}
       aria-label={referenceLabel}
     >
@@ -223,7 +229,7 @@ function TokenUsageStatusItem({
         </svg>
       </span>
       <span>{label}</span>
-    </span>
+    </ChatMetaPill>
   )
 }
 
@@ -364,7 +370,7 @@ function NewThreadModelPicker({
         <Button
           type="button"
           variant="ghost"
-          className="h-9 max-w-[14rem] justify-start gap-2 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 text-muted-foreground hover:bg-[color:var(--surface-muted)]"
+          className={chatSurfaceStyles.controlButton}
           disabled={providers.length === 0}
           aria-label="Select model for new chat"
           title="Select model for new chat"
@@ -428,7 +434,7 @@ function ReadOnlyModelBadge({ label }: { label: string }): React.JSX.Element {
     <Button
       type="button"
       variant="ghost"
-      className="h-9 max-w-[14rem] cursor-default justify-start gap-2 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 text-muted-foreground hover:bg-[color:var(--surface-paper)]"
+      className={chatSurfaceStyles.controlButtonStatic}
       aria-label={`Current model: ${label}`}
       title={`Current model: ${label}`}
     >
@@ -453,7 +459,7 @@ function ApprovalModePicker({
         <Button
           type="button"
           variant="ghost"
-          className="h-9 max-w-[14rem] justify-start gap-2 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 text-muted-foreground hover:bg-[color:var(--surface-muted)]"
+          className={chatSurfaceStyles.controlButton}
           aria-label="Select approval mode"
           title="Select approval mode"
         >
@@ -589,7 +595,9 @@ function ThreadActionGroup({
   }
 
   return (
-    <div className="absolute right-3 top-3 z-20 flex items-center gap-2 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] p-1 shadow-[0_12px_36px_-28px_rgba(15,23,42,0.65)]">
+    <div
+      className={`${chatSurfaceStyles.panelSubtle} absolute right-3 top-3 z-20 flex items-center gap-2 rounded-full p-1 shadow-none`}
+    >
       {shouldShowChannelWarning ? (
         <Button
           asChild
@@ -674,9 +682,77 @@ function ThreadChatComposer({
 
   if (!selectedThread && isNewThreadRoute) {
     return (
-      <div className="flex justify-center px-5 pb-8">
+      <div className="px-5 pb-8">
+        <ChatCenteredContent>
+          <ComposerPrimitive.Root
+            className="w-full space-y-4"
+            onSubmit={async (event) => {
+              event.preventDefault()
+              const text = composerText.trim()
+              if (text.length === 0) {
+                return
+              }
+
+              aui.composer().setText('')
+              await onSubmitMessage(text)
+            }}
+          >
+            <ChatComposerPanel>
+              <ComposerAttachments />
+              <ComposerPrimitive.Input
+                minRows={5}
+                disabled={!canCompose || !readiness.canChat}
+                placeholder="Do anything"
+                aria-label={t('threads.chat.composer.ariaLabel')}
+                className="placeholder:text-muted-foreground/70 flex w-full resize-none bg-transparent px-5 py-5 text-[15px] leading-7 outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              <ChatSurfaceFooter className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  <span className="inline-flex min-w-0 items-center gap-2 rounded-full px-2 py-1">
+                    <span className="truncate">{selectedWorkspace?.name ?? 'Chats'}</span>
+                  </span>
+                  {selectedWorkspace?.isMissing && selectedWorkspace.builtInKind !== 'chats' ? (
+                    <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300">
+                      <AlertTriangle className="size-3.5" />
+                      Relocate workspace
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {supportsVision ? <ComposerAddAttachment /> : null}
+                  <ApprovalModePicker value={approvalMode} onChange={setApprovalMode} />
+                  {modelControl}
+                  <ComposerPrimitive.Send asChild>
+                    <Button
+                      type="submit"
+                      size="icon"
+                      className="size-10 rounded-full shadow-[0_12px_24px_-20px_rgba(15,23,42,0.52)]"
+                      disabled={!canSendMessage}
+                      aria-label={t('common.actions.send')}
+                      title={t('common.actions.send')}
+                    >
+                      <SendHorizontal className="size-4" />
+                    </Button>
+                  </ComposerPrimitive.Send>
+                </div>
+              </ChatSurfaceFooter>
+            </ChatComposerPanel>
+          </ComposerPrimitive.Root>
+        </ChatCenteredContent>
+      </div>
+    )
+  }
+
+  return (
+    <div className="chat-section-divider p-4 sm:p-5">
+      <ChatCenteredContent>
+        {selectedWorkspace?.isMissing && selectedWorkspace.builtInKind !== 'chats' ? (
+          <div className="mb-3 rounded-lg border border-amber-400/45 bg-amber-400/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
+            Relocate this workspace before starting a new project thread.
+          </div>
+        ) : null}
         <ComposerPrimitive.Root
-          className="w-full max-w-5xl space-y-4"
+          className="space-y-3"
           onSubmit={async (event) => {
             event.preventDefault()
             const text = composerText.trim()
@@ -684,119 +760,55 @@ function ThreadChatComposer({
               return
             }
 
+            // Clear the composer before submitting
             aui.composer().setText('')
+
             await onSubmitMessage(text)
           }}
         >
-          <div className="glass-pane-surface overflow-hidden rounded-[1.5rem]">
+          <ChatComposerPanel>
             <ComposerAttachments />
+
             <ComposerPrimitive.Input
-              minRows={5}
+              minRows={3}
               disabled={!canCompose || !readiness.canChat}
-              placeholder="Do anything"
+              placeholder={placeholder}
               aria-label={t('threads.chat.composer.ariaLabel')}
-              className="placeholder:text-muted-foreground/70 flex w-full resize-none bg-transparent px-5 py-5 text-[15px] leading-7 outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className="placeholder:text-muted-foreground/70 focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive flex w-full bg-transparent px-5 py-4 text-[15px] leading-7 outline-none transition-[color,box-shadow,border-color,background-color] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-[3px]"
             />
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_68%,transparent),color-mix(in_srgb,var(--surface-panel)_84%,transparent))] px-4 py-3">
-              <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                <span className="inline-flex min-w-0 items-center gap-2 rounded-full px-2 py-1">
-                  <span className="truncate">{selectedWorkspace?.name ?? 'Chats'}</span>
-                </span>
-                {selectedWorkspace?.isMissing && selectedWorkspace.builtInKind !== 'chats' ? (
-                  <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300">
-                    <AlertTriangle className="size-3.5" />
-                    Relocate workspace
-                  </span>
-                ) : null}
+
+            <ChatSurfaceFooter className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                {supportsVision ? <ComposerAddAttachment /> : null}
+                {!selectedThread ? <span>{helperText}</span> : null}
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
-                {supportsVision && <ComposerAddAttachment />}
                 <ApprovalModePicker value={approvalMode} onChange={setApprovalMode} />
                 {modelControl}
-                <ComposerPrimitive.Send asChild>
-                  <Button
-                    type="submit"
-                    size="icon"
-                    className="size-10 rounded-full shadow-[0_14px_30px_-22px_rgba(15,23,42,0.72)]"
-                    disabled={!canSendMessage}
-                    aria-label={t('common.actions.send')}
-                    title={t('common.actions.send')}
-                  >
-                    <SendHorizontal className="size-4" />
+
+                {isChatStreaming ? (
+                  <Button type="button" disabled={!canAbortGeneration} onClick={onAbortGeneration}>
+                    {t('common.actions.stop')}
                   </Button>
-                </ComposerPrimitive.Send>
+                ) : (
+                  <ComposerPrimitive.Send asChild>
+                    <Button
+                      type="submit"
+                      size="icon"
+                      className="size-10 rounded-full shadow-[0_12px_24px_-20px_rgba(15,23,42,0.52)]"
+                      disabled={!canSendMessage}
+                      aria-label={t('common.actions.send')}
+                      title={t('common.actions.send')}
+                    >
+                      <SendHorizontal className="size-4" />
+                    </Button>
+                  </ComposerPrimitive.Send>
+                )}
               </div>
-            </div>
-          </div>
+            </ChatSurfaceFooter>
+          </ChatComposerPanel>
         </ComposerPrimitive.Root>
-      </div>
-    )
-  }
-
-  return (
-    <div className="border-t border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-subtle)_34%,transparent),color-mix(in_srgb,var(--surface-panel-soft)_55%,transparent))] p-4 sm:p-5">
-      {selectedWorkspace?.isMissing && selectedWorkspace.builtInKind !== 'chats' ? (
-        <div className="mb-3 rounded-lg border border-amber-400/45 bg-amber-400/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
-          Relocate this workspace before starting a new project thread.
-        </div>
-      ) : null}
-      <ComposerPrimitive.Root
-        className="space-y-3"
-        onSubmit={async (event) => {
-          event.preventDefault()
-          const text = composerText.trim()
-          if (text.length === 0) {
-            return
-          }
-
-          // Clear the composer before submitting
-          aui.composer().setText('')
-
-          await onSubmitMessage(text)
-        }}
-      >
-        <div className="glass-pane-surface overflow-hidden rounded-[1.5rem]">
-          <ComposerAttachments />
-
-          <ComposerPrimitive.Input
-            minRows={3}
-            disabled={!canCompose || !readiness.canChat}
-            placeholder={placeholder}
-            aria-label={t('threads.chat.composer.ariaLabel')}
-            className="placeholder:text-muted-foreground/70 focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive flex w-full bg-transparent px-5 py-4 text-[15px] leading-7 outline-none transition-[color,box-shadow,border-color,background-color] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-[3px]"
-          />
-
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_68%,transparent),color-mix(in_srgb,var(--surface-panel)_84%,transparent))] px-4 py-3">
-            <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              {supportsVision ? <ComposerAddAttachment /> : null}
-              {!selectedThread ? <span>{helperText}</span> : null}
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <ApprovalModePicker value={approvalMode} onChange={setApprovalMode} />
-              {modelControl}
-
-              {isChatStreaming ? (
-                <Button type="button" disabled={!canAbortGeneration} onClick={onAbortGeneration}>
-                  {t('common.actions.stop')}
-                </Button>
-              ) : (
-                <ComposerPrimitive.Send asChild>
-                  <Button
-                    type="submit"
-                    size="icon"
-                    className="size-10 rounded-full shadow-[0_14px_30px_-22px_rgba(15,23,42,0.72)]"
-                    disabled={!canSendMessage}
-                    aria-label={t('common.actions.send')}
-                    title={t('common.actions.send')}
-                  >
-                    <SendHorizontal className="size-4" />
-                  </Button>
-                </ComposerPrimitive.Send>
-              )}
-            </div>
-          </div>
-        </div>
-      </ComposerPrimitive.Root>
+      </ChatCenteredContent>
     </div>
   )
 }
@@ -989,46 +1001,49 @@ export function ThreadChatCard({
         {shouldShowThreadTitleBar ? (
           <>
             <CardHeader
-              className="border-b border-[color:var(--surface-border)] bg-transparent px-4 pb-3 pt-1 pr-36 sm:pb-4 sm:pt-2"
-              style={{ borderColor: 'var(--surface-border)' }}
+              className="border-b border-[color:var(--chat-surface-border)] bg-transparent px-5 pb-3 pt-2 pr-36 sm:pb-4"
             >
-              <div className="flex h-full flex-nowrap items-center justify-between gap-3 overflow-hidden">
-                <CardTitle className="min-w-0 flex-1">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="font-editorial block truncate text-[1.45rem] leading-none tracking-[-0.03em] sm:text-[1.6rem]">
-                      {selectedThreadTitle}
-                    </span>
-                    {hasRemoteBinding ? (
-                      <span
-                        className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-active)] px-2 py-0.5 text-[11px] font-medium text-primary"
-                        title={t('threads.chat.remoteBadgeTitle')}
-                        aria-label={t('threads.chat.remoteBadgeTitle')}
-                      >
-                        <Link2 className="size-3" />
-                        {t('threads.chat.remoteBadge')}
+              <ChatCenteredContent>
+                <div className="flex h-full flex-nowrap items-center justify-between gap-3 overflow-hidden">
+                  <CardTitle className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="font-editorial block truncate text-[1.45rem] leading-none tracking-[-0.03em] sm:text-[1.6rem]">
+                        {selectedThreadTitle}
                       </span>
-                    ) : null}
-                  </div>
-                </CardTitle>
-              </div>
+                      {hasRemoteBinding ? (
+                        <ChatMetaPill
+                          className="shrink-0 bg-[color:var(--surface-active)] font-medium text-primary"
+                          icon={Link2}
+                          title={t('threads.chat.remoteBadgeTitle')}
+                          aria-label={t('threads.chat.remoteBadgeTitle')}
+                        >
+                          {t('threads.chat.remoteBadge')}
+                        </ChatMetaPill>
+                      ) : null}
+                    </div>
+                  </CardTitle>
+                </div>
+              </ChatCenteredContent>
             </CardHeader>
           </>
         ) : null}
 
         <ThreadPrimitive.Root className="flex min-h-0 flex-1 flex-col">
-          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_82%,transparent))] py-5">
+          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent px-0 pb-0 pt-6">
             {!selectedThread && isNewThreadRoute ? (
-              <div className="flex flex-1 items-end justify-center px-5 pb-8">
+              <ChatCenteredContent className="flex flex-1 items-end justify-center px-5 pb-10">
                 <h1 className="text-center text-[clamp(2rem,4vw,3.25rem)] font-medium leading-tight">
                   What should we build in {selectedWorkspace?.name ?? 'tia-studio'}?
                 </h1>
-              </div>
+              </ChatCenteredContent>
             ) : null}
 
             {!readiness.canChat && selectedAssistant ? (
-              <p className="text-muted-foreground mb-4 rounded-lg border border-amber-300/40 bg-amber-400/10 px-3 py-2 text-xs">
-                {t('threads.chat.setupIncomplete')}
-              </p>
+              <ChatCenteredContent className="mb-4 px-5">
+                <p className="text-muted-foreground rounded-lg border border-amber-300/40 bg-amber-400/10 px-3 py-2 text-xs">
+                  {t('threads.chat.setupIncomplete')}
+                </p>
+              </ChatCenteredContent>
             ) : null}
 
             {selectedThread ? (

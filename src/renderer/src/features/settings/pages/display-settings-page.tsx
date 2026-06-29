@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import {
   Card,
@@ -7,10 +7,8 @@ import {
   CardHeader,
   CardTitle
 } from '../../../components/ui/card'
-import { Switch } from '../../../components/ui/switch'
 import { useTheme, type Theme } from '../../../components/theme-provider'
 import { Moon, Sun, Monitor, RotateCcw, type LucideIcon } from 'lucide-react'
-import { getUiConfig, setUiConfig } from '../ui-config'
 import { cn } from '../../../lib/utils'
 import { Button } from '../../../components/ui/button'
 import {
@@ -20,16 +18,6 @@ import {
   type AppearanceTokens
 } from '../appearance-tokens'
 import { SettingsContent } from './settings-content'
-import { getDesktopBootstrapSnapshot } from '../../../lib/desktop-bootstrap'
-
-function resolveTransparentWindowDefault(): boolean {
-  const platform = getDesktopBootstrapSnapshot().app.platform
-  return platform === 'darwin' || platform === 'win32'
-}
-
-function resolveTransparentToggleState(value: boolean | undefined): boolean {
-  return typeof value === 'boolean' ? value : resolveTransparentWindowDefault()
-}
 
 function ThemePreview({ theme }: { theme: Theme }): React.JSX.Element {
   if (theme === 'light') {
@@ -101,7 +89,6 @@ function ThemePreview({ theme }: { theme: Theme }): React.JSX.Element {
 export function DisplaySettingsPage(): React.JSX.Element {
   const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
-  const [isTransparent, setIsTransparent] = useState(resolveTransparentWindowDefault)
   const [appearanceTokens, setAppearanceTokensState] = useState<AppearanceTokens>(() =>
     getAppearanceTokens()
   )
@@ -110,32 +97,6 @@ export function DisplaySettingsPage(): React.JSX.Element {
     { value: 'dark', label: t('settings.display.themeOptions.dark'), icon: Moon },
     { value: 'system', label: t('settings.display.themeOptions.system'), icon: Monitor }
   ]
-
-  useEffect(() => {
-    let isMounted = true
-
-    void getUiConfig()
-      .then((config) => {
-        if (!isMounted) {
-          return
-        }
-
-        setIsTransparent(resolveTransparentToggleState(config.transparent))
-      })
-      .catch(() => {})
-
-    return () => {
-      isMounted = false
-    }
-  }, [])
-
-  const toggleTransparent = async (): Promise<void> => {
-    const newValue = !isTransparent
-    setIsTransparent(newValue)
-    await setUiConfig({ transparent: newValue }).catch(() => {
-      setIsTransparent(!newValue)
-    })
-  }
 
   const updateAppearanceToken = (key: keyof AppearanceTokens, value: string): void => {
     const nextTokens = setAppearanceTokens({
@@ -152,7 +113,7 @@ export function DisplaySettingsPage(): React.JSX.Element {
   return (
     <SettingsContent>
       <header className="space-y-3 border-b border-[color:var(--surface-border)] pb-5">
-        <p className="section-kicker">Theme and transparency</p>
+        <p className="section-kicker">Theme and appearance</p>
         <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
           {t('settings.display.title')}
         </h1>
@@ -236,18 +197,6 @@ export function DisplaySettingsPage(): React.JSX.Element {
               <RotateCcw className="size-4" />
               Reset to Default
             </Button>
-          </div>
-
-          <div className="rounded-[1.25rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-5">
-            <div className="flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <h3 className="text-sm font-medium">{t('settings.display.transparentTitle')}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {t('settings.display.transparentDescription')}
-                </p>
-              </div>
-              <Switch checked={isTransparent} onCheckedChange={() => void toggleTransparent()} />
-            </div>
           </div>
         </CardContent>
       </Card>

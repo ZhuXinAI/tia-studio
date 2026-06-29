@@ -7,15 +7,16 @@ import { useAuiState, useScrollLock } from '@assistant-ui/react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
 import { useTranslation } from '../../i18n/use-app-translation'
 import { cn } from '../../lib/utils'
+import { chatSurfaceStyles } from './chat-surface'
 
 const ANIMATION_DURATION = 200
 
 const toolGroupVariants = cva('aui-tool-group-root group/tool-group w-full my-3', {
   variants: {
     variant: {
-      outline: 'rounded-lg border py-3',
+      outline: `${chatSurfaceStyles.panelSubtle} rounded-lg py-3`,
       ghost: '',
-      muted: 'rounded-lg border border-muted-foreground/30 bg-muted/30 py-3'
+      muted: `${chatSurfaceStyles.panelSubtle} rounded-lg py-3`
     }
   },
   defaultVariants: { variant: 'outline' }

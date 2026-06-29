@@ -68,10 +68,9 @@ export function AppV2Shell(): React.JSX.Element {
   return (
     <AppV2ShellRightRailContext.Provider value={rightRailContextValue}>
       <AppV2ShellStatusContext.Provider value={statusBarContextValue}>
-        <div className="app-v2-shell relative flex h-screen min-h-0 overflow-hidden bg-transparent text-foreground">
+        <div className="app-v2-shell relative flex h-screen min-h-0 overflow-hidden bg-[color:var(--shell-canvas)] text-foreground">
           <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
             <div className="app-window-ambient absolute inset-0" />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-panel-strong)_18%,transparent),color-mix(in_srgb,var(--surface-canvas)_38%,transparent))]" />
           </div>
           <div
             className={clsx('drag-region fixed left-0 right-0 top-0 z-30 h-8', {

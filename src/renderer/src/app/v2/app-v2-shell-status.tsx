@@ -1,6 +1,7 @@
 import { Bot, Cable, Clock3, Gauge, MessageSquare, Settings2, Sparkles } from 'lucide-react'
 import { createContext, useContext, useEffect } from 'react'
 import type { ReactNode } from 'react'
+import { ChatMetaPill } from '../../components/assistant-ui/chat-surface'
 
 type AppV2ShellStatusContextValue = {
   setContent: (content: ReactNode | null) => void
@@ -16,10 +17,7 @@ function StatusItem({
   label: string
 }): React.JSX.Element {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-2.5 py-1 text-[11px] text-muted-foreground">
-      <Icon className="size-3.5" />
-      <span>{label}</span>
-    </span>
+    <ChatMetaPill icon={Icon}>{label}</ChatMetaPill>
   )
 }
 
@@ -29,7 +27,7 @@ export function AppV2ShellStatusBar({
   content: ReactNode
 }): React.JSX.Element {
   return (
-    <footer className="flex h-11 shrink-0 items-center border-t border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-panel)_94%,transparent),color-mix(in_srgb,var(--surface-panel-strong)_96%,transparent))] px-3">
+    <footer className="app-shell-statusbar flex h-11 shrink-0 items-center border-t border-[color:var(--chat-surface-border)] px-3">
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto whitespace-nowrap">
         {content}
       </div>

@@ -7,13 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { i18n } from '../../../i18n'
 import { ThemeProvider } from '../../../components/theme-provider'
 import { DisplaySettingsPage } from './display-settings-page'
-import { getSystemLocale, getUiConfig, setUiConfig } from '../ui-config'
-
-vi.mock('../ui-config', () => ({
-  getUiConfig: vi.fn(),
-  setUiConfig: vi.fn(),
-  getSystemLocale: vi.fn()
-}))
 
 async function flushAsyncWork(): Promise<void> {
   await act(async () => {
@@ -45,12 +38,6 @@ describe('display settings page', () => {
         dispatchEvent: vi.fn()
       }))
     })
-
-    vi.mocked(getUiConfig).mockResolvedValue({
-      transparent: false
-    })
-    vi.mocked(setUiConfig).mockImplementation(async (config) => config)
-    vi.mocked(getSystemLocale).mockResolvedValue('en-US')
   })
 
   afterEach(() => {
@@ -76,7 +63,6 @@ describe('display settings page', () => {
 
     expect(container.textContent).toContain('Display Settings')
     expect(container.textContent).toContain('Theme')
-    expect(container.textContent).toContain('Transparent Window')
 
     await act(async () => {
       await i18n.changeLanguage('zh-CN')
@@ -85,6 +71,5 @@ describe('display settings page', () => {
 
     expect(container.textContent).toContain('显示设置')
     expect(container.textContent).toContain('主题')
-    expect(container.textContent).toContain('透明窗口')
   })
 })

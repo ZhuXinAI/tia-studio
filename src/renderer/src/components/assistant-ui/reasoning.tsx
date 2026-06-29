@@ -12,6 +12,7 @@ import {
 import { MarkdownText } from './markdown-text'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
 import { cn } from '../../lib/utils'
+import { chatSurfaceStyles } from './chat-surface'
 
 const ANIMATION_DURATION = 200
 const REASONING_SUMMARY_MAX_LENGTH = 96
@@ -19,11 +20,9 @@ const REASONING_SUMMARY_MAX_LENGTH = 96
 const reasoningVariants = cva('aui-reasoning-root mb-4 w-full', {
   variants: {
     variant: {
-      outline:
-        'rounded-[24px] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] px-3 py-2',
+      outline: `${chatSurfaceStyles.panelSubtle} rounded-[24px] px-3 py-2`,
       ghost: '',
-      muted:
-        'rounded-[24px] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] px-3 py-2'
+      muted: `${chatSurfaceStyles.panelSubtle} rounded-[24px] px-3 py-2`
     }
   },
   defaultVariants: {
@@ -173,7 +172,7 @@ function ReasoningTrigger({
     <CollapsibleTrigger
       data-slot="reasoning-trigger"
       className={cn(
-        'aui-reasoning-trigger group/trigger inline-flex max-w-full items-center gap-2 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-3 py-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground',
+        'aui-reasoning-trigger group/trigger chat-meta-pill inline-flex max-w-full items-center gap-2 px-3 py-1.5 text-sm transition-colors hover:text-foreground',
         className
       )}
       {...props}

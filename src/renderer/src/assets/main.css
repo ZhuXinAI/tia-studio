@@ -64,6 +64,17 @@
   --surface-shadow: 0 24px 60px -42px rgb(0 0 0 / 0.85);
   --accent-contrast: #fafafa;
   --accent-contrast-soft: rgb(255 255 255 / 0.08);
+  --shell-canvas: #0f1113;
+  --chat-surface-bg: #15181b;
+  --chat-surface-bg-elevated: #1a1e22;
+  --chat-surface-bg-subtle: #101316;
+  --chat-surface-border: rgb(255 255 255 / 0.08);
+  --chat-surface-border-strong: rgb(255 255 255 / 0.14);
+  --chat-surface-shadow: 0 22px 48px -34px rgb(0 0 0 / 0.54);
+  --chat-surface-shadow-soft: 0 12px 32px -28px rgb(0 0 0 / 0.32);
+  --chat-surface-inset-highlight: rgb(255 255 255 / 0.05);
+  --chat-footer-bg: color-mix(in srgb, var(--chat-surface-bg) 88%, var(--shell-canvas));
+  --chat-user-bubble: color-mix(in srgb, var(--foreground) 6%, var(--shell-canvas));
 }
 
 .light {
@@ -101,6 +112,17 @@
   --surface-shadow: 0 24px 60px -42px rgb(9 9 11 / 0.28);
   --accent-contrast: #18181b;
   --accent-contrast-soft: rgb(9 9 11 / 0.08);
+  --shell-canvas: #f4f1eb;
+  --chat-surface-bg: #fbfaf6;
+  --chat-surface-bg-elevated: #ffffff;
+  --chat-surface-bg-subtle: #efebe2;
+  --chat-surface-border: rgb(15 23 42 / 0.1);
+  --chat-surface-border-strong: rgb(15 23 42 / 0.16);
+  --chat-surface-shadow: 0 20px 42px -34px rgb(15 23 42 / 0.14);
+  --chat-surface-shadow-soft: 0 12px 26px -26px rgb(15 23 42 / 0.12);
+  --chat-surface-inset-highlight: rgb(255 255 255 / 0.92);
+  --chat-footer-bg: color-mix(in srgb, var(--chat-surface-bg) 90%, var(--shell-canvas));
+  --chat-user-bubble: color-mix(in srgb, var(--foreground) 4%, white);
 }
 
 * {
@@ -110,7 +132,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: transparent;
+  background: var(--shell-canvas);
   color: var(--foreground);
   font-family: var(--font-body);
   text-rendering: optimizeLegibility;
@@ -122,7 +144,7 @@ body {
   min-height: 100dvh;
   position: relative;
   isolation: isolate;
-  background: transparent;
+  background: var(--shell-canvas);
 }
 
 .font-editorial {
@@ -213,24 +235,19 @@ body {
 .app-window-ambient {
   background:
     radial-gradient(
-      circle at 14% 16%,
-      color-mix(in srgb, var(--primary) 18%, transparent) 0,
-      transparent 34%
-    ),
-    radial-gradient(
-      circle at 82% 12%,
-      color-mix(in srgb, var(--foreground) 12%, transparent) 0,
+      circle at 18% 0%,
+      color-mix(in srgb, var(--foreground) 7%, transparent) 0,
       transparent 30%
     ),
     radial-gradient(
-      circle at 52% 108%,
-      color-mix(in srgb, var(--surface-muted) 94%, transparent) 0,
-      transparent 42%
+      circle at 84% 12%,
+      color-mix(in srgb, var(--primary) 10%, transparent) 0,
+      transparent 24%
     ),
     linear-gradient(
       180deg,
-      color-mix(in srgb, var(--surface-canvas) 48%, transparent),
-      color-mix(in srgb, var(--surface-canvas) 86%, transparent)
+      color-mix(in srgb, var(--shell-canvas) 80%, var(--chat-surface-bg-subtle)),
+      var(--shell-canvas)
     );
 }
 
@@ -239,16 +256,14 @@ body {
   background:
     linear-gradient(
       180deg,
-      color-mix(in srgb, var(--surface-paper) 78%, transparent),
-      color-mix(in srgb, var(--surface-panel) 58%, transparent)
+      color-mix(in srgb, var(--chat-surface-bg-elevated) 96%, transparent),
+      var(--chat-surface-bg)
     ),
-    color-mix(in srgb, var(--surface-panel) 72%, transparent);
-  border: 1px solid color-mix(in srgb, var(--surface-border-strong) 82%, transparent);
+    var(--chat-surface-bg);
+  border: 1px solid var(--chat-surface-border);
   box-shadow:
-    0 24px 70px -48px rgb(15 23 42 / 0.65),
-    inset 0 1px 0 color-mix(in srgb, white 16%, transparent);
-  backdrop-filter: blur(24px) saturate(135%);
-  -webkit-backdrop-filter: blur(24px) saturate(135%);
+    var(--chat-surface-shadow),
+    inset 0 1px 0 var(--chat-surface-inset-highlight);
 }
 
 .glass-pane-surface::before {
@@ -257,17 +272,104 @@ body {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.24), rgb(255 255 255 / 0.04));
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0));
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
-  opacity: 0.82;
+  opacity: 0.56;
 }
 
 .glass-pane-surface > * {
   position: relative;
   z-index: 1;
+}
+
+.chat-surface-panel {
+  position: relative;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--chat-surface-bg-elevated) 96%, transparent),
+      var(--chat-surface-bg)
+    ),
+    var(--chat-surface-bg);
+  border: 1px solid var(--chat-surface-border);
+  box-shadow:
+    var(--chat-surface-shadow-soft),
+    inset 0 1px 0 var(--chat-surface-inset-highlight);
+}
+
+.chat-surface-panel-elevated {
+  box-shadow:
+    var(--chat-surface-shadow),
+    inset 0 1px 0 var(--chat-surface-inset-highlight);
+}
+
+.chat-surface-panel-subtle {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--chat-surface-bg-subtle) 94%, transparent),
+      color-mix(in srgb, var(--chat-surface-bg) 88%, var(--shell-canvas))
+    ),
+    var(--chat-surface-bg-subtle);
+}
+
+.chat-surface-footer {
+  border-top: 1px solid var(--chat-surface-border);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--chat-surface-bg) 72%, transparent),
+      var(--chat-footer-bg)
+    ),
+    var(--chat-footer-bg);
+}
+
+.chat-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 999px;
+  border: 1px solid var(--chat-surface-border);
+  background: color-mix(in srgb, var(--chat-surface-bg-subtle) 90%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--chat-surface-inset-highlight) 78%, transparent);
+  padding: 0.25rem 0.625rem;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+.app-shell-pane {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--chat-surface-bg) 82%, var(--shell-canvas)),
+      color-mix(in srgb, var(--chat-surface-bg-subtle) 70%, var(--shell-canvas))
+    ),
+    var(--shell-canvas);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--chat-surface-inset-highlight) 72%, transparent);
+}
+
+.app-shell-statusbar {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--chat-surface-bg-subtle) 54%, transparent),
+      color-mix(in srgb, var(--shell-canvas) 70%, var(--chat-surface-bg))
+    ),
+    var(--shell-canvas);
+}
+
+.chat-section-divider {
+  border-top: 1px solid var(--chat-surface-border);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--chat-surface-bg-subtle) 58%, transparent),
+      color-mix(in srgb, var(--shell-canvas) 82%, var(--chat-surface-bg-subtle))
+    ),
+    var(--shell-canvas);
 }

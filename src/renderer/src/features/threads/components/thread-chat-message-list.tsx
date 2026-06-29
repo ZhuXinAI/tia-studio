@@ -27,6 +27,10 @@ import { UserMessageAttachments } from '@renderer/components/assistant-ui/attach
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { cn } from '../../../lib/utils'
 import { extractThreadMessageUsage } from '../thread-usage'
+import {
+  ChatCenteredContent,
+  chatSurfaceStyles
+} from '../../../components/assistant-ui/chat-surface'
 
 type ThreadChatMessageListProps = {
   threadId: string | null
@@ -585,10 +589,7 @@ function MessageTimestamp({ className }: { className?: string }): React.JSX.Elem
   return (
     <p
       data-testid="message-timestamp"
-      className={cn(
-        'text-muted-foreground w-fit rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-2.5 py-1 text-[11px] leading-none',
-        className
-      )}
+      className={cn(chatSurfaceStyles.metaPill, 'w-fit leading-none', className)}
     >
       {timestampLabel}
     </p>
@@ -633,7 +634,8 @@ function MessageUsageDetails({
     <p
       data-testid="message-usage"
       className={cn(
-        'text-muted-foreground w-fit rounded-full bg-[color:var(--surface-panel)] px-2.5 py-1 text-[11px] leading-none',
+        chatSurfaceStyles.metaPill,
+        'w-fit leading-none',
         align === 'right' && 'ml-auto text-right'
       )}
     >
@@ -653,7 +655,7 @@ function UserFileAttachment(): React.JSX.Element {
   const file = useMessagePartFile()
 
   return (
-    <div className="mb-2 inline-flex items-center gap-2 rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-3 py-2">
+    <div className="mb-2 inline-flex items-center gap-2 rounded-xl border border-[color:var(--chat-surface-border)] bg-[color:var(--chat-surface-bg-subtle)] px-3 py-2">
       <File className="size-4 text-muted-foreground" />
       <span className="text-sm">{file.filename || t('threads.messageList.untitledFile')}</span>
       {file.mimeType && <span className="text-muted-foreground text-xs">({file.mimeType})</span>}
@@ -664,13 +666,13 @@ function UserFileAttachment(): React.JSX.Element {
 function UserMessageBubble(): React.JSX.Element {
   const { t } = useTranslation()
   return (
-    <MessagePrimitive.Root className="ml-auto max-w-2xl px-4 py-3">
+    <MessagePrimitive.Root className="ml-auto w-full max-w-[40rem] px-4 py-3">
       <div className="flex flex-col items-end gap-2">
         <p className="text-muted-foreground text-[11px] font-medium uppercase tracking-[0.18em]">
           {t('threads.messageList.you')}
         </p>
 
-        <div className="w-full rounded-[26px] border border-[color:var(--surface-border)] bg-[color:var(--surface-active)] px-4 py-3 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.42)]">
+        <div className="w-full rounded-[26px] border border-[color:var(--chat-surface-border)] bg-[color:var(--chat-user-bubble)] px-4 py-3 shadow-[0_12px_26px_-24px_rgba(15,23,42,0.28)]">
           <UserMessageAttachments />
 
           <MessagePrimitive.Parts
@@ -764,7 +766,7 @@ function ToolAgentStreamPart({
   }
 
   return (
-    <div className="mb-3 rounded-[22px] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-4 py-3">
+    <div className={`${chatSurfaceStyles.panelSubtle} mb-3 rounded-[22px] px-4 py-3`}>
       <p className="text-muted-foreground mb-2 text-[11px] font-medium uppercase tracking-[0.18em]">
         Delegated stream
       </p>
@@ -784,13 +786,13 @@ function AssistantMessageActions({
     <div
       className={cn(
         'mt-4 space-y-2',
-        withSeparator && 'border-t border-[color:var(--surface-border)] pt-3'
+        withSeparator && 'border-t border-[color:var(--chat-surface-border)] pt-3'
       )}
     >
       <div className="flex flex-wrap items-center gap-2">
         <ActionBarPrimitive.Root
           autohide="never"
-          className="flex items-center gap-1 rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] p-1"
+          className={`${chatSurfaceStyles.panelSubtle} flex items-center gap-1 rounded-full p-1 shadow-none`}
         >
           <ActionBarPrimitive.Copy asChild>
             <Button
@@ -828,7 +830,7 @@ function AssistantMessageActions({
               </Button>
             </ActionBarMorePrimitive.Trigger>
 
-            <ActionBarMorePrimitive.Content className="z-50 min-w-44 rounded-xl border border-[color:var(--surface-border-strong)] bg-[color:var(--surface-panel-strong)] p-1.5 text-card-foreground shadow-[0_20px_45px_-30px_rgba(15,23,42,0.48)]">
+            <ActionBarMorePrimitive.Content className="z-50 min-w-44 rounded-xl border border-[color:var(--chat-surface-border-strong)] bg-[color:var(--chat-surface-bg-elevated)] p-1.5 text-card-foreground shadow-[0_20px_45px_-30px_rgba(15,23,42,0.48)]">
               <ActionBarPrimitive.ExportMarkdown asChild>
                 <ActionBarMorePrimitive.Item className="flex cursor-default select-none items-center rounded-lg px-2.5 py-2 text-sm outline-none transition-colors data-[disabled]:opacity-50 data-[highlighted]:bg-[color:var(--surface-muted)] data-[highlighted]:text-foreground">
                   {t('threads.messageList.exportMarkdown')}
@@ -864,7 +866,7 @@ function StandardAssistantMessageBubble(): React.JSX.Element {
         ) : null}
 
         {shouldRenderBodyCard ? (
-          <div className="glass-pane-surface w-full space-y-3 rounded-[28px] px-4 py-4 text-[14px]">
+          <div className={`${chatSurfaceStyles.panelElevated} w-full space-y-3 rounded-[28px] px-4 py-4 text-[14px]`}>
             <MessagePrimitive.Parts components={assistantTextOnlyComponents} />
             <AssistantMessageActions />
           </div>
@@ -884,13 +886,13 @@ function DelegatedVisibleMessageCard({
   const { actionCount, summary } = summarizeDelegatedVisibleBlock(block)
 
   return (
-    <Collapsible defaultOpen={false} className="glass-pane-surface rounded-[24px]">
+    <Collapsible defaultOpen={false} className={`${chatSurfaceStyles.panelSubtle} rounded-[24px]`}>
       <CollapsibleTrigger
         data-slot="delegated-activity-trigger"
         className="group/delegated-trigger flex w-full items-start gap-3 px-4 py-4 text-left"
       >
         {actionCount ? (
-          <span className="inline-flex min-w-9 items-center justify-center rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-2 py-1 text-sm font-medium tabular-nums text-foreground">
+          <span className="inline-flex min-w-9 items-center justify-center rounded-xl border border-[color:var(--chat-surface-border)] bg-[color:var(--chat-surface-bg)] px-2 py-1 text-sm font-medium tabular-nums text-foreground">
             {actionCount}
           </span>
         ) : (
@@ -940,7 +942,7 @@ function DelegatedVisibleMessageCard({
           'data-[state=closed]:duration-200'
         )}
       >
-        <div className="border-t border-[color:var(--surface-border)] pt-4">
+        <div className="border-t border-[color:var(--chat-surface-border)] pt-4">
           {block.text ? (
             <div
               className={
@@ -956,13 +958,13 @@ function DelegatedVisibleMessageCard({
           )}
 
           {block.mentions.length > 0 ? (
-            <p className="text-muted-foreground mt-4 inline-flex rounded-full bg-[color:var(--surface-panel)] px-2.5 py-1 text-xs">
+            <p className={`${chatSurfaceStyles.metaPill} mt-4 inline-flex text-xs`}>
               Suggested next: {block.mentions.join(', ')}
             </p>
           ) : null}
 
           {block.nestedTools.length > 0 ? (
-            <div className="mt-4 rounded-[20px] bg-[color:var(--surface-panel-soft)] p-3">
+            <div className={`${chatSurfaceStyles.panelSubtle} mt-4 rounded-[20px] p-3`}>
               <p className="text-muted-foreground mb-2 text-[11px] font-medium uppercase tracking-[0.18em]">
                 Tools
               </p>
@@ -970,7 +972,7 @@ function DelegatedVisibleMessageCard({
                 {block.nestedTools.map((tool) => (
                   <div
                     key={tool.key}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-3 py-2 text-sm"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-[color:var(--chat-surface-border)] bg-[color:var(--chat-surface-bg)] px-3 py-2 text-sm"
                   >
                     <span>{tool.name}</span>
                     <span className="text-muted-foreground text-xs uppercase tracking-[0.18em]">
@@ -1008,7 +1010,7 @@ function DelegationAwareAssistantMessageBubble(): React.JSX.Element | null {
 
   return (
     <MessagePrimitive.Root className="w-full px-4 py-3">
-      <div className="glass-pane-surface w-full space-y-4 rounded-[28px] px-4 py-4 text-[14px]">
+      <div className={`${chatSurfaceStyles.panelElevated} w-full space-y-4 rounded-[28px] px-4 py-4 text-[14px]`}>
         {visibleBlocks.map((block) => (
           <DelegatedVisibleMessageCard key={block.key} block={block} />
         ))}
@@ -1097,6 +1099,31 @@ export function ThreadChatMessageList({
     return (
       <AssistantNameContext.Provider value={assistantName}>
         <div className="chat-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
+          <ChatCenteredContent className="px-5">
+            <ThreadChatStatus
+              isLoadingChatHistory={isLoadingChatHistory}
+              isChatStreaming={isChatStreaming}
+              loadError={loadError}
+              chatError={chatError}
+            />
+          </ChatCenteredContent>
+        </div>
+      </AssistantNameContext.Provider>
+    )
+  }
+
+  function EmptyPlaceholder(): React.JSX.Element {
+    return (
+      <ChatCenteredContent className="px-5">
+        <p className="text-muted-foreground text-sm">{t('threads.messageList.empty')}</p>
+      </ChatCenteredContent>
+    )
+  }
+
+  function Footer(): React.JSX.Element {
+    return (
+      <ChatCenteredContent className="px-5">
+        <div className="space-y-3 pt-4">
           <ThreadChatStatus
             isLoadingChatHistory={isLoadingChatHistory}
             isChatStreaming={isChatStreaming}
@@ -1104,24 +1131,7 @@ export function ThreadChatMessageList({
             chatError={chatError}
           />
         </div>
-      </AssistantNameContext.Provider>
-    )
-  }
-
-  function EmptyPlaceholder(): React.JSX.Element {
-    return <p className="text-muted-foreground text-sm">{t('threads.messageList.empty')}</p>
-  }
-
-  function Footer(): React.JSX.Element {
-    return (
-      <div className="space-y-3 pt-4">
-        <ThreadChatStatus
-          isLoadingChatHistory={isLoadingChatHistory}
-          isChatStreaming={isChatStreaming}
-          loadError={loadError}
-          chatError={chatError}
-        />
-      </div>
+      </ChatCenteredContent>
     )
   }
 
@@ -1145,9 +1155,9 @@ export function ThreadChatMessageList({
           Footer
         }}
         itemContent={(index) => (
-          <div className="flex w-full pb-4">
+          <ChatCenteredContent className="flex w-full px-5 pb-4">
             <ThreadPrimitive.MessageByIndex index={index} components={messageComponents} />
-          </div>
+          </ChatCenteredContent>
         )}
       />
     </AssistantNameContext.Provider>
