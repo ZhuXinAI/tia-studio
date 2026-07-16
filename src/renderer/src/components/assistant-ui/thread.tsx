@@ -60,6 +60,7 @@ export type ThreadComponents = {
   ToolFallback?: ToolCallMessagePartComponent | undefined
   ToolGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined
   ReasoningGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined
+  ComposerControls?: ComponentType | undefined
 }
 
 export type ThreadProps = {
@@ -218,9 +219,13 @@ const Composer: FC = () => {
 }
 
 const ComposerAction: FC = () => {
+  const { ComposerControls } = useContext(ThreadComponentsContext)
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between">
-      <ComposerAddAttachment />
+      <div className="flex min-w-0 items-center gap-1">
+        <ComposerAddAttachment />
+        {ComposerControls ? <ComposerControls /> : null}
+      </div>
       <div className="flex items-center gap-1.5">
         <AuiIf condition={(s) => s.thread.capabilities.dictation}>
           <AuiIf condition={(s) => s.composer.dictation == null}>

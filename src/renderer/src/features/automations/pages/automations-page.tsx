@@ -1,27 +1,25 @@
-import { Clock3, Search, Sparkles } from 'lucide-react'
+import { Bot, Clock3, Folder, Search } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Input } from '../../../components/ui/input'
 import { cn } from '../../../lib/utils'
 import { useDesktopAutomations } from '../automations-query'
 import { describeAutomationSchedule } from '../../../../../shared/automation-schedule'
 
-type StatusFilter = 'all' | string
+type StatusFilter = 'all' | 'active' | 'paused'
+
+function isActive(status: string | null): boolean {
+  return status?.toUpperCase() === 'ACTIVE'
+}
 
 function formatErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unable to load automations.'
 }
 
 function formatTimestamp(value: string | null): string {
-  if (!value) {
-    return 'Unknown'
-  }
-
-  const parsedDate = new Date(value)
-  if (Number.isNaN(parsedDate.valueOf())) {
-    return value
-  }
-
-  return parsedDate.toLocaleString(undefined, {
+  if (!value) return 'Unknown'
+  const date = new Date(value)
+  if (Number.isNaN(date.valueOf())) return value
+  return date.toLocaleString(undefined, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -30,332 +28,221 @@ function formatTimestamp(value: string | null): string {
   })
 }
 
-function deriveWorkspaceLabel(cwds: string[]): string {
-  const primaryPath = cwds[0]?.trim()
-  if (!primaryPath) {
-    return 'No working directory'
-  }
-
-  const segments = primaryPath.split('/').filter((segment) => segment.length > 0)
-  return segments.at(-1) ?? primaryPath
-}
-
-function formatStatusLabel(value: string | null): string {
-  if (!value) {
-    return 'Unknown'
-  }
-
-  return value
-    .toLowerCase()
-    .split(/[_\s-]+/)
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(' ')
+function workspaceName(paths: string[]): string {
+  const path = paths[0]?.trim()
+  if (!path) return 'No project'
+  return path.split('/').filter(Boolean).at(-1) ?? path
 }
 
 export function AutomationsPage(): React.JSX.Element {
   const { data: automations = [], isLoading, error } = useDesktopAutomations()
-  const [searchQuery, setSearchQuery] = useState('')
-  const [activeStatus, setActiveStatus] = useState<StatusFilter>('all')
-  const [selectedAutomationId, setSelectedAutomationId] = useState<string | null>(null)
-  const scheduleByAutomationId = useMemo(() => {
-    return new Map(
-      automations.map((automation) => [automation.id, describeAutomationSchedule(automation.rrule)])
-    )
-  }, [automations])
+  const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<StatusFilter>('all')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  const visible = useMemo(() => {
+    const search = query.trim().toLowerCase()
+    return automations.filter((automation) => {
+      const active = isActive(automation.status)
+      const matchesStatus = filter === 'all' || (filter === 'active' ? active : !active)
+      const matchesSearch =
+        !search ||
+        [automation.name, automation.prompt ?? '', automation.model ?? '', ...automation.cwds].some(
+          (value) => value.toLowerCase().includes(search)
+        )
+      return matchesStatus && matchesSearch
+    })
+  }, [automations, filter, query])
 
   useEffect(() => {
-    if (automations.length === 0) {
-      setSelectedAutomationId(null)
-      return
+    if (!visible.some((automation) => automation.id === selectedId)) {
+      setSelectedId(visible[0]?.id ?? null)
     }
+  }, [selectedId, visible])
 
-    if (
-      !selectedAutomationId ||
-      !automations.some((automation) => automation.id === selectedAutomationId)
-    ) {
-      setSelectedAutomationId(automations[0]?.id ?? null)
-    }
-  }, [automations, selectedAutomationId])
-
-  const availableStatuses = useMemo(() => {
-    return Array.from(
-      new Set(
-        automations
-          .map((automation) => automation.status)
-          .filter((status): status is string => Boolean(status))
-      )
-    )
-  }, [automations])
-
-  const visibleAutomations = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase()
-
-    return automations.filter((automation) => {
-      const matchesStatus = activeStatus === 'all' || automation.status === activeStatus
-      const matchesQuery =
-        normalizedQuery.length === 0 ||
-        [
-          automation.name,
-          automation.prompt ?? '',
-          automation.id,
-          automation.executionEnvironment ?? '',
-          ...automation.cwds
-        ].some((value) => value.toLowerCase().includes(normalizedQuery))
-
-      return matchesStatus && matchesQuery
-    })
-  }, [activeStatus, automations, searchQuery])
-
-  const selectedAutomation =
-    visibleAutomations.find((automation) => automation.id === selectedAutomationId) ??
-    automations.find((automation) => automation.id === selectedAutomationId) ??
-    null
-  const selectedSchedule = selectedAutomation
-    ? (scheduleByAutomationId.get(selectedAutomation.id) ?? null)
-    : null
+  const selected = visible.find((automation) => automation.id === selectedId) ?? null
+  const selectedSchedule = selected ? describeAutomationSchedule(selected.rrule) : null
+  const activeCount = automations.filter((automation) => isActive(automation.status)).length
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="border-b border-[color:var(--surface-border)] px-8 py-8">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="font-editorial text-[2.6rem] leading-none tracking-[-0.04em]">
-                Automations
-              </h1>
-              <span className="rounded-full bg-[color:var(--surface-muted)] px-3 py-1 text-[11px] text-muted-foreground">
-                {automations.length} detected
-              </span>
+    <section className="flex h-full min-h-0 flex-col overflow-hidden bg-[color:var(--shell-canvas)]">
+      <header className="flex h-14 shrink-0 items-center gap-6 border-b border-[color:var(--surface-border)] px-5">
+        <h1 className="text-sm font-semibold">Automations</h1>
+        <nav className="flex h-full items-center gap-5" aria-label="Automation filters">
+          {(
+            [
+              ['all', 'All', automations.length],
+              ['active', 'Active', activeCount],
+              ['paused', 'Paused', automations.length - activeCount]
+            ] as const
+          ).map(([value, label, count]) => (
+            <button
+              key={value}
+              type="button"
+              className={cn(
+                'relative h-full text-sm text-muted-foreground transition-colors hover:text-foreground',
+                filter === value &&
+                  'text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-foreground'
+              )}
+              onClick={() => setFilter(value)}
+            >
+              {label}
+              <span className="ml-1.5 text-xs text-muted-foreground">{count}</span>
+            </button>
+          ))}
+        </nav>
+      </header>
+
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(18rem,42%)_minmax(24rem,1fr)]">
+        <div className="flex min-h-0 flex-col border-r border-[color:var(--surface-border)]">
+          <div className="border-b border-[color:var(--surface-border)] p-4">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search scheduled tasks"
+                aria-label="Search automations"
+                className="h-9 rounded-lg border-[color:var(--surface-border-strong)] bg-[color:var(--surface-panel-soft)] pl-9 shadow-none"
+              />
             </div>
-            <p className="max-w-3xl text-sm text-muted-foreground">
-              Imported Codex automation definitions loaded from `~/.codex/automations`. TIA Studio
-              reads them without editing the files, changing their scheduler, or mixing them with
-              app-owned automation state.
-            </p>
           </div>
 
-          <div className="relative w-full xl:w-[24rem]">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search automations"
-              className="h-11 rounded-xl pl-9"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="border-b border-[color:var(--surface-border)] px-8 py-4">
-        <div className="flex flex-wrap gap-2">
-          {(['all', ...availableStatuses] as StatusFilter[]).map((status) => {
-            const count =
-              status === 'all'
-                ? automations.length
-                : automations.filter((automation) => automation.status === status).length
-
-            return (
-              <button
-                key={status}
-                type="button"
-                className={cn(
-                  'inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition-colors',
-                  activeStatus === status
-                    ? 'bg-[color:var(--surface-active)] text-foreground'
-                    : 'text-muted-foreground hover:bg-[color:var(--surface-muted)] hover:text-foreground'
-                )}
-                onClick={() => setActiveStatus(status)}
-              >
-                <span>{status === 'all' ? 'All statuses' : formatStatusLabel(status)}</span>
-                <span className="rounded-full bg-[color:var(--surface-paper)] px-2 py-0.5 text-[11px] text-muted-foreground">
-                  {count}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-hidden px-8 py-6">
-        {isLoading ? (
-          <div className="rounded-[1.4rem] border border-dashed border-[color:var(--surface-border)] px-6 py-10 text-center text-sm text-muted-foreground">
-            Loading detected automations...
-          </div>
-        ) : error ? (
-          <div className="rounded-[1.4rem] border border-dashed border-[color:var(--surface-border)] px-6 py-10 text-center text-sm text-muted-foreground">
-            {formatErrorMessage(error)}
-          </div>
-        ) : visibleAutomations.length === 0 ? (
-          <div className="rounded-[1.4rem] border border-dashed border-[color:var(--surface-border)] px-6 py-10 text-center text-sm text-muted-foreground">
-            No automation definitions match this filter.
-          </div>
-        ) : (
-          <div className="grid h-full min-h-0 gap-6 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-            <div className="min-h-0 overflow-y-auto">
-              <div className="space-y-3">
-                {visibleAutomations.map((automation) => {
-                  const isActive = automation.id === selectedAutomationId
-                  const schedule = scheduleByAutomationId.get(automation.id)
-
+          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            {isLoading ? (
+              <p className="p-4 text-sm text-muted-foreground">Loading automations…</p>
+            ) : error ? (
+              <p className="p-4 text-sm text-destructive">{formatErrorMessage(error)}</p>
+            ) : visible.length === 0 ? (
+              <p className="p-4 text-sm text-muted-foreground">No automations match this view.</p>
+            ) : (
+              <div className="space-y-1">
+                {visible.map((automation) => {
+                  const schedule = describeAutomationSchedule(automation.rrule)
                   return (
                     <button
                       key={automation.id}
                       type="button"
                       className={cn(
-                        'flex w-full flex-col gap-4 rounded-[1.4rem] border px-5 py-4 text-left transition-colors',
-                        isActive
-                          ? 'border-[color:var(--surface-border-strong)] bg-[color:var(--surface-active)] shadow-[inset_0_0_0_1px_var(--surface-active-strong)]'
-                          : 'border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_98%,transparent),color-mix(in_srgb,var(--surface-panel)_70%,transparent))] hover:bg-[color:var(--surface-muted)]'
+                        'flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-[color:var(--surface-muted)]',
+                        automation.id === selectedId && 'bg-[color:var(--surface-active)]'
                       )}
-                      onClick={() => setSelectedAutomationId(automation.id)}
+                      onClick={() => setSelectedId(automation.id)}
                     >
-                      <div className="flex min-w-0 items-center gap-4">
-                        <span
-                          className={cn(
-                            'inline-flex size-3 shrink-0 rounded-full',
-                            automation.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-amber-400'
-                          )}
-                        />
-                        <div className="min-w-0 space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-editorial text-[1.3rem] leading-none tracking-[-0.02em]">
-                              {automation.name}
-                            </p>
-                            <span className="rounded-full bg-[color:var(--surface-panel-soft)] px-3 py-1 text-[11px] text-muted-foreground">
-                              Codex import
-                            </span>
-                            <span className="rounded-full bg-[color:var(--surface-paper)] px-3 py-1 text-[11px] text-muted-foreground">
-                              {deriveWorkspaceLabel(automation.cwds)}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            <span>{schedule?.summary ?? 'No saved schedule'}</span>
-                            <span>{automation.executionEnvironment ?? 'Execution pending'}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="text-xs text-muted-foreground">
-                        Updated {formatTimestamp(automation.updatedAt)}
-                      </div>
+                      <span
+                        className={cn(
+                          'mt-1.5 size-3 shrink-0 rounded-full border',
+                          isActive(automation.status)
+                            ? 'border-emerald-500 bg-emerald-500'
+                            : 'border-muted-foreground/50'
+                        )}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">
+                          {automation.name}
+                        </span>
+                        <span className="mt-1 block truncate text-xs text-muted-foreground">
+                          {schedule.summary}
+                          <span className="px-1.5">·</span>
+                          {workspaceName(automation.cwds)}
+                        </span>
+                      </span>
                     </button>
                   )
                 })}
               </div>
-            </div>
+            )}
+          </div>
+        </div>
 
-            {selectedAutomation ? (
-              <div className="min-h-0 overflow-y-auto">
-                <div className="rounded-[1.4rem] border border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_98%,transparent),color-mix(in_srgb,var(--surface-panel)_68%,transparent))] px-6 py-5">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-editorial text-[1.6rem] leading-none tracking-[-0.03em]">
-                          {selectedAutomation.name}
-                        </p>
-                        <span className="rounded-full bg-[color:var(--surface-panel-soft)] px-3 py-1 text-[11px] text-muted-foreground">
-                          Codex import
-                        </span>
-                        <span className="rounded-full bg-[color:var(--surface-paper)] px-3 py-1 text-[11px] text-muted-foreground">
-                          {formatStatusLabel(selectedAutomation.status)}
-                        </span>
-                      </div>
-                      <p className="text-sm leading-6 text-muted-foreground">
-                        {selectedAutomation.prompt ?? 'No prompt stored in automation.toml.'}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <span className="rounded-full bg-[color:var(--surface-paper)] px-3 py-1 text-[11px] text-muted-foreground">
-                        {selectedAutomation.model ?? 'Model pending'}
-                      </span>
-                      <span className="rounded-full bg-[color:var(--surface-paper)] px-3 py-1 text-[11px] text-muted-foreground">
-                        {selectedAutomation.executionEnvironment ?? 'Execution pending'}
-                      </span>
-                    </div>
+        <div className="min-h-0 overflow-y-auto">
+          {selected ? (
+            <div className="mx-auto max-w-3xl px-7 py-6">
+              <div className="mb-7 flex items-start justify-between gap-4">
+                <div>
+                  <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span
+                      className={cn(
+                        'size-2 rounded-full',
+                        isActive(selected.status) ? 'bg-emerald-500' : 'bg-muted-foreground'
+                      )}
+                    />
+                    {isActive(selected.status) ? 'Active' : 'Paused'}
+                    <span>·</span>
+                    Codex import
                   </div>
-
-                  <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                    <div className="rounded-[1.1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-4">
-                      <p className="section-kicker text-[0.62rem]">Schedule</p>
-                      <p className="mt-2 text-sm font-medium text-foreground">
-                        {selectedSchedule?.summary ?? 'No saved schedule'}
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                        {selectedSchedule?.nextRunAt
-                          ? `Next run ${formatTimestamp(selectedSchedule.nextRunAt)}`
-                          : selectedAutomation.rrule
-                            ? 'Next run is not available for this RRULE yet.'
-                            : 'No RRULE found in automation.toml.'}
-                      </p>
-                      <p className="mt-1 break-all text-[11px] leading-5 text-muted-foreground">
-                        {selectedAutomation.rrule ?? 'No RRULE found in automation.toml.'}
-                      </p>
-                    </div>
-
-                    <div className="rounded-[1.1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-4">
-                      <p className="section-kicker text-[0.62rem]">Updated</p>
-                      <p className="mt-2 text-sm font-medium text-foreground">
-                        {formatTimestamp(selectedAutomation.updatedAt)}
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                        Created {formatTimestamp(selectedAutomation.createdAt)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-[1.1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-4 lg:col-span-2">
-                      <p className="section-kicker text-[0.62rem]">Working directories</p>
-                      <div className="mt-2 space-y-2">
-                        {selectedAutomation.cwds.length > 0 ? (
-                          selectedAutomation.cwds.map((cwd) => (
-                            <p key={cwd} className="break-all text-sm text-foreground">
-                              {cwd}
-                            </p>
-                          ))
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            No working directories were declared.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="rounded-[1.1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-4 lg:col-span-2">
-                      <p className="section-kicker text-[0.62rem]">Definition file</p>
-                      <p className="mt-2 break-all text-sm text-foreground">
-                        {selectedAutomation.filePath}
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                        Execution is managed by Codex using this on-disk definition.
-                      </p>
-                    </div>
-                  </div>
+                  <h2 className="text-xl font-semibold tracking-tight">{selected.name}</h2>
                 </div>
-
-                <div className="pt-4">
-                  <div className="flex flex-wrap items-center gap-2 rounded-[1.2rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] px-4 py-3 text-sm text-muted-foreground">
-                    <Sparkles className="size-4 text-primary" />
-                    <span>
-                      Imported automations stay read-only here, so future TIA Studio automations can
-                      use a separate store and execution path without interfering with Codex.
-                    </span>
-                  </div>
-                </div>
+                <span className="rounded-md bg-[color:var(--surface-panel-soft)] px-2 py-1 text-xs text-muted-foreground">
+                  Read only
+                </span>
               </div>
-            ) : null}
-          </div>
-        )}
 
-        {!isLoading && !error && automations.length > 0 ? (
-          <div className="pt-4 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-2">
-              <Clock3 className="size-3.5" />
-              Scheduling and execution are owned by the Codex automation engine, not a renderer-only
-              mock.
-            </span>
-          </div>
-        ) : null}
+              <div className="mb-8 whitespace-pre-wrap rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-4 text-sm leading-6">
+                {selected.prompt ?? 'No prompt stored in this automation definition.'}
+              </div>
+
+              <div className="space-y-7">
+                <section>
+                  <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Details
+                  </h3>
+                  <dl className="divide-y divide-[color:var(--surface-border)] rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] px-4">
+                    <DetailRow icon={Folder} label="Project" value={workspaceName(selected.cwds)} />
+                    <DetailRow icon={Bot} label="Model" value={selected.model ?? 'Default model'} />
+                    <DetailRow
+                      icon={Clock3}
+                      label="Schedule"
+                      value={selectedSchedule?.summary ?? 'No schedule'}
+                    />
+                  </dl>
+                </section>
+
+                <section>
+                  <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Source
+                  </h3>
+                  <div className="space-y-3 rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-4 text-xs">
+                    <p className="break-all text-foreground">{selected.filePath}</p>
+                    <p className="text-muted-foreground">
+                      Updated {formatTimestamp(selected.updatedAt)}
+                    </p>
+                    {selectedSchedule?.nextRunAt ? (
+                      <p className="text-muted-foreground">
+                        Next run {formatTimestamp(selectedSchedule.nextRunAt)}
+                      </p>
+                    ) : null}
+                  </div>
+                </section>
+              </div>
+            </div>
+          ) : (
+            <div className="grid h-full place-items-center p-8 text-sm text-muted-foreground">
+              Select an automation to view its definition.
+            </div>
+          )}
+        </div>
       </div>
     </section>
+  )
+}
+
+function DetailRow({
+  icon: Icon,
+  label,
+  value
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  value: string
+}): React.JSX.Element {
+  return (
+    <div className="grid grid-cols-[8rem_1fr] items-center gap-4 py-3 text-sm">
+      <dt className="flex items-center gap-2 text-muted-foreground">
+        <Icon className="size-4" />
+        {label}
+      </dt>
+      <dd className="truncate text-right text-foreground">{value}</dd>
+    </div>
   )
 }

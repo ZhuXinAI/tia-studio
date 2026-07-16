@@ -6,7 +6,8 @@ import {
   SettingsManager,
   createAgentSession,
   type AgentSessionEvent,
-  type ExtensionUIContext
+  type ExtensionUIContext,
+  type ToolDefinition
 } from '@earendil-works/pi-coding-agent'
 import { randomUUID } from 'node:crypto'
 import { mkdir } from 'node:fs/promises'
@@ -139,10 +140,6 @@ export class AgentRuntimeManager implements AppAgentRuntime {
         status: 'complete'
       })
     )
-    if (runtime.snapshot.title === 'New thread' && trimmed) {
-      await this.renameSession(input.sessionId, deterministicTitle(trimmed))
-    }
-
     const images = attachments.map((attachment) => ({
       type: 'image' as const,
       data: attachment.data,
@@ -299,6 +296,46 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       noThemes: true
     })
     await resourceLoader.reload()
+    let runtime: LiveSession | undefined
+    const nameTheThread: ToolDefinition = {
+      name: 'nameTheThread',
+      label: 'Name the thread',
+      description:
+        'Give this conversation a short, specific title that describes the user’s task. Use this after the first user request and again only when the task meaningfully changes.',
+      promptSnippet: 'Name the current conversation with a concise task title.',
+      promptGuidelines: [
+        'Call nameTheThread after receiving the first substantive user request. Do not ask the user to name the thread.'
+      ],
+      parameters: {
+        type: 'object',
+        properties: {
+          title: {
+            type: 'string',
+            minLength: 1,
+            maxLength: 120,
+            description: 'A concise title for the current conversation.'
+          }
+        },
+        required: ['title'],
+        additionalProperties: false
+      } as ToolDefinition['parameters'],
+      execute: async (_toolCallId, params) => {
+        if (!runtime) throw new Error('The session is not ready to be named')
+        const title = deterministicTitle(String((params as { title: unknown }).title))
+        runtime.session.setSessionName(title)
+        const updated = await this.options.sessionsRepo.update(record.id, { title })
+        if (!updated) throw new Error('Session not found')
+        runtime.snapshot = updated
+        await this.publish(
+          runtime,
+          runtime.mapper.applicationEvent({ type: 'session.updated', snapshot: updated })
+        )
+        return {
+          content: [{ type: 'text', text: `Thread named “${title}”.` }],
+          details: { title }
+        }
+      }
+    }
     const { session } = await createAgentSession({
       cwd: record.workspacePath,
       agentDir,
@@ -307,11 +344,12 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       thinkingLevel: record.thinkingLevel,
       sessionManager,
       settingsManager,
-      resourceLoader
+      resourceLoader,
+      customTools: [nameTheThread]
     })
     const lastSequence = await this.options.sessionsRepo.getLastSequence(record.id)
     const mapper = new PiSdkEventMapper(record.id, () => new Date(), lastSequence)
-    const runtime: LiveSession = {
+    runtime = {
       session,
       modelRuntime,
       piProvider,

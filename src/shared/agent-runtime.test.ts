@@ -83,4 +83,14 @@ describe('reduceAgentEvent', () => {
     view = reduceAgentEvent(view, event({ type: 'interaction.resolved', interactionId: 'i' }, 2))
     expect(view.snapshot.pendingInteraction).toBeUndefined()
   })
+
+  it('applies session metadata updates published by runtime tools', () => {
+    const view: AgentSessionView = { snapshot, messages: [], seenEventIds: [], lastSequence: 0 }
+    const updated = reduceAgentEvent(
+      view,
+      event({ type: 'session.updated', snapshot: { ...snapshot, title: 'Fix startup retry' } }, 1)
+    )
+
+    expect(updated.snapshot.title).toBe('Fix startup retry')
+  })
 })

@@ -1,4 +1,4 @@
-import { Shield, ShieldCheck } from 'lucide-react'
+import { Bot, Check, ChevronDown, Shield, ShieldCheck } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, useNavigate, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
@@ -11,12 +11,19 @@ import type {
 import { Thread } from '../../components/assistant-ui/thread'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
-import { Switch } from '../../components/ui/switch'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '../../components/ui/dropdown-menu'
 import {
   agentSessionKeys,
-  renameAgentSession,
   respondToAgentInteraction,
   setAgentAccessMode,
+  setAgentModel,
   useAgentMessages,
   useAgentSession,
   useCreateAgentSession
@@ -25,9 +32,118 @@ import { PiThreadRuntimeProvider } from '../../features/threads/components/pi-th
 import { useProviders } from '../../features/settings/providers/providers-query'
 import { useWorkspaces } from '../../features/workspaces/workspaces-query'
 import { toErrorMessage } from '../../features/threads/thread-page-routing'
-import { ChatMetaPill } from '../../components/assistant-ui/chat-surface'
-import { useAppV2ShellStatusBar } from './app-v2-shell-status'
 import { useAppV2ShellRightRail } from './app-v2-shell-right-rail'
+import type { ProviderRecord } from '../../features/settings/providers/providers-query'
+
+function ThreadComposerControls({
+  session,
+  provider,
+  behavior,
+  onBehaviorChange,
+  onModelChange,
+  onAccessChange
+}: {
+  session: AgentSessionSnapshot
+  provider: ProviderRecord | null
+  behavior: AgentSendBehavior
+  onBehaviorChange: (behavior: AgentSendBehavior) => void
+  onModelChange: (modelId: string) => void
+  onAccessChange: (full: boolean) => void
+}): React.JSX.Element {
+  const models = Array.from(
+    new Set(
+      [session.modelId, provider?.selectedModel, ...(provider?.providerModels ?? [])].filter(
+        Boolean
+      )
+    )
+  ) as string[]
+  const disabled = session.status === 'running'
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 max-w-44 gap-1.5 rounded-lg px-2 text-xs font-normal text-muted-foreground"
+            aria-label="Select model"
+            disabled={disabled}
+          >
+            <Bot className="size-3.5 shrink-0" />
+            <span className="truncate">{session.modelId}</span>
+            <ChevronDown className="size-3 shrink-0 opacity-60" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" side="top" className="w-64">
+          <DropdownMenuLabel className="px-2 text-xs text-muted-foreground">
+            {provider?.name ?? session.provider}
+          </DropdownMenuLabel>
+          {models.map((modelId) => (
+            <DropdownMenuItem key={modelId} onSelect={() => onModelChange(modelId)}>
+              <span className="min-w-0 flex-1 truncate">{modelId}</span>
+              {modelId === session.modelId ? <Check className="size-4" /> : null}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 rounded-lg px-2 text-xs font-normal text-muted-foreground"
+            aria-label="Select permission mode"
+            disabled={disabled}
+          >
+            {session.accessMode === 'full' ? (
+              <ShieldCheck className="size-3.5" />
+            ) : (
+              <Shield className="size-3.5" />
+            )}
+            {session.accessMode === 'full' ? 'Full Access' : 'Ask Permission'}
+            <ChevronDown className="size-3 opacity-60" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" side="top" className="w-52">
+          <DropdownMenuItem onSelect={() => onAccessChange(false)}>
+            <Shield className="mr-2 size-4" />
+            <span className="flex-1">Ask Permission</span>
+            {session.accessMode === 'standard' ? <Check className="size-4" /> : null}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onAccessChange(true)}>
+            <ShieldCheck className="mr-2 size-4" />
+            <span className="flex-1">Full Access</span>
+            {session.accessMode === 'full' ? <Check className="size-4" /> : null}
+          </DropdownMenuItem>
+          {session.status === 'running' ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                Permission mode is locked while Pi is running.
+              </DropdownMenuLabel>
+            </>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {session.status === 'running' ? (
+        <select
+          value={behavior}
+          onChange={(event) => onBehaviorChange(event.target.value as AgentSendBehavior)}
+          className="h-7 max-w-36 rounded-lg border-0 bg-transparent px-2 text-xs text-muted-foreground outline-none hover:bg-muted"
+          aria-label="Message behavior while Pi is running"
+        >
+          <option value="steer">Steer current run</option>
+          <option value="follow-up">Queue follow-up</option>
+        </select>
+      ) : null}
+    </>
+  )
+}
 
 function sessionHref(session: AgentSessionSnapshot): string {
   return session.workspaceId
@@ -135,7 +251,7 @@ export function ThreadPageV2(): React.JSX.Element {
     params.threadId ?? null
   )
   const [behavior, setBehavior] = useState<AgentSendBehavior>('steer')
-  const [title, setTitle] = useState('')
+  const [creationError, setCreationError] = useState<string | null>(null)
   const creationStartedRef = useRef(false)
   const rightRail = useAppV2ShellRightRail()
 
@@ -158,15 +274,12 @@ export function ThreadPageV2(): React.JSX.Element {
   }, [rightRail])
 
   useEffect(() => {
-    setTitle(session?.title ?? '')
-  }, [session?.title])
-
-  useEffect(() => {
     if (
       params.threadId ||
       creationStartedRef.current ||
       workspacesLoading ||
       providersLoading ||
+      creationError ||
       !workspace ||
       !provider
     ) {
@@ -185,7 +298,10 @@ export function ThreadPageV2(): React.JSX.Element {
       })
       .then((created) => navigate(sessionHref(created), { replace: true }))
       .catch((error) => {
-        toast.error(toErrorMessage(error))
+        const message = toErrorMessage(error)
+        creationStartedRef.current = false
+        setCreationError(message)
+        toast.error(message)
       })
   }, [
     createSession,
@@ -194,40 +310,25 @@ export function ThreadPageV2(): React.JSX.Element {
     provider,
     providersLoading,
     workspace,
+    creationError,
     workspacesLoading
   ])
-
-  const statusContent = useMemo(
-    () =>
-      session ? (
-        <>
-          <ChatMetaPill>{session.status}</ChatMetaPill>
-          <ChatMetaPill>{session.modelId}</ChatMetaPill>
-          <ChatMetaPill icon={session.accessMode === 'full' ? ShieldCheck : Shield}>
-            {session.accessMode === 'full' ? 'Full access' : 'Standard access'}
-          </ChatMetaPill>
-        </>
-      ) : null,
-    [session]
-  )
-  useAppV2ShellStatusBar(statusContent)
-
-  async function commitTitle(): Promise<void> {
-    if (!session || !title.trim() || title.trim() === session.title) return
-    try {
-      const updated = await renameAgentSession(session.id, title.trim())
-      queryClient.setQueryData(agentSessionKeys.detail(session.id), updated)
-      await queryClient.invalidateQueries({ queryKey: agentSessionKeys.all })
-    } catch (error) {
-      setTitle(session.title)
-      toast.error(toErrorMessage(error))
-    }
-  }
 
   async function toggleAccess(full: boolean): Promise<void> {
     if (!session) return
     try {
       const updated = await setAgentAccessMode(session.id, full ? 'full' : 'standard')
+      queryClient.setQueryData(agentSessionKeys.detail(session.id), updated)
+      await queryClient.invalidateQueries({ queryKey: agentSessionKeys.all })
+    } catch (error) {
+      toast.error(toErrorMessage(error))
+    }
+  }
+
+  async function changeModel(modelId: string): Promise<void> {
+    if (!session || modelId === session.modelId) return
+    try {
+      const updated = await setAgentModel(session.id, session.provider, modelId)
       queryClient.setQueryData(agentSessionKeys.detail(session.id), updated)
       await queryClient.invalidateQueries({ queryKey: agentSessionKeys.all })
     } catch (error) {
@@ -243,6 +344,25 @@ export function ThreadPageV2(): React.JSX.Element {
             <p className="font-medium">Configure a provider to start Pi.</p>
             <Button asChild variant="link">
               <NavLink to="/settings/providers">Open provider settings</NavLink>
+            </Button>
+          </div>
+        </div>
+      )
+    }
+    if (creationError) {
+      return (
+        <div className="grid h-full place-items-center p-8 text-center">
+          <div className="max-w-md space-y-3">
+            <p className="font-medium">Pi could not start</p>
+            <p className="text-sm text-muted-foreground">{creationError}</p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                creationStartedRef.current = false
+                setCreationError(null)
+              }}
+            >
+              Try again
             </Button>
           </div>
         </div>
@@ -273,41 +393,6 @@ export function ThreadPageV2(): React.JSX.Element {
 
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden">
-      <header className="border-border flex shrink-0 items-center gap-3 border-b px-4 py-2">
-        <Input
-          value={title}
-          className="h-8 min-w-0 max-w-md border-transparent bg-transparent px-2 font-medium shadow-none"
-          aria-label="Thread title"
-          onChange={(event) => setTitle(event.target.value)}
-          onBlur={() => void commitTitle()}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') event.currentTarget.blur()
-          }}
-        />
-        <span className="text-muted-foreground ml-auto text-xs capitalize">{session.status}</span>
-        {session.status === 'running' ? (
-          <select
-            value={behavior}
-            onChange={(event) => setBehavior(event.target.value as AgentSendBehavior)}
-            className="border-input bg-background h-8 rounded-md border px-2 text-xs"
-            aria-label="Message behavior while Pi is running"
-          >
-            <option value="steer">Steer current run</option>
-            <option value="follow-up">Queue follow-up</option>
-          </select>
-        ) : null}
-        <label className="flex items-center gap-2 text-xs font-medium">
-          <Switch
-            checked={session.accessMode === 'full'}
-            disabled={session.status === 'running'}
-            onCheckedChange={(checked) => void toggleAccess(checked)}
-            aria-label="Full access"
-          />
-          <span className={session.accessMode === 'full' ? 'text-primary' : undefined}>
-            Full access
-          </span>
-        </label>
-      </header>
       {session.pendingInteraction ? (
         <InteractionCard sessionId={session.id} request={session.pendingInteraction} />
       ) : null}
@@ -323,7 +408,20 @@ export function ThreadPageV2(): React.JSX.Element {
             void queryClient.invalidateQueries({ queryKey: agentSessionKeys.all })
           }}
         >
-          <Thread />
+          <Thread
+            components={{
+              ComposerControls: () => (
+                <ThreadComposerControls
+                  session={session}
+                  provider={providers.find((item) => item.id === session.providerId) ?? null}
+                  behavior={behavior}
+                  onBehaviorChange={setBehavior}
+                  onModelChange={(modelId) => void changeModel(modelId)}
+                  onAccessChange={(full) => void toggleAccess(full)}
+                />
+              )
+            }}
+          />
         </PiThreadRuntimeProvider>
       </div>
     </section>

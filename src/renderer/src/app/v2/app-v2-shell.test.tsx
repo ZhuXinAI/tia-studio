@@ -1,29 +1,23 @@
 // @vitest-environment jsdom
 
-import { act, useEffect, useMemo } from 'react'
+import { act, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { createPortal } from 'react-dom'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppV2Shell } from './app-v2-shell'
 import { useAppV2ShellRightRail } from './app-v2-shell-right-rail'
-import { useAppV2ShellStatusBar } from './app-v2-shell-status'
 
 vi.mock('./app-v2-sidebar', () => ({
   AppV2Sidebar: () => <aside>Sidebar</aside>
 }))
 
 function ChatRoute(): React.JSX.Element {
-  const statusContent = useMemo(() => <span>Live thread status</span>, [])
-  useAppV2ShellStatusBar(statusContent)
   return <div>Chat route</div>
 }
 
 function ChatRouteWithRightRail(): React.JSX.Element {
-  const statusContent = useMemo(() => <span>Live thread status</span>, [])
   const { isOpen, setHasContent, setIsOpen, slotElement } = useAppV2ShellRightRail()
-
-  useAppV2ShellStatusBar(statusContent)
 
   useEffect(() => {
     setHasContent(true)
@@ -48,7 +42,7 @@ async function flushReact(): Promise<void> {
   })
 }
 
-describe('AppV2Shell status bar', () => {
+describe('AppV2Shell chrome', () => {
   let container: HTMLDivElement
   let root: Root
 
@@ -68,7 +62,7 @@ describe('AppV2Shell status bar', () => {
     vi.clearAllMocks()
   })
 
-  it('shows route-provided thread status and falls back to shell defaults after route changes', async () => {
+  it('does not reserve a persistent status bar across route changes', async () => {
     const router = createMemoryRouter(
       [
         {
@@ -96,16 +90,16 @@ describe('AppV2Shell status bar', () => {
     })
     await flushReact()
 
-    expect(container.textContent).toContain('Live thread status')
-    expect(container.textContent).not.toContain('Shell ready')
+    expect(container.textContent).toContain('Chat route')
+    expect(container.querySelector('.app-shell-statusbar')).toBeNull()
 
     await act(async () => {
       await router.navigate('/skills')
     })
     await flushReact()
 
-    expect(container.textContent).toContain('Skills catalog')
-    expect(container.textContent).not.toContain('Live thread status')
+    expect(container.textContent).toContain('Skills route')
+    expect(container.querySelector('.app-shell-statusbar')).toBeNull()
   })
 
   it('renders a shell-owned right rail for thread routes and removes it after route changes', async () => {
@@ -137,7 +131,7 @@ describe('AppV2Shell status bar', () => {
     await flushReact()
 
     expect(container.textContent).toContain('Thread details rail')
-    expect(container.textContent).toContain('Live thread status')
+    expect(container.querySelector('.app-shell-statusbar')).toBeNull()
 
     await act(async () => {
       await router.navigate('/skills')
@@ -145,6 +139,6 @@ describe('AppV2Shell status bar', () => {
     await flushReact()
 
     expect(container.textContent).not.toContain('Thread details rail')
-    expect(container.textContent).toContain('Skills catalog')
+    expect(container.textContent).toContain('Skills route')
   })
 })

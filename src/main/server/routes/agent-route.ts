@@ -191,6 +191,26 @@ export function registerAgentRoute(
     }
   })
 
+  app.patch('/v1/agent/sessions/:sessionId/model', async (context) => {
+    const parsed = z
+      .object({ provider: z.string().min(1), modelId: z.string().min(1) })
+      .safeParse(await jsonBody(context))
+    if (!parsed.success) return context.json({ error: parsed.error.issues[0]?.message }, 400)
+    try {
+      await options.runtime.setModel(
+        context.req.param('sessionId'),
+        parsed.data.provider,
+        parsed.data.modelId
+      )
+      return context.json(await options.runtime.getSession(context.req.param('sessionId')))
+    } catch (error) {
+      return context.json(
+        { error: error instanceof Error ? error.message : 'Model update failed' },
+        409
+      )
+    }
+  })
+
   app.patch('/v1/agent/sessions/:sessionId/title', async (context) => {
     const parsed = z
       .object({ title: z.string().trim().min(1).max(120) })

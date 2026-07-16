@@ -156,7 +156,7 @@ describe('app router', () => {
   it('renders the dedicated automations route', () => {
     const html = renderRouter(['/automations'])
 
-    expect(html).toContain('Imported Codex automation definitions')
-    expect(html).toContain('Search automations')
+    expect(html).toContain('Search scheduled tasks')
+    expect(html).toContain('Automation filters')
   })
 })

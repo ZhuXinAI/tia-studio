@@ -108,6 +108,17 @@ export async function setAgentAccessMode(
   return api.patch<AgentSessionSnapshot>(`/v1/agent/sessions/${sessionId}/access`, { mode })
 }
 
+export async function setAgentModel(
+  sessionId: string,
+  provider: string,
+  modelId: string
+): Promise<AgentSessionSnapshot> {
+  return api.patch<AgentSessionSnapshot>(`/v1/agent/sessions/${sessionId}/model`, {
+    provider,
+    modelId
+  })
+}
+
 export async function renameAgentSession(
   sessionId: string,
   title: string

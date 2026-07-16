@@ -128,6 +128,7 @@ export type AgentEventBase = {
 
 export type AppAgentEvent =
   | (AgentEventBase & { type: 'session.started'; snapshot: AgentSessionSnapshot })
+  | (AgentEventBase & { type: 'session.updated'; snapshot: AgentSessionSnapshot })
   | (AgentEventBase & { type: 'session.state'; status: AgentSessionStatus })
   | (AgentEventBase & { type: 'run.started' })
   | (AgentEventBase & { type: 'run.settled' })
@@ -265,6 +266,7 @@ export function reduceAgentEvent(view: AgentSessionView, event: AppAgentEvent): 
   let snapshot = { ...view.snapshot, updatedAt: event.timestamp }
   switch (event.type) {
     case 'session.started':
+    case 'session.updated':
       snapshot = event.snapshot
       break
     case 'session.state':

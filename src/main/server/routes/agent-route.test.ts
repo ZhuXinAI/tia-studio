@@ -148,6 +148,17 @@ describe('agent route', () => {
     expect(runtime.sendMessage).not.toHaveBeenCalled()
   })
 
+  it('changes the active model through the runtime', async () => {
+    const response = await app.request('http://localhost/v1/agent/sessions/session-1/model', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: 'openai', modelId: 'gpt-5' })
+    })
+
+    expect(response.status).toBe(200)
+    expect(runtime.setModel).toHaveBeenCalledWith('session-1', 'openai', 'gpt-5')
+  })
+
   it('streams ordered application events over SSE and unsubscribes on cancel', async () => {
     let listener: ((event: AppAgentEvent) => void) | undefined
     const unsubscribe = vi.fn()
