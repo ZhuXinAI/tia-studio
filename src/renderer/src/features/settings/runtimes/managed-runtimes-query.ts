@@ -1,6 +1,6 @@
 import { createApiClient } from '../../../lib/api-client'
 
-export type ManagedRuntimeKind = 'agent-browser' | 'bun' | 'uv' | 'codex-acp' | 'claude-agent-acp'
+export type ManagedRuntimeKind = 'agent-browser' | 'bun' | 'uv'
 export type ManagedRuntimeSource = 'managed' | 'custom' | 'none'
 export type ManagedRuntimeStatus =
   | 'missing'
@@ -29,11 +29,7 @@ export type ManagedRuntimesState = Record<ManagedRuntimeKind, ManagedRuntimeReco
 export type RuntimeOnboardingSkillId = 'agent-browser' | 'find-skills'
 
 export const runtimeSetupKinds: ManagedRuntimeKind[] = ['bun', 'uv', 'agent-browser']
-export const codingRuntimeKinds: ManagedRuntimeKind[] = ['codex-acp', 'claude-agent-acp']
-export const managedRuntimeKinds: ManagedRuntimeKind[] = [
-  ...runtimeSetupKinds,
-  ...codingRuntimeKinds
-]
+export const managedRuntimeKinds: ManagedRuntimeKind[] = [...runtimeSetupKinds]
 const apiClient = createApiClient()
 
 function createDefaultRecord(): ManagedRuntimeRecord {
@@ -54,9 +50,7 @@ export function createDefaultManagedRuntimesState(): ManagedRuntimesState {
   return {
     bun: createDefaultRecord(),
     uv: createDefaultRecord(),
-    'agent-browser': createDefaultRecord(),
-    'codex-acp': createDefaultRecord(),
-    'claude-agent-acp': createDefaultRecord()
+    'agent-browser': createDefaultRecord()
   }
 }
 

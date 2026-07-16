@@ -6,6 +6,11 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   main: {
     build: {
+      // Pi is ESM-only. Bundle its SDK into Electron main instead of leaving a
+      // CommonJS require() that Electron cannot resolve at runtime.
+      externalizeDeps: {
+        exclude: ['@earendil-works/pi-coding-agent']
+      },
       rollupOptions: {
         input: {
           index: resolve('src/main/index.ts')

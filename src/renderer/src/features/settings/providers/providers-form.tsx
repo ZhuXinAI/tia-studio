@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
@@ -7,12 +7,6 @@ import { Field, FieldLabel, FieldDescription, FieldError } from '../../../compon
 import { Switch } from '../../../components/ui/switch'
 import { getVisibleProviderTypeOptions } from './provider-type-options'
 import type { ProviderType, SaveProviderInput } from './providers-query'
-import {
-  getManagedRuntimeStatus,
-  isManagedRuntimeReady,
-  type ManagedRuntimeKind,
-  type ManagedRuntimesState
-} from '../runtimes/managed-runtimes-query'
 
 const providerSelectClassName =
   'h-11 w-full rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 py-2 text-sm shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_44%,transparent)]'
@@ -23,9 +17,7 @@ const defaultModelByProviderType: Record<ProviderType, string> = {
   openrouter: 'openai/gpt-4o',
   gemini: 'gemini-2.0-flash-exp',
   anthropic: 'claude-3-5-sonnet-20241022',
-  ollama: 'llama3.2',
-  'codex-acp': 'default',
-  'claude-agent-acp': 'default'
+  ollama: 'llama3.2'
 }
 
 export type ProviderFormValues = {
@@ -43,18 +35,6 @@ export type ProviderFormValues = {
 
 export type ProviderFormErrors = {
   selectedModel?: string
-}
-
-function isAcpProviderType(type: ProviderType): type is 'codex-acp' | 'claude-agent-acp' {
-  return type === 'codex-acp' || type === 'claude-agent-acp'
-}
-
-function getAcpManagedRuntimeKind(type: ProviderType): ManagedRuntimeKind | null {
-  if (type === 'codex-acp' || type === 'claude-agent-acp') {
-    return type
-  }
-
-  return null
 }
 
 function getDefaultModelForProviderType(type: ProviderType): string {
@@ -114,23 +94,19 @@ function toProviderPayload(
   values: ProviderFormValues,
   showProviderModels: boolean
 ): SaveProviderInput {
-  const isAcpProvider = isAcpProviderType(values.type)
-
   return {
     name: values.name.trim(),
     type: values.type,
     apiKey: values.apiKey.trim(),
     apiHost: values.apiHost.trim() || undefined,
-    selectedModel: isAcpProvider
-      ? values.selectedModel.trim() || 'default'
-      : values.selectedModel.trim(),
+    selectedModel: values.selectedModel.trim(),
     selectedModelContextWindowTokens: parseContextWindowTokensInput(
       values.selectedModelContextWindowTokensText
     ),
     providerModels: showProviderModels
       ? parseProviderModelsInput(values.providerModelsText)
       : undefined,
-    supportsVision: isAcpProvider ? true : values.supportsVision,
+    supportsVision: values.supportsVision,
     enabled: values.enabled,
     isDefault: values.isDefault ?? false
   }
@@ -162,7 +138,6 @@ export function ProvidersForm({
     isDefault: initialValue?.isDefault ?? false
   })
   const [errors, setErrors] = useState<ProviderFormErrors>({})
-  const [managedRuntimeState, setManagedRuntimeState] = useState<ManagedRuntimesState | null>(null)
   const [hasProviderModels, setHasProviderModels] = useState<boolean>(() => {
     return Boolean(initialValue?.providerModelsText?.trim().length) || isPrebuilt
   })
@@ -174,32 +149,6 @@ export function ProvidersForm({
     () => getVisibleProviderTypeOptions(values.type),
     [values.type]
   )
-  const acpRuntimeKind = useMemo(() => getAcpManagedRuntimeKind(values.type), [values.type])
-  const isAcpProvider = acpRuntimeKind !== null
-  const acpRuntimeRecord =
-    acpRuntimeKind && managedRuntimeState ? managedRuntimeState[acpRuntimeKind] : null
-  const isAcpRuntimeReady = acpRuntimeRecord ? isManagedRuntimeReady(acpRuntimeRecord) : false
-
-  useEffect(() => {
-    if (!isAcpProvider) {
-      return
-    }
-
-    let isCancelled = false
-
-    void getManagedRuntimeStatus()
-      .then((nextState) => {
-        if (!isCancelled) {
-          setManagedRuntimeState(nextState)
-        }
-      })
-      .catch(() => undefined)
-
-    return () => {
-      isCancelled = true
-    }
-  }, [isAcpProvider])
-
   const updateValue = (key: keyof ProviderFormValues, value: string) => {
     setValues((prev) => {
       if (key === 'type') {
@@ -318,122 +267,86 @@ export function ProvidersForm({
           </select>
         </Field>
 
-        {isAcpProvider ? (
+        <>
           <Field>
-            <FieldLabel>{t('settings.providers.form.acpBinaryStatus')}</FieldLabel>
-            <div className="space-y-3 rounded-[1rem] border border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel-soft)_70%,transparent))] px-4 py-4 text-sm shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_42%,transparent)]">
-              <div className="space-y-1">
-                <p className="section-kicker text-[0.66rem]">Runtime status</p>
-                <p className="font-editorial text-[1.15rem] leading-none tracking-[-0.02em]">
-                  {t('settings.providers.form.acpBinaryStatus')}
-                </p>
-                <p className="text-muted-foreground">
-                  {t('settings.providers.form.acpBinaryDescription')}
-                </p>
-              </div>
-              <p>
-                <span className="font-medium">{t('settings.providers.form.acpStatus')}</span>{' '}
-                {acpRuntimeRecord?.status ?? t('settings.providers.form.acpStatusLoading')}
-              </p>
-              <p>
-                <span className="font-medium">{t('settings.providers.form.acpBinary')}</span>{' '}
-                {acpRuntimeRecord?.binaryPath ?? t('settings.providers.form.acpBinaryMissing')}
-              </p>
-              <p>
-                <span className="font-medium">{t('settings.providers.form.acpVersion')}</span>{' '}
-                {acpRuntimeRecord?.version ?? t('settings.providers.form.acpVersionMissing')}
-              </p>
-              <p className="text-muted-foreground">
-                {isAcpRuntimeReady
-                  ? t('settings.providers.form.acpReady')
-                  : `${t('settings.providers.form.acpNotReadyPrefix')} Configure the ACP binary outside AppV2 settings for now. ${t('settings.providers.form.acpNotReadySuffix')}`}
-              </p>
-            </div>
+            <FieldLabel htmlFor="provider-api-key">
+              {t('settings.providers.form.apiKey')}
+            </FieldLabel>
+            <Input
+              id="provider-api-key"
+              value={values.apiKey}
+              onChange={(event) => updateValue('apiKey', event.target.value)}
+              placeholder="sk-..."
+            />
           </Field>
-        ) : (
-          <>
-            <Field>
-              <FieldLabel htmlFor="provider-api-key">
-                {t('settings.providers.form.apiKey')}
-              </FieldLabel>
-              <Input
-                id="provider-api-key"
-                value={values.apiKey}
-                onChange={(event) => updateValue('apiKey', event.target.value)}
-                placeholder="sk-..."
-              />
-            </Field>
 
-            <Field>
-              <FieldLabel htmlFor="provider-api-host">
-                {t('settings.providers.form.apiHost')}
-              </FieldLabel>
-              <Input
-                id="provider-api-host"
-                value={values.apiHost}
-                onChange={(event) => updateValue('apiHost', event.target.value)}
-                placeholder="https://api.openai.com/v1"
-              />
-            </Field>
+          <Field>
+            <FieldLabel htmlFor="provider-api-host">
+              {t('settings.providers.form.apiHost')}
+            </FieldLabel>
+            <Input
+              id="provider-api-host"
+              value={values.apiHost}
+              onChange={(event) => updateValue('apiHost', event.target.value)}
+              placeholder="https://api.openai.com/v1"
+            />
+          </Field>
 
-            <Field>
-              <FieldLabel htmlFor="provider-selected-model">
-                {t('settings.providers.form.selectedModel')}
-              </FieldLabel>
-              <Input
-                id="provider-selected-model"
-                value={values.selectedModel}
-                onChange={(event) => updateValue('selectedModel', event.target.value)}
-                placeholder="gpt-5"
-              />
-              <FieldError>{errors.selectedModel}</FieldError>
-            </Field>
+          <Field>
+            <FieldLabel htmlFor="provider-selected-model">
+              {t('settings.providers.form.selectedModel')}
+            </FieldLabel>
+            <Input
+              id="provider-selected-model"
+              value={values.selectedModel}
+              onChange={(event) => updateValue('selectedModel', event.target.value)}
+              placeholder="gpt-5"
+            />
+            <FieldError>{errors.selectedModel}</FieldError>
+          </Field>
 
-            <Field>
-              <FieldLabel htmlFor="provider-context-window">
-                Model context window (optional)
+          <Field>
+            <FieldLabel htmlFor="provider-context-window">
+              Model context window (optional)
+            </FieldLabel>
+            <FieldDescription>
+              Used for the thread context usage indicator when the app cannot infer an exact limit
+              from provider metadata.
+            </FieldDescription>
+            <Input
+              id="provider-context-window"
+              type="number"
+              min="1"
+              step="1"
+              inputMode="numeric"
+              value={values.selectedModelContextWindowTokensText}
+              onChange={(event) =>
+                updateValue('selectedModelContextWindowTokensText', event.target.value)
+              }
+              placeholder="200000"
+            />
+          </Field>
+        </>
+
+        <Field>
+          <div className="flex items-center justify-between rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-4 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_46%,transparent)]">
+            <div className="space-y-0.5">
+              <FieldLabel htmlFor="provider-model-presets">
+                {t('settings.providers.form.includeModelPresets')}
               </FieldLabel>
               <FieldDescription>
-                Used for the thread context usage indicator when the app cannot infer an exact limit
-                from provider metadata.
+                Save a reusable model list for faster workspace setup.
               </FieldDescription>
-              <Input
-                id="provider-context-window"
-                type="number"
-                min="1"
-                step="1"
-                inputMode="numeric"
-                value={values.selectedModelContextWindowTokensText}
-                onChange={(event) =>
-                  updateValue('selectedModelContextWindowTokensText', event.target.value)
-                }
-                placeholder="200000"
-              />
-            </Field>
-          </>
-        )}
-
-        {!isAcpProvider ? (
-          <Field>
-            <div className="flex items-center justify-between rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-4 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_46%,transparent)]">
-              <div className="space-y-0.5">
-                <FieldLabel htmlFor="provider-model-presets">
-                  {t('settings.providers.form.includeModelPresets')}
-                </FieldLabel>
-                <FieldDescription>
-                  Save a reusable model list for faster workspace setup.
-                </FieldDescription>
-              </div>
-              <Switch
-                id="provider-model-presets"
-                checked={hasProviderModels}
-                onCheckedChange={setHasProviderModels}
-              />
             </div>
-          </Field>
-        ) : null}
+            <Switch
+              id="provider-model-presets"
+              checked={hasProviderModels}
+              onCheckedChange={setHasProviderModels}
+            />
+          </div>
+        </Field>
 
-        {showProviderModels && !isAcpProvider ? (
+        {showProviderModels ? (
           <Field>
             <FieldLabel htmlFor="provider-models-list">
               {t('settings.providers.form.providerModels')}
@@ -450,27 +363,25 @@ export function ProvidersForm({
           </Field>
         ) : null}
 
-        {!isAcpProvider ? (
-          <Field>
-            <div className="flex items-center justify-between rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-4 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_46%,transparent)]">
-              <div className="space-y-0.5">
-                <FieldLabel htmlFor="supports-vision">
-                  {t('settings.providers.form.supportsVision')}
-                </FieldLabel>
-                <FieldDescription>
-                  {t('settings.providers.form.supportsVisionDescription')}
-                </FieldDescription>
-              </div>
-              <Switch
-                id="supports-vision"
-                checked={values.supportsVision}
-                onCheckedChange={(checked) =>
-                  setValues((prev) => ({ ...prev, supportsVision: checked }))
-                }
-              />
+        <Field>
+          <div className="flex items-center justify-between rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-4 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_46%,transparent)]">
+            <div className="space-y-0.5">
+              <FieldLabel htmlFor="supports-vision">
+                {t('settings.providers.form.supportsVision')}
+              </FieldLabel>
+              <FieldDescription>
+                {t('settings.providers.form.supportsVisionDescription')}
+              </FieldDescription>
             </div>
-          </Field>
-        ) : null}
+            <Switch
+              id="supports-vision"
+              checked={values.supportsVision}
+              onCheckedChange={(checked) =>
+                setValues((prev) => ({ ...prev, supportsVision: checked }))
+              }
+            />
+          </div>
+        </Field>
 
         <Field>
           <div className="flex items-center justify-between rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-4 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_46%,transparent)]">
@@ -497,7 +408,7 @@ export function ProvidersForm({
             : 'mt-4 flex flex-wrap justify-end gap-2'
         }
       >
-        {onTestConnection && !isAcpProvider ? (
+        {onTestConnection ? (
           <Button
             type="button"
             variant="outline"

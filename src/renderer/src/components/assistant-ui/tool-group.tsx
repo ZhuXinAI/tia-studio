@@ -1,22 +1,24 @@
 'use client'
 
-import { memo, useCallback, useMemo, useRef, useState, type FC, type PropsWithChildren } from 'react'
+import { memo, useCallback, useRef, useState, type FC, type PropsWithChildren } from 'react'
 import { ChevronDownIcon, LoaderIcon } from 'lucide-react'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { useAuiState, useScrollLock } from '@assistant-ui/react'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
-import { useTranslation } from '../../i18n/use-app-translation'
-import { cn } from '../../lib/utils'
-import { chatSurfaceStyles } from './chat-surface'
+import { useScrollLock } from '@assistant-ui/react'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from '@renderer/components/ui/collapsible'
+import { cn } from '@renderer/lib/utils'
 
 const ANIMATION_DURATION = 200
 
-const toolGroupVariants = cva('aui-tool-group-root group/tool-group w-full my-3', {
+const toolGroupVariants = cva('aui-tool-group-root group/tool-group w-full', {
   variants: {
     variant: {
-      outline: `${chatSurfaceStyles.panelSubtle} rounded-lg py-3`,
+      outline: 'rounded-lg border py-3',
       ghost: '',
-      muted: `${chatSurfaceStyles.panelSubtle} rounded-lg py-3`
+      muted: 'border-muted-foreground/30 bg-muted/30 rounded-lg border py-3'
     }
   },
   defaultVariants: { variant: 'outline' }
@@ -31,49 +33,6 @@ export type ToolGroupRootProps = Omit<
     onOpenChange?: (open: boolean) => void
     defaultOpen?: boolean
   }
-
-type ToolGroupMessagePart = {
-  type: string
-  toolName?: string
-  status?: {
-    type?: string
-  }
-}
-
-type ToolNamePreview = {
-  visibleLabels: string[]
-  remainingCount: number
-}
-
-function formatToolName(value: string): string {
-  return value
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
-    .trim()
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-}
-
-export function buildToolNamePreview(toolNames: readonly string[], limit = 3): ToolNamePreview {
-  const counts = new Map<string, number>()
-
-  for (const toolName of toolNames) {
-    const formattedName = formatToolName(toolName)
-    if (!formattedName) {
-      continue
-    }
-
-    counts.set(formattedName, (counts.get(formattedName) ?? 0) + 1)
-  }
-
-  const visibleLabels = Array.from(counts.entries())
-    .map(([label, count]) => (count > 1 ? `${label} x${count}` : label))
-    .slice(0, limit)
-
-  return {
-    visibleLabels,
-    remainingCount: Math.max(0, counts.size - visibleLabels.length)
-  }
-}
 
 function ToolGroupRoot({
   className,
@@ -93,9 +52,7 @@ function ToolGroupRoot({
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
-      if (!open) {
-        lockScroll()
-      }
+      lockScroll()
       if (!isControlled) {
         setUncontrolledOpen(open)
       }
@@ -127,28 +84,20 @@ function ToolGroupRoot({
 function ToolGroupTrigger({
   count,
   active = false,
-  summary,
   className,
   ...props
 }: React.ComponentProps<typeof CollapsibleTrigger> & {
   count: number
   active?: boolean
-  summary?: string
 }) {
-  const { t } = useTranslation()
-  const baseLabel = t('assistantUi.toolGroup.label', { count })
-  const label = summary
-    ? t('assistantUi.toolGroup.labelWithNames', {
-        label: baseLabel,
-        names: summary
-      })
-    : baseLabel
+  const label = `${count} tool ${count === 1 ? 'call' : 'calls'}`
 
   return (
     <CollapsibleTrigger
       data-slot="tool-group-trigger"
       className={cn(
-        'aui-tool-group-trigger group/trigger flex items-center gap-2 text-sm transition-colors',
+        'aui-tool-group-trigger group/trigger flex origin-left items-center gap-2 text-sm transition-[color,scale] active:scale-[0.98]',
+        'group-data-[variant=ghost]/tool-group-root:text-muted-foreground group-data-[variant=ghost]/tool-group-root:hover:text-foreground group-data-[variant=ghost]/tool-group-root:py-1.5',
         'group-data-[variant=outline]/tool-group-root:w-full group-data-[variant=outline]/tool-group-root:px-4',
         'group-data-[variant=muted]/tool-group-root:w-full group-data-[variant=muted]/tool-group-root:px-4',
         className
@@ -158,23 +107,24 @@ function ToolGroupTrigger({
       {active && (
         <LoaderIcon
           data-slot="tool-group-trigger-loader"
-          className="aui-tool-group-trigger-loader size-4 shrink-0 animate-spin"
+          className="aui-tool-group-trigger-loader size-3 shrink-0 animate-spin [animation-duration:0.6s]"
         />
       )}
       <span
         data-slot="tool-group-trigger-label"
         className={cn(
-          'aui-tool-group-trigger-label-wrapper relative inline-block text-left font-medium leading-none',
+          'aui-tool-group-trigger-label-wrapper relative inline-block text-start leading-none font-medium',
+          'group-data-[variant=ghost]/tool-group-root:font-normal',
           'group-data-[variant=outline]/tool-group-root:grow',
           'group-data-[variant=muted]/tool-group-root:grow'
         )}
       >
-        <span>{label}</span>
+        <span className="text-xs">{label}</span>
         {active && (
           <span
             aria-hidden
             data-slot="tool-group-trigger-shimmer"
-            className="aui-tool-group-trigger-shimmer shimmer pointer-events-none absolute inset-0 motion-reduce:animate-none"
+            className="aui-tool-group-trigger-shimmer shimmer pointer-events-none absolute inset-0 text-xs motion-reduce:animate-none"
           >
             {label}
           </span>
@@ -183,10 +133,11 @@ function ToolGroupTrigger({
       <ChevronDownIcon
         data-slot="tool-group-trigger-chevron"
         className={cn(
-          'aui-tool-group-trigger-chevron size-4 shrink-0',
-          'transition-transform duration-(--animation-duration) ease-out',
-          'group-data-[state=closed]/trigger:-rotate-90',
-          'group-data-[state=open]/trigger:rotate-0'
+          'aui-tool-group-trigger-chevron size-3 shrink-0',
+          'transition-transform duration-(--animation-duration) ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none',
+          '-rotate-90',
+          'group-data-open/trigger:rotate-0',
+          'group-data-panel-open/trigger:rotate-0'
         )}
       />
     </CollapsibleTrigger>
@@ -203,13 +154,13 @@ function ToolGroupContent({
       data-slot="tool-group-content"
       className={cn(
         'aui-tool-group-content relative overflow-hidden text-sm outline-none',
-        'group/collapsible-content ease-out',
-        'data-[state=closed]:animate-collapsible-up',
-        'data-[state=open]:animate-collapsible-down',
-        'data-[state=closed]:fill-mode-forwards',
-        'data-[state=closed]:pointer-events-none',
-        'data-[state=open]:duration-(--animation-duration)',
-        'data-[state=closed]:duration-(--animation-duration)',
+        'group/collapsible-content ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:animate-none',
+        'data-closed:animate-collapsible-up',
+        'data-open:animate-collapsible-down',
+        'data-closed:fill-mode-forwards',
+        'data-closed:pointer-events-none',
+        'data-open:duration-(--animation-duration)',
+        'data-closed:duration-(--animation-duration)',
         className
       )}
       {...props}
@@ -217,8 +168,15 @@ function ToolGroupContent({
       <div
         className={cn(
           'mt-2 flex flex-col gap-2',
+          'group-data-[variant=ghost]/tool-group-root:mt-1 group-data-[variant=ghost]/tool-group-root:gap-1',
           'group-data-[variant=outline]/tool-group-root:mt-3 group-data-[variant=outline]/tool-group-root:border-t group-data-[variant=outline]/tool-group-root:px-4 group-data-[variant=outline]/tool-group-root:pt-3',
-          'group-data-[variant=muted]/tool-group-root:mt-3 group-data-[variant=muted]/tool-group-root:border-t group-data-[variant=muted]/tool-group-root:px-4 group-data-[variant=muted]/tool-group-root:pt-3'
+          'group-data-[variant=muted]/tool-group-root:mt-3 group-data-[variant=muted]/tool-group-root:border-t group-data-[variant=muted]/tool-group-root:px-4 group-data-[variant=muted]/tool-group-root:pt-3',
+          '[&>*]:animate-in [&>*]:fade-in-0 [&>*]:blur-in-[2px] [&>*]:slide-in-from-top-1 [&>*]:duration-(--animation-duration) [&>*]:ease-[cubic-bezier(0.32,0.72,0,1)]',
+          '[&>*]:motion-reduce:animate-none',
+          '[&>*:nth-child(2)]:[animation-delay:40ms]',
+          '[&>*:nth-child(3)]:[animation-delay:80ms]',
+          '[&>*:nth-child(4)]:[animation-delay:120ms]',
+          '[&>*:nth-child(n+5)]:[animation-delay:160ms]'
         )}
       >
         {children}
@@ -227,71 +185,33 @@ function ToolGroupContent({
   )
 }
 
-type ToolGroupComponent = FC<
-  PropsWithChildren<{ startIndex: number; endIndex: number; indices?: number[] }>
-> & {
+type ToolGroupComponent = FC<PropsWithChildren<{ startIndex: number; endIndex: number }>> & {
   Root: typeof ToolGroupRoot
   Trigger: typeof ToolGroupTrigger
   Content: typeof ToolGroupContent
 }
 
-const ToolGroupImpl: FC<
-  PropsWithChildren<{ startIndex: number; endIndex: number; indices?: number[] }>
-> = ({
+const ToolGroupImpl: FC<PropsWithChildren<{ startIndex: number; endIndex: number }>> = ({
   children,
   startIndex,
-  endIndex,
-  indices
+  endIndex
 }) => {
-  const { t } = useTranslation()
-  const resolvedIndices = useMemo(
-    () =>
-      indices ??
-      Array.from({ length: endIndex - startIndex + 1 }, (_, offset) => startIndex + offset),
-    [endIndex, indices, startIndex]
-  )
-  const messageParts = useAuiState(
-    (state) => state.message.parts as readonly ToolGroupMessagePart[]
-  )
-  const toolParts = useMemo(
-    () =>
-      resolvedIndices
-        .map((index) => messageParts[index])
-        .filter(
-          (part): part is ToolGroupMessagePart =>
-            part?.type === 'tool-call' && typeof part.toolName === 'string'
-        ),
-    [messageParts, resolvedIndices]
-  )
-  const toolCount = toolParts.length || resolvedIndices.length
-  const active = toolParts.some((part) => part.status?.type === 'running')
-  const preview = buildToolNamePreview(
-    toolParts
-      .map((part) => part.toolName ?? '')
-      .filter((toolName) => toolName.length > 0)
-      .reverse(),
-    1
-  )
-  const summary =
-    preview.visibleLabels.length > 0
-      ? [
-          preview.visibleLabels.join(', '),
-          preview.remainingCount > 0
-            ? t('assistantUi.toolGroup.more', { count: preview.remainingCount })
-            : null
-        ]
-          .filter((segment): segment is string => Boolean(segment))
-          .join(' ')
-      : undefined
+  const toolCount = endIndex - startIndex + 1
 
   return (
     <ToolGroupRoot>
-      <ToolGroupTrigger active={active} count={toolCount} summary={summary} />
+      <ToolGroupTrigger count={toolCount} />
       <ToolGroupContent>{children}</ToolGroupContent>
     </ToolGroupRoot>
   )
 }
 
+/**
+ * @deprecated This wrapper targets the legacy `components.ToolGroup` prop
+ * on `<MessagePrimitive.Parts>`. Use `<MessagePrimitive.GroupedParts>` with
+ * a `groupBy` returning `"group-tool"` and compose `ToolGroupRoot` /
+ * `ToolGroupTrigger` / `ToolGroupContent` directly. See `thread.tsx`.
+ */
 const ToolGroup = memo(ToolGroupImpl) as unknown as ToolGroupComponent
 
 ToolGroup.displayName = 'ToolGroup'

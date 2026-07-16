@@ -31,7 +31,7 @@ describe('api client', () => {
   it('parses structured JSON request errors into user-facing messages', async () => {
     const fetchSpy = vi.fn(
       async () =>
-        new Response(JSON.stringify({ ok: false, error: 'Assistant workspace is not configured' }), {
+        new Response(JSON.stringify({ ok: false, error: 'Pi workspace is not configured' }), {
           status: 409,
           headers: {
             'Content-Type': 'application/json'
@@ -42,8 +42,8 @@ describe('api client', () => {
 
     const client = createApiClient()
 
-    await expect(client.get('/v1/threads')).rejects.toThrow(
-      'Assistant workspace is not configured (status 409)'
+    await expect(client.get('/v1/agent/sessions')).rejects.toThrow(
+      'Pi workspace is not configured (status 409)'
     )
   })
 })

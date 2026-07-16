@@ -43,8 +43,6 @@ function buildChannel(overrides: Partial<ConfiguredChannelRecord>): ConfiguredCh
     type: 'lark',
     name: 'Ops Lark',
     groupRequireMention: true,
-    assistantId: null,
-    assistantName: null,
     status: 'disconnected',
     errorMessage: null,
     pairedCount: 0,

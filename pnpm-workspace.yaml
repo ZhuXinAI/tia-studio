@@ -2,6 +2,7 @@ packages:
   - .
 
 allowBuilds:
+  '@google/genai': false
   '@whiskeysockets/baileys': true
   bufferutil: true
   electron: true
@@ -11,9 +12,15 @@ allowBuilds:
   sharp: true
   wechat-kf-relay: true
 
+minimumReleaseAgeExclude:
+  - '@earendil-works/pi-agent-core@0.80.8'
+  - '@earendil-works/pi-ai@0.80.8'
+  - '@earendil-works/pi-coding-agent@0.80.8'
+  - '@earendil-works/pi-tui@0.80.8'
+
 onlyBuiltDependencies:
   - wechat-kf-relay
 
 supportedArchitectures:
-  cpu: [current, x64, arm64]
-  os: [current, darwin, win32]
+  cpu: [ current, x64, arm64 ]
+  os: [ current, darwin, win32 ]

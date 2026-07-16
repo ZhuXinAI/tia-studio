@@ -1,0 +1,3 @@
+# Gate risky Pi actions with an explicit Full Access mode
+
+Standard Pi execution permits routine reads, searches, edits, file creation, and non-destructive commands inside the selected workspace, while destructive commands, credential-file access, privilege escalation, and writes outside the workspace require an in-thread approval and TIA credential storage remains inaccessible. An explicit Full Access switch skips approval gates for users who choose Codex-like unrestricted local execution without moving process or credential control into the renderer; the choice is stored per thread, new threads default to Standard Access, and no global switch broadens unrelated workspaces.

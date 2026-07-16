@@ -14,13 +14,6 @@ export type AppStoredWorkspace = {
   updatedAt: string
 }
 
-export type AppWorkspaceMember = {
-  workspaceId: string
-  assistantId: string
-  sortOrder: number
-  createdAt: string
-}
-
 export type CreateWorkspaceRecordInput = {
   name: string
   rootPath: string
@@ -42,28 +35,6 @@ function parseWorkspaceRow(row: Record<string, unknown>): AppStoredWorkspace {
     supervisorModel: String(row.supervisor_model),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at)
-  }
-}
-
-function parseWorkspaceMemberRow(row: Record<string, unknown>): AppWorkspaceMember {
-  return {
-    workspaceId: String(row.workspace_id),
-    assistantId: String(row.assistant_id),
-    sortOrder: Number(row.sort_order),
-    createdAt: String(row.created_at)
-  }
-}
-
-function parseBuiltInAssistantMemberRow(
-  workspaceId: string,
-  row: Record<string, unknown>,
-  sortOrder: number
-): AppWorkspaceMember {
-  return {
-    workspaceId,
-    assistantId: String(row.id),
-    sortOrder,
-    createdAt: String(row.created_at)
   }
 }
 
@@ -206,53 +177,6 @@ export class WorkspaceRecordsRepository {
     )
 
     return this.getById(id)
-  }
-
-  async listMembers(workspaceId: string): Promise<AppWorkspaceMember[]> {
-    if (await this.isBuiltInDefaultWorkspace(workspaceId)) {
-      const assistantsResult = await this.db.execute(
-        `
-          SELECT id, created_at
-          FROM app_assistants
-          ORDER BY created_at ASC
-        `
-      )
-
-      return assistantsResult.rows.map((row, index) =>
-        parseBuiltInAssistantMemberRow(workspaceId, row as Record<string, unknown>, index)
-      )
-    }
-
-    const result = await this.db.execute(
-      `
-        SELECT workspace_id, assistant_id, sort_order, created_at
-        FROM app_workspace_members
-        WHERE workspace_id = ?
-        ORDER BY sort_order ASC, created_at ASC
-      `,
-      [workspaceId]
-    )
-
-    return result.rows.map((row) => parseWorkspaceMemberRow(row as Record<string, unknown>))
-  }
-
-  async replaceMembers(workspaceId: string, assistantIds: string[]): Promise<void> {
-    if (await this.isBuiltInDefaultWorkspace(workspaceId)) {
-      return
-    }
-
-    const uniqueAssistantIds = assistantIds.filter(
-      (assistantId, index) => assistantIds.indexOf(assistantId) === index
-    )
-
-    await this.db.execute('DELETE FROM app_workspace_members WHERE workspace_id = ?', [workspaceId])
-
-    for (const [index, assistantId] of uniqueAssistantIds.entries()) {
-      await this.db.execute(
-        'INSERT INTO app_workspace_members (workspace_id, assistant_id, sort_order) VALUES (?, ?, ?)',
-        [workspaceId, assistantId, index]
-      )
-    }
   }
 
   async delete(id: string): Promise<boolean> {

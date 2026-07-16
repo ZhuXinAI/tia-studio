@@ -1,6 +1,15 @@
 'use client'
 
-import { memo, useCallback, useRef, useState } from 'react'
+import {
+  createContext,
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState
+} from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { BrainIcon, ChevronDownIcon } from 'lucide-react'
 import {
@@ -9,24 +18,28 @@ import {
   type ReasoningMessagePartComponent,
   type ReasoningGroupComponent
 } from '@assistant-ui/react'
-import { MarkdownText } from './markdown-text'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible'
-import { cn } from '../../lib/utils'
-import { chatSurfaceStyles } from './chat-surface'
+import { MarkdownText } from '@renderer/components/assistant-ui/markdown-text'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from '@renderer/components/ui/collapsible'
+import { cn } from '@renderer/lib/utils'
 
 const ANIMATION_DURATION = 200
-const REASONING_SUMMARY_MAX_LENGTH = 96
+
+const ReasoningPreviewContext = createContext(false)
 
 const reasoningVariants = cva('aui-reasoning-root mb-4 w-full', {
   variants: {
     variant: {
-      outline: `${chatSurfaceStyles.panelSubtle} rounded-[24px] px-3 py-2`,
+      outline: 'rounded-lg border px-3 py-2',
       ghost: '',
-      muted: `${chatSurfaceStyles.panelSubtle} rounded-[24px] px-3 py-2`
+      muted: 'bg-muted/50 rounded-lg px-3 py-2'
     }
   },
   defaultVariants: {
-    variant: 'muted'
+    variant: 'outline'
   }
 })
 
@@ -38,52 +51,14 @@ export type ReasoningRootProps = Omit<
     open?: boolean
     onOpenChange?: (open: boolean) => void
     defaultOpen?: boolean
+    /**
+     * Whether the reasoning is currently streaming. When provided, it
+     * supersedes `defaultOpen`: the disclosure auto-opens while streaming
+     * with a bottom-pinned live preview, auto-collapses when streaming
+     * ends, and the first manual toggle takes over permanently.
+     */
+    streaming?: boolean
   }
-
-type ReasoningMessagePart = {
-  type?: string
-  text?: string
-}
-
-function normalizeReasoningLine(value: string): string | null {
-  const normalized = value
-    .replace(/\s+/g, ' ')
-    .replace(/^[>\-*\d.)\s]+/, '')
-    .trim()
-
-  return normalized.length > 0 ? normalized : null
-}
-
-function truncateReasoningSummary(value: string): string {
-  if (value.length <= REASONING_SUMMARY_MAX_LENGTH) {
-    return value
-  }
-
-  return `${value.slice(0, REASONING_SUMMARY_MAX_LENGTH - 3)}...`
-}
-
-function extractReasoningSummary(
-  parts: readonly ReasoningMessagePart[],
-  startIndex: number,
-  endIndex: number
-): string | null {
-  for (let index = endIndex; index >= startIndex; index -= 1) {
-    const part = parts[index]
-    if (part?.type !== 'reasoning' || typeof part.text !== 'string') {
-      continue
-    }
-
-    const lines = part.text.split(/\r?\n/)
-    for (let lineIndex = lines.length - 1; lineIndex >= 0; lineIndex -= 1) {
-      const normalizedLine = normalizeReasoningLine(lines[lineIndex] ?? '')
-      if (normalizedLine) {
-        return truncateReasoningSummary(normalizedLine)
-      }
-    }
-  }
-
-  return null
-}
 
 function ReasoningRoot({
   className,
@@ -91,23 +66,32 @@ function ReasoningRoot({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   defaultOpen = false,
+  streaming,
   children,
   ...props
 }: ReasoningRootProps) {
   const collapsibleRef = useRef<HTMLDivElement>(null)
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
+  const [initialOpen] = useState(defaultOpen)
+  const [userOpen, setUserOpen] = useState<boolean | null>(null)
   const lockScroll = useScrollLock(collapsibleRef, ANIMATION_DURATION)
 
   const isControlled = controlledOpen !== undefined
-  const isOpen = isControlled ? controlledOpen : uncontrolledOpen
+  const isOpen = isControlled ? controlledOpen : (userOpen ?? streaming ?? initialOpen)
+  const isAutoMode = isControlled || userOpen === null
+  const isPreview = streaming === true && isOpen && isAutoMode
+
+  const prevStreamingRef = useRef(streaming)
+  useLayoutEffect(() => {
+    if (prevStreamingRef.current === streaming) return
+    prevStreamingRef.current = streaming
+    if (!isControlled && userOpen === null) lockScroll()
+  }, [streaming, isControlled, userOpen, lockScroll])
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
-      if (!open) {
-        lockScroll()
-      }
+      lockScroll()
       if (!isControlled) {
-        setUncontrolledOpen(open)
+        setUserOpen(open)
       }
       controlledOnOpenChange?.(open)
     },
@@ -129,25 +113,44 @@ function ReasoningRoot({
       }
       {...props}
     >
-      {children}
+      <ReasoningPreviewContext.Provider value={isPreview}>
+        {children}
+      </ReasoningPreviewContext.Provider>
     </Collapsible>
   )
 }
 
-function ReasoningFade({ className, ...props }: React.ComponentProps<'div'>) {
+function ReasoningFade({
+  side = 'bottom',
+  className,
+  ...props
+}: React.ComponentProps<'div'> & { side?: 'top' | 'bottom' }) {
+  if (side === 'top') {
+    return (
+      <div
+        data-slot="reasoning-fade"
+        className={cn(
+          'aui-reasoning-fade pointer-events-none absolute inset-x-0 top-0 z-10 h-8',
+          'bg-[linear-gradient(to_bottom,var(--color-background),transparent)]',
+          'group-data-[variant=muted]/reasoning-root:bg-[linear-gradient(to_bottom,hsl(var(--muted)/0.5),transparent)]',
+          'fade-in-0 animate-in',
+          'duration-(--animation-duration)',
+          className
+        )}
+        {...props}
+      />
+    )
+  }
+
   return (
     <div
       data-slot="reasoning-fade"
       className={cn(
         'aui-reasoning-fade pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8',
-        'bg-[linear-gradient(to_top,var(--surface-panel-soft),transparent)]',
+        'bg-[linear-gradient(to_top,var(--color-background),transparent)]',
+        'group-data-[variant=muted]/reasoning-root:bg-[linear-gradient(to_top,hsl(var(--muted)/0.5),transparent)]',
         'fade-in-0 animate-in',
-        'group-data-[state=open]/collapsible-content:animate-out',
-        'group-data-[state=open]/collapsible-content:fade-out-0',
-        'group-data-[state=open]/collapsible-content:delay-[calc(var(--animation-duration)*0.75)]',
-        'group-data-[state=open]/collapsible-content:fill-mode-forwards',
         'duration-(--animation-duration)',
-        'group-data-[state=open]/collapsible-content:duration-(--animation-duration)',
         className
       )}
       {...props}
@@ -158,21 +161,19 @@ function ReasoningFade({ className, ...props }: React.ComponentProps<'div'>) {
 function ReasoningTrigger({
   active,
   duration,
-  summary,
   className,
   ...props
 }: React.ComponentProps<typeof CollapsibleTrigger> & {
   active?: boolean
   duration?: number
-  summary?: string
 }) {
-  const label = summary ? `Reasoning · ${summary}` : `Reasoning${duration ? ` (${duration}s)` : ''}`
+  const durationText = duration ? ` (${duration}s)` : ''
 
   return (
     <CollapsibleTrigger
       data-slot="reasoning-trigger"
       className={cn(
-        'aui-reasoning-trigger group/trigger chat-meta-pill inline-flex max-w-full items-center gap-2 px-3 py-1.5 text-sm transition-colors hover:text-foreground',
+        'aui-reasoning-trigger group/trigger text-muted-foreground hover:text-foreground flex max-w-[75%] origin-left items-center gap-2 py-1.5 text-sm transition-[color,scale] active:scale-[0.98]',
         className
       )}
       {...props}
@@ -183,16 +184,16 @@ function ReasoningTrigger({
       />
       <span
         data-slot="reasoning-trigger-label"
-        className="aui-reasoning-trigger-label-wrapper relative inline-block leading-none"
+        className="aui-reasoning-trigger-label-wrapper relative inline-block leading-none tabular-nums"
       >
-        <span>{label}</span>
+        <span>Reasoning{durationText}</span>
         {active ? (
           <span
             aria-hidden
             data-slot="reasoning-trigger-shimmer"
             className="aui-reasoning-trigger-shimmer shimmer pointer-events-none absolute inset-0 motion-reduce:animate-none"
           >
-            {label}
+            Reasoning{durationText}
           </span>
         ) : null}
       </span>
@@ -200,9 +201,10 @@ function ReasoningTrigger({
         data-slot="reasoning-trigger-chevron"
         className={cn(
           'aui-reasoning-trigger-chevron mt-0.5 size-4 shrink-0',
-          'transition-transform duration-(--animation-duration) ease-out',
-          'group-data-[state=closed]/trigger:-rotate-90',
-          'group-data-[state=open]/trigger:rotate-0'
+          'transition-transform duration-(--animation-duration) ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none',
+          '-rotate-90',
+          'group-data-open/trigger:rotate-0',
+          'group-data-panel-open/trigger:rotate-0'
         )}
       />
     </CollapsibleTrigger>
@@ -214,60 +216,82 @@ function ReasoningContent({
   children,
   ...props
 }: React.ComponentProps<typeof CollapsibleContent>) {
+  const isPreview = useContext(ReasoningPreviewContext)
+
   return (
     <CollapsibleContent
       data-slot="reasoning-content"
       className={cn(
-        'aui-reasoning-content relative overflow-hidden text-muted-foreground text-sm outline-none',
-        'group/collapsible-content ease-out',
-        'data-[state=closed]:animate-collapsible-up',
-        'data-[state=open]:animate-collapsible-down',
-        'data-[state=closed]:fill-mode-forwards',
-        'data-[state=closed]:pointer-events-none',
-        'data-[state=open]:duration-(--animation-duration)',
-        'data-[state=closed]:duration-(--animation-duration)',
+        'aui-reasoning-content text-muted-foreground relative overflow-hidden text-sm outline-none',
+        'group/collapsible-content ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:animate-none',
+        'data-closed:animate-collapsible-up',
+        'data-open:animate-collapsible-down',
+        'data-closed:fill-mode-forwards',
+        'data-closed:pointer-events-none',
+        'data-open:duration-(--animation-duration)',
+        'data-closed:duration-(--animation-duration)',
         className
       )}
       {...props}
     >
+      <ReasoningFade side="top" />
       {children}
-      <ReasoningFade />
+      {isPreview ? <ReasoningFade /> : null}
     </CollapsibleContent>
   )
 }
 
-function ReasoningText({ className, ...props }: React.ComponentProps<'div'>) {
+function ReasoningText({ className, children, ...props }: React.ComponentProps<'div'>) {
+  const isPreview = useContext(ReasoningPreviewContext)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isPreview) return
+    const scrollEl = scrollRef.current
+    const contentEl = contentRef.current
+    if (!scrollEl || !contentEl) return
+    const pin = () => {
+      scrollEl.scrollTop = scrollEl.scrollHeight
+    }
+    pin()
+    const observer = new ResizeObserver(pin)
+    observer.observe(contentEl)
+    return () => observer.disconnect()
+  }, [isPreview])
+
   return (
     <div
+      ref={scrollRef}
       data-slot="reasoning-text"
       className={cn(
-        'aui-reasoning-text relative z-0 max-h-64 overflow-y-auto border-l border-[color:var(--surface-border)] pt-3 pb-2 pl-4 leading-7',
-        'transform-gpu transition-[transform,opacity]',
-        'group-data-[state=open]/collapsible-content:animate-in',
-        'group-data-[state=closed]/collapsible-content:animate-out',
-        'group-data-[state=open]/collapsible-content:fade-in-0',
-        'group-data-[state=closed]/collapsible-content:fade-out-0',
-        'group-data-[state=open]/collapsible-content:slide-in-from-top-4',
-        'group-data-[state=closed]/collapsible-content:slide-out-to-top-4',
-        'group-data-[state=open]/collapsible-content:duration-(--animation-duration)',
-        'group-data-[state=closed]/collapsible-content:duration-(--animation-duration)',
+        'aui-reasoning-text relative z-0 max-h-64 overflow-y-auto ps-6 pt-2 pb-2 leading-relaxed text-pretty',
+        'transform-gpu transition-[transform,opacity] ease-[cubic-bezier(0.32,0.72,0,1)]',
+        'motion-reduce:animate-none',
+        'group-data-open/collapsible-content:animate-in',
+        'group-data-closed/collapsible-content:animate-out',
+        'group-data-open/collapsible-content:fade-in-0',
+        'group-data-closed/collapsible-content:fade-out-0',
+        'group-data-open/collapsible-content:slide-in-from-top-4',
+        'group-data-closed/collapsible-content:slide-out-to-top-4',
+        'group-data-open/collapsible-content:blur-in-[2px]',
+        'group-data-closed/collapsible-content:blur-out-[2px]',
+        'group-data-open/collapsible-content:duration-(--animation-duration)',
+        'group-data-closed/collapsible-content:duration-(--animation-duration)',
         className
       )}
       {...props}
-    />
+    >
+      <div ref={contentRef} className="aui-reasoning-text-content space-y-4">
+        {children}
+      </div>
+    </div>
   )
 }
 
 const ReasoningImpl: ReasoningMessagePartComponent = () => <MarkdownText />
 
 const ReasoningGroupImpl: ReasoningGroupComponent = ({ children, startIndex, endIndex }) => {
-  const reasoningSummary = useAuiState((state) =>
-    extractReasoningSummary(
-      state.message.parts as readonly ReasoningMessagePart[],
-      startIndex,
-      endIndex
-    )
-  )
   const isReasoningStreaming = useAuiState((s) => {
     if (s.message.status?.type !== 'running') return false
     const lastIndex = s.message.parts.length - 1
@@ -278,8 +302,8 @@ const ReasoningGroupImpl: ReasoningGroupComponent = ({ children, startIndex, end
   })
 
   return (
-    <ReasoningRoot defaultOpen={false}>
-      <ReasoningTrigger active={isReasoningStreaming} summary={reasoningSummary ?? undefined} />
+    <ReasoningRoot streaming={isReasoningStreaming}>
+      <ReasoningTrigger active={isReasoningStreaming} />
       <ReasoningContent aria-busy={isReasoningStreaming}>
         <ReasoningText>{children}</ReasoningText>
       </ReasoningContent>
@@ -302,6 +326,13 @@ Reasoning.Content = ReasoningContent
 Reasoning.Text = ReasoningText
 Reasoning.Fade = ReasoningFade
 
+/**
+ * @deprecated This wrapper targets the legacy `components.ReasoningGroup`
+ * prop on `<MessagePrimitive.Parts>`. Use `<MessagePrimitive.GroupedParts>`
+ * with a `groupBy` returning `"group-reasoning"` and compose `ReasoningRoot`
+ * / `ReasoningTrigger` / `ReasoningContent` / `ReasoningText` directly.
+ * See `thread.tsx` for an example.
+ */
 const ReasoningGroup = memo(ReasoningGroupImpl)
 ReasoningGroup.displayName = 'ReasoningGroup'
 

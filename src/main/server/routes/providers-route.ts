@@ -1,5 +1,4 @@
 import type { Hono } from 'hono'
-import type { AssistantsRepository } from '../../persistence/repos/assistants-repo'
 import type { ProvidersRepository } from '../../persistence/repos/providers-repo'
 import { testProviderConnection } from '../providers/provider-connection-checker'
 import {
@@ -10,19 +9,6 @@ import {
 
 type RegisterProvidersRouteOptions = {
   providersRepo: ProvidersRepository
-  assistantsRepo: AssistantsRepository
-  getManagedRuntimeStatus?: () => Promise<
-    Partial<
-      Record<
-        'codex-acp' | 'claude-agent-acp',
-        {
-          status: string
-          binaryPath: string | null
-          errorMessage: string | null
-        }
-      >
-    >
-  >
 }
 
 function parseJsonBodyErrorResponse() {
@@ -35,7 +21,7 @@ function parseJsonBodyErrorResponse() {
 export function registerProvidersRoute(app: Hono, options: RegisterProvidersRouteOptions): void {
   app.get('/v1/providers', async (context) => {
     const providers = await options.providersRepo.list()
-    return context.json(providers)
+    return context.json(providers.map((provider) => ({ ...provider, apiKey: '' })))
   })
 
   app.post('/v1/providers', async (context) => {
@@ -55,7 +41,7 @@ export function registerProvidersRoute(app: Hono, options: RegisterProvidersRout
     }
 
     const provider = await options.providersRepo.create(parsed.data)
-    return context.json(provider, 201)
+    return context.json({ ...provider, apiKey: '' }, 201)
   })
 
   app.patch('/v1/providers/:providerId', async (context) => {
@@ -74,15 +60,15 @@ export function registerProvidersRoute(app: Hono, options: RegisterProvidersRout
       )
     }
 
-    const provider = await options.providersRepo.update(
-      context.req.param('providerId'),
-      parsed.data
-    )
+    const provider = await options.providersRepo.update(context.req.param('providerId'), {
+      ...parsed.data,
+      ...(parsed.data.apiKey?.trim() ? { apiKey: parsed.data.apiKey } : { apiKey: undefined })
+    })
     if (!provider) {
       return context.json({ ok: false, error: 'Provider not found' }, 404)
     }
 
-    return context.json(provider)
+    return context.json({ ...provider, apiKey: '' })
   })
 
   app.delete('/v1/providers/:providerId', async (context) => {
@@ -90,14 +76,6 @@ export function registerProvidersRoute(app: Hono, options: RegisterProvidersRout
     const provider = await options.providersRepo.getById(providerId)
     if (!provider) {
       return context.json({ ok: false, error: 'Provider not found' }, 404)
-    }
-
-    const linkedAssistants = await options.assistantsRepo.countByProviderId(providerId)
-    if (linkedAssistants > 0) {
-      return context.json(
-        { ok: false, error: 'Provider is assigned to one or more assistants' },
-        409
-      )
     }
 
     await options.providersRepo.delete(providerId)
@@ -121,9 +99,7 @@ export function registerProvidersRoute(app: Hono, options: RegisterProvidersRout
     }
 
     try {
-      await testProviderConnection(parsed.data, {
-        getManagedRuntimeStatus: options.getManagedRuntimeStatus
-      })
+      await testProviderConnection(parsed.data)
       return context.json({ ok: true })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Connection check failed'

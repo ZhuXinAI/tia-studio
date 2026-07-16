@@ -7,8 +7,6 @@ type ProviderType =
   | 'gemini'
   | 'anthropic'
   | 'ollama'
-  | 'codex-acp'
-  | 'claude-agent-acp'
 
 type ProviderConnectionInput = {
   type: ProviderType
@@ -25,18 +23,6 @@ type ConnectionRequest = {
 type TestProviderConnectionOptions = {
   fetcher?: typeof fetch
   timeoutMs?: number
-  getManagedRuntimeStatus?: () => Promise<
-    Partial<
-      Record<
-        'codex-acp' | 'claude-agent-acp',
-        {
-          status: string
-          binaryPath: string | null
-          errorMessage: string | null
-        }
-      >
-    >
-  >
 }
 
 function joinUrl(baseUrl: string, path: string): string {
@@ -73,10 +59,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function parseModelIds(providerType: ProviderType, payload: unknown): string[] {
-  if (providerType === 'codex-acp' || providerType === 'claude-agent-acp') {
-    return []
-  }
-
   if (!isRecord(payload)) {
     return []
   }
@@ -139,12 +121,6 @@ function extractErrorMessage(payload: unknown): string | null {
 }
 
 function buildConnectionRequest(input: ProviderConnectionInput): ConnectionRequest {
-  if (input.type === 'codex-acp' || input.type === 'claude-agent-acp') {
-    return {
-      url: 'about:blank'
-    }
-  }
-
   if (input.type === 'openai' || input.type === 'openai-response' || input.type === 'openrouter') {
     return {
       url: joinUrl(
@@ -229,26 +205,6 @@ export async function testProviderConnection(
   input: ProviderConnectionInput,
   options: TestProviderConnectionOptions = {}
 ): Promise<void> {
-  if (input.type === 'codex-acp' || input.type === 'claude-agent-acp') {
-    const runtimeStatus = await options.getManagedRuntimeStatus?.()
-    const record = runtimeStatus?.[input.type]
-    const isReady =
-      Boolean(record?.binaryPath) &&
-      (record?.status === 'ready' ||
-        record?.status === 'custom-ready' ||
-        record?.status === 'update-available')
-
-    if (!isReady) {
-      const displayName = input.type === 'codex-acp' ? 'Codex ACP' : 'Claude Agent ACP'
-      throw new Error(
-        record?.errorMessage ??
-          `${displayName} runtime is not ready. Install or activate it in Settings > Coding.`
-      )
-    }
-
-    return
-  }
-
   const connectionRequest = buildConnectionRequest(input)
   const fetcher = options.fetcher ?? fetch
   const timeoutMs = options.timeoutMs ?? defaultTimeoutMs

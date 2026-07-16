@@ -32,8 +32,8 @@ type ResolvedDirectoryEntry = {
   isFile: boolean
 }
 
-export type AssistantSkillRecord = DesktopSkillRecord
-export type AssistantSkillCatalogPage = DesktopSkillCatalogPage
+export type SkillRecord = DesktopSkillRecord
+export type SkillCatalogPage = DesktopSkillCatalogPage
 
 type RecommendedSkillDefinition = {
   id: RecommendedSkillId
@@ -155,7 +155,7 @@ function normalizeSkillCatalogCursor(cursor: string | undefined): number {
   return parsed
 }
 
-function matchesSkillSearch(skill: AssistantSkillRecord, normalizedSearch: string): boolean {
+function matchesSkillSearch(skill: SkillRecord, normalizedSearch: string): boolean {
   if (normalizedSearch.length === 0) {
     return true
   }
@@ -210,9 +210,9 @@ function toSkillSources(input: {
 export async function listDiscoveredSkills(input?: {
   workspaceRootPath?: string | null
   includeWorkspaceSource?: boolean
-}): Promise<AssistantSkillRecord[]> {
+}): Promise<SkillRecord[]> {
   const includeWorkspaceSource = input?.includeWorkspaceSource !== false
-  const skills: AssistantSkillRecord[] = []
+  const skills: SkillRecord[] = []
   const skillSources = toSkillSources({
     workspaceRootPath: input?.workspaceRootPath,
     includeWorkspaceSource
@@ -266,7 +266,7 @@ export async function listDiscoveredSkillsPage(
     workspaceRootPath?: string | null
     includeWorkspaceSource?: boolean
   } & DesktopSkillCatalogQuery
-): Promise<AssistantSkillCatalogPage> {
+): Promise<SkillCatalogPage> {
   const skills = await listDiscoveredSkills({
     workspaceRootPath: input?.workspaceRootPath,
     includeWorkspaceSource: input?.includeWorkspaceSource
@@ -436,9 +436,7 @@ async function readSkillMetadata(skillFilePath: string): Promise<{
   }
 }
 
-export async function listAssistantSkills(
-  workspaceRootPath: string
-): Promise<AssistantSkillRecord[]> {
+export async function listSkills(workspaceRootPath: string): Promise<SkillRecord[]> {
   if (!toNonEmptyString(workspaceRootPath)) {
     return []
   }

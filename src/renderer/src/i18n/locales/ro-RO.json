@@ -7,29 +7,7 @@
       "updating": "Updating...",
       "openSettings": "Deschide setări"
     },
-    "legacySidebar": {
-      "title": "TIA Studio",
-      "subtitle": "Centru de control",
-      "workspace": "Spațiu de lucru",
-      "settings": "Setări",
-      "chat": "Chat",
-      "modelProviders": "Furnizori de modele",
-      "notes": "Note TIA Studio"
-    },
-    "chatSwitcher": {
-      "label": "Current assistant",
-      "ariaLabel": "Switch active assistant",
-      "loading": "Loading assistant...",
-      "fallback": "Assistant",
-      "searchPlaceholder": "Search assistants...",
-      "searchAriaLabel": "Search assistants",
-      "empty": "No assistants yet",
-      "createAction": "Create new assistant",
-      "manageAction": "Manage assistants & channels"
-    },
-    "context": {
-      "assistantsChannels": "Assistants & Channels"
-    }
+    "context": {}
   },
   "common": {
     "routeError": {
@@ -67,12 +45,8 @@
       "items": {
         "general": "General",
         "providers": "Furnizor de modele",
-        "security": "Security & Privacy",
         "channels": "Canale",
-        "webSearch": "Browsing",
         "mcpServers": "Servere MCP",
-        "coding": "Coding",
-        "runtimeSetup": "Configurare runtime",
         "display": "Afișare",
         "aboutFeedback": "Despre și feedback"
       }
@@ -84,39 +58,6 @@
       "languageDescription": "Alege cum afișează TIA Studio textul interfeței.",
       "systemDefault": "Implicit din sistem",
       "currentSystemLanguage": "Se utilizează în prezent {{language}} din setările sistemului."
-    },
-    "security": {
-      "title": "Security & Privacy",
-      "description": "Configure LLM guardrails for prompt injection and PII redaction.",
-      "loading": "Loading security settings...",
-      "guardrails": {
-        "title": "Guardrails",
-        "description": "Prompt injection checks run on incoming messages, and PII protection redacts both incoming and outgoing content."
-      },
-      "promptInjection": {
-        "title": "Prompt Injection Detector",
-        "description": "Detects jailbreaks, instruction overrides, and prompt injection attempts before the assistant model runs."
-      },
-      "pii": {
-        "title": "PII Detector",
-        "description": "Redacts personally identifiable information in user input and assistant output."
-      },
-      "provider": {
-        "title": "Guardrail Model",
-        "description": "Use each assistant's selected model by default, or choose a separate enabled provider for the detector checks.",
-        "label": "Security provider",
-        "defaultOption": "Use assistant model",
-        "hint": "When no override is selected, TIA Studio falls back to the assistant's configured model.",
-        "empty": "No enabled providers with a selected model are currently available."
-      },
-      "toasts": {
-        "promptInjectionEnabled": "Prompt injection protection is now enabled.",
-        "promptInjectionDisabled": "Prompt injection protection is now disabled.",
-        "piiEnabled": "PII protection is now enabled.",
-        "piiDisabled": "PII protection is now disabled.",
-        "providerUpdated": "Guardrail provider updated.",
-        "unexpectedError": "Unexpected request error"
-      }
     },
     "display": {
       "title": "Setări de afișare",
@@ -135,7 +76,7 @@
       "description": "Metadate aplicație, controale actualizare și linkuri utile pentru TIA Studio.",
       "cardTitle": "Despre",
       "repositoryAriaLabel": "Deschide repository open source",
-      "appDescription": "Un spațiu de lucru AI local pentru asistenți, furnizori și integrări de unelte.",
+      "appDescription": "A local-first workspace powered by the Pi coding agent.",
       "autoUpdate": {
         "label": "Actualizare automată",
         "enabledDescription": "Descarcă automat cea mai recentă versiune în fundal.",
@@ -190,7 +131,7 @@
           },
           "skills": {
             "title": "Step 2 · Install recommended skills",
-            "description": "Use the managed bunx command to install a few helpful skills globally for TIA Studio assistants.",
+            "description": "Use the managed bunx command to install helpful skills globally for TIA Studio.",
             "lockedDescription": "Finish the bun step first, then choose which starter skills to install.",
             "bunRequired": "Recommended skill install stays locked until bun is ready.",
             "installAction": "Install selected skills",
@@ -204,7 +145,7 @@
           },
           "findSkills": {
             "title": "find-skills",
-            "description": "Helps discover installable skills when the assistant needs extra capabilities."
+            "description": "Helps discover installable skills when extra capabilities are needed."
           },
           "status": {
             "loading": "Checking install status...",
@@ -244,44 +185,6 @@
         "clearSuccess": "Cleared {{kind}} runtime selection.",
         "skillsAlreadyInstalled": "Selected skills are already installed.",
         "skillsInstallSuccess": "Installed the selected recommended skills.",
-        "unexpectedError": "Unexpected managed runtime error"
-      }
-    },
-    "coding": {
-      "title": "Coding",
-      "description": "Install the ACP adapters that power Codex and Claude Agent inside TIA Studio, or point TIA Studio at a binary you already downloaded.",
-      "kindLabels": {
-        "codex-acp": "Codex ACP",
-        "claude-agent-acp": "Claude Agent ACP"
-      },
-      "kindDescription": {
-        "codexAcp": "Used for Codex-backed coding providers and assistant coding subagents.",
-        "claudeAgentAcp": "Used for Claude Agent-backed coding providers and assistant coding subagents."
-      },
-      "labels": {
-        "status": "Status:",
-        "source": "Source:",
-        "version": "Version:",
-        "binary": "Binary:"
-      },
-      "values": {
-        "notInstalled": "Not installed",
-        "noBinary": "No active binary selected",
-        "loading": "Loading coding runtime status..."
-      },
-      "buttons": {
-        "installLatest": "Install latest",
-        "installing": "Installing...",
-        "useDownloadedBinary": "Use downloaded binary",
-        "checkAgain": "Check again",
-        "checking": "Checking...",
-        "clearCustom": "Clear custom"
-      },
-      "toasts": {
-        "installSuccess": "Installed latest {{kind}} runtime.",
-        "pickSuccess": "Activated custom {{kind}} runtime.",
-        "checkSuccess": "Checked {{kind}} runtime status.",
-        "clearSuccess": "Cleared {{kind}} runtime selection.",
         "unexpectedError": "Unexpected managed runtime error"
       }
     },
@@ -349,9 +252,7 @@
         "openrouter": "OpenRouter",
         "gemini": "Gemini",
         "anthropic": "Anthropic",
-        "ollama": "Ollama",
-        "codex-acp": "Codex ACP",
-        "claude-agent-acp": "Claude Agent ACP"
+        "ollama": "Ollama"
       },
       "typeDescriptions": {
         "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
@@ -359,9 +260,7 @@
         "openrouter": "For OpenRouter's native AI SDK provider integration. This type is intended for built-in OpenRouter templates.",
         "gemini": "For Google Gemini models. Requires Google AI API key from ai.google.dev.",
         "anthropic": "For Claude models from Anthropic. Requires Anthropic API key from console.anthropic.com.",
-        "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint.",
-        "codex-acp": "Runs the Codex ACP adapter as a local AI SDK provider. Configure the binary in Coding settings.",
-        "claude-agent-acp": "Runs the Claude Agent ACP adapter as a local AI SDK provider. Configure the binary in Coding settings."
+        "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint."
       },
       "form": {
         "errors": {
@@ -378,18 +277,6 @@
         "apiKey": "API Key",
         "apiHost": "API Host",
         "selectedModel": "Selected Model",
-        "acpBinaryStatus": "ACP Binary Status",
-        "acpBinaryDescription": "This provider uses a local ACP executable instead of a remote HTTP endpoint.",
-        "acpStatus": "Status:",
-        "acpStatusLoading": "Loading...",
-        "acpBinary": "Binary:",
-        "acpBinaryMissing": "No ACP binary is currently ready",
-        "acpVersion": "Version:",
-        "acpVersionMissing": "No version detected",
-        "acpReady": "Binary is ready. You can save this provider and use it in assistants.",
-        "acpNotReadyPrefix": "Binary is not ready yet.",
-        "acpNotReadySuffix": "Install or select the executable there before relying on this provider.",
-        "acpOpenCoding": "Open Coding",
         "includeModelPresets": "Include optional provider model presets",
         "providerModels": "Provider Models (optional)",
         "providerModelsDescription": "Enter model names separated by commas or new lines",
@@ -415,10 +302,10 @@
         "applyJson": "Apply JSON"
       },
       "cardTitle": "MCP Servers",
-      "cardDescription": "These servers are shared globally and can be toggled per assistant later in the Tools tab.",
+      "cardDescription": "These servers are shared globally for local Pi sessions.",
       "loading": "Loading MCP servers...",
       "empty": "No MCP servers yet. Add one to create your local mcp.json list.",
-      "serverDescription": "Global status controls whether assistants can use this server.",
+      "serverDescription": "Global status controls whether Pi sessions can use this server.",
       "toggleAriaLabel": "Toggle {{id}}",
       "deleteAriaLabel": "Delete {{id}}",
       "managedRuntimeTitle": "This command can use TIA Studio managed runtimes.",
@@ -457,222 +344,12 @@
       "loading": "Se încarcă canalele...",
       "empty": "Nu există încă canale configurate.",
       "available": "Disponibil",
-      "boundTo": "Conectat la {{assistantName}}",
-      "removeDisabled": "Detașează mai întâi acest canal din asistentul curent înainte să îl elimini.",
       "loadFailed": "Nu s-au putut încărca canalele"
     }
   },
   "threads": {
     "sidebar": {
-      "eyebrow": "Chat principal",
-      "title": "Conversații",
-      "creatingThread": "Se creează thread-ul...",
-      "newThread": "Thread nou",
-      "assistants": "Asistenți",
-      "createAssistantAriaLabel": "Create assistant",
-      "assistantActionsAriaLabel": "Assistant actions for {{name}}",
-      "assistantSwitcherAriaLabel": "Switch assistants",
-      "backToAssistantsAriaLabel": "Back to assistants",
-      "currentAssistant": "Current assistant",
-      "deleteAssistantAriaLabel": "Delete assistant {{name}}",
-      "loadingAssistants": "Se încarcă asistenții...",
-      "emptyAssistants": "Nu există încă asistenți. Creează unul în Assistants.",
-      "emptyAssistantSearch": "No assistants match this search.",
-      "loadingThreads": "Se încarcă thread-urile...",
-      "emptyThreads": "Nu există încă thread-uri.",
-      "emptyThreadSearch": "No threads match this search.",
-      "threadsLabel": "Threads",
-      "searchAssistantsPlaceholder": "Search assistants...",
-      "searchAssistantsAriaLabel": "Search assistants",
-      "searchThreadsPlaceholder": "Search threads...",
-      "searchThreadsAriaLabel": "Search assistant threads",
-      "untitledThread": "Thread fără titlu",
-      "deleteThreadAriaLabel": "Delete thread {{title}}",
-      "deleteThreadPrompt": "Ștergi thread-ul?",
-      "cancelDeleteThreadAriaLabel": "Cancel delete thread {{title}}",
-      "confirmDeleteThreadAriaLabel": "Confirm delete thread {{title}}"
-    },
-    "chat": {
-      "defaultAssistantName": "Asistent",
-      "titleWithAssistant": "Chat cu {{name}}",
-      "tokens": "token-uri",
-      "tokenInput": "{{value}} intrare",
-      "tokenOutput": "{{value}} ieșire",
-      "remoteBadge": "Remote channel",
-      "remoteBadgeTitle": "Linked to a remote channel chat",
-      "newThread": "Thread nou",
-      "setupIncomplete": "Configurarea asistentului este incompletă. Deschide „Configurează” pentru a seta furnizorul și modelul înainte de a trimite mesaje.",
-      "composer": {
-        "placeholderSelectedThread": "Scrie un mesaj pentru acest thread...",
-        "placeholderSelectedAssistant": "Scrie un mesaj pentru a crea un thread nou...",
-        "placeholderEmpty": "Selectează un asistent pentru a începe conversația.",
-        "helperSelectedThread": "Mesajele curg prin thread-ul asistentului selectat.",
-        "helperSelectedAssistant": "Niciun thread selectat. Apasă Enter pentru a crea unul și a trimite.",
-        "helperEmpty": "Alege un asistent pentru a începe.",
-        "ariaLabel": "Message composer"
-      }
-    },
-    "messageList": {
-      "untitledFile": "Fișier fără titlu",
-      "you": "Tu",
-      "copyMessage": "Copiază mesajul",
-      "reloadMessage": "Reîncarcă",
-      "moreActions": "Mai multe acțiuni",
-      "exportMarkdown": "Exportă Markdown",
-      "empty": "Nu există încă mesaje.",
-      "loadingHistory": "Se încarcă istoricul thread-ului...",
-      "responding": "Asistentul răspunde..."
-    },
-    "assistantDialog": {
-      "closeCreateAriaLabel": "Close create assistant dialog",
-      "closeEditAriaLabel": "Close assistant config dialog",
-      "createTitle": "Creează asistent",
-      "editTitle": "Configurează {{name}}",
-      "createDescription": "Configurează calea workspace-ului și furnizorul înainte de a începe chatul.",
-      "editDescription": "Actualizează furnizorul, workspace-ul și promptul fără să părăsești chatul.",
-      "addProviderPrefix": "Adaugă mai întâi un furnizor aici:",
-      "providerLinkLabel": "Furnizor model",
-      "notFound": "Asistentul nu a fost găsit."
-    },
-    "toasts": {
-      "threadCreated": "Thread creat.",
-      "threadRemoved": "Thread șters.",
-      "assistantCreated": "Asistent creat.",
-      "assistantUpdated": "Configurarea asistentului a fost actualizată.",
-      "builtInDeleteBlocked": "Asistentul implicit integrat nu poate fi șters.",
-      "assistantDeleteFallbackLabel": "acest asistent",
-      "confirmAssistantDelete": "Ștergi „{{name}}”? Acest lucru va șterge și toate thread-urile lui.",
-      "assistantDeleted": "Asistent șters."
-    },
-    "readiness": {
-      "providerAssigned": "Provider is assigned to this assistant",
-      "providerModelSelected": "Provider has one selected model"
-    }
-  },
-  "assistants": {
-    "modelPicker": {
-      "title": "Selectează model",
-      "searchPlaceholder": "Caută modele...",
-      "empty": "Niciun model nu se potrivește căutării tale."
-    },
-    "editor": {
-      "editTitle": "Editează asistentul",
-      "createTitle": "Creează asistent",
-      "tabs": {
-        "essential": "Setări esențiale",
-        "coding": "Coding",
-        "tools": "Instrumente",
-        "skills": "Skills",
-        "channels": "Channels",
-        "activity": "Activity"
-      },
-      "fields": {
-        "name": "Nume",
-        "provider": "Furnizor",
-        "description": "Descriere",
-        "prompt": "Prompt",
-        "workspacePath": "Cale workspace (opțional)",
-        "maxSteps": "Pași maximi"
-      },
-      "placeholders": {
-        "name": "Research Copilot",
-        "description": "Cercetează fapte, găsește surse și validează afirmații.",
-        "prompt": "Ești un asistent util care răspunde cu pași conciși și practici.",
-        "workspacePath": "/Users/name/workspace",
-        "maxSteps": "100"
-      },
-      "selectProvider": "Selectează furnizor",
-      "workspacePathHelp": "Pentru a permite agentului să execute sarcini mai complexe, selectează un workspace.",
-      "openingButton": "Se deschide...",
-      "channels": {
-        "title": "Channel Setup",
-        "description": "Choose the channel this assistant owns and keep setup actions close to the selection flow.",
-        "empty": "No channel is currently selected for this assistant.",
-        "openSetupDescription": "Open setup here to manage pairings, QR login, or other channel-specific onboarding."
-      },
-      "codingAgent": {
-        "description": "Delegate coding-heavy tasks to a dedicated Codex or Claude Agent ACP subagent.",
-        "toggleForAriaLabel": "Enable {{kind}}",
-        "providerLabel": "Coding provider",
-        "selectProvider": "Select coding provider",
-        "availableStatus": "Installed",
-        "missingStatus": "Not installed",
-        "cwdPrefix": "This coding subagent will use this workspace as cwd:",
-        "runtimeDescriptions": {
-          "codex-acp": "Use Codex ACP for implementation-focused coding tasks inside the assistant workspace.",
-          "claude-agent-acp": "Use Claude Agent ACP for coding tasks inside the assistant workspace."
-        },
-        "workspaceRequired": "Set a workspace path before enabling the coding agent.",
-        "runtimeMissingPrefix": "The selected coding provider needs its ACP binary. Finish setup in",
-        "codingLinkLabel": "Coding",
-        "noProvidersPrefix": "No enabled Codex or Claude Agent ACP providers are available yet. Add one in",
-        "providersLinkLabel": "Model Provider",
-        "noProvidersSuffix": "and make sure its ACP binary is ready in Coding."
-      },
-      "toolsDescription": "Control the MCP servers and runtime-backed tools that this assistant can use.",
-      "runtimeNoteTitle": "Unele unelte MCP folosesc runtime-uri gestionate.",
-      "runtimeNotePrefix": "Finalizează configurarea în",
-      "runtimeNoteLinkLabel": "Runtime Setup",
-      "runtimeNoteSuffix": "dacă acest asistent depinde de unelte bazate pe npx, bun sau uv.",
-      "noMcpServersPrefix": "Nu există încă servere MCP configurate. Adaugă servere în",
-      "noMcpServersLinkLabel": "MCP Server Settings",
-      "mcpGloballyDisabled": "Dezactivat global în setările MCP Server.",
-      "toggleMcpAriaLabel": "Toggle {{serverId}} for this assistant",
-      "savingButton": "Se salvează...",
-      "updateButton": "Actualizează asistentul",
-      "createButton": "Creează asistent",
-      "errors": {
-        "nameRequired": "Numele asistentului este obligatoriu",
-        "providerRequired": "Furnizorul este obligatoriu",
-        "maxStepsInvalid": "Pașii maximi trebuie să fie un număr întreg pozitiv",
-        "codingProviderRequired": "Select a coding provider before enabling the coding agent",
-        "codingWorkspaceRequired": "A workspace path is required when the coding agent is enabled",
-        "workspacePickerFailed": "Nu s-a putut alege folderul workspace-ului"
-      },
-      "skillSources": {
-        "workspace": "Workspace",
-        "globalClaude": "Global ~/.claude/skills",
-        "globalAgent": "Global ~/.agent/skills"
-      },
-      "skills": {
-        "description": "Skills are loaded from `~/.claude/skills`, `~/.agent/skills`, and `./skills`.",
-        "workspaceRequired": "Set a workspace path first to load workspace skills.",
-        "loading": "Loading skills...",
-        "empty": "No skills found in the configured global or workspace folders.",
-        "noDescription": "No description found in SKILL.md.",
-        "removeAriaLabel": "Remove skill {{name}}",
-        "removingButton": "Removing...",
-        "removeButton": "Remove",
-        "readOnly": "Read-only"
-      }
-    }
-  },
-  "assistantUi": {
-    "markdown": {
-      "copyCode": "Copiază"
-    },
-    "attachment": {
-      "imagePreviewAlt": "Image preview",
-      "dialogTitle": "Image Attachment Preview",
-      "previewAlt": "Attachment preview",
-      "attachmentAriaLabel": "{{type}} attachment",
-      "removeFile": "Elimină fișierul",
-      "addAttachment": "Adaugă atașament",
-      "typeLabels": {
-        "image": "Image",
-        "document": "Document",
-        "file": "File"
-      }
-    },
-    "toolGroup": {
-      "label_one": "{{count}} apel de instrument",
-      "label_other": "{{count}} apeluri de instrument"
-    },
-    "image": {
-      "contentAlt": "Image content",
-      "previewAlt": "Image preview",
-      "zoomAriaLabel": "Apasă pentru a mări imaginea",
-      "closeZoomAriaLabel": "Închide imaginea mărită"
+      "untitledThread": "Thread fără titlu"
     }
   }
 }

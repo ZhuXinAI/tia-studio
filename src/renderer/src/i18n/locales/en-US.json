@@ -7,29 +7,7 @@
       "updating": "Updating...",
       "openSettings": "Open settings"
     },
-    "legacySidebar": {
-      "title": "TIA Studio",
-      "subtitle": "Control Center",
-      "workspace": "Workspace",
-      "settings": "Settings",
-      "chat": "Chat",
-      "modelProviders": "Model Providers",
-      "notes": "TIA Studio Notes"
-    },
-    "chatSwitcher": {
-      "label": "Assistant",
-      "ariaLabel": "Switch active assistant",
-      "loading": "Loading assistant...",
-      "fallback": "Assistant",
-      "searchPlaceholder": "Search assistants...",
-      "searchAriaLabel": "Search assistants",
-      "empty": "No assistants yet",
-      "createAction": "Create new assistant",
-      "manageAction": "Manage assistants & channels"
-    },
-    "context": {
-      "assistantsChannels": "Assistants & Channels"
-    }
+    "context": {}
   },
   "common": {
     "routeError": {
@@ -67,12 +45,8 @@
       "items": {
         "general": "General",
         "providers": "Model Provider",
-        "security": "Security & Privacy",
         "channels": "Channels",
-        "webSearch": "Browsing",
         "mcpServers": "MCP Servers",
-        "coding": "Coding",
-        "runtimeSetup": "Runtime Setup",
         "display": "Display",
         "aboutFeedback": "About & Feedback"
       }
@@ -84,39 +58,6 @@
       "languageDescription": "Choose how TIA Studio displays renderer UI text.",
       "systemDefault": "System Default",
       "currentSystemLanguage": "Currently using {{language}} from your system settings."
-    },
-    "security": {
-      "title": "Security & Privacy",
-      "description": "Configure LLM guardrails for prompt injection and PII redaction.",
-      "loading": "Loading security settings...",
-      "guardrails": {
-        "title": "Guardrails",
-        "description": "Prompt injection checks run on incoming messages, and PII protection redacts both incoming and outgoing content."
-      },
-      "promptInjection": {
-        "title": "Prompt Injection Detector",
-        "description": "Detects jailbreaks, instruction overrides, and prompt injection attempts before the assistant model runs."
-      },
-      "pii": {
-        "title": "PII Detector",
-        "description": "Redacts personally identifiable information in user input and assistant output."
-      },
-      "provider": {
-        "title": "Guardrail Model",
-        "description": "Use each assistant's selected model by default, or choose a separate enabled provider for the detector checks.",
-        "label": "Security provider",
-        "defaultOption": "Use assistant model",
-        "hint": "When no override is selected, TIA Studio falls back to the assistant's configured model.",
-        "empty": "No enabled providers with a selected model are currently available."
-      },
-      "toasts": {
-        "promptInjectionEnabled": "Prompt injection protection is now enabled.",
-        "promptInjectionDisabled": "Prompt injection protection is now disabled.",
-        "piiEnabled": "PII protection is now enabled.",
-        "piiDisabled": "PII protection is now disabled.",
-        "providerUpdated": "Guardrail provider updated.",
-        "unexpectedError": "Unexpected request error"
-      }
     },
     "display": {
       "title": "Display Settings",
@@ -135,7 +76,7 @@
       "description": "App metadata, update controls, and helpful links for TIA Studio.",
       "cardTitle": "About",
       "repositoryAriaLabel": "Open source repository",
-      "appDescription": "A local-first AI workspace for assistants, providers, and tool integrations.",
+      "appDescription": "A local-first workspace powered by the Pi coding agent.",
       "autoUpdate": {
         "label": "Auto Update",
         "enabledDescription": "Automatically download the latest release in the background.",
@@ -190,7 +131,7 @@
           },
           "skills": {
             "title": "Step 2 · Install recommended skills",
-            "description": "Use the managed bunx command to install a few helpful skills globally for TIA Studio assistants.",
+            "description": "Use the managed bunx command to install helpful skills globally for TIA Studio.",
             "lockedDescription": "Finish the bun step first, then choose which starter skills to install.",
             "bunRequired": "Recommended skill install stays locked until bun is ready.",
             "installAction": "Install selected skills",
@@ -204,7 +145,7 @@
           },
           "findSkills": {
             "title": "find-skills",
-            "description": "Helps discover installable skills when the assistant needs extra capabilities."
+            "description": "Helps discover installable skills when extra capabilities are needed."
           },
           "status": {
             "loading": "Checking install status...",
@@ -244,44 +185,6 @@
         "clearSuccess": "Cleared {{kind}} runtime selection.",
         "skillsAlreadyInstalled": "Selected skills are already installed.",
         "skillsInstallSuccess": "Installed the selected recommended skills.",
-        "unexpectedError": "Unexpected managed runtime error"
-      }
-    },
-    "coding": {
-      "title": "Coding",
-      "description": "Install the ACP adapters that power Codex and Claude Agent inside TIA Studio, or point TIA Studio at a binary you already downloaded.",
-      "kindLabels": {
-        "codex-acp": "Codex ACP",
-        "claude-agent-acp": "Claude Agent ACP"
-      },
-      "kindDescription": {
-        "codexAcp": "Used for Codex-backed coding providers and assistant coding subagents.",
-        "claudeAgentAcp": "Used for Claude Agent-backed coding providers and assistant coding subagents."
-      },
-      "labels": {
-        "status": "Status:",
-        "source": "Source:",
-        "version": "Version:",
-        "binary": "Binary:"
-      },
-      "values": {
-        "notInstalled": "Not installed",
-        "noBinary": "No active binary selected",
-        "loading": "Loading coding runtime status..."
-      },
-      "buttons": {
-        "installLatest": "Install latest",
-        "installing": "Installing...",
-        "useDownloadedBinary": "Use downloaded binary",
-        "checkAgain": "Check again",
-        "checking": "Checking...",
-        "clearCustom": "Clear custom"
-      },
-      "toasts": {
-        "installSuccess": "Installed latest {{kind}} runtime.",
-        "pickSuccess": "Activated custom {{kind}} runtime.",
-        "checkSuccess": "Checked {{kind}} runtime status.",
-        "clearSuccess": "Cleared {{kind}} runtime selection.",
         "unexpectedError": "Unexpected managed runtime error"
       }
     },
@@ -349,9 +252,7 @@
         "openrouter": "OpenRouter",
         "gemini": "Gemini",
         "anthropic": "Anthropic",
-        "ollama": "Ollama",
-        "codex-acp": "Codex ACP",
-        "claude-agent-acp": "Claude Agent ACP"
+        "ollama": "Ollama"
       },
       "typeDescriptions": {
         "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
@@ -359,9 +260,7 @@
         "openrouter": "For OpenRouter's native AI SDK provider integration. This type is intended for built-in OpenRouter templates.",
         "gemini": "For Google Gemini models. Requires Google AI API key from ai.google.dev.",
         "anthropic": "For Claude models from Anthropic. Requires Anthropic API key from console.anthropic.com.",
-        "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint.",
-        "codex-acp": "Runs the Codex ACP adapter as a local AI SDK provider. Configure the binary in Coding settings.",
-        "claude-agent-acp": "Runs the Claude Agent ACP adapter as a local AI SDK provider. Configure the binary in Coding settings."
+        "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint."
       },
       "form": {
         "errors": {
@@ -378,18 +277,6 @@
         "apiKey": "API Key",
         "apiHost": "API Host",
         "selectedModel": "Selected Model",
-        "acpBinaryStatus": "ACP Binary Status",
-        "acpBinaryDescription": "This provider uses a local ACP executable instead of a remote HTTP endpoint.",
-        "acpStatus": "Status:",
-        "acpStatusLoading": "Loading...",
-        "acpBinary": "Binary:",
-        "acpBinaryMissing": "No ACP binary is currently ready",
-        "acpVersion": "Version:",
-        "acpVersionMissing": "No version detected",
-        "acpReady": "Binary is ready. You can save this provider and use it for new chats.",
-        "acpNotReadyPrefix": "Binary is not ready yet.",
-        "acpNotReadySuffix": "Install or select the executable there before relying on this provider.",
-        "acpOpenCoding": "Open Coding",
         "includeModelPresets": "Include optional provider model presets",
         "providerModels": "Provider Models (optional)",
         "providerModelsDescription": "Enter model names separated by commas or new lines",
@@ -415,10 +302,10 @@
         "applyJson": "Apply JSON"
       },
       "cardTitle": "MCP Servers",
-      "cardDescription": "These servers are shared globally and can be toggled per assistant later in the Tools tab.",
+      "cardDescription": "These servers are shared globally for local Pi sessions.",
       "loading": "Loading MCP servers...",
       "empty": "No MCP servers yet. Add one to create your local mcp.json list.",
-      "serverDescription": "Global status controls whether assistants can use this server.",
+      "serverDescription": "Global status controls whether Pi sessions can use this server.",
       "toggleAriaLabel": "Toggle {{id}}",
       "deleteAriaLabel": "Delete {{id}}",
       "managedRuntimeTitle": "This command can use TIA Studio managed runtimes.",
@@ -477,8 +364,6 @@
       "empty": "No configured channels yet.",
       "available": "Ready to assign",
       "inUse": "Currently assigned",
-      "boundTo": "Assigned to {{assistantName}}",
-      "removeDisabled": "This channel is still assigned. Clear the current assignment before removing it.",
       "pairingSummary": "Paired {{pairedCount}} · Pending {{pendingCount}}",
       "loadFailed": "Failed to load channels",
       "createDescription": "Create a reusable Discord, WhatsApp, Wechat, Telegram, Lark, or Wecom channel connection.",
@@ -524,217 +409,7 @@
   },
   "threads": {
     "sidebar": {
-      "eyebrow": "Main Chat",
-      "title": "Conversations",
-      "creatingThread": "Creating thread...",
-      "newThread": "New Thread",
-      "assistants": "Assistants",
-      "createAssistantAriaLabel": "Create assistant",
-      "assistantActionsAriaLabel": "Assistant actions for {{name}}",
-      "assistantSwitcherAriaLabel": "Switch assistants",
-      "backToAssistantsAriaLabel": "Back to assistants",
-      "currentAssistant": "Current assistant",
-      "deleteAssistantAriaLabel": "Delete assistant {{name}}",
-      "loadingAssistants": "Loading chats...",
-      "emptyAssistants": "No assistants yet. Create one in Assistants.",
-      "emptyAssistantSearch": "No assistants match this search.",
-      "loadingThreads": "Loading threads...",
-      "emptyThreads": "No threads yet.",
-      "emptyThreadSearch": "No threads match this search.",
-      "threadsLabel": "Threads",
-      "searchAssistantsPlaceholder": "Search assistants...",
-      "searchAssistantsAriaLabel": "Search assistants",
-      "searchThreadsPlaceholder": "Search threads...",
-      "searchThreadsAriaLabel": "Search threads",
-      "untitledThread": "Untitled Thread",
-      "deleteThreadAriaLabel": "Delete thread {{title}}",
-      "deleteThreadPrompt": "Delete thread?",
-      "cancelDeleteThreadAriaLabel": "Cancel delete thread {{title}}",
-      "confirmDeleteThreadAriaLabel": "Confirm delete thread {{title}}"
-    },
-    "chat": {
-      "defaultAssistantName": "TIA",
-      "titleWithAssistant": "Chat with {{name}}",
-      "tokens": "tokens",
-      "tokenInput": "{{value}} in",
-      "tokenOutput": "{{value}} out",
-      "remoteBadge": "Remote channel",
-      "remoteBadgeTitle": "Linked to a remote channel chat",
-      "newThread": "New thread",
-      "setupIncomplete": "Chat setup is incomplete. Choose a provider and model before sending messages.",
-      "composer": {
-        "placeholderSelectedThread": "Type a message for this thread...",
-        "placeholderSelectedAssistant": "Type a message to create a new thread...",
-        "placeholderEmpty": "Open or create a chat to get started.",
-        "helperSelectedThread": "Messages stream in this thread.",
-        "helperSelectedAssistant": "No thread selected. Press Enter to start one and send.",
-        "helperEmpty": "Choose a chat to begin.",
-        "ariaLabel": "Message composer"
-      }
-    },
-    "messageList": {
-      "untitledFile": "Untitled file",
-      "you": "You",
-      "copyMessage": "Copy message",
-      "reloadMessage": "Reload",
-      "moreActions": "More actions",
-      "exportMarkdown": "Export Markdown",
-      "empty": "No messages yet.",
-      "loadingHistory": "Loading thread history...",
-      "responding": "Assistant is responding..."
-    },
-    "assistantDialog": {
-      "closeCreateAriaLabel": "Close create assistant dialog",
-      "closeEditAriaLabel": "Close assistant config dialog",
-      "createTitle": "Create Assistant",
-      "editTitle": "Configure {{name}}",
-      "createDescription": "Configure workspace path and provider before starting chat.",
-      "editDescription": "Update provider, workspace, and prompt without leaving chat.",
-      "addProviderPrefix": "Add a provider first in",
-      "providerLinkLabel": "Model Provider",
-      "notFound": "Assistant not found."
-    },
-    "toasts": {
-      "threadCreated": "Thread created.",
-      "threadRemoved": "Thread removed.",
-      "assistantCreated": "Assistant created.",
-      "assistantUpdated": "Assistant configuration updated.",
-      "builtInDeleteBlocked": "Built-in default assistant cannot be deleted.",
-      "assistantDeleteFallbackLabel": "this assistant",
-      "confirmAssistantDelete": "Delete \"{{name}}\"? This will also delete all of its threads.",
-      "assistantDeleted": "Assistant deleted."
-    },
-    "readiness": {
-      "providerAssigned": "Provider is assigned to this assistant",
-      "providerModelSelected": "Provider has one selected model"
-    }
-  },
-  "assistants": {
-    "modelPicker": {
-      "title": "Select Model",
-      "searchPlaceholder": "Search models...",
-      "empty": "No models match your search."
-    },
-    "editor": {
-      "editTitle": "Edit Assistant",
-      "createTitle": "Create Assistant",
-      "tabs": {
-        "essential": "Essential Settings",
-        "coding": "Coding",
-        "tools": "Tools",
-        "skills": "Skills",
-        "channels": "Channels",
-        "activity": "Activity"
-      },
-      "fields": {
-        "name": "Name",
-        "provider": "Provider",
-        "description": "Description",
-        "prompt": "Prompt",
-        "workspacePath": "Workspace Path (Optional)",
-        "maxSteps": "Max Steps"
-      },
-      "placeholders": {
-        "name": "Research Copilot",
-        "description": "Researches facts, finds sources, and validates claims.",
-        "prompt": "You are a helpful assistant that answers with concise, practical steps.",
-        "workspacePath": "/Users/name/workspace",
-        "maxSteps": "100"
-      },
-      "selectProvider": "Select provider",
-      "workspacePathHelp": "To allow the agent to perform more complex tasks, select a workspace.",
-      "openingButton": "Opening...",
-      "channels": {
-        "title": "Channel Setup",
-        "description": "Choose the channel this assistant owns and keep setup actions close to the selection flow.",
-        "empty": "No channel is currently selected for this assistant.",
-        "openSetupDescription": "Open setup here to manage pairings, QR login, or other channel-specific onboarding."
-      },
-      "codingAgent": {
-        "description": "Enable dedicated Codex ACP and Claude Agent ACP coding subagents for repository work. Each subagent shares this assistant's workspace as its working directory.",
-        "toggleForAriaLabel": "Enable {{kind}}",
-        "providerLabel": "Subagent provider",
-        "selectProvider": "Select coding provider",
-        "availableStatus": "Installed",
-        "missingStatus": "Not installed",
-        "cwdPrefix": "This coding subagent will use this workspace as cwd:",
-        "runtimeDescriptions": {
-          "codex-acp": "Use Codex ACP for implementation-focused coding tasks inside the assistant workspace.",
-          "claude-agent-acp": "Use Claude Agent ACP for coding tasks inside the assistant workspace."
-        },
-        "workspaceRequired": "Set a workspace path before enabling the coding agent.",
-        "runtimeMissingPrefix": "The selected coding provider needs its ACP binary. Finish setup in",
-        "codingLinkLabel": "Coding",
-        "noProvidersPrefix": "No enabled Codex or Claude Agent ACP providers are available yet. Add one in",
-        "providersLinkLabel": "Model Provider",
-        "noProvidersSuffix": "and make sure its ACP binary is ready in Coding."
-      },
-      "toolsDescription": "Control the MCP servers and runtime-backed tools that this assistant can use.",
-      "runtimeNoteTitle": "Some MCP tools use managed runtimes.",
-      "runtimeNotePrefix": "Finish setup in",
-      "runtimeNoteLinkLabel": "Runtime Setup",
-      "runtimeNoteSuffix": "Use it if this assistant depends on npx, bun, uv, or agent-browser-backed tools.",
-      "noMcpServersPrefix": "No MCP servers configured yet. Add servers in",
-      "noMcpServersLinkLabel": "MCP Server Settings",
-      "mcpGloballyDisabled": "Disabled globally in MCP Server Settings.",
-      "toggleMcpAriaLabel": "Toggle {{serverId}} for this assistant",
-      "savingButton": "Saving...",
-      "updateButton": "Update Assistant",
-      "createButton": "Create Assistant",
-      "errors": {
-        "nameRequired": "Assistant name is required",
-        "providerRequired": "Provider is required",
-        "maxStepsInvalid": "Max steps must be a positive whole number",
-        "codingProviderRequired": "Select a coding provider before enabling the coding agent",
-        "codingWorkspaceRequired": "A workspace path is required when the coding agent is enabled",
-        "workspacePickerFailed": "Unable to pick workspace folder"
-      },
-      "skillSources": {
-        "workspace": "Workspace",
-        "globalClaude": "Global ~/.claude/skills",
-        "globalAgent": "Global ~/.agent/skills"
-      },
-      "skills": {
-        "description": "Skills are loaded from `~/.claude/skills`, `~/.agent/skills`, and `./skills`.",
-        "workspaceRequired": "Set a workspace path first to load workspace skills.",
-        "loading": "Loading skills...",
-        "empty": "No skills found in the configured global or workspace folders.",
-        "noDescription": "No description found in SKILL.md.",
-        "removeAriaLabel": "Remove skill {{name}}",
-        "removingButton": "Removing...",
-        "removeButton": "Remove",
-        "readOnly": "Read-only"
-      }
-    }
-  },
-  "assistantUi": {
-    "markdown": {
-      "copyCode": "Copy"
-    },
-    "attachment": {
-      "imagePreviewAlt": "Image preview",
-      "dialogTitle": "Image Attachment Preview",
-      "previewAlt": "Attachment preview",
-      "attachmentAriaLabel": "{{type}} attachment",
-      "removeFile": "Remove file",
-      "addAttachment": "Add Attachment",
-      "typeLabels": {
-        "image": "Image",
-        "document": "Document",
-        "file": "File"
-      }
-    },
-    "toolGroup": {
-      "label_one": "{{count}} tool call",
-      "label_other": "{{count}} tool calls",
-      "labelWithNames": "{{label}} · {{names}}",
-      "more": "+{{count}} more"
-    },
-    "image": {
-      "contentAlt": "Image content",
-      "previewAlt": "Image preview",
-      "zoomAriaLabel": "Click to zoom image",
-      "closeZoomAriaLabel": "Close zoomed image"
+      "untitledThread": "Untitled Thread"
     }
   }
 }

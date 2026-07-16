@@ -82,20 +82,11 @@ describe('app router', () => {
     expect(html).toContain('Added providers')
     expect(html).toContain('Search providers...')
     expect(html).toContain('Model Provider')
-    expect(html).toContain('Security &amp; Privacy')
     expect(html).toContain('MCP Servers')
     expect(html).toContain('About &amp; Feedback')
     expect(html).not.toContain('Browsing')
     expect(html).not.toContain('Coding')
     expect(html).not.toContain('Runtime Setup')
-  })
-
-  it('renders security settings route', () => {
-    const html = renderRouter(['/settings/security'])
-
-    expect(html).toContain('Security &amp; Privacy')
-    expect(html).toContain('Configure LLM guardrails')
-    expect(html).toContain('Loading security settings...')
   })
 
   it('renders mcp server settings route', () => {
@@ -133,11 +124,11 @@ describe('app router', () => {
     expect(html).toContain('Add Channel')
   })
 
-  it('renders chat route with the AppV2 thread canvas while assistant detail restores', () => {
+  it('renders the new-chat route in the AppV2 thread shell', () => {
     const html = renderRouter(['/chat/new'])
 
     expect(html).toContain('Chats')
-    expect(html).toContain('What should we build')
+    expect(html).toContain('New Chat')
     expect(html).not.toContain('Thread Details')
   })
 
@@ -158,16 +149,14 @@ describe('app router', () => {
   it('renders the dedicated skills route', () => {
     const html = renderRouter(['/skills'])
 
-    expect(html).toContain('Skill market')
-    expect(html).toContain('Add Skill Zip')
-    expect(html).toContain('web-tools-guide')
+    expect(html).toContain('Search detected skills')
+    expect(html).toContain('Loading detected skills...')
   })
 
   it('renders the dedicated automations route', () => {
     const html = renderRouter(['/automations'])
 
-    expect(html).toContain('Manage scheduled tasks and review the runs that matter right now.')
-    expect(html).toContain('Weekly review')
-    expect(html).toContain('Nightly triage')
+    expect(html).toContain('Imported Codex automation definitions')
+    expect(html).toContain('Search automations')
   })
 })

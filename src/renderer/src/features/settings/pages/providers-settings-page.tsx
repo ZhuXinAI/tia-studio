@@ -63,10 +63,6 @@ function toProviderTypeLabel(type: ProviderRecord['type'], t: (key: string) => s
       return t('settings.providers.typeLabels.anthropic')
     case 'ollama':
       return t('settings.providers.typeLabels.ollama')
-    case 'codex-acp':
-      return t('settings.providers.typeLabels.codex-acp')
-    case 'claude-agent-acp':
-      return t('settings.providers.typeLabels.claude-agent-acp')
     default:
       return type
   }

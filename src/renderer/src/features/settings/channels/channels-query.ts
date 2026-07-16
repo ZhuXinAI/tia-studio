@@ -14,8 +14,6 @@ export type ConfiguredChannelRecord = {
   type: string
   name: string
   groupRequireMention?: boolean
-  assistantId: string | null
-  assistantName: string | null
   status: 'connected' | 'disconnected' | 'error'
   errorMessage: string | null
   pairedCount: number

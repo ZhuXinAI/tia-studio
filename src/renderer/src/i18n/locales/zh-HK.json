@@ -7,29 +7,7 @@
       "updating": "Updating...",
       "openSettings": "開啟設定"
     },
-    "legacySidebar": {
-      "title": "TIA Studio",
-      "subtitle": "控制中心",
-      "workspace": "工作區",
-      "settings": "設定",
-      "chat": "聊天",
-      "modelProviders": "模型供應商",
-      "notes": "TIA Studio 備註"
-    },
-    "chatSwitcher": {
-      "label": "Current assistant",
-      "ariaLabel": "Switch active assistant",
-      "loading": "Loading assistant...",
-      "fallback": "Assistant",
-      "searchPlaceholder": "Search assistants...",
-      "searchAriaLabel": "Search assistants",
-      "empty": "No assistants yet",
-      "createAction": "Create new assistant",
-      "manageAction": "Manage assistants & channels"
-    },
-    "context": {
-      "assistantsChannels": "Assistants & Channels"
-    }
+    "context": {}
   },
   "common": {
     "routeError": {
@@ -67,12 +45,8 @@
       "items": {
         "general": "常規",
         "providers": "模型供應商",
-        "security": "Security & Privacy",
         "channels": "頻道",
-        "webSearch": "Browsing",
         "mcpServers": "MCP 伺服器",
-        "coding": "Coding",
-        "runtimeSetup": "執行環境設定",
         "display": "顯示",
         "aboutFeedback": "關於與回饋"
       }
@@ -84,39 +58,6 @@
       "languageDescription": "選擇 TIA Studio 介面文字的顯示語言。",
       "systemDefault": "跟隨系統",
       "currentSystemLanguage": "目前根據系統設定使用 {{language}}。"
-    },
-    "security": {
-      "title": "Security & Privacy",
-      "description": "Configure LLM guardrails for prompt injection and PII redaction.",
-      "loading": "Loading security settings...",
-      "guardrails": {
-        "title": "Guardrails",
-        "description": "Prompt injection checks run on incoming messages, and PII protection redacts both incoming and outgoing content."
-      },
-      "promptInjection": {
-        "title": "Prompt Injection Detector",
-        "description": "Detects jailbreaks, instruction overrides, and prompt injection attempts before the assistant model runs."
-      },
-      "pii": {
-        "title": "PII Detector",
-        "description": "Redacts personally identifiable information in user input and assistant output."
-      },
-      "provider": {
-        "title": "Guardrail Model",
-        "description": "Use each assistant's selected model by default, or choose a separate enabled provider for the detector checks.",
-        "label": "Security provider",
-        "defaultOption": "Use assistant model",
-        "hint": "When no override is selected, TIA Studio falls back to the assistant's configured model.",
-        "empty": "No enabled providers with a selected model are currently available."
-      },
-      "toasts": {
-        "promptInjectionEnabled": "Prompt injection protection is now enabled.",
-        "promptInjectionDisabled": "Prompt injection protection is now disabled.",
-        "piiEnabled": "PII protection is now enabled.",
-        "piiDisabled": "PII protection is now disabled.",
-        "providerUpdated": "Guardrail provider updated.",
-        "unexpectedError": "Unexpected request error"
-      }
     },
     "display": {
       "title": "顯示設定",
@@ -135,7 +76,7 @@
       "description": "查看 TIA Studio 的應用程式資訊、更新控制與常用連結。",
       "cardTitle": "關於",
       "repositoryAriaLabel": "開啟開源儲存庫",
-      "appDescription": "一個以本機優先為核心的 AI 工作區，可用於助理、模型供應商及工具整合。",
+      "appDescription": "A local-first workspace powered by the Pi coding agent.",
       "autoUpdate": {
         "label": "自動更新",
         "enabledDescription": "在背景自動下載最新版本。",
@@ -190,7 +131,7 @@
           },
           "skills": {
             "title": "Step 2 · Install recommended skills",
-            "description": "Use the managed bunx command to install a few helpful skills globally for TIA Studio assistants.",
+            "description": "Use the managed bunx command to install helpful skills globally for TIA Studio.",
             "lockedDescription": "Finish the bun step first, then choose which starter skills to install.",
             "bunRequired": "Recommended skill install stays locked until bun is ready.",
             "installAction": "Install selected skills",
@@ -204,7 +145,7 @@
           },
           "findSkills": {
             "title": "find-skills",
-            "description": "Helps discover installable skills when the assistant needs extra capabilities."
+            "description": "Helps discover installable skills when extra capabilities are needed."
           },
           "status": {
             "loading": "Checking install status...",
@@ -245,44 +186,6 @@
         "skillsAlreadyInstalled": "Selected skills are already installed.",
         "skillsInstallSuccess": "Installed the selected recommended skills.",
         "unexpectedError": "執行環境要求發生未預期錯誤"
-      }
-    },
-    "coding": {
-      "title": "Coding",
-      "description": "Install the ACP adapters that power Codex and Claude Agent inside TIA Studio, or point TIA Studio at a binary you already downloaded.",
-      "kindLabels": {
-        "codex-acp": "Codex ACP",
-        "claude-agent-acp": "Claude Agent ACP"
-      },
-      "kindDescription": {
-        "codexAcp": "Used for Codex-backed coding providers and assistant coding subagents.",
-        "claudeAgentAcp": "Used for Claude Agent-backed coding providers and assistant coding subagents."
-      },
-      "labels": {
-        "status": "Status:",
-        "source": "Source:",
-        "version": "Version:",
-        "binary": "Binary:"
-      },
-      "values": {
-        "notInstalled": "Not installed",
-        "noBinary": "No active binary selected",
-        "loading": "Loading coding runtime status..."
-      },
-      "buttons": {
-        "installLatest": "Install latest",
-        "installing": "Installing...",
-        "useDownloadedBinary": "Use downloaded binary",
-        "checkAgain": "Check again",
-        "checking": "Checking...",
-        "clearCustom": "Clear custom"
-      },
-      "toasts": {
-        "installSuccess": "Installed latest {{kind}} runtime.",
-        "pickSuccess": "Activated custom {{kind}} runtime.",
-        "checkSuccess": "Checked {{kind}} runtime status.",
-        "clearSuccess": "Cleared {{kind}} runtime selection.",
-        "unexpectedError": "Unexpected managed runtime error"
       }
     },
     "webSearch": {
@@ -349,9 +252,7 @@
         "openrouter": "OpenRouter",
         "gemini": "Gemini",
         "anthropic": "Anthropic",
-        "ollama": "Ollama",
-        "codex-acp": "Codex ACP",
-        "claude-agent-acp": "Claude Agent ACP"
+        "ollama": "Ollama"
       },
       "typeDescriptions": {
         "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
@@ -359,9 +260,7 @@
         "openrouter": "For OpenRouter's native AI SDK provider integration. This type is intended for built-in OpenRouter templates.",
         "gemini": "For Google Gemini models. Requires Google AI API key from ai.google.dev.",
         "anthropic": "For Claude models from Anthropic. Requires Anthropic API key from console.anthropic.com.",
-        "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint.",
-        "codex-acp": "Runs the Codex ACP adapter as a local AI SDK provider. Configure the binary in Coding settings.",
-        "claude-agent-acp": "Runs the Claude Agent ACP adapter as a local AI SDK provider. Configure the binary in Coding settings."
+        "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint."
       },
       "form": {
         "errors": {
@@ -378,18 +277,6 @@
         "apiKey": "API 金鑰",
         "apiHost": "API 主機",
         "selectedModel": "已選模型",
-        "acpBinaryStatus": "ACP Binary Status",
-        "acpBinaryDescription": "This provider uses a local ACP executable instead of a remote HTTP endpoint.",
-        "acpStatus": "Status:",
-        "acpStatusLoading": "Loading...",
-        "acpBinary": "Binary:",
-        "acpBinaryMissing": "No ACP binary is currently ready",
-        "acpVersion": "Version:",
-        "acpVersionMissing": "No version detected",
-        "acpReady": "Binary is ready. You can save this provider and use it in assistants.",
-        "acpNotReadyPrefix": "Binary is not ready yet.",
-        "acpNotReadySuffix": "Install or select the executable there before relying on this provider.",
-        "acpOpenCoding": "Open Coding",
         "includeModelPresets": "包含可選的供應商模型預設",
         "providerModels": "供應商模型（可選）",
         "providerModelsDescription": "輸入模型名稱，以逗號或換行分隔",
@@ -415,10 +302,10 @@
         "applyJson": "套用 JSON"
       },
       "cardTitle": "MCP 伺服器",
-      "cardDescription": "這些伺服器為全域共用，可在工具標籤中依助手個別開關。",
+      "cardDescription": "These servers are shared globally for local Pi sessions.",
       "loading": "正在載入 MCP 伺服器...",
       "empty": "尚無 MCP 伺服器。新增一個以建立本機 mcp.json 清單。",
-      "serverDescription": "全域狀態控制助手是否可使用此伺服器。",
+      "serverDescription": "Global status controls whether Pi sessions can use this server.",
       "toggleAriaLabel": "切換 {{id}}",
       "deleteAriaLabel": "刪除 {{id}}",
       "managedRuntimeTitle": "此命令可使用 TIA Studio 託管的執行環境。",
@@ -457,222 +344,12 @@
       "loading": "正在載入頻道...",
       "empty": "尚未有已設定的頻道。",
       "available": "可用",
-      "boundTo": "已連接到 {{assistantName}}",
-      "removeDisabled": "請先將此頻道從目前的助手解除綁定後再移除。",
       "loadFailed": "載入頻道失敗"
     }
   },
   "threads": {
     "sidebar": {
-      "eyebrow": "主聊天",
-      "title": "對話",
-      "creatingThread": "正在建立執行緒...",
-      "newThread": "新增執行緒",
-      "assistants": "助手",
-      "createAssistantAriaLabel": "建立助手",
-      "assistantActionsAriaLabel": "助手 {{name}} 的操作",
-      "assistantSwitcherAriaLabel": "Switch assistants",
-      "backToAssistantsAriaLabel": "Back to assistants",
-      "currentAssistant": "Current assistant",
-      "deleteAssistantAriaLabel": "刪除助手 {{name}}",
-      "loadingAssistants": "正在載入助手...",
-      "emptyAssistants": "還沒有助手。請先在 Assistants 建立一個。",
-      "emptyAssistantSearch": "No assistants match this search.",
-      "loadingThreads": "正在載入執行緒...",
-      "emptyThreads": "還沒有執行緒。",
-      "emptyThreadSearch": "No threads match this search.",
-      "threadsLabel": "Threads",
-      "searchAssistantsPlaceholder": "Search assistants...",
-      "searchAssistantsAriaLabel": "Search assistants",
-      "searchThreadsPlaceholder": "Search threads...",
-      "searchThreadsAriaLabel": "Search assistant threads",
-      "untitledThread": "未命名執行緒",
-      "deleteThreadAriaLabel": "刪除執行緒 {{title}}",
-      "deleteThreadPrompt": "刪除執行緒？",
-      "cancelDeleteThreadAriaLabel": "取消刪除執行緒 {{title}}",
-      "confirmDeleteThreadAriaLabel": "確認刪除執行緒 {{title}}"
-    },
-    "chat": {
-      "defaultAssistantName": "助手",
-      "titleWithAssistant": "與 {{name}} 對話",
-      "tokens": "權杖",
-      "tokenInput": "{{value}} 輸入",
-      "tokenOutput": "{{value}} 輸出",
-      "remoteBadge": "Remote channel",
-      "remoteBadgeTitle": "Linked to a remote channel chat",
-      "newThread": "新增執行緒",
-      "setupIncomplete": "助手設定尚未完成。請先打開「設定」配置供應商與模型，再傳送訊息。",
-      "composer": {
-        "placeholderSelectedThread": "為此執行緒輸入訊息...",
-        "placeholderSelectedAssistant": "輸入訊息以建立新執行緒...",
-        "placeholderEmpty": "選擇一位助手開始對話。",
-        "helperSelectedThread": "訊息會透過目前助手執行緒傳送。",
-        "helperSelectedAssistant": "尚未選擇執行緒。按 Enter 可建立執行緒並傳送。",
-        "helperEmpty": "請選擇一位助手開始。",
-        "ariaLabel": "訊息輸入框"
-      }
-    },
-    "messageList": {
-      "untitledFile": "未命名檔案",
-      "you": "你",
-      "copyMessage": "複製訊息",
-      "reloadMessage": "重新產生",
-      "moreActions": "更多操作",
-      "exportMarkdown": "匯出 Markdown",
-      "empty": "還沒有訊息。",
-      "loadingHistory": "正在載入執行緒歷史...",
-      "responding": "助手正在回應..."
-    },
-    "assistantDialog": {
-      "closeCreateAriaLabel": "關閉建立助手對話框",
-      "closeEditAriaLabel": "關閉助手設定對話框",
-      "createTitle": "建立助手",
-      "editTitle": "設定 {{name}}",
-      "createDescription": "開始對話前先設定工作區路徑與供應商。",
-      "editDescription": "無需離開對話即可更新供應商、工作區與提示詞。",
-      "addProviderPrefix": "請先在這裡加入供應商：",
-      "providerLinkLabel": "模型供應商",
-      "notFound": "找不到助手。"
-    },
-    "toasts": {
-      "threadCreated": "執行緒已建立。",
-      "threadRemoved": "執行緒已移除。",
-      "assistantCreated": "助手已建立。",
-      "assistantUpdated": "助手設定已更新。",
-      "builtInDeleteBlocked": "無法刪除內建預設助手。",
-      "assistantDeleteFallbackLabel": "這個助手",
-      "confirmAssistantDelete": "刪除「{{name}}」？這也會刪除它的所有執行緒。",
-      "assistantDeleted": "助手已刪除。"
-    },
-    "readiness": {
-      "providerAssigned": "已為此助手指派供應商",
-      "providerModelSelected": "供應商已選擇模型"
-    }
-  },
-  "assistants": {
-    "modelPicker": {
-      "title": "選擇模型",
-      "searchPlaceholder": "搜尋模型...",
-      "empty": "沒有符合搜尋的模型。"
-    },
-    "editor": {
-      "editTitle": "編輯助手",
-      "createTitle": "建立助手",
-      "tabs": {
-        "essential": "基本設定",
-        "coding": "Coding",
-        "tools": "工具",
-        "skills": "Skills",
-        "channels": "Channels",
-        "activity": "Activity"
-      },
-      "fields": {
-        "name": "名稱",
-        "provider": "供應商",
-        "description": "描述",
-        "prompt": "提示詞",
-        "workspacePath": "工作區路徑（可選）",
-        "maxSteps": "最大步數"
-      },
-      "placeholders": {
-        "name": "研究副駕",
-        "description": "負責檢索事實、尋找來源並驗證結論。",
-        "prompt": "你是一位樂於助人的助手，請用精簡且實用的步驟回覆。",
-        "workspacePath": "/Users/name/workspace",
-        "maxSteps": "100"
-      },
-      "selectProvider": "選擇供應商",
-      "workspacePathHelp": "若要讓助手執行更複雜的任務，請選擇一個工作區。",
-      "openingButton": "正在開啟...",
-      "channels": {
-        "title": "Channel Setup",
-        "description": "Choose the channel this assistant owns and keep setup actions close to the selection flow.",
-        "empty": "No channel is currently selected for this assistant.",
-        "openSetupDescription": "Open setup here to manage pairings, QR login, or other channel-specific onboarding."
-      },
-      "codingAgent": {
-        "description": "Enable dedicated Codex ACP and Claude Agent ACP coding subagents for repository work. Each subagent shares this assistant's workspace as its working directory.",
-        "toggleForAriaLabel": "Enable {{kind}}",
-        "providerLabel": "Subagent provider",
-        "selectProvider": "Select coding provider",
-        "availableStatus": "Installed",
-        "missingStatus": "Not installed",
-        "cwdPrefix": "This coding subagent will use this workspace as cwd:",
-        "runtimeDescriptions": {
-          "codex-acp": "Use Codex ACP for implementation-focused coding tasks inside the assistant workspace.",
-          "claude-agent-acp": "Use Claude Agent ACP for coding tasks inside the assistant workspace."
-        },
-        "workspaceRequired": "Set a workspace path before enabling the coding agent.",
-        "runtimeMissingPrefix": "The selected coding provider needs its ACP binary. Finish setup in",
-        "codingLinkLabel": "Coding",
-        "noProvidersPrefix": "No enabled Codex or Claude Agent ACP providers are available yet. Add one in",
-        "providersLinkLabel": "Model Provider",
-        "noProvidersSuffix": "and make sure its ACP binary is ready in Coding."
-      },
-      "toolsDescription": "Control the MCP servers and runtime-backed tools that this assistant can use.",
-      "runtimeNoteTitle": "部分 MCP 工具會使用受管理執行環境。",
-      "runtimeNotePrefix": "請先到",
-      "runtimeNoteLinkLabel": "執行環境設定",
-      "runtimeNoteSuffix": "完成配置；若此助手依賴 npx、bun 或 uv 支援的工具，就需要這一步。",
-      "noMcpServersPrefix": "尚未設定 MCP 伺服器。請前往",
-      "noMcpServersLinkLabel": "MCP 伺服器設定",
-      "mcpGloballyDisabled": "已在 MCP 伺服器設定中全域停用。",
-      "toggleMcpAriaLabel": "為此助手切換 {{serverId}}",
-      "savingButton": "正在儲存...",
-      "updateButton": "更新助手",
-      "createButton": "建立助手",
-      "errors": {
-        "nameRequired": "助手名稱為必填項",
-        "providerRequired": "供應商為必填項",
-        "maxStepsInvalid": "最大步數必須是正整數",
-        "codingProviderRequired": "Select a coding provider before enabling the coding agent",
-        "codingWorkspaceRequired": "A workspace path is required when the coding agent is enabled",
-        "workspacePickerFailed": "無法選擇工作區資料夾"
-      },
-      "skillSources": {
-        "workspace": "Workspace",
-        "globalClaude": "Global ~/.claude/skills",
-        "globalAgent": "Global ~/.agent/skills"
-      },
-      "skills": {
-        "description": "Skills 從 `~/.claude/skills`、`~/.agent/skills` 與 `./skills` 載入。",
-        "workspaceRequired": "請先設定工作區路徑以載入工作區 Skills。",
-        "loading": "正在載入 Skills...",
-        "empty": "在設定的全域或工作區資料夾中找不到 Skills。",
-        "noDescription": "SKILL.md 中找不到描述。",
-        "removeAriaLabel": "移除 Skill {{name}}",
-        "removingButton": "正在移除...",
-        "removeButton": "移除",
-        "readOnly": "唯讀"
-      }
-    }
-  },
-  "assistantUi": {
-    "markdown": {
-      "copyCode": "複製"
-    },
-    "attachment": {
-      "imagePreviewAlt": "圖片預覽",
-      "dialogTitle": "圖片附件預覽",
-      "previewAlt": "附件預覽",
-      "attachmentAriaLabel": "{{type}} 附件",
-      "removeFile": "移除檔案",
-      "addAttachment": "加入附件",
-      "typeLabels": {
-        "image": "圖片",
-        "document": "文件",
-        "file": "檔案"
-      }
-    },
-    "toolGroup": {
-      "label_one": "{{count}} 次工具呼叫",
-      "label_other": "{{count}} 次工具呼叫"
-    },
-    "image": {
-      "contentAlt": "圖片內容",
-      "previewAlt": "圖片預覽",
-      "zoomAriaLabel": "點擊放大圖片",
-      "closeZoomAriaLabel": "關閉放大後的圖片"
+      "untitledThread": "未命名執行緒"
     }
   }
 }

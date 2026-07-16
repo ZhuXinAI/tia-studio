@@ -2,232 +2,77 @@
 
 [中文说明](./README_zh.md)
 
-<p align="center">
-  <img src="docs/screenshots/claws-overview.png" alt="TIA Studio assistants and channel bindings overview" width="1100">
-</p>
+TIA Studio is a local-first Electron workspace for running Pi Coding Agent conversations against your files and tools. Chats, external channels, and future app-owned automation entry points share one application runtime contract.
 
-<div align="center">
+## Runtime architecture
 
-[![][github-release-shield]][github-release-link]
-[![][github-contributors-shield]][github-contributors-link]
+- **Embedded Pi SDK** — Electron main imports `@earendil-works/pi-coding-agent` and creates sessions in its Node.js host with `ModelRuntime`, `SessionManager`, and `createAgentSession`.
+- **Application-owned API** — the renderer talks to a local HTTP/SSE boundary. Pi SDK objects and credentials never cross into the renderer.
+- **Assistant UI** — the official assistant-ui thread renders streaming text, reasoning, tool calls, approvals, attachments, and empty conversations.
+- **Local persistence** — SQLite stores application session metadata and normalized events; Pi session files provide SDK restart/resume support.
+- **One local execution path** — desktop chat and channel delivery use the same embedded runtime. There is no alternate agent harness or external execution service.
 
-</div>
+Pi begins with empty v3 history. TIA Studio does not preload identity, soul, memory, or prompt files into a workspace. A user-selected workspace is passed directly to Pi; a chat without one uses an empty app-managed directory.
 
-## Claim your Claw in only two steps
+## Chat features
 
-1. Create or choose an assistant.
-2. Attach a channel and start operating locally.
+- Thread list with create, rename, delete, and restart/resume support
+- Streaming text, reasoning, tool calls, tool results, and errors
+- Image attachments
+- Native speech input when the operating system/browser engine supports it
+- Standard Access approvals for risky operations
+- Per-thread Full Access, which visibly skips approval prompts while credential-file access remains blocked
+- Steering, follow-up queueing, and cancellation during a run
 
-Run a local claw on your own machine in minutes — and use a full-featured desktop workspace to build, chat with, and operate AI assistants, teams, and channels.
+## Channels
 
-## What is TIA Studio?
+TIA Studio supports Discord, Lark, Telegram, WhatsApp, Wecom, and Wechat-KF. Remote conversations are mapped directly to application sessions and delivered through the same Pi runtime used by desktop chat.
 
-TIA (short for "This Is AI") Studio is an Electron-based desktop app built to make local claws easy to run. Connect an assistant to a real-world channel and it becomes an OpenClaw-inspired local operator running close to your tools, your files, and your workflow.
-
-At the same time, TIA Studio is a full-featured assistant app. You can chat with a single assistant, coordinate a team of assistants, organize threaded work, and manage channels from one local-first desktop workspace.
-
-It also gives you a dedicated operations layer for model providers, security and privacy guardrails, browsing automation, MCP servers, coding runtimes, cron jobs, and heartbeat-driven follow-up work.
-
-Today, TIA Studio supports Discord, Lark, Telegram, WhatsApp, Wecom, and Wechat-KF channels, with more channels planned next.
-
-### Channel Support
-
-| Channel   | Direct Chat | Group Chat | Group Trigger                                         |
-| --------- | ----------- | ---------- | ----------------------------------------------------- |
-| Discord   | ✅          | ✅         | Replies only when the bot is `@` mentioned by default |
-| Lark      | ✅          | ✅         | Replies only when the bot is `@` mentioned by default |
-| Telegram  | ✅          | 🚫         | Group support is currently disabled                   |
-| WhatsApp  | ✅          | ✅         | Replies only when the bot is `@` mentioned by default |
-| Wecom     | ✅          | ✅         | Replies only when the bot is `@` mentioned by default |
-| Wechat-KF | ✅          | 🚫         | Not applicable for relay-backed 1:1 customer sessions |
-
-For more, check [CHANNEL.md](./CHANNEL.md).
-
-## Screenshot Tour
-
-When you want more than channel-connected automation, TIA Studio gives you a full desktop workspace for assistants, teams, threads, and local operations.
-
-### Configure assistants without leaving the workspace
-
-<p align="center">
-  <img src="docs/screenshots/assistant-coding.png" alt="TIA Studio assistant configuration with coding subagents" width="1100">
-</p>
-
-Configure assistants in-place, including channels, tools, skills, activity, and workspace-backed coding subagents powered by Codex ACP or Claude Agent ACP.
-
-### Security and privacy controls
-
-<p align="center">
-  <img src="docs/screenshots/settings-security.png" alt="TIA Studio security and privacy settings" width="1100">
-</p>
-
-Enable prompt injection detection, PII redaction, and a shared guardrail provider from the desktop settings surface when you need stronger controls around assistant traffic.
-
-## Architecture
-
-TIA Studio is built on a carefully selected stack that prioritizes developer experience and maintainability:
-
-- **[Mastra](https://mastra.ai)** - Powers the assistant, team, and channel runtime, providing a clean abstraction for connecting AI models and managing agent lifecycles
-- **[Assistant UI](https://www.assistant-ui.com/)** - Delivers the chat interface components, handling message rendering, streaming responses, and conversation state
-- **Electron + React** - Provides the desktop application shell with a modern React-based UI
-- **TypeScript** - Ensures type safety across the entire codebase
-
-### Design Philosophy
-
-We intentionally kept the architecture simple:
-
-1. **Assistants as first-class citizens** - Each assistant (like TIA or Default Agent) is a Mastra agent with its own configuration, capabilities, and channel presence
-2. **Teams and channels by design** - Teams help coordinate multiple assistants, while channels let an assistant operate where real conversations already happen
-3. **Workspace-centric** - Conversations are organized into threads and team views, making it easy to context-switch between different tasks
-4. **Minimal abstractions** - We use Mastra's primitives directly rather than building custom layers, and Assistant UI handles the chat UX without custom message components
-5. **Local-first** - Everything runs on your machine, with no required cloud dependencies
-
-## Claws
-
-In TIA Studio, a claw is not a separate runtime primitive. A claw is an assistant with a channel attached to it.
-
-For a longer architecture walkthrough, see [CLAW.md](./CLAW.md).
-
-This keeps the model simple:
-
-- The assistant remains the source of truth for provider selection, instructions, memory, workspace, and lifecycle state
-- The channel is only the transport layer that brings external messages in and sends assistant replies back out
-- The claw UI is a focused management surface for creating that assistant + channel pairing without introducing a second identity model
-
-### How claws are implemented
-
-Claws are implemented by composing existing assistant and channel records instead of introducing a new database entity:
-
-1. **Assistant-first creation** - `POST /v1/claws` creates a normal assistant, then either creates a new supported channel or attaches an existing unbound channel to that assistant.
-2. **Channel binding as the link** - The claw relationship lives on `channel.assistantId`, which gives each channel a single active assistant owner while keeping detached channels reusable.
-3. **Built-in assistants stay out of the claw list** - The claws route only exposes user-managed assistants, so built-in agents keep their own lifecycle and do not show up as claws.
-4. **Runtime reload on every claw change** - After create, update, or delete, TIA Studio reloads both the channel service and the cron scheduler so routing and schedules immediately reflect the new attachment state.
-5. **One channel conversation becomes one assistant thread** - Incoming channel messages are routed through the event bus, mapped to a thread binding by remote chat, streamed through the assistant runtime, and then published back to the channel adapter as the outgoing reply.
-
-### Claws, cron, heartbeat, and identity
-
-Because a claw is still just an assistant underneath, assistant-owned behavior stays assistant-owned:
-
-| Concern              | Owner                       | What happens for a claw                                                                                                                                                                 |
-| -------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Identity             | Assistant workspace         | `IDENTITY.md`, `SOUL.md`, and `MEMORY.md` are loaded as durable operating context for the same assistant whether you talk to it in the app or through a channel.                        |
-| Heartbeat            | Assistant runtime           | Scheduled runs mark the request as a heartbeat run, which adds `HEARTBEAT.md` on top of the normal identity files only for proactive/scheduled execution.                               |
-| Cron                 | Assistant + hidden thread   | Cron jobs are stored against `assistantId`, require that assistant to have a workspace root, and create a hidden thread so scheduled work stays attached to the same assistant history. |
-| Enable/disable state | Assistant + channel runtime | A disabled claw disables the assistant side of the pairing, so runtime channel delivery and cron scheduling both stop until the assistant is enabled again.                             |
-
-That means adapting an assistant into a claw does **not** fork its identity:
-
-- Channel chat uses the same assistant instructions, provider, tools, and workspace as direct chat
-- Cron jobs still belong to the assistant, not to the channel, and their outputs are written back to the assistant workspace work logs
-- Heartbeat-specific guidance stays isolated in `HEARTBEAT.md`, so proactive runs can behave differently without mutating the assistant's core identity
-- Future claw capabilities can keep building on assistant primitives instead of introducing a parallel claw-only configuration stack
-
-## Features
-
-- Assistant-first local workspace with thread-based chat, workspace roots, attachments, and in-place configuration
-- Team workspaces with shared threads and live run status
-- Claws surface for assistant creation, channel binding, pairing, setup, activation, heartbeat monitoring, and cron monitoring
-- Channel adapters for Discord, Lark, Telegram, WhatsApp, Wecom, and Wechat-KF
-- Provider management for OpenAI-compatible models, OpenAI Responses, OpenRouter, Gemini, Anthropic, Ollama, Codex ACP, and Claude Agent ACP
-- Workspace-backed coding subagents using Codex ACP and Claude Agent ACP
-- Built-in browser automation controls, browsing settings, and MCP server management
-- Prompt injection detection and PII redaction guardrails with configurable provider selection
-- Local-first Electron desktop app with no required cloud control plane
-
-## Security
-
-TIA Studio includes two Mastra-based LLM guardrails that are disabled by default:
-
-- **Prompt injection detection** blocks or neutralizes jailbreak-style input before it reaches the assistant model
-- **PII detection** redacts personally identifiable information in both user input and assistant output
-
-These protections are configurable from **Settings → Security & Privacy**. If you enable them, the detectors reuse the selected model for each assistant by default. If you prefer, you can choose a separate enabled provider as the shared guardrail model for those checks. When no override is configured, or the override is unavailable, TIA Studio falls back to the assistant's selected model.
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 20+
-- pnpm
-
-### Installation
-
-```bash
-pnpm install
-
-pnpm approve-builds # Make sure you approve every package that needs native builds
-```
-
-### Development
-
-```bash
-pnpm run dev
-```
-
-### Building
-
-```bash
-# For macOS (current architecture)
-pnpm run build:mac
-
-# For macOS Intel
-pnpm run build:mac:x64
-
-# For macOS Apple Silicon
-pnpm run build:mac:arm64
-
-# For Windows
-pnpm run build:win
-
-# For Linux
-pnpm run build:linux
-```
-
-For Intel macOS builds on Apple Silicon hardware, run `pnpm run build:mac:x64` from a Rosetta terminal so native modules install for `x64`.
-
-## Project Structure
-
-For a fuller source-tree walkthrough, see [STRUCTURE.md](./STRUCTURE.md).
-
-```
-tia-studio/
-├── src/
-│   ├── main/          # Electron main process
-│   ├── renderer/      # React UI components
-│   └── preload/       # Electron preload scripts
-├── build/             # Build resources (icons, etc.)
-└── resources/         # Application resources
-```
-
-## Tech Stack
-
-- **Frontend**: React 19, TypeScript, Tailwind CSS
-- **Desktop**: Electron 39
-- **AI Framework**: Mastra, AI SDK
-- **UI Components**: Assistant UI, Radix UI
-- **Build**: Vite, electron-builder
+See [CHANNEL.md](./CHANNEL.md) for channel-specific setup.
 
 ## Development
 
-### Recommended IDE Setup
+Requirements: Node.js 20+ and pnpm.
 
-- [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
+```bash
+pnpm install
+pnpm run dev
+```
 
-### Scripts
+For browser annotation while keeping Electron main as the API and Pi host:
 
-- `pnpm run dev` - Start development server
-- `pnpm run build` - Build for production
-- `pnpm run lint` - Run ESLint
-- `pnpm run format` - Format code with Prettier
-- `pnpm test` - Run tests
+```bash
+pnpm run dev:annotate
+```
+
+Use only the guarded desktop launchers for end-to-end testing:
+
+```bash
+pnpm run e2e:guarded:annotate
+pnpm run e2e:guarded
+```
+
+The guard terminates the process tree on repeated session creation, repeated 5xx responses, sustained excessive CPU, or timeout.
+
+## Validation and builds
+
+```bash
+pnpm run lint
+pnpm run typecheck
+pnpm test
+pnpm run build
+pnpm run build:mac:arm64
+```
+
+For the migration decisions and current architecture, see [PI_MIGRATION.md](./PI_MIGRATION.md), [TASKS.md](./TASKS.md), and [docs/pi-migration/CURRENT_ARCHITECTURE.md](./docs/pi-migration/CURRENT_ARCHITECTURE.md).
+
+## Tech stack
+
+- Electron 39, React 19, TypeScript, Vite
+- `@earendil-works/pi-coding-agent`
+- assistant-ui and Radix UI
+- Hono and LibSQL/SQLite
 
 ## License
 
 MIT
-
-<!-- Links & Images -->
-
-[github-release-shield]: https://img.shields.io/github/v/release/ZhuXinAI/tia-studio?logo=github
-[github-release-link]: https://github.com/ZhuXinAI/tia-studio/releases
-[github-contributors-shield]: https://img.shields.io/github/contributors/ZhuXinAI/tia-studio?logo=github
-[github-contributors-link]: https://github.com/ZhuXinAI/tia-studio/graphs/contributors

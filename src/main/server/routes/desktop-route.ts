@@ -23,13 +23,7 @@ const autoUpdateSchema = z.object({
   enabled: z.boolean()
 })
 
-const managedRuntimeKindSchema = z.enum([
-  'agent-browser',
-  'bun',
-  'uv',
-  'codex-acp',
-  'claude-agent-acp'
-])
+const managedRuntimeKindSchema = z.enum(['agent-browser', 'bun', 'uv'])
 
 const runtimeOnboardingSkillIdSchema = z.enum(['agent-browser', 'find-skills'])
 const desktopSkillSourceSchema = z.enum([
@@ -45,10 +39,7 @@ const runtimeOnboardingSkillsSchema = z.object({
 })
 
 const desktopSkillCatalogQuerySchema = z.object({
-  cursor: z
-    .string()
-    .regex(/^\d+$/, 'Cursor must be a non-negative integer')
-    .optional(),
+  cursor: z.string().regex(/^\d+$/, 'Cursor must be a non-negative integer').optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
   search: z.string().max(200).optional(),
   source: desktopSkillSourceSchema.optional()

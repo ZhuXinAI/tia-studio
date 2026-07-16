@@ -98,7 +98,7 @@ function createPairingReply(code: string): string {
 }
 
 function createBlockedReply(): string {
-  return 'This chat is not approved for this assistant.'
+  return 'This chat is not approved for this Pi agent.'
 }
 
 function toErrorMessage(error: unknown): string {

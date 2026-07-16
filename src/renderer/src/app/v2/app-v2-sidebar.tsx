@@ -1,5 +1,4 @@
 import {
-  Cable,
   ChevronDown,
   ChevronRight,
   Clock3,
@@ -16,10 +15,10 @@ import {
   Sparkles,
   Trash2
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import type { AgentSessionSnapshot } from '../../../../shared/agent-runtime'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { isDesktopWindowsPlatform } from '../../lib/desktop-bootstrap'
@@ -31,20 +30,11 @@ import {
   type WorkspaceRecord
 } from '../../features/workspaces/workspaces-query'
 import {
-  useDeleteThread,
-  useThreads,
-  useUpdateThreadPinned,
-  getActiveResourceId,
-  threadKeys,
-  type ThreadRecord
-} from '../../features/threads/threads-query'
-import { openThreadMessageEventsStream } from '../../features/threads/chat-query'
-import {
-  getThreadDisplayTitle,
-  isThreadPinned,
-  sortThreadsByRecentActivity,
-  toErrorMessage
-} from '../../features/threads/thread-page-routing'
+  useAgentSessions,
+  useDeleteAgentSession,
+  useSetAgentSessionPinned
+} from '../../features/threads/agent-sessions-query'
+import { getThreadDisplayTitle, toErrorMessage } from '../../features/threads/thread-page-routing'
 
 function isWindowsPlatform(): boolean {
   return isDesktopWindowsPlatform()
@@ -70,7 +60,7 @@ function ThreadLink({
   onTogglePinned,
   onDelete
 }: {
-  thread: ThreadRecord
+  thread: AgentSessionSnapshot
   href: string
   isActive: boolean
   isPending: boolean
@@ -78,8 +68,7 @@ function ThreadLink({
   onDelete: () => void
 }): React.JSX.Element {
   const displayTitle = getThreadDisplayTitle(thread.title)
-  const pinned = isThreadPinned(thread)
-  const hasRemoteBinding = Boolean(thread.channelBinding?.remoteChatId)
+  const pinned = thread.pinned
 
   return (
     <div
@@ -93,15 +82,6 @@ function ThreadLink({
       <NavLink to={href} className="flex min-w-0 flex-1 items-center gap-2 px-1 py-0.5">
         <span className="size-1.5 shrink-0 rounded-full bg-current opacity-60" />
         <span className="truncate">{displayTitle}</span>
-        {hasRemoteBinding ? (
-          <span
-            className="grid size-5 shrink-0 place-items-center rounded-full border border-[color:var(--surface-border)] bg-[color:var(--surface-active)] text-primary"
-            title="Remote channel"
-            aria-label="Remote channel"
-          >
-            <Cable className="size-3" />
-          </span>
-        ) : null}
       </NavLink>
       <div
         className={cn(
@@ -184,17 +164,23 @@ function WorkspaceThreads({
   isOpen: boolean
 }): React.JSX.Element {
   const navigate = useNavigate()
-  const deleteThreadMutation = useDeleteThread()
-  const updateThreadPinnedMutation = useUpdateThreadPinned()
-  const { data: threads = [] } = useThreads(
-    { workspaceId: workspace.id },
-    {
-      enabled: Boolean(workspace.id) && isOpen
-    }
+  const deleteThreadMutation = useDeleteAgentSession()
+  const updateThreadPinnedMutation = useSetAgentSessionPinned()
+  const { data: threads = [] } = useAgentSessions(
+    workspace.builtInKind === 'chats' ? null : workspace.id,
+    isOpen
   )
-  const recentThreads = useMemo(() => sortThreadsByRecentActivity(threads), [threads])
+  const recentThreads = useMemo(
+    () =>
+      [...threads].sort(
+        (left, right) =>
+          Number(right.pinned) - Number(left.pinned) ||
+          Date.parse(right.updatedAt) - Date.parse(left.updatedAt)
+      ),
+    [threads]
+  )
 
-  async function handleDeleteThread(thread: ThreadRecord): Promise<void> {
+  async function handleDeleteThread(thread: AgentSessionSnapshot): Promise<void> {
     try {
       await deleteThreadMutation.mutateAsync(thread.id)
       if (activeThreadId === thread.id) {
@@ -207,11 +193,11 @@ function WorkspaceThreads({
     }
   }
 
-  async function handleTogglePinned(thread: ThreadRecord): Promise<void> {
+  async function handleTogglePinned(thread: AgentSessionSnapshot): Promise<void> {
     try {
       await updateThreadPinnedMutation.mutateAsync({
-        threadId: thread.id,
-        pinned: !isThreadPinned(thread)
+        sessionId: thread.id,
+        pinned: !thread.pinned
       })
     } catch (error) {
       toast.error(toErrorMessage(error))
@@ -262,7 +248,6 @@ export function AppV2Sidebar({
 }: AppV2SidebarProps): React.JSX.Element {
   const location = useLocation()
   const params = useParams()
-  const queryClient = useQueryClient()
   const { data: workspaces = [], isLoading } = useWorkspaces()
   const createWorkspaceMutation = useCreateWorkspace()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -271,24 +256,6 @@ export function AppV2Sidebar({
   const [isChatsOpen, setIsChatsOpen] = useState(true)
   const [expandedWorkspaceIds, setExpandedWorkspaceIds] = useState<Set<string>>(() => new Set())
   const workspaceSearchInputRef = useRef<HTMLInputElement | null>(null)
-  const profileId = useMemo(() => getActiveResourceId(), [])
-
-  useEffect(() => {
-    const streamHandle = openThreadMessageEventsStream({
-      profileId,
-      onEvent: (event) => {
-        if (event.type !== 'thread-messages-updated' || event.profileId !== profileId) {
-          return
-        }
-
-        void queryClient.invalidateQueries({ queryKey: threadKeys.lists() })
-      }
-    })
-
-    return () => {
-      streamHandle.close()
-    }
-  }, [profileId, queryClient])
 
   const chatsWorkspace = useMemo(
     () => workspaces.find((workspace) => isChatsWorkspace(workspace)) ?? null,

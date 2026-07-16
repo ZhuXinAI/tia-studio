@@ -5,12 +5,16 @@
   "tsx": true,
   "tailwind": {
     "config": "tailwind.config.js",
-    "css": "src/renderer/src/assets/index.css",
+    "css": "src/renderer/src/assets/main.css",
     "baseColor": "slate",
     "cssVariables": true
   },
+  "iconLibrary": "radix",
   "aliases": {
-    "components": "src/renderer/src/components",
-    "utils": "src/renderer/src/lib/utils"
+    "components": "@renderer/components",
+    "utils": "@renderer/lib/utils"
+  },
+  "registries": {
+    "@assistant-ui": "https://r.assistant-ui.com/{name}.json"
   }
 }

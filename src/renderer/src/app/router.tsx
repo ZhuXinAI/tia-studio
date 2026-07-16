@@ -7,7 +7,6 @@ import { McpServersSettingsPage } from '../features/settings/pages/mcp-servers-s
 import { AboutSettingsPage } from '../features/settings/pages/about-settings-page'
 import { DisplaySettingsPage } from '../features/settings/pages/display-settings-page'
 import { GeneralSettingsPage } from '../features/settings/pages/general-settings-page'
-import { SecuritySettingsPage } from '../features/settings/pages/security-settings-page'
 import { SettingsPageLayout } from '../features/settings/pages/settings-page-layout'
 import { RouteError } from '../components/route-error'
 import { ChannelsSettingsPage } from '../features/settings/pages/channels-settings-page'
@@ -74,10 +73,6 @@ export const appRoutes: RouteObject[] = [
           {
             path: 'providers',
             element: <ProvidersSettingsPage />
-          },
-          {
-            path: 'security',
-            element: <SecuritySettingsPage />
           },
           {
             path: 'channels',

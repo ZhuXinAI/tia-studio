@@ -17,13 +17,11 @@ import { autoUpdater } from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
 import { AutoUpdateService } from './auto-updater'
 import { resolveAvailableServerPort, resolveServerConfig } from './config/server-config'
-import { ensureBuiltInDefaultAgent } from './default-agent/default-agent-bootstrap'
-import { ensureBuiltInProviders } from './default-agent/built-in-providers-bootstrap'
+import { ensureBuiltInProviders } from './providers/built-in-providers-bootstrap'
 import { logger } from './utils/logger'
 import { ChannelEventBus } from './channels/channel-event-bus'
 import { resolveGroupRequireMention } from './channels/channel-config'
 import { DiscordChannel } from './channels/discord-channel'
-import { createLlmInterruptionDecider } from './channels/llm-interruption-decider'
 import { ChannelMessageRouter } from './channels/channel-message-router'
 import { ChannelService } from './channels/channel-service'
 import { TelegramChannel } from './channels/telegram-channel'
@@ -32,13 +30,10 @@ import { WechatChannel } from './channels/wechat-channel'
 import { WeComChannel } from './channels/wecom-channel'
 import { WhatsAppAuthStateStore } from './channels/whatsapp-auth-state-store'
 import { WhatsAppChannel } from './channels/whatsapp-channel'
-import { AssistantRuntimeService } from './mastra/assistant-runtime'
-import { createMastraInstance } from './mastra/store'
 import { listDesktopAutomations } from './desktop/desktop-automations'
 import { migrateAppSchema } from './persistence/migrate'
-import { AssistantsRepository } from './persistence/repos/assistants-repo'
 import { ChannelPairingsRepository } from './persistence/repos/channel-pairings-repo'
-import { ChannelThreadBindingsRepository } from './persistence/repos/channel-thread-bindings-repo'
+import { ChannelSessionBindingsRepository } from './persistence/repos/channel-session-bindings-repo'
 import { ChannelsRepository } from './persistence/repos/channels-repo'
 import {
   type ManagedRuntimeKind,
@@ -46,10 +41,6 @@ import {
 } from './persistence/repos/managed-runtimes-repo'
 import { McpServersRepository } from './persistence/repos/mcp-servers-repo'
 import { ProvidersRepository } from './persistence/repos/providers-repo'
-import { SecuritySettingsRepository } from './persistence/repos/security-settings-repo'
-import { ThreadUsageRepository } from './persistence/repos/thread-usage-repo'
-import { ThreadsRepository } from './persistence/repos/threads-repo'
-import { runThreadUsageBackfill } from './persistence/thread-usage-backfill'
 import { WebSearchSettingsRepository } from './persistence/repos/web-search-settings-repo'
 import { WorkspaceRecordsRepository } from './persistence/repos/workspace-records-repo'
 import {
@@ -57,7 +48,6 @@ import {
   WorkspacesRepository
 } from './persistence/repos/workspaces-repo'
 import { ManagedRuntimeService } from './runtimes/managed-runtime-service'
-import { ThreadMessageEventsStore } from './server/chat/thread-message-events-store'
 import { createApp } from './server/create-app'
 import { registerSingleInstanceApp } from './single-instance'
 import {
@@ -69,6 +59,8 @@ import {
 import { bringWindowToFront, buildTrayMenuTemplate } from './tray'
 import { UiConfigStore } from './ui-config'
 import { desktopBootstrapQueryParam, type DesktopBootstrap } from '../shared/desktop-bootstrap'
+import { AgentSessionsRepository } from './persistence/repos/agent-sessions-repo'
+import { AgentRuntimeManager } from './agents/agent-runtime-manager'
 
 const hasSingleInstanceLock = registerSingleInstanceApp({
   app,
@@ -94,6 +86,8 @@ let managedRuntimeService: ManagedRuntimeService | null = null
 let channelService: ChannelService | null = null
 let channelMessageRouter: ChannelMessageRouter | null = null
 let uiConfigStore: UiConfigStore | null = null
+let agentRuntimeManager: AgentRuntimeManager | null = null
+let gracefulQuitStarted = false
 
 function logAppLifecycle(eventName: string, data?: Record<string, unknown>): void {
   logger.info(`[AppLifecycle] ${eventName}`, {
@@ -174,11 +168,7 @@ function getRuntimeDisplayName(kind: ManagedRuntimeKind): string {
     return 'Agent Browser'
   }
 
-  if (kind === 'codex-acp') {
-    return 'Codex ACP'
-  }
-
-  return 'Claude Agent ACP'
+  return kind
 }
 
 function updateUiConfig(config: Parameters<UiConfigStore['updateConfig']>[0]) {
@@ -297,21 +287,16 @@ async function startLocalApiServer(): Promise<void> {
   persistenceDatabasePath = join(app.getPath('userData'), 'tia-studio.db')
   const db = await migrateAppSchema(persistenceDatabasePath)
   const providersRepo = new ProvidersRepository(db)
-  const assistantsRepo = new AssistantsRepository(db)
-  const threadsRepo = new ThreadsRepository(db)
+  const agentSessionsRepo = new AgentSessionsRepository(db)
   const workspaceRecordsRepo = new WorkspaceRecordsRepository(db)
   const workspacesRepo = new WorkspacesRepository({
-    assistantsRepo,
     workspaceRecordsRepo,
-    threadsRepo,
     builtInChatsRootPath: resolveBuiltInChatsWorkspacePath(app.getPath('userData'))
   })
   const channelsRepo = new ChannelsRepository(db)
   const channelPairingsRepo = new ChannelPairingsRepository(db)
-  const channelThreadBindingsRepo = new ChannelThreadBindingsRepository(db)
+  const channelSessionBindingsRepo = new ChannelSessionBindingsRepository(db)
   const webSearchSettingsRepo = new WebSearchSettingsRepository(db)
-  const securitySettingsRepo = new SecuritySettingsRepository(db)
-  const threadUsageRepo = new ThreadUsageRepository(db)
   const mcpServersRepo = new McpServersRepository(join(app.getPath('userData'), 'mcp.json'))
   const managedRuntimesRepo = new ManagedRuntimesRepository(
     join(app.getPath('userData'), 'managed-runtimes.json')
@@ -323,38 +308,15 @@ async function startLocalApiServer(): Promise<void> {
   await syncManagedRuntimeProcessEnv()
   await ensureBuiltInProviders(providersRepo)
   await workspacesRepo.ensureBuiltInChatsWorkspace()
-  await ensureBuiltInDefaultAgent({
-    assistantsRepo,
-    providersRepo,
-    userDataPath: app.getPath('userData')
-  })
   const channelEventBus = new ChannelEventBus()
   const whatsAppAuthStateStore = new WhatsAppAuthStateStore()
   const wechatAuthStateStore = new WechatAuthStateStore()
-  const mastraDbPath = join(app.getPath('userData'), 'mastra.db')
-  const mastra = await createMastraInstance(mastraDbPath)
-  await runThreadUsageBackfill({
-    appDb: db,
-    mastraDbPath,
-    usageRepo: threadUsageRepo
-  })
-  const threadMessageEventsStore = new ThreadMessageEventsStore()
-  const acpHomeRootPath = join(app.getPath('userData'), 'acp-homes')
-  const assistantRuntime = new AssistantRuntimeService({
-    mastra,
-    assistantsRepo,
+  agentRuntimeManager = new AgentRuntimeManager({
+    sessionsRepo: agentSessionsRepo,
     providersRepo,
-    threadsRepo,
-    channelThreadBindingsRepo,
-    webSearchSettingsRepo,
-    securitySettingsRepo,
-    mcpServersRepo,
-    channelsRepo,
-    channelEventBus,
-    threadMessageEventsStore,
-    threadUsageRepo,
-    managedRuntimeResolver: managedRuntimeService,
-    acpHomeRootPath
+    agentDataRoot: join(app.getPath('userData'), 'pi-agent'),
+    sessionDataRoot: join(app.getPath('userData'), 'pi-sessions'),
+    credentialRoot: app.getPath('userData')
   })
   channelService = new ChannelService({
     channelsRepo,
@@ -453,16 +415,10 @@ async function startLocalApiServer(): Promise<void> {
   channelMessageRouter = new ChannelMessageRouter({
     eventBus: channelEventBus,
     channelsRepo,
-    bindingsRepo: channelThreadBindingsRepo,
-    threadsRepo,
+    bindingsRepo: channelSessionBindingsRepo,
+    providersRepo,
     workspacesRepo,
-    assistantRuntime,
-    interruptionDecider: createLlmInterruptionDecider({
-      assistantsRepo,
-      providersRepo
-    }),
-    resolveToolProgressLocale: () => resolveUiConfigStore().getConfig().language ?? app.getLocale(),
-    threadMessageEventsStore
+    agentRuntime: agentRuntimeManager
   })
 
   const apiApp = createApp({
@@ -511,21 +467,15 @@ async function startLocalApiServer(): Promise<void> {
     },
     repositories: {
       providers: providersRepo,
-      assistants: assistantsRepo,
-      threads: threadsRepo,
       workspaces: workspacesRepo,
       channels: channelsRepo,
       pairings: channelPairingsRepo,
-      channelThreadBindings: channelThreadBindingsRepo,
       webSearchSettings: webSearchSettingsRepo,
-      securitySettings: securitySettingsRepo,
       mcpServers: mcpServersRepo,
-      threadUsage: threadUsageRepo
+      agentSessions: agentSessionsRepo
     },
-    assistantRuntime,
-    threadMessageEventsStore,
+    agentRuntime: agentRuntimeManager,
     channelService,
-    getManagedRuntimeStatus: () => resolveManagedRuntimeService().getStatus(),
     channelSetupRecovery: {
       async recover(channel) {
         if (channel.type === 'whatsapp') {
@@ -624,7 +574,7 @@ function createMainWindow(): BrowserWindow {
     }
   })
 
-  if (is.dev) {
+  if (is.dev && !process.env['REMOTE_DEBUGGING_PORT']) {
     browserWindow.webContents.once('did-finish-load', () => {
       browserWindow.webContents.openDevTools({ mode: 'detach' })
     })
@@ -660,6 +610,12 @@ function resolveMainWindow(): BrowserWindow {
 }
 
 function openMainWindow(): void {
+  // Browser annotation mode keeps Electron main alive only as the local API host.
+  // Loading the renderer here would create a second /chat client alongside localhost:5173.
+  if (isBrowserAnnotationModeEnabled) {
+    return
+  }
+
   const hasExistingWindow = Boolean(mainWindow && !mainWindow.isDestroyed())
   const browserWindow = resolveMainWindow()
   if (!hasExistingWindow) {
@@ -670,7 +626,7 @@ function openMainWindow(): void {
 }
 
 function createTray(): void {
-  if (appTray) {
+  if (isBrowserAnnotationModeEnabled || appTray) {
     return
   }
 
@@ -739,16 +695,26 @@ electronAutoUpdater.on('before-quit-for-update', () => {
   })
 })
 
-app.on('before-quit', () => {
+app.on('before-quit', (event) => {
   logAppLifecycle('before-quit', {
     packaged: app.isPackaged,
     version: app.getVersion()
   })
+  if (gracefulQuitStarted) {
+    return
+  }
+  event.preventDefault()
+  gracefulQuitStarted = true
   if (appTray) {
     appTray.destroy()
     appTray = null
   }
-  stopLocalApiServer()
+  void (async () => {
+    await agentRuntimeManager?.shutdown()
+    agentRuntimeManager = null
+    stopLocalApiServer()
+    app.quit()
+  })()
 })
 
 app.on('will-quit', () => {

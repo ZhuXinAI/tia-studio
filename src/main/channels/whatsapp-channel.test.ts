@@ -351,7 +351,7 @@ describe('WhatsAppChannel', () => {
     )
   })
 
-  it('blocks rejected and revoked users from reaching the assistant', async () => {
+  it('blocks rejected and revoked users from reaching the Pi agent', async () => {
     const client = new WhatsAppClientStub()
     const pairingsRepo = new PairingsRepoStub()
     pairingsRepo.setPairing(createApprovedPairing('rejected'))
@@ -558,7 +558,7 @@ describe('WhatsAppChannel', () => {
     })
   })
 
-  it('sends assistant replies back to the WhatsApp chat', async () => {
+  it('sends Pi replies back to the WhatsApp chat', async () => {
     const client = new WhatsAppClientStub()
     const channel = new WhatsAppChannel({
       id: 'channel-whatsapp',
@@ -570,12 +570,9 @@ describe('WhatsAppChannel', () => {
 
     await channel.start()
     await Promise.resolve()
-    await channel.send('8613800138000@s.whatsapp.net', 'assistant reply')
+    await channel.send('8613800138000@s.whatsapp.net', 'Pi reply')
 
-    expect(client.sendMessage).toHaveBeenCalledWith(
-      '8613800138000@s.whatsapp.net',
-      'assistant reply'
-    )
+    expect(client.sendMessage).toHaveBeenCalledWith('8613800138000@s.whatsapp.net', 'Pi reply')
   })
 
   it('resets auth state and reconnects after a logged out disconnect', async () => {

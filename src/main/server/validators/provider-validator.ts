@@ -6,13 +6,11 @@ export const providerTypeSchema = z.enum([
   'openrouter',
   'gemini',
   'anthropic',
-  'ollama',
-  'codex-acp',
-  'claude-agent-acp'
+  'ollama'
 ])
 
 function apiKeyOptionalForType(type: z.infer<typeof providerTypeSchema>): boolean {
-  return type === 'ollama' || type === 'codex-acp' || type === 'claude-agent-acp'
+  return type === 'ollama'
 }
 
 function addApiKeyRequirementIssue(

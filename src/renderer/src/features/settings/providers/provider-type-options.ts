@@ -5,9 +5,7 @@ export const manualProviderTypes = [
   'openai-response',
   'gemini',
   'anthropic',
-  'ollama',
-  'codex-acp',
-  'claude-agent-acp'
+  'ollama'
 ] as const satisfies readonly ProviderType[]
 
 export function getVisibleProviderTypeOptions(currentType?: ProviderType): ProviderType[] {

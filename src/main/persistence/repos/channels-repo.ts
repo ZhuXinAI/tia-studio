@@ -2,268 +2,112 @@ import { randomUUID } from 'node:crypto'
 import type { AppDatabase } from '../client'
 
 export type ChannelType = 'lark' | string
-
 export type AppChannel = {
   id: string
   type: ChannelType
   name: string
-  assistantId: string | null
   enabled: boolean
   config: Record<string, unknown>
   lastError: string | null
   createdAt: string
   updatedAt: string
 }
-
 export type CreateChannelInput = {
   type: ChannelType
   name: string
-  assistantId?: string | null
   enabled?: boolean
   config?: Record<string, unknown>
   lastError?: string | null
 }
-
 export type UpdateChannelInput = Partial<CreateChannelInput>
 
-function parseJsonObject(value: unknown): Record<string, unknown> {
-  if (typeof value !== 'string') {
-    return {}
-  }
-
+function parseConfig(value: unknown): Record<string, unknown> {
   try {
-    const parsed = JSON.parse(value) as unknown
-
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      return parsed as Record<string, unknown>
-    }
+    const parsed = JSON.parse(String(value)) as unknown
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {}
   } catch {
     return {}
   }
-
-  return {}
 }
 
-function parseChannelRow(row: Record<string, unknown>): AppChannel {
+function parseChannel(row: Record<string, unknown>): AppChannel {
   return {
     id: String(row.id),
     type: String(row.type),
     name: String(row.name),
-    assistantId: row.assistant_id ? String(row.assistant_id) : null,
     enabled: Number(row.enabled) === 1,
-    config: parseJsonObject(row.config),
+    config: parseConfig(row.config),
     lastError: row.last_error ? String(row.last_error) : null,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at)
   }
 }
 
-const CHANNEL_COLUMNS = `
-  app_channels.id AS id,
-  app_channels.type AS type,
-  app_channels.name AS name,
-  app_channels.assistant_id AS assistant_id,
-  app_channels.enabled AS enabled,
-  app_channels.config AS config,
-  app_channels.last_error AS last_error,
-  app_channels.created_at AS created_at,
-  app_channels.updated_at AS updated_at
-`
-
-const CHANNEL_SELECT = `
-  SELECT ${CHANNEL_COLUMNS}
-  FROM app_channels
-`
+const SELECT =
+  'SELECT id, type, name, enabled, config, last_error, created_at, updated_at FROM app_channels'
 
 export class ChannelsRepository {
   constructor(private readonly db: AppDatabase) {}
-
   async list(): Promise<AppChannel[]> {
-    const result = await this.db.execute(`${CHANNEL_SELECT} ORDER BY created_at DESC`)
-
-    return result.rows.map((row) => parseChannelRow(row as Record<string, unknown>))
+    const result = await this.db.execute(`${SELECT} ORDER BY created_at DESC`)
+    return result.rows.map((row) => parseChannel(row as Record<string, unknown>))
   }
-
   async listEnabled(): Promise<AppChannel[]> {
-    const result = await this.db.execute(
-      `${CHANNEL_SELECT} WHERE enabled = 1 ORDER BY created_at DESC`
-    )
-
-    return result.rows.map((row) => parseChannelRow(row as Record<string, unknown>))
+    const result = await this.db.execute(`${SELECT} WHERE enabled = 1 ORDER BY created_at DESC`)
+    return result.rows.map((row) => parseChannel(row as Record<string, unknown>))
   }
-
   async listRuntimeEnabled(): Promise<AppChannel[]> {
-    const result = await this.db.execute(
-      `
-        ${CHANNEL_SELECT}
-        INNER JOIN app_assistants ON app_assistants.id = app_channels.assistant_id
-        WHERE app_channels.enabled = 1
-          AND app_channels.assistant_id IS NOT NULL
-          AND app_assistants.enabled = 1
-        ORDER BY app_channels.created_at DESC
-      `
-    )
-
-    return result.rows.map((row) => parseChannelRow(row as Record<string, unknown>))
+    return this.listEnabled()
   }
-
-  async listUnbound(): Promise<AppChannel[]> {
-    const result = await this.db.execute(
-      `${CHANNEL_SELECT} WHERE assistant_id IS NULL ORDER BY created_at DESC`
-    )
-
-    return result.rows.map((row) => parseChannelRow(row as Record<string, unknown>))
-  }
-
   async getById(id: string): Promise<AppChannel | null> {
-    const result = await this.db.execute(`${CHANNEL_SELECT} WHERE id = ? LIMIT 1`, [id])
+    const result = await this.db.execute(`${SELECT} WHERE id = ? LIMIT 1`, [id])
     const row = result.rows.at(0)
-
-    if (!row) {
-      return null
-    }
-
-    return parseChannelRow(row as Record<string, unknown>)
+    return row ? parseChannel(row as Record<string, unknown>) : null
   }
-
   async getRuntimeById(id: string): Promise<AppChannel | null> {
-    const result = await this.db.execute(
-      `
-        ${CHANNEL_SELECT}
-        INNER JOIN app_assistants ON app_assistants.id = app_channels.assistant_id
-        WHERE app_channels.id = ?
-          AND app_channels.enabled = 1
-          AND app_channels.assistant_id IS NOT NULL
-          AND app_assistants.enabled = 1
-        LIMIT 1
-      `,
-      [id]
-    )
-    const row = result.rows.at(0)
-
-    if (!row) {
-      return null
-    }
-
-    return parseChannelRow(row as Record<string, unknown>)
+    const channel = await this.getById(id)
+    return channel?.enabled ? channel : null
   }
-
   async getByType(type: ChannelType): Promise<AppChannel[]> {
-    const result = await this.db.execute(
-      `${CHANNEL_SELECT} WHERE type = ? ORDER BY created_at DESC`,
-      [type]
-    )
-
-    return result.rows.map((row) => parseChannelRow(row as Record<string, unknown>))
+    const result = await this.db.execute(`${SELECT} WHERE type = ? ORDER BY created_at DESC`, [type])
+    return result.rows.map((row) => parseChannel(row as Record<string, unknown>))
   }
-
-  async getByAssistantId(assistantId: string): Promise<AppChannel | null> {
-    const result = await this.db.execute(
-      `${CHANNEL_SELECT} WHERE assistant_id = ? ORDER BY created_at DESC LIMIT 1`,
-      [assistantId]
-    )
-    const row = result.rows.at(0)
-
-    if (!row) {
-      return null
-    }
-
-    return parseChannelRow(row as Record<string, unknown>)
-  }
-
   async create(input: CreateChannelInput): Promise<AppChannel> {
     const id = randomUUID()
-
     await this.db.execute(
-      `
-        INSERT INTO app_channels (id, type, name, assistant_id, enabled, config, last_error)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `,
-      [
-        id,
-        input.type,
-        input.name,
-        input.assistantId ?? null,
-        input.enabled === false ? 0 : 1,
-        JSON.stringify(input.config ?? {}),
-        input.lastError ?? null
-      ]
+      'INSERT INTO app_channels (id, type, name, enabled, config, last_error) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, input.type, input.name, input.enabled === false ? 0 : 1, JSON.stringify(input.config ?? {}), input.lastError ?? null]
     )
-
-    const channel = await this.getById(id)
-    if (!channel) {
-      throw new Error('Failed to create channel')
-    }
-
-    return channel
+    const created = await this.getById(id)
+    if (!created) throw new Error('Failed to create channel')
+    return created
   }
-
   async update(id: string, input: UpdateChannelInput): Promise<AppChannel | null> {
     const existing = await this.getById(id)
-    if (!existing) {
-      return null
-    }
-
-    const assistantId = 'assistantId' in input ? (input.assistantId ?? null) : existing.assistantId
-    const lastError = 'lastError' in input ? (input.lastError ?? null) : existing.lastError
-
+    if (!existing) return null
     await this.db.execute(
-      `
-        UPDATE app_channels
-        SET
-          type = ?,
-          name = ?,
-          assistant_id = ?,
-          enabled = ?,
-          config = ?,
-          last_error = ?,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `,
+      'UPDATE app_channels SET type = ?, name = ?, enabled = ?, config = ?, last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [
         input.type ?? existing.type,
         input.name ?? existing.name,
-        assistantId,
-        input.enabled === undefined ? (existing.enabled ? 1 : 0) : input.enabled ? 1 : 0,
-        JSON.stringify('config' in input ? (input.config ?? {}) : existing.config),
-        lastError,
+        input.enabled === undefined ? Number(existing.enabled) : Number(input.enabled),
+        JSON.stringify(input.config ?? existing.config),
+        'lastError' in input ? (input.lastError ?? null) : existing.lastError,
         id
       ]
     )
-
     return this.getById(id)
   }
-
   async delete(id: string): Promise<boolean> {
-    const existing = await this.getById(id)
-    if (!existing) {
-      return false
-    }
-
+    if (!(await this.getById(id))) return false
     await this.db.execute('DELETE FROM app_channels WHERE id = ?', [id])
     return true
   }
-
   async setLastError(id: string, message: string | null): Promise<AppChannel | null> {
-    const existing = await this.getById(id)
-    if (!existing) {
-      return null
-    }
-
-    await this.db.execute(
-      `
-        UPDATE app_channels
-        SET
-          last_error = ?,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `,
-      [message, id]
-    )
-
-    return this.getById(id)
+    return this.update(id, { lastError: message })
   }
-
   async clearLastError(id: string): Promise<AppChannel | null> {
     return this.setLastError(id, null)
   }

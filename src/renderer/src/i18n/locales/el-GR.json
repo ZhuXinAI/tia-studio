@@ -7,29 +7,7 @@
       "updating": "Updating...",
       "openSettings": "Άνοιγμα ρυθμίσεων"
     },
-    "legacySidebar": {
-      "title": "TIA Studio",
-      "subtitle": "Κέντρο ελέγχου",
-      "workspace": "Χώρος εργασίας",
-      "settings": "Ρυθμίσεις",
-      "chat": "Συνομιλία",
-      "modelProviders": "Πάροχοι μοντέλων",
-      "notes": "Σημειώσεις TIA Studio"
-    },
-    "chatSwitcher": {
-      "label": "Current assistant",
-      "ariaLabel": "Switch active assistant",
-      "loading": "Loading assistant...",
-      "fallback": "Assistant",
-      "searchPlaceholder": "Search assistants...",
-      "searchAriaLabel": "Search assistants",
-      "empty": "No assistants yet",
-      "createAction": "Create new assistant",
-      "manageAction": "Manage assistants & channels"
-    },
-    "context": {
-      "assistantsChannels": "Assistants & Channels"
-    }
+    "context": {}
   },
   "common": {
     "routeError": {
@@ -67,12 +45,8 @@
       "items": {
         "general": "Γενικά",
         "providers": "Πάροχος μοντέλων",
-        "security": "Security & Privacy",
         "channels": "Κανάλια",
-        "webSearch": "Browsing",
         "mcpServers": "Διακομιστές MCP",
-        "coding": "Coding",
-        "runtimeSetup": "Ρύθμιση runtime",
         "display": "Εμφάνιση",
         "aboutFeedback": "Πληροφορίες & σχόλια"
       }
@@ -84,39 +58,6 @@
       "languageDescription": "Επιλέξτε πώς το TIA Studio εμφανίζει το κείμενο του περιβάλλοντος χρήστη.",
       "systemDefault": "Προεπιλογή συστήματος",
       "currentSystemLanguage": "Αυτή τη στιγμή χρησιμοποιείται η {{language}} από τις ρυθμίσεις συστήματος."
-    },
-    "security": {
-      "title": "Security & Privacy",
-      "description": "Configure LLM guardrails for prompt injection and PII redaction.",
-      "loading": "Loading security settings...",
-      "guardrails": {
-        "title": "Guardrails",
-        "description": "Prompt injection checks run on incoming messages, and PII protection redacts both incoming and outgoing content."
-      },
-      "promptInjection": {
-        "title": "Prompt Injection Detector",
-        "description": "Detects jailbreaks, instruction overrides, and prompt injection attempts before the assistant model runs."
-      },
-      "pii": {
-        "title": "PII Detector",
-        "description": "Redacts personally identifiable information in user input and assistant output."
-      },
-      "provider": {
-        "title": "Guardrail Model",
-        "description": "Use each assistant's selected model by default, or choose a separate enabled provider for the detector checks.",
-        "label": "Security provider",
-        "defaultOption": "Use assistant model",
-        "hint": "When no override is selected, TIA Studio falls back to the assistant's configured model.",
-        "empty": "No enabled providers with a selected model are currently available."
-      },
-      "toasts": {
-        "promptInjectionEnabled": "Prompt injection protection is now enabled.",
-        "promptInjectionDisabled": "Prompt injection protection is now disabled.",
-        "piiEnabled": "PII protection is now enabled.",
-        "piiDisabled": "PII protection is now disabled.",
-        "providerUpdated": "Guardrail provider updated.",
-        "unexpectedError": "Unexpected request error"
-      }
     },
     "display": {
       "title": "Ρυθμίσεις εμφάνισης",
@@ -135,7 +76,7 @@
       "description": "Μεταδεδομένα εφαρμογής, έλεγχοι ενημερώσεων και χρήσιμοι σύνδεσμοι για το TIA Studio.",
       "cardTitle": "Σχετικά",
       "repositoryAriaLabel": "Άνοιγμα αποθετηρίου ανοιχτού κώδικα",
-      "appDescription": "Χώρος εργασίας AI με έμφαση στο τοπικό για βοηθούς, παρόχους και ενοποιήσεις εργαλείων.",
+      "appDescription": "A local-first workspace powered by the Pi coding agent.",
       "autoUpdate": {
         "label": "Αυτόματη ενημέρωση",
         "enabledDescription": "Λήψη της τελευταίας έκδοσης αυτόματα στο παρασκήνιο.",
@@ -190,7 +131,7 @@
           },
           "skills": {
             "title": "Step 2 · Install recommended skills",
-            "description": "Use the managed bunx command to install a few helpful skills globally for TIA Studio assistants.",
+            "description": "Use the managed bunx command to install helpful skills globally for TIA Studio.",
             "lockedDescription": "Finish the bun step first, then choose which starter skills to install.",
             "bunRequired": "Recommended skill install stays locked until bun is ready.",
             "installAction": "Install selected skills",
@@ -204,7 +145,7 @@
           },
           "findSkills": {
             "title": "find-skills",
-            "description": "Helps discover installable skills when the assistant needs extra capabilities."
+            "description": "Helps discover installable skills when extra capabilities are needed."
           },
           "status": {
             "loading": "Checking install status...",
@@ -245,44 +186,6 @@
         "skillsAlreadyInstalled": "Selected skills are already installed.",
         "skillsInstallSuccess": "Installed the selected recommended skills.",
         "unexpectedError": "Απροσδόκητο σφάλμα περιβάλλοντος"
-      }
-    },
-    "coding": {
-      "title": "Coding",
-      "description": "Install the ACP adapters that power Codex and Claude Agent inside TIA Studio, or point TIA Studio at a binary you already downloaded.",
-      "kindLabels": {
-        "codex-acp": "Codex ACP",
-        "claude-agent-acp": "Claude Agent ACP"
-      },
-      "kindDescription": {
-        "codexAcp": "Used for Codex-backed coding providers and assistant coding subagents.",
-        "claudeAgentAcp": "Used for Claude Agent-backed coding providers and assistant coding subagents."
-      },
-      "labels": {
-        "status": "Status:",
-        "source": "Source:",
-        "version": "Version:",
-        "binary": "Binary:"
-      },
-      "values": {
-        "notInstalled": "Not installed",
-        "noBinary": "No active binary selected",
-        "loading": "Loading coding runtime status..."
-      },
-      "buttons": {
-        "installLatest": "Install latest",
-        "installing": "Installing...",
-        "useDownloadedBinary": "Use downloaded binary",
-        "checkAgain": "Check again",
-        "checking": "Checking...",
-        "clearCustom": "Clear custom"
-      },
-      "toasts": {
-        "installSuccess": "Installed latest {{kind}} runtime.",
-        "pickSuccess": "Activated custom {{kind}} runtime.",
-        "checkSuccess": "Checked {{kind}} runtime status.",
-        "clearSuccess": "Cleared {{kind}} runtime selection.",
-        "unexpectedError": "Unexpected managed runtime error"
       }
     },
     "webSearch": {
@@ -349,9 +252,7 @@
         "openrouter": "OpenRouter",
         "gemini": "Gemini",
         "anthropic": "Anthropic",
-        "ollama": "Ollama",
-        "codex-acp": "Codex ACP",
-        "claude-agent-acp": "Claude Agent ACP"
+        "ollama": "Ollama"
       },
       "typeDescriptions": {
         "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
@@ -359,9 +260,7 @@
         "openrouter": "For OpenRouter's native AI SDK provider integration. This type is intended for built-in OpenRouter templates.",
         "gemini": "For Google Gemini models. Requires Google AI API key from ai.google.dev.",
         "anthropic": "For Claude models from Anthropic. Requires Anthropic API key from console.anthropic.com.",
-        "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint.",
-        "codex-acp": "Runs the Codex ACP adapter as a local AI SDK provider. Configure the binary in Coding settings.",
-        "claude-agent-acp": "Runs the Claude Agent ACP adapter as a local AI SDK provider. Configure the binary in Coding settings."
+        "ollama": "For locally-hosted Ollama models. No API key needed, just specify your local Ollama endpoint."
       },
       "form": {
         "errors": {
@@ -378,18 +277,6 @@
         "apiKey": "Κλειδί API",
         "apiHost": "Host API",
         "selectedModel": "Επιλεγμένο μοντέλο",
-        "acpBinaryStatus": "ACP Binary Status",
-        "acpBinaryDescription": "This provider uses a local ACP executable instead of a remote HTTP endpoint.",
-        "acpStatus": "Status:",
-        "acpStatusLoading": "Loading...",
-        "acpBinary": "Binary:",
-        "acpBinaryMissing": "No ACP binary is currently ready",
-        "acpVersion": "Version:",
-        "acpVersionMissing": "No version detected",
-        "acpReady": "Binary is ready. You can save this provider and use it in assistants.",
-        "acpNotReadyPrefix": "Binary is not ready yet.",
-        "acpNotReadySuffix": "Install or select the executable there before relying on this provider.",
-        "acpOpenCoding": "Open Coding",
         "includeModelPresets": "Συμπερίληψη προαιρετικών προεπιλογών μοντέλων παρόχου",
         "providerModels": "Μοντέλα παρόχου (προαιρετικά)",
         "providerModelsDescription": "Εισάγετε ονόματα μοντέλων διαχωρισμένα με κόμματα ή νέες γραμμές",
@@ -415,10 +302,10 @@
         "applyJson": "Εφαρμογή JSON"
       },
       "cardTitle": "Διακομιστές MCP",
-      "cardDescription": "Αυτοί οι διακομιστές είναι κοινόχρηστοι παγκοσμίως και μπορούν να ενεργοποιούνται/απενεργοποιούνται ανά βοηθό στην καρτέλα Εργαλεία.",
+      "cardDescription": "These servers are shared globally for local Pi sessions.",
       "loading": "Φόρτωση διακομιστών MCP...",
       "empty": "Δεν υπάρχουν ακόμα διακομιστές MCP. Προσθέστε έναν για να δημιουργήσετε τη λίστα mcp.json.",
-      "serverDescription": "Η παγκόσμια κατάσταση ελέγχει αν οι βοηθοί μπορούν να χρησιμοποιήσουν αυτόν τον διακομιστή.",
+      "serverDescription": "Global status controls whether Pi sessions can use this server.",
       "toggleAriaLabel": "Εναλλαγή {{id}}",
       "deleteAriaLabel": "Διαγραφή {{id}}",
       "managedRuntimeTitle": "Αυτή η εντολή μπορεί να χρησιμοποιήσει διαχειριζόμενα περιβάλλοντα TIA Studio.",
@@ -457,222 +344,12 @@
       "loading": "Φόρτωση καναλιών...",
       "empty": "Δεν υπάρχουν ακόμη ρυθμισμένα κανάλια.",
       "available": "Διαθέσιμο",
-      "boundTo": "Συνδεδεμένο με {{assistantName}}",
-      "removeDisabled": "Αποσυνδέστε πρώτα αυτό το κανάλι από τον τρέχοντα βοηθό πριν το αφαιρέσετε.",
       "loadFailed": "Αποτυχία φόρτωσης καναλιών"
     }
   },
   "threads": {
     "sidebar": {
-      "eyebrow": "Κύρια συνομιλία",
-      "title": "Συνομιλίες",
-      "creatingThread": "Δημιουργία νήματος...",
-      "newThread": "Νέο νήμα",
-      "assistants": "Βοηθοί",
-      "createAssistantAriaLabel": "Create assistant",
-      "assistantActionsAriaLabel": "Assistant actions for {{name}}",
-      "assistantSwitcherAriaLabel": "Switch assistants",
-      "backToAssistantsAriaLabel": "Back to assistants",
-      "currentAssistant": "Current assistant",
-      "deleteAssistantAriaLabel": "Delete assistant {{name}}",
-      "loadingAssistants": "Φόρτωση βοηθών...",
-      "emptyAssistants": "Δεν υπάρχουν ακόμη βοηθοί. Δημιουργήστε έναν στο Assistants.",
-      "emptyAssistantSearch": "No assistants match this search.",
-      "loadingThreads": "Φόρτωση νημάτων...",
-      "emptyThreads": "Δεν υπάρχουν ακόμη νήματα.",
-      "emptyThreadSearch": "No threads match this search.",
-      "threadsLabel": "Threads",
-      "searchAssistantsPlaceholder": "Search assistants...",
-      "searchAssistantsAriaLabel": "Search assistants",
-      "searchThreadsPlaceholder": "Search threads...",
-      "searchThreadsAriaLabel": "Search assistant threads",
-      "untitledThread": "Νήμα χωρίς τίτλο",
-      "deleteThreadAriaLabel": "Delete thread {{title}}",
-      "deleteThreadPrompt": "Διαγραφή νήματος;",
-      "cancelDeleteThreadAriaLabel": "Cancel delete thread {{title}}",
-      "confirmDeleteThreadAriaLabel": "Confirm delete thread {{title}}"
-    },
-    "chat": {
-      "defaultAssistantName": "Βοηθός",
-      "titleWithAssistant": "Συνομιλία με {{name}}",
-      "tokens": "tokens",
-      "tokenInput": "{{value}} είσοδος",
-      "tokenOutput": "{{value}} έξοδος",
-      "remoteBadge": "Remote channel",
-      "remoteBadgeTitle": "Linked to a remote channel chat",
-      "newThread": "Νέο νήμα",
-      "setupIncomplete": "Η ρύθμιση του βοηθού δεν έχει ολοκληρωθεί. Ανοίξτε το «Ρύθμιση» για να ορίσετε πάροχο και μοντέλο πριν από την αποστολή μηνυμάτων.",
-      "composer": {
-        "placeholderSelectedThread": "Πληκτρολογήστε μήνυμα για αυτό το νήμα...",
-        "placeholderSelectedAssistant": "Πληκτρολογήστε μήνυμα για να δημιουργήσετε νέο νήμα...",
-        "placeholderEmpty": "Επιλέξτε βοηθό για να ξεκινήσετε συνομιλία.",
-        "helperSelectedThread": "Τα μηνύματα μεταφέρονται μέσω του επιλεγμένου νήματος βοηθού.",
-        "helperSelectedAssistant": "Δεν έχει επιλεγεί νήμα. Πατήστε Enter για δημιουργία και αποστολή.",
-        "helperEmpty": "Επιλέξτε βοηθό για να ξεκινήσετε.",
-        "ariaLabel": "Message composer"
-      }
-    },
-    "messageList": {
-      "untitledFile": "Αρχείο χωρίς τίτλο",
-      "you": "Εσείς",
-      "copyMessage": "Αντιγραφή μηνύματος",
-      "reloadMessage": "Επαναφόρτωση",
-      "moreActions": "Περισσότερες ενέργειες",
-      "exportMarkdown": "Εξαγωγή Markdown",
-      "empty": "Δεν υπάρχουν ακόμη μηνύματα.",
-      "loadingHistory": "Φόρτωση ιστορικού νήματος...",
-      "responding": "Ο βοηθός απαντά..."
-    },
-    "assistantDialog": {
-      "closeCreateAriaLabel": "Close create assistant dialog",
-      "closeEditAriaLabel": "Close assistant config dialog",
-      "createTitle": "Δημιουργία βοηθού",
-      "editTitle": "Ρύθμιση {{name}}",
-      "createDescription": "Ρυθμίστε διαδρομή workspace και πάροχο πριν ξεκινήσετε τη συνομιλία.",
-      "editDescription": "Ενημερώστε πάροχο, workspace και prompt χωρίς να φύγετε από τη συνομιλία.",
-      "addProviderPrefix": "Προσθέστε πρώτα έναν πάροχο εδώ:",
-      "providerLinkLabel": "Πάροχος μοντέλου",
-      "notFound": "Ο βοηθός δεν βρέθηκε."
-    },
-    "toasts": {
-      "threadCreated": "Το νήμα δημιουργήθηκε.",
-      "threadRemoved": "Το νήμα αφαιρέθηκε.",
-      "assistantCreated": "Ο βοηθός δημιουργήθηκε.",
-      "assistantUpdated": "Η ρύθμιση του βοηθού ενημερώθηκε.",
-      "builtInDeleteBlocked": "Ο ενσωματωμένος προεπιλεγμένος βοηθός δεν μπορεί να διαγραφεί.",
-      "assistantDeleteFallbackLabel": "αυτός ο βοηθός",
-      "confirmAssistantDelete": "Διαγραφή του «{{name}}»; Θα διαγραφούν επίσης όλα τα νήματά του.",
-      "assistantDeleted": "Ο βοηθός διαγράφηκε."
-    },
-    "readiness": {
-      "providerAssigned": "Provider is assigned to this assistant",
-      "providerModelSelected": "Provider has one selected model"
-    }
-  },
-  "assistants": {
-    "modelPicker": {
-      "title": "Επιλογή μοντέλου",
-      "searchPlaceholder": "Αναζήτηση μοντέλων...",
-      "empty": "Δεν υπάρχουν μοντέλα που να ταιριάζουν με την αναζήτηση."
-    },
-    "editor": {
-      "editTitle": "Επεξεργασία βοηθού",
-      "createTitle": "Δημιουργία βοηθού",
-      "tabs": {
-        "essential": "Βασικές ρυθμίσεις",
-        "coding": "Coding",
-        "tools": "Εργαλεία",
-        "skills": "Skills",
-        "channels": "Channels",
-        "activity": "Activity"
-      },
-      "fields": {
-        "name": "Όνομα",
-        "provider": "Πάροχος",
-        "description": "Περιγραφή",
-        "prompt": "Prompt",
-        "workspacePath": "Διαδρομή workspace (προαιρετικό)",
-        "maxSteps": "Μέγιστα βήματα"
-      },
-      "placeholders": {
-        "name": "Research Copilot",
-        "description": "Ερευνά γεγονότα, βρίσκει πηγές και επαληθεύει ισχυρισμούς.",
-        "prompt": "Είστε ένας χρήσιμος βοηθός που απαντά με σύντομα και πρακτικά βήματα.",
-        "workspacePath": "/Users/name/workspace",
-        "maxSteps": "100"
-      },
-      "selectProvider": "Επιλέξτε πάροχο",
-      "workspacePathHelp": "Για να εκτελεί ο agent πιο σύνθετες εργασίες, επιλέξτε ένα workspace.",
-      "openingButton": "Άνοιγμα...",
-      "channels": {
-        "title": "Channel Setup",
-        "description": "Choose the channel this assistant owns and keep setup actions close to the selection flow.",
-        "empty": "No channel is currently selected for this assistant.",
-        "openSetupDescription": "Open setup here to manage pairings, QR login, or other channel-specific onboarding."
-      },
-      "codingAgent": {
-        "description": "Delegate coding-heavy tasks to a dedicated Codex or Claude Agent ACP subagent.",
-        "toggleForAriaLabel": "Enable {{kind}}",
-        "providerLabel": "Coding provider",
-        "selectProvider": "Select coding provider",
-        "availableStatus": "Installed",
-        "missingStatus": "Not installed",
-        "cwdPrefix": "This coding subagent will use this workspace as cwd:",
-        "runtimeDescriptions": {
-          "codex-acp": "Use Codex ACP for implementation-focused coding tasks inside the assistant workspace.",
-          "claude-agent-acp": "Use Claude Agent ACP for coding tasks inside the assistant workspace."
-        },
-        "workspaceRequired": "Set a workspace path before enabling the coding agent.",
-        "runtimeMissingPrefix": "The selected coding provider needs its ACP binary. Finish setup in",
-        "codingLinkLabel": "Coding",
-        "noProvidersPrefix": "No enabled Codex or Claude Agent ACP providers are available yet. Add one in",
-        "providersLinkLabel": "Model Provider",
-        "noProvidersSuffix": "and make sure its ACP binary is ready in Coding."
-      },
-      "toolsDescription": "Control the MCP servers and runtime-backed tools that this assistant can use.",
-      "runtimeNoteTitle": "Ορισμένα εργαλεία MCP χρησιμοποιούν διαχειριζόμενα runtimes.",
-      "runtimeNotePrefix": "Ολοκληρώστε τη ρύθμιση στο",
-      "runtimeNoteLinkLabel": "Runtime Setup",
-      "runtimeNoteSuffix": "αν αυτός ο βοηθός εξαρτάται από εργαλεία με βάση npx, bun ή uv.",
-      "noMcpServersPrefix": "Δεν έχουν ρυθμιστεί ακόμη διακομιστές MCP. Προσθέστε διακομιστές στις",
-      "noMcpServersLinkLabel": "MCP Server Settings",
-      "mcpGloballyDisabled": "Απενεργοποιημένο καθολικά στις ρυθμίσεις MCP Server.",
-      "toggleMcpAriaLabel": "Toggle {{serverId}} for this assistant",
-      "savingButton": "Αποθήκευση...",
-      "updateButton": "Ενημέρωση βοηθού",
-      "createButton": "Δημιουργία βοηθού",
-      "errors": {
-        "nameRequired": "Το όνομα βοηθού είναι υποχρεωτικό",
-        "providerRequired": "Ο πάροχος είναι υποχρεωτικός",
-        "maxStepsInvalid": "Τα μέγιστα βήματα πρέπει να είναι θετικός ακέραιος",
-        "codingProviderRequired": "Select a coding provider before enabling the coding agent",
-        "codingWorkspaceRequired": "A workspace path is required when the coding agent is enabled",
-        "workspacePickerFailed": "Δεν ήταν δυνατή η επιλογή φακέλου workspace"
-      },
-      "skillSources": {
-        "workspace": "Workspace",
-        "globalClaude": "Global ~/.claude/skills",
-        "globalAgent": "Global ~/.agent/skills"
-      },
-      "skills": {
-        "description": "Skills are loaded from `~/.claude/skills`, `~/.agent/skills`, and `./skills`.",
-        "workspaceRequired": "Set a workspace path first to load workspace skills.",
-        "loading": "Loading skills...",
-        "empty": "No skills found in the configured global or workspace folders.",
-        "noDescription": "No description found in SKILL.md.",
-        "removeAriaLabel": "Remove skill {{name}}",
-        "removingButton": "Removing...",
-        "removeButton": "Remove",
-        "readOnly": "Read-only"
-      }
-    }
-  },
-  "assistantUi": {
-    "markdown": {
-      "copyCode": "Αντιγραφή"
-    },
-    "attachment": {
-      "imagePreviewAlt": "Image preview",
-      "dialogTitle": "Image Attachment Preview",
-      "previewAlt": "Attachment preview",
-      "attachmentAriaLabel": "{{type}} attachment",
-      "removeFile": "Αφαίρεση αρχείου",
-      "addAttachment": "Προσθήκη συνημμένου",
-      "typeLabels": {
-        "image": "Image",
-        "document": "Document",
-        "file": "File"
-      }
-    },
-    "toolGroup": {
-      "label_one": "{{count}} κλήση εργαλείου",
-      "label_other": "{{count}} κλήσεις εργαλείου"
-    },
-    "image": {
-      "contentAlt": "Image content",
-      "previewAlt": "Image preview",
-      "zoomAriaLabel": "Κάντε κλικ για μεγέθυνση εικόνας",
-      "closeZoomAriaLabel": "Κλείσιμο μεγεθυμένης εικόνας"
+      "untitledThread": "Νήμα χωρίς τίτλο"
     }
   }
 }

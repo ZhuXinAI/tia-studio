@@ -50,9 +50,7 @@ const execFileAsync = promisify(execFile)
 const githubReleaseUrls: Record<ManagedRuntimeKind, string> = {
   'agent-browser': 'https://api.github.com/repos/vercel-labs/agent-browser/releases/latest',
   bun: 'https://api.github.com/repos/oven-sh/bun/releases/latest',
-  uv: 'https://api.github.com/repos/astral-sh/uv/releases/latest',
-  'codex-acp': 'https://api.github.com/repos/zed-industries/codex-acp/releases/latest',
-  'claude-agent-acp': 'https://api.github.com/repos/zed-industries/claude-agent-acp/releases/latest'
+  uv: 'https://api.github.com/repos/astral-sh/uv/releases/latest'
 }
 
 function createDefaultRecord(): ManagedRuntimeRecord {
@@ -105,22 +103,10 @@ function runtimeBinaryName(kind: ManagedRuntimeKind, platform: NodeJS.Platform):
     return `agent-browser${suffix}`
   }
 
-  if (kind === 'codex-acp') {
-    return `codex-acp${suffix}`
-  }
-
-  if (kind === 'claude-agent-acp') {
-    return `claude-agent-acp${suffix}`
-  }
-
   return `${kind}${suffix}`
 }
 
-function getRuntimeValidationArgs(kind: ManagedRuntimeKind): string[] {
-  if (kind === 'codex-acp' || kind === 'claude-agent-acp') {
-    return ['--help']
-  }
-
+function getRuntimeValidationArgs(): string[] {
   return ['--version']
 }
 
@@ -331,9 +317,7 @@ function createManagedRuntimeEnv(
   const runtimeDirs = [
     state.bun,
     state.uv,
-    state['agent-browser'],
-    state['codex-acp'],
-    state['claude-agent-acp']
+    state['agent-browser']
   ]
     .filter((record): record is ManagedRuntimeRecord => isRuntimeRecordActive(record))
     .map((record) => dirname(record.binaryPath as string))
@@ -499,7 +483,7 @@ export class ManagedRuntimeService {
 
       try {
         const version =
-          (await this.validateRuntimePath(kind, binaryPath)) ??
+          (await this.validateRuntimePath(binaryPath)) ??
           toNonEmptyString(release.tag_name) ??
           getValidatedRuntimeLabel(kind)
 
@@ -540,7 +524,7 @@ export class ManagedRuntimeService {
 
     try {
       const version =
-        (await this.validateRuntimePath(kind, selectedPath)) ?? getValidatedRuntimeLabel(kind)
+        (await this.validateRuntimePath(selectedPath)) ?? getValidatedRuntimeLabel(kind)
       state[kind] = {
         source: 'custom',
         binaryPath: selectedPath,
@@ -713,50 +697,6 @@ export class ManagedRuntimeService {
       return []
     }
 
-    if (kind === 'codex-acp') {
-      if (platform === 'darwin' && arch === 'arm64') {
-        return ['aarch64-apple-darwin']
-      }
-      if (platform === 'darwin' && arch === 'x64') {
-        return ['x86_64-apple-darwin']
-      }
-      if (platform === 'linux' && arch === 'arm64') {
-        return ['aarch64-unknown-linux-gnu', 'aarch64-unknown-linux-musl']
-      }
-      if (platform === 'linux' && arch === 'x64') {
-        return ['x86_64-unknown-linux-gnu', 'x86_64-unknown-linux-musl']
-      }
-      if (platform === 'win32' && arch === 'arm64') {
-        return ['aarch64-pc-windows-msvc']
-      }
-      if (platform === 'win32' && arch === 'x64') {
-        return ['x86_64-pc-windows-msvc']
-      }
-      return []
-    }
-
-    if (kind === 'claude-agent-acp') {
-      if (platform === 'darwin' && arch === 'arm64') {
-        return ['claude-agent-acp-darwin-arm64']
-      }
-      if (platform === 'darwin' && arch === 'x64') {
-        return ['claude-agent-acp-darwin-x64']
-      }
-      if (platform === 'linux' && arch === 'arm64') {
-        return ['claude-agent-acp-linux-arm64', 'claude-agent-acp-linux-arm64-musl']
-      }
-      if (platform === 'linux' && arch === 'x64') {
-        return ['claude-agent-acp-linux-x64', 'claude-agent-acp-linux-x64-musl']
-      }
-      if (platform === 'win32' && arch === 'arm64') {
-        return ['claude-agent-acp-windows-arm64']
-      }
-      if (platform === 'win32' && arch === 'x64') {
-        return ['claude-agent-acp-windows-x64']
-      }
-      return []
-    }
-
     if (platform === 'darwin' && arch === 'arm64') {
       return ['uv-aarch64-apple-darwin']
     }
@@ -790,11 +730,8 @@ export class ManagedRuntimeService {
     return kind === 'bun' && candidate.name.includes('-profile')
   }
 
-  private async validateRuntimePath(
-    kind: ManagedRuntimeKind,
-    binaryPath: string
-  ): Promise<string | null> {
-    const validationArgs = getRuntimeValidationArgs(kind)
+  private async validateRuntimePath(binaryPath: string): Promise<string | null> {
+    const validationArgs = getRuntimeValidationArgs()
     const { stdout, stderr } = await this.runCommand(binaryPath, validationArgs)
 
     if (validationArgs.includes('--version')) {

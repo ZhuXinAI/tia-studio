@@ -235,22 +235,25 @@ export function ChannelsSettingsPage(): React.JSX.Element {
   const [channelToRemove, setChannelToRemove] = useState<ConfiguredChannelRecord | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
 
-  const refreshChannels = useCallback(async (options?: { background?: boolean }): Promise<void> => {
-    if (!options?.background) {
-      setIsLoading(true)
-    }
-    setErrorMessage(null)
-
-    try {
-      setConfiguredChannels(await listChannels())
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : t('settings.channels.loadFailed'))
-    } finally {
+  const refreshChannels = useCallback(
+    async (options?: { background?: boolean }): Promise<void> => {
       if (!options?.background) {
-        setIsLoading(false)
+        setIsLoading(true)
       }
-    }
-  }, [t])
+      setErrorMessage(null)
+
+      try {
+        setConfiguredChannels(await listChannels())
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : t('settings.channels.loadFailed'))
+      } finally {
+        if (!options?.background) {
+          setIsLoading(false)
+        }
+      }
+    },
+    [t]
+  )
 
   useEffect(() => {
     void refreshChannels()
@@ -468,13 +471,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                       </div>
 
                       <p className="text-sm text-muted-foreground">
-                        {channel.assistantId
-                          ? channel.assistantName
-                            ? t('settings.channels.boundTo', {
-                                assistantName: channel.assistantName
-                              })
-                            : t('settings.channels.inUse')
-                          : t('settings.channels.available')}
+                        Routes messages to Pi in the built-in Chats workspace.
                       </p>
 
                       {channel.type === 'telegram' || channel.type === 'whatsapp' ? (

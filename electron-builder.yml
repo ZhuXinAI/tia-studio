@@ -12,6 +12,8 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+  - node_modules/@earendil-works/**
+  - node_modules/@silvia-odwyer/**
 win:
   executableName: tia-studio
 nsis:

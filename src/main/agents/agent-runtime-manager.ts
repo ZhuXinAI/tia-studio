@@ -1,0 +1,488 @@
+import {
+  AgentSession,
+  DefaultResourceLoader,
+  ModelRuntime,
+  SessionManager,
+  SettingsManager,
+  createAgentSession,
+  type AgentSessionEvent,
+  type ExtensionUIContext
+} from '@earendil-works/pi-coding-agent'
+import { randomUUID } from 'node:crypto'
+import { mkdir } from 'node:fs/promises'
+import { join } from 'node:path'
+import type {
+  AgentCommandReceipt,
+  AgentInteractionRequest,
+  AgentInteractionResponse,
+  AgentSessionSnapshot,
+  AgentThinkingLevel,
+  AppAgentEvent,
+  AppAgentMessage,
+  AppAgentRuntime,
+  CreateAgentSessionInput,
+  SendAgentMessageInput
+} from '../../shared/agent-runtime'
+import { reduceAgentEvent } from '../../shared/agent-runtime'
+import type { AgentSessionsRepository } from '../persistence/repos/agent-sessions-repo'
+import type { ProvidersRepository } from '../persistence/repos/providers-repo'
+import { writePiModelConfig } from './pi/pi-model-config'
+import { createPiPermissionExtension } from './pi/pi-permission-extension'
+import { PiSdkEventMapper } from './pi/pi-sdk-event-mapper'
+
+type PendingInteraction = {
+  resolve: (response: AgentInteractionResponse) => void
+  cleanup?: () => void
+}
+
+type LiveSession = {
+  session: AgentSession
+  modelRuntime: ModelRuntime
+  piProvider: string
+  mapper: PiSdkEventMapper
+  snapshot: AgentSessionSnapshot
+  messages: AppAgentMessage[]
+  unsubscribe: () => void
+  pendingInteractions: Map<string, PendingInteraction>
+}
+
+export type AgentRuntimeManagerOptions = {
+  sessionsRepo: AgentSessionsRepository
+  providersRepo: ProvidersRepository
+  agentDataRoot: string
+  sessionDataRoot: string
+  credentialRoot: string
+}
+
+function deterministicTitle(text: string): string {
+  const normalized = text.replace(/\s+/g, ' ').trim()
+  if (!normalized) return 'New thread'
+  return normalized.length > 72 ? `${normalized.slice(0, 69).trimEnd()}…` : normalized
+}
+
+export class AgentRuntimeManager implements AppAgentRuntime {
+  private readonly live = new Map<string, LiveSession>()
+  private readonly listeners = new Map<string, Set<(event: AppAgentEvent) => void>>()
+
+  constructor(private readonly options: AgentRuntimeManagerOptions) {}
+
+  async createSession(input: CreateAgentSessionInput): Promise<AgentSessionSnapshot> {
+    const record = await this.options.sessionsRepo.create(input)
+    try {
+      return await this.startSession(record)
+    } catch (error) {
+      await this.options.sessionsRepo.delete(record.id)
+      throw error
+    }
+  }
+
+  async resumeSession(sessionId: string): Promise<AgentSessionSnapshot> {
+    const existing = this.live.get(sessionId)
+    if (existing) return existing.snapshot
+    return this.startSession(await this.requireSession(sessionId))
+  }
+
+  async closeSession(sessionId: string): Promise<void> {
+    const runtime = this.live.get(sessionId)
+    if (!runtime) return
+    await runtime.session.abort()
+    runtime.unsubscribe()
+    runtime.session.dispose()
+    for (const [id, pending] of runtime.pendingInteractions) {
+      pending.cleanup?.()
+      pending.resolve({ id, cancelled: true })
+    }
+    runtime.pendingInteractions.clear()
+    this.live.delete(sessionId)
+    await this.options.sessionsRepo.update(sessionId, { status: 'stopped' })
+  }
+
+  async shutdown(): Promise<void> {
+    await Promise.allSettled([...this.live.keys()].map((sessionId) => this.closeSession(sessionId)))
+  }
+
+  async sendMessage(input: SendAgentMessageInput): Promise<AgentCommandReceipt> {
+    const runtime = await this.requireLive(input.sessionId)
+    const trimmed = input.text.trim()
+    const attachments = input.attachments ?? []
+    if (!trimmed && attachments.length === 0) {
+      return { commandId: randomUUID(), accepted: false, error: 'Message is empty' }
+    }
+
+    const message: AppAgentMessage = {
+      id: randomUUID(),
+      sessionId: input.sessionId,
+      role: 'user',
+      parts: [
+        ...(trimmed ? [{ type: 'text' as const, text: trimmed }] : []),
+        ...attachments.map((attachment) => ({
+          type: 'image' as const,
+          attachmentId: attachment.id,
+          name: attachment.name,
+          mimeType: attachment.mimeType,
+          data: attachment.data
+        }))
+      ],
+      createdAt: new Date().toISOString(),
+      status: 'complete'
+    }
+    await this.options.sessionsRepo.appendMessage(message)
+    await this.publish(
+      runtime,
+      runtime.mapper.applicationEvent({ type: 'message.started', message })
+    )
+    await this.publish(
+      runtime,
+      runtime.mapper.applicationEvent({
+        type: 'message.completed',
+        messageId: message.id,
+        status: 'complete'
+      })
+    )
+    if (runtime.snapshot.title === 'New thread' && trimmed) {
+      await this.renameSession(input.sessionId, deterministicTitle(trimmed))
+    }
+
+    const images = attachments.map((attachment) => ({
+      type: 'image' as const,
+      data: attachment.data,
+      mimeType: attachment.mimeType
+    }))
+    const commandId = randomUUID()
+    try {
+      if (input.behavior === 'steer') await runtime.session.steer(trimmed, images)
+      else if (input.behavior === 'follow-up') await runtime.session.followUp(trimmed, images)
+      else {
+        void runtime.session.prompt(trimmed, { images }).catch((error) => {
+          void this.publish(
+            runtime,
+            runtime.mapper.applicationEvent({
+              type: 'run.failed',
+              error: error instanceof Error ? error.message : 'Pi rejected the message'
+            })
+          )
+        })
+      }
+      return { commandId, accepted: true, behavior: input.behavior }
+    } catch (error) {
+      return {
+        commandId,
+        accepted: false,
+        behavior: input.behavior,
+        error: error instanceof Error ? error.message : 'Pi rejected the message'
+      }
+    }
+  }
+
+  async cancelRun(sessionId: string): Promise<void> {
+    await (await this.requireLive(sessionId)).session.abort()
+  }
+
+  async setModel(sessionId: string, provider: string, modelId: string): Promise<void> {
+    const runtime = await this.requireLive(sessionId)
+    const piProvider = provider === runtime.snapshot.provider ? runtime.piProvider : provider
+    const model = runtime.modelRuntime.getModel(piProvider, modelId)
+    if (!model) throw new Error(`Pi model is unavailable: ${piProvider}/${modelId}`)
+    await runtime.session.setModel(model)
+    const updated = await this.options.sessionsRepo.update(sessionId, { provider, modelId })
+    if (updated) runtime.snapshot = updated
+  }
+
+  async setThinkingLevel(sessionId: string, level: AgentThinkingLevel): Promise<void> {
+    const runtime = await this.requireLive(sessionId)
+    runtime.session.setThinkingLevel(level)
+    const updated = await this.options.sessionsRepo.update(sessionId, { thinkingLevel: level })
+    if (updated) runtime.snapshot = updated
+  }
+
+  async setAccessMode(sessionId: string, mode: 'standard' | 'full'): Promise<void> {
+    const current = await this.requireSession(sessionId)
+    if (current.status === 'running')
+      throw new Error('Access mode cannot change during an active run')
+    const wasLive = this.live.has(sessionId)
+    if (wasLive) await this.closeSession(sessionId)
+    const updated = await this.options.sessionsRepo.update(sessionId, { accessMode: mode })
+    if (!updated) throw new Error('Session not found')
+    if (wasLive) await this.startSession(updated)
+  }
+
+  async renameSession(sessionId: string, title: string): Promise<void> {
+    const normalized = deterministicTitle(title)
+    const runtime = this.live.get(sessionId)
+    runtime?.session.setSessionName(normalized)
+    const updated = await this.options.sessionsRepo.update(sessionId, { title: normalized })
+    if (runtime && updated) runtime.snapshot = updated
+  }
+
+  async getSession(sessionId: string): Promise<AgentSessionSnapshot> {
+    return this.live.get(sessionId)?.snapshot ?? this.requireSession(sessionId)
+  }
+
+  async getMessages(sessionId: string): Promise<AppAgentMessage[]> {
+    return this.live.get(sessionId)?.messages ?? this.options.sessionsRepo.listMessages(sessionId)
+  }
+
+  async respondToInteraction(sessionId: string, response: AgentInteractionResponse): Promise<void> {
+    const runtime = await this.requireLive(sessionId)
+    const pending = runtime.pendingInteractions.get(response.id)
+    if (!pending) throw new Error('Pi interaction is no longer pending')
+    runtime.pendingInteractions.delete(response.id)
+    pending.cleanup?.()
+    pending.resolve(response)
+    await this.publish(
+      runtime,
+      runtime.mapper.applicationEvent({
+        type: 'interaction.resolved',
+        interactionId: response.id
+      })
+    )
+  }
+
+  subscribe(sessionId: string, listener: (event: AppAgentEvent) => void): () => void {
+    const listeners = this.listeners.get(sessionId) ?? new Set()
+    listeners.add(listener)
+    this.listeners.set(sessionId, listeners)
+    return () => {
+      listeners.delete(listener)
+      if (listeners.size === 0) this.listeners.delete(sessionId)
+    }
+  }
+
+  private async startSession(record: AgentSessionSnapshot): Promise<AgentSessionSnapshot> {
+    const provider = await this.options.providersRepo.getById(record.providerId)
+    if (!provider || !provider.enabled) throw new Error('The selected provider is unavailable')
+    await Promise.all([
+      mkdir(this.options.agentDataRoot, { recursive: true }),
+      mkdir(this.options.sessionDataRoot, { recursive: true }),
+      mkdir(record.workspacePath, { recursive: true })
+    ])
+    const agentDir = join(this.options.agentDataRoot, record.id)
+    const { piProvider } = await writePiModelConfig(agentDir, provider)
+    const settingsManager = SettingsManager.inMemory({
+      defaultProvider: piProvider,
+      defaultModel: record.modelId,
+      defaultThinkingLevel: record.thinkingLevel,
+      defaultProjectTrust: 'always',
+      enableInstallTelemetry: false,
+      enableAnalytics: false
+    })
+    const modelRuntime = await ModelRuntime.create({
+      authPath: join(agentDir, 'unused-auth.json'),
+      modelsPath: join(agentDir, 'models.json'),
+      allowModelNetwork: false
+    })
+    const apiKey = provider.apiKey.trim() || (provider.type === 'ollama' ? 'ollama' : '')
+    if (apiKey) await modelRuntime.setRuntimeApiKey(piProvider, apiKey)
+    const model = modelRuntime.getModel(piProvider, record.modelId)
+    if (!model) throw new Error(`Pi model is unavailable: ${piProvider}/${record.modelId}`)
+    const sessionManager = record.upstreamSessionFile
+      ? SessionManager.open(
+          record.upstreamSessionFile,
+          this.options.sessionDataRoot,
+          record.workspacePath
+        )
+      : SessionManager.create(record.workspacePath, this.options.sessionDataRoot, { id: record.id })
+    const resourceLoader = new DefaultResourceLoader({
+      cwd: record.workspacePath,
+      agentDir,
+      settingsManager,
+      extensionFactories: [
+        createPiPermissionExtension({
+          workspacePath: record.workspacePath,
+          credentialRoot: this.options.credentialRoot,
+          fullAccess: record.accessMode === 'full'
+        })
+      ],
+      noExtensions: true,
+      noSkills: true,
+      noPromptTemplates: true,
+      noThemes: true
+    })
+    await resourceLoader.reload()
+    const { session } = await createAgentSession({
+      cwd: record.workspacePath,
+      agentDir,
+      modelRuntime,
+      model,
+      thinkingLevel: record.thinkingLevel,
+      sessionManager,
+      settingsManager,
+      resourceLoader
+    })
+    const lastSequence = await this.options.sessionsRepo.getLastSequence(record.id)
+    const mapper = new PiSdkEventMapper(record.id, () => new Date(), lastSequence)
+    const runtime: LiveSession = {
+      session,
+      modelRuntime,
+      piProvider,
+      mapper,
+      snapshot: record,
+      messages: await this.options.sessionsRepo.listMessages(record.id),
+      unsubscribe: () => {},
+      pendingInteractions: new Map()
+    }
+    try {
+      this.live.set(record.id, runtime)
+      runtime.unsubscribe = session.subscribe((event: AgentSessionEvent) => {
+        void this.handlePiEvent(runtime, event)
+      })
+      await session.bindExtensions({
+        uiContext: this.createExtensionUi(runtime)
+      })
+      const updated = await this.options.sessionsRepo.update(record.id, {
+        upstreamSessionId: session.sessionId,
+        upstreamSessionFile: session.sessionFile,
+        status: session.isStreaming ? 'running' : 'idle'
+      })
+      if (!updated) throw new Error('Pi session record disappeared during startup')
+      runtime.snapshot = updated
+      if (updated.title !== 'New thread') session.setSessionName(updated.title)
+      return updated
+    } catch (error) {
+      runtime.unsubscribe()
+      this.live.delete(record.id)
+      await session.abort().catch(() => {})
+      session.dispose()
+      throw error
+    }
+  }
+
+  private createExtensionUi(runtime: LiveSession): ExtensionUIContext {
+    const request = (value: AgentInteractionRequest, signal?: AbortSignal) =>
+      this.requestInteraction(runtime, value, signal)
+    return {
+      select: async (title, options, dialog) => {
+        const response = await request(
+          { id: randomUUID(), method: 'select', title, options, timeout: dialog?.timeout },
+          dialog?.signal
+        )
+        return 'value' in response ? response.value : undefined
+      },
+      confirm: async (title, message, dialog) => {
+        const response = await request(
+          { id: randomUUID(), method: 'confirm', title, message, timeout: dialog?.timeout },
+          dialog?.signal
+        )
+        return 'confirmed' in response ? response.confirmed : false
+      },
+      input: async (title, placeholder, dialog) => {
+        const response = await request(
+          { id: randomUUID(), method: 'input', title, placeholder, timeout: dialog?.timeout },
+          dialog?.signal
+        )
+        return 'value' in response ? response.value : undefined
+      },
+      editor: async (title, prefill) => {
+        const response = await request({ id: randomUUID(), method: 'editor', title, prefill })
+        return 'value' in response ? response.value : undefined
+      },
+      notify: (message, type = 'info') => {
+        void this.publish(
+          runtime,
+          runtime.mapper.applicationEvent({ type: 'runtime.notice', level: type, text: message })
+        )
+      },
+      onTerminalInput: () => () => {},
+      setStatus: () => {},
+      setWorkingMessage: () => {},
+      setWorkingVisible: () => {},
+      setWorkingIndicator: () => {},
+      setHiddenThinkingLabel: () => {},
+      setWidget: () => {},
+      setFooter: () => {},
+      setHeader: () => {},
+      setTitle: () => {},
+      custom: async () => {
+        throw new Error('Custom terminal UI is unavailable in TIA Studio')
+      },
+      pasteToEditor: () => {},
+      setEditorText: () => {},
+      getEditorText: () => '',
+      addAutocompleteProvider: () => {},
+      setEditorComponent: () => {},
+      getEditorComponent: () => undefined,
+      theme: undefined as never,
+      getAllThemes: () => [],
+      getTheme: () => undefined,
+      setTheme: () => ({ success: false, error: 'Themes are owned by TIA Studio' }),
+      getToolsExpanded: () => true,
+      setToolsExpanded: () => {}
+    }
+  }
+
+  private async requestInteraction(
+    runtime: LiveSession,
+    request: AgentInteractionRequest,
+    signal?: AbortSignal
+  ): Promise<AgentInteractionResponse> {
+    if (signal?.aborted) return { id: request.id, cancelled: true }
+    const timeout = 'timeout' in request ? request.timeout : undefined
+    const response = new Promise<AgentInteractionResponse>((resolve) => {
+      const pending: PendingInteraction = { resolve }
+      let timeoutId: ReturnType<typeof setTimeout> | undefined
+      const cancel = () => {
+        if (!runtime.pendingInteractions.delete(request.id)) return
+        pending.cleanup?.()
+        resolve({ id: request.id, cancelled: true })
+      }
+      if (signal) {
+        signal.addEventListener('abort', cancel, { once: true })
+      }
+      if (timeout) timeoutId = setTimeout(cancel, timeout)
+      pending.cleanup = () => {
+        signal?.removeEventListener('abort', cancel)
+        if (timeoutId) clearTimeout(timeoutId)
+      }
+      runtime.pendingInteractions.set(request.id, pending)
+    })
+    await this.publish(
+      runtime,
+      runtime.mapper.applicationEvent({ type: 'interaction.requested', request })
+    )
+    return response
+  }
+
+  private async handlePiEvent(runtime: LiveSession, input: AgentSessionEvent): Promise<void> {
+    for (const event of runtime.mapper.map(input)) await this.publish(runtime, event)
+  }
+
+  private async publish(runtime: LiveSession, event: AppAgentEvent): Promise<void> {
+    if (!(await this.options.sessionsRepo.appendEvent(event))) return
+    const view = reduceAgentEvent(
+      {
+        snapshot: runtime.snapshot,
+        messages: runtime.messages,
+        seenEventIds: [],
+        lastSequence: event.sequence - 1
+      },
+      event
+    )
+    runtime.snapshot = view.snapshot
+    runtime.messages = view.messages
+    await this.options.sessionsRepo.update(event.sessionId, {
+      status: view.snapshot.status,
+      isCompacting: view.snapshot.isCompacting,
+      queue: view.snapshot.queue,
+      pendingInteraction: view.snapshot.pendingInteraction ?? null
+    })
+    await Promise.all(
+      view.messages.map((message) => this.options.sessionsRepo.appendMessage(message))
+    )
+    for (const listener of this.listeners.get(event.sessionId) ?? []) listener(event)
+  }
+
+  private async requireLive(sessionId: string): Promise<LiveSession> {
+    const existing = this.live.get(sessionId)
+    if (existing) return existing
+    await this.resumeSession(sessionId)
+    const started = this.live.get(sessionId)
+    if (!started) throw new Error('Pi session failed to start')
+    return started
+  }
+
+  private async requireSession(sessionId: string): Promise<AgentSessionSnapshot> {
+    const session = await this.options.sessionsRepo.getById(sessionId)
+    if (!session) throw new Error('Pi session not found')
+    return session
+  }
+}

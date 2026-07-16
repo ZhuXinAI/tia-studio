@@ -350,7 +350,7 @@ describe('TelegramChannel', () => {
     expect(client.lastReplies[0]).toContain('AB7KQ2XM')
   })
 
-  it('blocks rejected and revoked users from reaching the assistant', async () => {
+  it('blocks rejected and revoked users from reaching the Pi agent', async () => {
     const client = new TelegramClientStub()
     const pairingsRepo = new PairingsRepoStub()
     pairingsRepo.setPairing(createApprovedPairing('rejected'))
@@ -548,7 +548,7 @@ describe('TelegramChannel', () => {
     expect(onMessage).toHaveBeenCalled()
   })
 
-  it('sends assistant replies back to the Telegram chat', async () => {
+  it('sends Pi replies back to the Telegram chat', async () => {
     const client = new TelegramClientStub()
     const channel = new TelegramChannel({
       id: 'channel-telegram',

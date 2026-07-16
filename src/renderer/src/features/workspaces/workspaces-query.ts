@@ -6,7 +6,6 @@ export type WorkspaceRecord = {
   name: string
   rootPath: string
   builtInKind: 'chats' | null
-  defaultAssistantId: string | null
   isMissing: boolean
 }
 

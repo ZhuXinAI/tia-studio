@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   getInstalledRecommendedSkills,
   installRecommendedSkillsWithBunx,
-  listAssistantSkills,
+  listSkills,
   listDiscoveredSkillsPage,
   removeWorkspaceSkill
 } from './skills-manager'
@@ -79,7 +79,7 @@ description: Keeps workspace linting rules.
 `
     )
 
-    const skills = await listAssistantSkills(workspaceDirectory)
+    const skills = await listSkills(workspaceDirectory)
 
     expect(skills).toHaveLength(4)
     expect(skills).toEqual(
@@ -135,7 +135,7 @@ description: Shared skill available via symlink.
       path.join(claudeSkillsRoot, 'linked')
     )
 
-    const skills = await listAssistantSkills(workspaceDirectory)
+    const skills = await listSkills(workspaceDirectory)
 
     expect(skills).toEqual(
       expect.arrayContaining([

@@ -1,13 +1,4 @@
-import {
-  ArrowLeft,
-  Cable,
-  Cloud,
-  Info,
-  Languages,
-  MessageCircleMore,
-  Monitor,
-  Shield
-} from 'lucide-react'
+import { ArrowLeft, Cable, Cloud, Info, Languages, MessageCircleMore, Monitor } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { NavLink, useLocation } from 'react-router-dom'
@@ -34,11 +25,6 @@ const configurationItems: SettingsNavItem[] = [
     titleKey: 'settings.sidebar.items.providers',
     icon: Cloud,
     to: '/settings/providers'
-  },
-  {
-    titleKey: 'settings.sidebar.items.security',
-    icon: Shield,
-    to: '/settings/security'
   },
   {
     titleKey: 'settings.sidebar.items.channels',
