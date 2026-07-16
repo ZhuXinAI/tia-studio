@@ -42,6 +42,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '../../../components/ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../../components/ui/tooltip'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { cn } from '../../../lib/utils'
 import {
@@ -181,6 +182,28 @@ function formatCompactTokenCount(value: number): string {
   return value.toString()
 }
 
+function formatContextUsagePercent(progress: number): string {
+  const percent = progress * 100
+
+  if (percent >= 100) {
+    return '100%'
+  }
+
+  if (percent >= 10) {
+    return `${Math.round(percent)}%`
+  }
+
+  if (percent >= 1) {
+    return `${percent.toFixed(1).replace(/\.0$/, '')}%`
+  }
+
+  if (percent >= 0.1) {
+    return `${percent.toFixed(1)}%`
+  }
+
+  return `${percent.toFixed(2)}%`
+}
+
 function TokenUsageStatusItem({
   usage,
   contextWindowTokens,
@@ -197,36 +220,87 @@ function TokenUsageStatusItem({
       ? Math.min(usage.totalTokens / contextWindowTokens, 1)
       : null
   const progressOffset = progress === null ? circumference : circumference * (1 - progress)
+  const percentLabel =
+    progress === null || contextWindowTokens === null
+      ? null
+      : formatContextUsagePercent(usage.totalTokens / contextWindowTokens)
   const referenceLabel =
     contextWindowTokens && contextWindowTokens > 0
       ? `${usage.totalTokens.toLocaleString()} of ${contextWindowTokens.toLocaleString()} model-context tokens used`
       : `${usage.totalTokens.toLocaleString()} tokens recorded for this thread. Add model context limits to show a true window percentage.`
 
   return (
-    <ChatMetaPill className="gap-2" title={referenceLabel} aria-label={referenceLabel}>
-      <span className="relative grid size-4 place-items-center" aria-hidden="true">
-        <svg className="size-4 -rotate-90" viewBox="0 0 16 16" fill="none">
-          <circle
-            cx="8"
-            cy="8"
-            r={circleRadius}
-            stroke="color-mix(in srgb, var(--surface-border) 78%, transparent)"
-            strokeWidth="1.5"
-          />
-          <circle
-            cx="8"
-            cy="8"
-            r={circleRadius}
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeDasharray={progress === null ? '9 4' : circumference.toString()}
-            strokeDashoffset={progress === null ? '0' : progressOffset.toString()}
-          />
-        </svg>
-      </span>
-      <span>{label}</span>
-    </ChatMetaPill>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <ChatMetaPill className="gap-2" title={referenceLabel} aria-label={referenceLabel}>
+          <span className="relative grid size-4 place-items-center" aria-hidden="true">
+            <svg className="size-4 -rotate-90" viewBox="0 0 16 16" fill="none">
+              <circle
+                cx="8"
+                cy="8"
+                r={circleRadius}
+                stroke="color-mix(in srgb, var(--surface-border) 78%, transparent)"
+                strokeWidth="1.5"
+              />
+              <circle
+                cx="8"
+                cy="8"
+                r={circleRadius}
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeDasharray={progress === null ? '9 4' : circumference.toString()}
+                strokeDashoffset={progress === null ? '0' : progressOffset.toString()}
+              />
+            </svg>
+          </span>
+          <span>{label}</span>
+        </ChatMetaPill>
+      </TooltipTrigger>
+      <TooltipContent side="top" align="center" className="max-w-xs space-y-3 px-4 py-3">
+        <div className="space-y-1">
+          <p className="text-[10px] uppercase tracking-[0.16em] text-primary-foreground/70">
+            Context usage
+          </p>
+          <p className="text-sm font-medium">
+            {percentLabel ? `${percentLabel} full` : 'Context window unavailable'}
+          </p>
+          <p className="text-xs leading-5 text-primary-foreground/80">{referenceLabel}</p>
+        </div>
+
+        {progress !== null ? (
+          <div className="h-2 overflow-hidden rounded-full bg-white/15">
+            <div
+              className="h-full rounded-full bg-white"
+              style={{ width: `${Math.max(progress * 100, 2)}%` }}
+            />
+          </div>
+        ) : null}
+
+        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+          <span className="text-primary-foreground/70">Conversation</span>
+          <span className="text-right font-medium">
+            {usage.totalTokens.toLocaleString()} tokens
+          </span>
+          <span className="text-primary-foreground/70">Assistant outputs</span>
+          <span className="text-right font-medium">
+            {usage.assistantMessageCount.toLocaleString()}
+          </span>
+          <span className="text-primary-foreground/70">Input</span>
+          <span className="text-right font-medium">{usage.inputTokens.toLocaleString()}</span>
+          <span className="text-primary-foreground/70">Output</span>
+          <span className="text-right font-medium">{usage.outputTokens.toLocaleString()}</span>
+          <span className="text-primary-foreground/70">Cached input</span>
+          <span className="text-right font-medium">{usage.cachedInputTokens.toLocaleString()}</span>
+          <span className="text-primary-foreground/70">Reasoning</span>
+          <span className="text-right font-medium">{usage.reasoningTokens.toLocaleString()}</span>
+          <span className="text-primary-foreground/70">Context limit</span>
+          <span className="text-right font-medium">
+            {contextWindowTokens?.toLocaleString() ?? 'Set in Provider settings'}
+          </span>
+        </div>
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -297,7 +371,9 @@ type ThreadChatComposerProps = Pick<
   | 'isChatStreaming'
   | 'canAbortGeneration'
   | 'supportsVision'
+  | 'workspaces'
   | 'providers'
+  | 'onSelectDraftWorkspace'
   | 'draftProviderId'
   | 'draftModel'
   | 'onDraftProviderChange'
@@ -414,6 +490,81 @@ function NewThreadModelPicker({
             </div>
           )
         })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function NewThreadWorkspacePicker({
+  workspaces,
+  selectedWorkspace,
+  onSelectDraftWorkspace
+}: Pick<
+  ThreadChatCardProps,
+  'workspaces' | 'selectedWorkspace' | 'onSelectDraftWorkspace'
+>): React.JSX.Element {
+  const currentLabel =
+    !selectedWorkspace || selectedWorkspace.builtInKind === 'chats'
+      ? "Don't do things in workspace"
+      : selectedWorkspace.name
+  const namedWorkspaces = workspaces
+    .filter((workspace) => workspace.builtInKind !== 'chats')
+    .sort((left, right) => left.name.localeCompare(right.name))
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          className={chatSurfaceStyles.controlButton}
+          aria-label="Select workspace for new chat"
+          title="Select workspace for new chat"
+        >
+          <span className="truncate text-xs font-medium text-foreground">{currentLabel}</span>
+          <ChevronDown className="size-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" side="top" className="max-h-[24rem] w-80 overflow-y-auto">
+        <DropdownMenuLabel className="text-xs text-muted-foreground">
+          Workspace for this thread
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => onSelectDraftWorkspace('')} className="gap-2">
+          <span className="grid size-4 place-items-center">
+            {!selectedWorkspace || selectedWorkspace.builtInKind === 'chats' ? (
+              <Check className="size-3.5" />
+            ) : null}
+          </span>
+          <span className="min-w-0 flex-1 truncate">Don't do things in workspace</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {namedWorkspaces.length > 0 ? (
+          namedWorkspaces.map((workspace) => {
+            const isSelected = selectedWorkspace?.id === workspace.id
+            return (
+              <DropdownMenuItem
+                key={workspace.id}
+                onSelect={() => onSelectDraftWorkspace(workspace.id)}
+                className="items-start gap-2 py-2"
+              >
+                <span className="grid size-4 place-items-center pt-0.5">
+                  {isSelected ? <Check className="size-3.5" /> : null}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{workspace.name}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">
+                    {workspace.rootPath}
+                  </span>
+                </span>
+              </DropdownMenuItem>
+            )
+          })
+        ) : (
+          <p className="px-3 py-2 text-xs text-muted-foreground">
+            No saved workspaces yet. New threads can still start in direct chat mode.
+          </p>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -635,10 +786,12 @@ function ThreadChatComposer({
   canCompose,
   currentModelLabel,
   supportsVision,
+  workspaces,
   selectedWorkspace,
   isNewThreadRoute,
   layout = 'docked',
   providers,
+  onSelectDraftWorkspace,
   draftProviderId,
   draftModel,
   onDraftProviderChange,
@@ -678,6 +831,13 @@ function ThreadChatComposer({
       onDraftModelChange={onDraftModelChange}
     />
   )
+  const workspaceControl = !selectedThread ? (
+    <NewThreadWorkspacePicker
+      workspaces={workspaces}
+      selectedWorkspace={selectedWorkspace}
+      onSelectDraftWorkspace={onSelectDraftWorkspace}
+    />
+  ) : null
 
   if (!selectedThread && isNewThreadRoute) {
     const newThreadComposer = (
@@ -705,9 +865,7 @@ function ThreadChatComposer({
           />
           <ChatSurfaceFooter className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
             <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <span className="inline-flex min-w-0 items-center gap-2 rounded-full px-2 py-1">
-                <span className="truncate">{selectedWorkspace?.name ?? 'Chats'}</span>
-              </span>
+              {workspaceControl}
               {selectedWorkspace?.isMissing && selectedWorkspace.builtInKind !== 'chats' ? (
                 <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300">
                   <AlertTriangle className="size-3.5" />
@@ -842,6 +1000,7 @@ function ThreadChatComposer({
 
 export function ThreadChatCard({
   selectedWorkspace,
+  workspaces,
   providers,
   isNewThreadRoute,
   draftProviderId,
@@ -859,6 +1018,7 @@ export function ThreadChatCard({
   tokenUsage,
   onSubmitMessage,
   onAbortGeneration,
+  onSelectDraftWorkspace,
   onDraftProviderChange,
   onDraftModelChange,
   headerLeadingAction
@@ -919,7 +1079,7 @@ export function ThreadChatCard({
     const contextWindowTokens = resolveContextWindowTokens(selectedProvider, currentModelLabel)
     const usageLabel = effectiveTokenUsage
       ? contextWindowTokens && contextWindowTokens > 0
-        ? `${effectiveTokenUsage.totalTokens.toLocaleString()} / ${formatCompactTokenCount(contextWindowTokens)} ${t('threads.chat.tokens')}`
+        ? `${formatContextUsagePercent(effectiveTokenUsage.totalTokens / contextWindowTokens)} · ${formatCompactTokenCount(effectiveTokenUsage.totalTokens)} / ${formatCompactTokenCount(contextWindowTokens)} ${t('threads.chat.tokens')}`
         : `${effectiveTokenUsage.totalTokens.toLocaleString()} ${t('threads.chat.tokens')}`
       : 'No token usage yet'
 
@@ -1069,9 +1229,11 @@ export function ThreadChatCard({
                 canCompose={canCompose}
                 currentModelLabel={currentModelLabel}
                 supportsVision={supportsVision}
+                workspaces={workspaces}
                 isNewThreadRoute={isNewThreadRoute}
                 layout="centered"
                 providers={providers}
+                onSelectDraftWorkspace={onSelectDraftWorkspace}
                 draftProviderId={draftProviderId}
                 draftModel={draftModel}
                 onDraftProviderChange={onDraftProviderChange}
@@ -1115,8 +1277,10 @@ export function ThreadChatCard({
               canCompose={canCompose}
               currentModelLabel={currentModelLabel}
               supportsVision={supportsVision}
+              workspaces={workspaces}
               isNewThreadRoute={isNewThreadRoute}
               providers={providers}
+              onSelectDraftWorkspace={onSelectDraftWorkspace}
               draftProviderId={draftProviderId}
               draftModel={draftModel}
               onDraftProviderChange={onDraftProviderChange}

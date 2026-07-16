@@ -63,7 +63,7 @@ import { registerSingleInstanceApp } from './single-instance'
 import {
   getInstalledRecommendedSkills,
   installRecommendedSkillsWithBunx,
-  listDiscoveredSkills,
+  listDiscoveredSkillsPage,
   type RecommendedSkillId
 } from './skills/skills-manager'
 import { bringWindowToFront, buildTrayMenuTemplate } from './tray'
@@ -500,10 +500,11 @@ async function startLocalApiServer(): Promise<void> {
       getRuntimeOnboardingSkillsStatus: async () => getInstalledRecommendedSkills(),
       installRuntimeOnboardingSkills: async (skillIds) =>
         installRuntimeOnboardingSkillsWithManagedBun(skillIds),
-      listSkills: async () =>
-        listDiscoveredSkills({
+      listSkillsCatalogPage: async (query) =>
+        listDiscoveredSkillsPage({
           workspaceRootPath: process.cwd(),
-          includeWorkspaceSource: false
+          includeWorkspaceSource: false,
+          ...query
         }),
       listAutomations: async () => listDesktopAutomations(),
       pickDirectory: async () => pickDirectory()

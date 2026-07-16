@@ -29,7 +29,11 @@ import { registerThreadsRoute } from './routes/threads-route'
 import { registerWebSearchSettingsRoute } from './routes/web-search-settings-route'
 import { registerWorkspacesRoute } from './routes/workspaces-route'
 import type { DesktopBootstrap } from '../../shared/desktop-bootstrap'
-import type { DesktopAutomationRecord, DesktopSkillRecord } from '../../shared/desktop-discovery'
+import type {
+  DesktopAutomationRecord,
+  DesktopSkillCatalogPage,
+  DesktopSkillCatalogQuery
+} from '../../shared/desktop-discovery'
 import type { UiConfig } from '../ui-config'
 import type { AutoUpdateState } from '../auto-updater'
 import type {
@@ -62,7 +66,7 @@ type CreateAppOptions = {
     installRuntimeOnboardingSkills: (
       skillIds: RecommendedSkillId[]
     ) => Promise<RecommendedSkillId[]>
-    listSkills: () => Promise<DesktopSkillRecord[]>
+    listSkillsCatalogPage: (query: DesktopSkillCatalogQuery) => Promise<DesktopSkillCatalogPage>
     listAutomations: () => Promise<DesktopAutomationRecord[]>
     pickDirectory: () => Promise<string | null>
   }

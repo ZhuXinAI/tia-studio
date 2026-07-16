@@ -17,6 +17,22 @@ export type DesktopSkillRecord = {
   canDelete: boolean
 }
 
+export type DesktopSkillCatalogQuery = {
+  cursor?: string
+  limit?: number
+  search?: string
+  source?: DesktopSkillSource
+}
+
+export type DesktopSkillSourceCounts = Record<DesktopSkillSource, number>
+
+export type DesktopSkillCatalogPage = {
+  skills: DesktopSkillRecord[]
+  totalCount: number
+  sourceCounts: DesktopSkillSourceCounts
+  nextCursor: string | null
+}
+
 export type DesktopAutomationRecord = {
   id: string
   kind: string | null

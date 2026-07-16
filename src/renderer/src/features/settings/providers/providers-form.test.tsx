@@ -15,6 +15,7 @@ describe('providers form helpers', () => {
         apiKey: 'test-key',
         apiHost: '',
         selectedModel: '',
+        selectedModelContextWindowTokensText: '',
         providerModelsText: '',
         supportsVision: false,
         enabled: true

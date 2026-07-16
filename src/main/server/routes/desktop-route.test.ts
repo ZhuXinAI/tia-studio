@@ -2,10 +2,14 @@ import { Hono } from 'hono'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DesktopBootstrap } from '../../../shared/desktop-bootstrap'
 import type {
+  DesktopAutomationRecord,
+  DesktopSkillCatalogPage,
+  DesktopSkillCatalogQuery
+} from '../../../shared/desktop-discovery'
+import type {
   ManagedRuntimeKind,
   ManagedRuntimesState
 } from '../../persistence/repos/managed-runtimes-repo'
-import type { DesktopAutomationRecord, DesktopSkillRecord } from '../../../shared/desktop-discovery'
 import { registerDesktopRoute } from './desktop-route'
 
 function createManagedRuntimeState(): ManagedRuntimesState {
@@ -80,7 +84,9 @@ describe('desktop route', () => {
       ) => Promise<Array<'agent-browser' | 'find-skills'>>
     >
   >
-  let listSkills: ReturnType<typeof vi.fn<() => Promise<DesktopSkillRecord[]>>>
+  let listSkillsCatalogPage: ReturnType<
+    typeof vi.fn<(query: DesktopSkillCatalogQuery) => Promise<DesktopSkillCatalogPage>>
+  >
   let listAutomations: ReturnType<typeof vi.fn<() => Promise<DesktopAutomationRecord[]>>>
   let restartToUpdate: ReturnType<typeof vi.fn<() => void>>
   let pickDirectory: ReturnType<typeof vi.fn<() => Promise<string | null>>>
@@ -101,19 +107,30 @@ describe('desktop route', () => {
     installRuntimeOnboardingSkills = vi.fn(
       async (skillIds: Array<'agent-browser' | 'find-skills'>) => skillIds
     )
-    listSkills = vi.fn(async () => [
-      {
-        id: 'global-codex:agents-sdk',
-        name: 'agents-sdk',
-        description: 'Build AI agents.',
-        source: 'global-codex',
-        sourceRootPath: '/Users/demo/.codex/skills',
-        directoryPath: '/Users/demo/.codex/skills/agents-sdk',
-        relativePath: 'agents-sdk',
-        skillFilePath: '/Users/demo/.codex/skills/agents-sdk/SKILL.md',
-        canDelete: false
-      }
-    ])
+    listSkillsCatalogPage = vi.fn(async () => ({
+      skills: [
+        {
+          id: 'global-codex:agents-sdk',
+          name: 'agents-sdk',
+          description: 'Build AI agents.',
+          source: 'global-codex',
+          sourceRootPath: '/Users/demo/.codex/skills',
+          directoryPath: '/Users/demo/.codex/skills/agents-sdk',
+          relativePath: 'agents-sdk',
+          skillFilePath: '/Users/demo/.codex/skills/agents-sdk/SKILL.md',
+          canDelete: false
+        }
+      ],
+      totalCount: 1,
+      sourceCounts: {
+        'global-codex': 1,
+        'global-claude': 0,
+        'global-agent': 0,
+        'global-agent-legacy': 0,
+        workspace: 0
+      },
+      nextCursor: null
+    }))
     listAutomations = vi.fn(async () => [
       {
         id: 'daily-remote-job-scan',
@@ -167,7 +184,7 @@ describe('desktop route', () => {
       clearManagedRuntime,
       getRuntimeOnboardingSkillsStatus: async () => ['agent-browser'],
       installRuntimeOnboardingSkills,
-      listSkills,
+      listSkillsCatalogPage,
       listAutomations,
       pickDirectory
     })
@@ -376,9 +393,34 @@ describe('desktop route', () => {
     const response = await app.request('http://localhost/v1/desktop/skills')
 
     expect(response.status).toBe(200)
-    expect(listSkills).toHaveBeenCalledTimes(1)
+    expect(listSkillsCatalogPage).toHaveBeenCalledTimes(1)
+    expect(listSkillsCatalogPage).toHaveBeenCalledWith({})
     await expect(response.json()).resolves.toEqual({
-      skills: await listSkills()
+      ...(await listSkillsCatalogPage({}))
+    })
+  })
+
+  it('passes skill pagination and filter query params through to the catalog loader', async () => {
+    const response = await app.request(
+      'http://localhost/v1/desktop/skills?cursor=24&limit=12&search=agent&source=global-codex'
+    )
+
+    expect(response.status).toBe(200)
+    expect(listSkillsCatalogPage).toHaveBeenCalledWith({
+      cursor: '24',
+      limit: 12,
+      search: 'agent',
+      source: 'global-codex'
+    })
+  })
+
+  it('rejects invalid skill pagination query params', async () => {
+    const response = await app.request('http://localhost/v1/desktop/skills?limit=0')
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: 'Too small: expected number to be >=1'
     })
   })
 

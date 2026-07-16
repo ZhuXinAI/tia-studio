@@ -4,7 +4,13 @@ import path from 'node:path'
 import { readdir, readFile, realpath, rm, stat } from 'node:fs/promises'
 import type { Dirent } from 'node:fs'
 import { promisify } from 'node:util'
-import type { DesktopSkillRecord, DesktopSkillSource } from '../../shared/desktop-discovery'
+import type {
+  DesktopSkillCatalogPage,
+  DesktopSkillCatalogQuery,
+  DesktopSkillRecord,
+  DesktopSkillSource,
+  DesktopSkillSourceCounts
+} from '../../shared/desktop-discovery'
 
 type SkillSource = DesktopSkillSource
 export type RecommendedSkillId = 'agent-browser' | 'find-skills'
@@ -27,6 +33,7 @@ type ResolvedDirectoryEntry = {
 }
 
 export type AssistantSkillRecord = DesktopSkillRecord
+export type AssistantSkillCatalogPage = DesktopSkillCatalogPage
 
 type RecommendedSkillDefinition = {
   id: RecommendedSkillId
@@ -66,6 +73,9 @@ const skillSourceOrder: Record<SkillSource, number> = {
   'global-agent-legacy': 3,
   workspace: 4
 }
+
+const defaultSkillCatalogPageLimit = 24
+const maxSkillCatalogPageLimit = 100
 
 function parseFrontmatter(content: string): Record<string, string> {
   const lines = content.split(/\r?\n/)
@@ -112,6 +122,47 @@ function toNonEmptyString(value: unknown): string | null {
 
   const normalized = value.trim()
   return normalized.length > 0 ? normalized : null
+}
+
+function createEmptySkillSourceCounts(): DesktopSkillSourceCounts {
+  return {
+    'global-codex': 0,
+    'global-claude': 0,
+    'global-agent': 0,
+    'global-agent-legacy': 0,
+    workspace: 0
+  }
+}
+
+function normalizeSkillCatalogLimit(limit: number | undefined): number {
+  if (!Number.isInteger(limit) || !limit || limit < 1) {
+    return defaultSkillCatalogPageLimit
+  }
+
+  return Math.min(limit, maxSkillCatalogPageLimit)
+}
+
+function normalizeSkillCatalogCursor(cursor: string | undefined): number {
+  if (!cursor) {
+    return 0
+  }
+
+  const parsed = Number(cursor)
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return 0
+  }
+
+  return parsed
+}
+
+function matchesSkillSearch(skill: AssistantSkillRecord, normalizedSearch: string): boolean {
+  if (normalizedSearch.length === 0) {
+    return true
+  }
+
+  return [skill.name, skill.description ?? '', skill.relativePath, skill.sourceRootPath].some(
+    (value) => value.toLowerCase().includes(normalizedSearch)
+  )
 }
 
 function toSkillSources(input: {
@@ -208,6 +259,41 @@ export async function listDiscoveredSkills(input?: {
 
     return left.relativePath.localeCompare(right.relativePath)
   })
+}
+
+export async function listDiscoveredSkillsPage(
+  input?: {
+    workspaceRootPath?: string | null
+    includeWorkspaceSource?: boolean
+  } & DesktopSkillCatalogQuery
+): Promise<AssistantSkillCatalogPage> {
+  const skills = await listDiscoveredSkills({
+    workspaceRootPath: input?.workspaceRootPath,
+    includeWorkspaceSource: input?.includeWorkspaceSource
+  })
+  const normalizedSearch = input?.search?.trim().toLowerCase() ?? ''
+  const sourceCounts = createEmptySkillSourceCounts()
+  const searchMatchedSkills = skills.filter((skill) => {
+    const matchesSearch = matchesSkillSearch(skill, normalizedSearch)
+    if (matchesSearch) {
+      sourceCounts[skill.source] += 1
+    }
+    return matchesSearch
+  })
+  const sourceMatchedSkills = input?.source
+    ? searchMatchedSkills.filter((skill) => skill.source === input.source)
+    : searchMatchedSkills
+  const offset = normalizeSkillCatalogCursor(input?.cursor)
+  const limit = normalizeSkillCatalogLimit(input?.limit)
+  const pagedSkills = sourceMatchedSkills.slice(offset, offset + limit)
+  const nextOffset = offset + pagedSkills.length
+
+  return {
+    skills: pagedSkills,
+    totalCount: sourceMatchedSkills.length,
+    sourceCounts,
+    nextCursor: nextOffset < sourceMatchedSkills.length ? String(nextOffset) : null
+  }
 }
 
 function isFileMissingError(error: unknown): boolean {

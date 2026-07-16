@@ -40,6 +40,7 @@ type ProviderFormInitialValue = {
   apiKey: string
   apiHost: string
   selectedModel: string
+  selectedModelContextWindowTokensText: string
   providerModelsText: string
   supportsVision: boolean
   enabled: boolean
@@ -152,6 +153,8 @@ function toInitialFormValue(provider: ProviderRecord | null): ProviderFormInitia
     apiKey: provider.apiKey,
     apiHost: provider.apiHost ?? '',
     selectedModel: provider.selectedModel,
+    selectedModelContextWindowTokensText:
+      provider.selectedModelContextWindowTokens?.toString() ?? '',
     providerModelsText: provider.providerModels?.join('\n') ?? '',
     supportsVision: provider.supportsVision,
     enabled: provider.enabled,
@@ -170,6 +173,8 @@ function toPresetFormValue(provider: ProviderRecord | null): ProviderFormInitial
     apiKey: provider.apiKey,
     apiHost: provider.apiHost ?? '',
     selectedModel: provider.selectedModel,
+    selectedModelContextWindowTokensText:
+      provider.selectedModelContextWindowTokens?.toString() ?? '',
     providerModelsText: provider.providerModels?.join('\n') ?? '',
     supportsVision: provider.supportsVision,
     enabled: true,
@@ -403,17 +408,23 @@ export function ProvidersSettingsPage(): React.JSX.Element {
       return
     }
 
-    if (selectedProvider.isBuiltIn) {
-      toast.error(t('settings.providers.toasts.builtInDeleteBlocked'))
-      return
-    }
-
     setIsDeletingProviderId(selectedProvider.id)
 
     try {
       await deleteProvider(selectedProvider.id)
       setProviders((currentProviders) => {
-        const nextProviders = currentProviders.filter((item) => item.id !== selectedProvider.id)
+        const nextProviders = selectedProvider.isBuiltIn
+          ? currentProviders.map((provider) =>
+              provider.id === selectedProvider.id
+                ? {
+                    ...provider,
+                    enabled: false,
+                    isAdded: false,
+                    isDefault: false
+                  }
+                : provider
+            )
+          : currentProviders.filter((item) => item.id !== selectedProvider.id)
         queryClient.setQueryData(providerKeys.lists(), nextProviders)
         const nextVisibleProviders = sortProviders(
           nextProviders.filter((provider) => isVisibleProvider(provider))
@@ -428,7 +439,11 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
         return nextProviders
       })
-      toast.success(t('settings.providers.toasts.providerDeleted'))
+      toast.success(
+        selectedProvider.isBuiltIn
+          ? 'Provider removed from Added providers.'
+          : t('settings.providers.toasts.providerDeleted')
+      )
     } catch (error) {
       toast.error(toErrorMessage(error, t))
     } finally {
@@ -450,7 +465,8 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                   Added providers
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  {visibleProviders.length} saved {visibleProviders.length === 1 ? 'provider' : 'providers'}
+                  {visibleProviders.length} saved{' '}
+                  {visibleProviders.length === 1 ? 'provider' : 'providers'}
                 </p>
               </div>
               <Button
@@ -628,30 +644,30 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                     />
                   </div>
 
-                  {!selectedProvider.isBuiltIn ? (
-                    <div className="flex justify-end border-t border-[color:var(--surface-border)] pt-4">
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        aria-label={t('settings.providers.deleteAriaLabel', {
-                          name: selectedProvider.name
-                        })}
-                        onClick={() => {
-                          void handleDeleteSelectedProvider()
-                        }}
-                        disabled={
-                          isSubmitting ||
-                          isTestingConnection ||
-                          isDeletingProviderId === selectedProvider.id
-                        }
-                      >
-                        <Trash2 className="size-4" />
-                        {isDeletingProviderId === selectedProvider.id
-                          ? t('settings.providers.deletingButton')
+                  <div className="flex justify-end border-t border-[color:var(--surface-border)] pt-4">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      aria-label={t('settings.providers.deleteAriaLabel', {
+                        name: selectedProvider.name
+                      })}
+                      onClick={() => {
+                        void handleDeleteSelectedProvider()
+                      }}
+                      disabled={
+                        isSubmitting ||
+                        isTestingConnection ||
+                        isDeletingProviderId === selectedProvider.id
+                      }
+                    >
+                      <Trash2 className="size-4" />
+                      {isDeletingProviderId === selectedProvider.id
+                        ? t('settings.providers.deletingButton')
+                        : selectedProvider.isBuiltIn
+                          ? 'Remove Provider'
                           : t('settings.providers.deleteButton')}
-                      </Button>
-                    </div>
-                  ) : null}
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex min-h-full items-center justify-center">
@@ -768,7 +784,8 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                     })
                   ) : (
                     <p className="rounded-[1rem] border border-dashed border-[color:var(--surface-border)] px-4 py-4 text-sm text-muted-foreground">
-                      All preset providers are already added. Create a custom provider if you need another profile.
+                      All preset providers are already added. Create a custom provider if you need
+                      another profile.
                     </p>
                   )}
                 </div>

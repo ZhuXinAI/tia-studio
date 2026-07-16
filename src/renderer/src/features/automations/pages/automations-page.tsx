@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Input } from '../../../components/ui/input'
 import { cn } from '../../../lib/utils'
 import { useDesktopAutomations } from '../automations-query'
+import { describeAutomationSchedule } from '../../../../../shared/automation-schedule'
 
 type StatusFilter = 'all' | string
 
@@ -39,51 +40,6 @@ function deriveWorkspaceLabel(cwds: string[]): string {
   return segments.at(-1) ?? primaryPath
 }
 
-function formatSchedule(rrule: string | null): string {
-  if (!rrule) {
-    return 'No saved schedule'
-  }
-
-  const normalized = rrule.startsWith('RRULE:') ? rrule.slice('RRULE:'.length) : rrule
-  const parts = new Map(
-    normalized.split(';').map((segment) => {
-      const [key, value] = segment.split('=')
-      return [key, value]
-    })
-  )
-
-  const byHour = parts.get('BYHOUR')
-  const byMinute = parts.get('BYMINUTE')
-  const timeLabel =
-    byHour && byMinute ? `${byHour.padStart(2, '0')}:${byMinute.padStart(2, '0')}` : null
-  const frequency = parts.get('FREQ')
-  const dayTokens = parts.get('BYDAY')?.split(',').filter(Boolean) ?? []
-  const weekdayLabels: Record<string, string> = {
-    MO: 'Monday',
-    TU: 'Tuesday',
-    WE: 'Wednesday',
-    TH: 'Thursday',
-    FR: 'Friday',
-    SA: 'Saturday',
-    SU: 'Sunday'
-  }
-
-  if (frequency === 'WEEKLY' && dayTokens.length > 0) {
-    const dayLabel = dayTokens.map((token) => weekdayLabels[token] ?? token).join(', ')
-    return timeLabel ? `Every ${dayLabel} at ${timeLabel}` : `Every ${dayLabel}`
-  }
-
-  if (frequency === 'DAILY') {
-    return timeLabel ? `Every day at ${timeLabel}` : 'Every day'
-  }
-
-  if (frequency === 'HOURLY') {
-    return timeLabel ? `Hourly from ${timeLabel}` : 'Hourly'
-  }
-
-  return rrule
-}
-
 function formatStatusLabel(value: string | null): string {
   if (!value) {
     return 'Unknown'
@@ -101,6 +57,11 @@ export function AutomationsPage(): React.JSX.Element {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeStatus, setActiveStatus] = useState<StatusFilter>('all')
   const [selectedAutomationId, setSelectedAutomationId] = useState<string | null>(null)
+  const scheduleByAutomationId = useMemo(() => {
+    return new Map(
+      automations.map((automation) => [automation.id, describeAutomationSchedule(automation.rrule)])
+    )
+  }, [automations])
 
   useEffect(() => {
     if (automations.length === 0) {
@@ -149,6 +110,9 @@ export function AutomationsPage(): React.JSX.Element {
     visibleAutomations.find((automation) => automation.id === selectedAutomationId) ??
     automations.find((automation) => automation.id === selectedAutomationId) ??
     null
+  const selectedSchedule = selectedAutomation
+    ? (scheduleByAutomationId.get(selectedAutomation.id) ?? null)
+    : null
 
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -164,9 +128,9 @@ export function AutomationsPage(): React.JSX.Element {
               </span>
             </div>
             <p className="max-w-3xl text-sm text-muted-foreground">
-              Real Codex automation definitions loaded from the local machine. This view is
-              read-only until the in-app editor is wired to the same durable files and execution
-              path.
+              Imported Codex automation definitions loaded from `~/.codex/automations`. TIA Studio
+              reads them without editing the files, changing their scheduler, or mixing them with
+              app-owned automation state.
             </p>
           </div>
 
@@ -231,6 +195,7 @@ export function AutomationsPage(): React.JSX.Element {
               <div className="space-y-3">
                 {visibleAutomations.map((automation) => {
                   const isActive = automation.id === selectedAutomationId
+                  const schedule = scheduleByAutomationId.get(automation.id)
 
                   return (
                     <button
@@ -256,12 +221,15 @@ export function AutomationsPage(): React.JSX.Element {
                             <p className="font-editorial text-[1.3rem] leading-none tracking-[-0.02em]">
                               {automation.name}
                             </p>
+                            <span className="rounded-full bg-[color:var(--surface-panel-soft)] px-3 py-1 text-[11px] text-muted-foreground">
+                              Codex import
+                            </span>
                             <span className="rounded-full bg-[color:var(--surface-paper)] px-3 py-1 text-[11px] text-muted-foreground">
                               {deriveWorkspaceLabel(automation.cwds)}
                             </span>
                           </div>
                           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            <span>{formatSchedule(automation.rrule)}</span>
+                            <span>{schedule?.summary ?? 'No saved schedule'}</span>
                             <span>{automation.executionEnvironment ?? 'Execution pending'}</span>
                           </div>
                         </div>
@@ -285,6 +253,9 @@ export function AutomationsPage(): React.JSX.Element {
                         <p className="font-editorial text-[1.6rem] leading-none tracking-[-0.03em]">
                           {selectedAutomation.name}
                         </p>
+                        <span className="rounded-full bg-[color:var(--surface-panel-soft)] px-3 py-1 text-[11px] text-muted-foreground">
+                          Codex import
+                        </span>
                         <span className="rounded-full bg-[color:var(--surface-paper)] px-3 py-1 text-[11px] text-muted-foreground">
                           {formatStatusLabel(selectedAutomation.status)}
                         </span>
@@ -308,9 +279,16 @@ export function AutomationsPage(): React.JSX.Element {
                     <div className="rounded-[1.1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-4">
                       <p className="section-kicker text-[0.62rem]">Schedule</p>
                       <p className="mt-2 text-sm font-medium text-foreground">
-                        {formatSchedule(selectedAutomation.rrule)}
+                        {selectedSchedule?.summary ?? 'No saved schedule'}
                       </p>
                       <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                        {selectedSchedule?.nextRunAt
+                          ? `Next run ${formatTimestamp(selectedSchedule.nextRunAt)}`
+                          : selectedAutomation.rrule
+                            ? 'Next run is not available for this RRULE yet.'
+                            : 'No RRULE found in automation.toml.'}
+                      </p>
+                      <p className="mt-1 break-all text-[11px] leading-5 text-muted-foreground">
                         {selectedAutomation.rrule ?? 'No RRULE found in automation.toml.'}
                       </p>
                     </div>
@@ -358,8 +336,8 @@ export function AutomationsPage(): React.JSX.Element {
                   <div className="flex flex-wrap items-center gap-2 rounded-[1.2rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] px-4 py-3 text-sm text-muted-foreground">
                     <Sparkles className="size-4 text-primary" />
                     <span>
-                      This page now lists real local automation definitions instead of placeholder
-                      demo tasks.
+                      Imported automations stay read-only here, so future TIA Studio automations can
+                      use a separate store and execution path without interfering with Codex.
                     </span>
                   </div>
                 </div>

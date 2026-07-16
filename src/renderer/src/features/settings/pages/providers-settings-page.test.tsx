@@ -315,4 +315,60 @@ describe('providers settings page', () => {
       })
     ])
   })
+
+  it('removes built-in preset providers from Added providers while keeping the preset available', async () => {
+    vi.mocked(listProviders).mockResolvedValue([
+      {
+        id: 'built-in-minimax',
+        name: 'MiniMax',
+        type: 'anthropic',
+        apiKey: 'secret',
+        apiHost: 'https://api.minimaxi.com/anthropic/v1',
+        selectedModel: 'MiniMax-M2.7',
+        providerModels: ['MiniMax-M2.7'],
+        enabled: true,
+        supportsVision: true,
+        isBuiltIn: true,
+        isAdded: true,
+        icon: 'minimax',
+        officialSite: 'https://www.minimaxi.com',
+        createdAt: '2026-03-02T00:00:00.000Z',
+        updatedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <ProvidersSettingsPage />
+        </MemoryRouter>
+      )
+    })
+    await flushAsyncWork()
+
+    const removeButton = container.querySelector(
+      '[aria-label="Delete provider MiniMax"]'
+    ) as HTMLButtonElement | null
+    expect(removeButton?.textContent).toContain('Remove Provider')
+
+    await act(async () => {
+      removeButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(deleteProvider).toHaveBeenCalledWith('built-in-minimax')
+    expect(container.textContent).toContain('No providers yet. Create one to get started.')
+
+    const addProviderButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Add your first provider')
+    )
+    expect(addProviderButton).toBeDefined()
+
+    await act(async () => {
+      addProviderButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await flushAsyncWork()
+
+    expect(document.body.textContent).toContain('MiniMax')
+  })
 })

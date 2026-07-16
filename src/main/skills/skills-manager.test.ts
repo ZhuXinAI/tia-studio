@@ -6,6 +6,7 @@ import {
   getInstalledRecommendedSkills,
   installRecommendedSkillsWithBunx,
   listAssistantSkills,
+  listDiscoveredSkillsPage,
   removeWorkspaceSkill
 } from './skills-manager'
 
@@ -146,6 +147,107 @@ description: Shared skill available via symlink.
         })
       ])
     )
+  })
+
+  it('returns cursor-paged skill catalog results with source counts and filters', async () => {
+    await createSkill(
+      path.join(homeDirectory, '.codex', 'skills'),
+      'alpha-agent',
+      `---
+name: Alpha Agent
+description: First global codex skill.
+---
+`
+    )
+    await createSkill(
+      path.join(homeDirectory, '.codex', 'skills'),
+      'bravo-agent',
+      `---
+name: Bravo Agent
+description: Second global codex skill.
+---
+`
+    )
+    await createSkill(
+      path.join(homeDirectory, '.claude', 'skills'),
+      'charlie-helper',
+      `---
+name: Charlie Helper
+description: Claude-side helper.
+---
+`
+    )
+    await createSkill(
+      path.join(homeDirectory, '.agents', 'skills'),
+      'delta-helper',
+      `---
+name: Delta Helper
+description: Agent-side helper.
+---
+`
+    )
+    await createSkill(
+      path.join(workspaceDirectory, 'skills'),
+      'echo-workspace',
+      `---
+name: Echo Workspace
+description: Workspace-only helper.
+---
+`
+    )
+
+    const firstPage = await listDiscoveredSkillsPage({
+      workspaceRootPath: workspaceDirectory,
+      includeWorkspaceSource: true,
+      limit: 2
+    })
+
+    expect(firstPage.skills).toHaveLength(2)
+    expect(firstPage.skills.map((skill) => skill.name)).toEqual(['Alpha Agent', 'Bravo Agent'])
+    expect(firstPage.totalCount).toBe(5)
+    expect(firstPage.sourceCounts).toEqual({
+      'global-codex': 2,
+      'global-claude': 1,
+      'global-agent': 1,
+      'global-agent-legacy': 0,
+      workspace: 1
+    })
+    expect(firstPage.nextCursor).toBe('2')
+
+    const secondPage = await listDiscoveredSkillsPage({
+      workspaceRootPath: workspaceDirectory,
+      includeWorkspaceSource: true,
+      cursor: firstPage.nextCursor ?? undefined,
+      limit: 2
+    })
+
+    expect(secondPage.skills).toHaveLength(2)
+    expect(secondPage.skills.map((skill) => skill.name)).toEqual(['Charlie Helper', 'Delta Helper'])
+    expect(secondPage.nextCursor).toBe('4')
+
+    const filteredPage = await listDiscoveredSkillsPage({
+      workspaceRootPath: workspaceDirectory,
+      includeWorkspaceSource: true,
+      search: 'helper',
+      source: 'global-agent'
+    })
+
+    expect(filteredPage.skills).toHaveLength(1)
+    expect(filteredPage.skills[0]).toEqual(
+      expect.objectContaining({
+        name: 'Delta Helper',
+        source: 'global-agent'
+      })
+    )
+    expect(filteredPage.totalCount).toBe(1)
+    expect(filteredPage.sourceCounts).toEqual({
+      'global-codex': 0,
+      'global-claude': 1,
+      'global-agent': 1,
+      'global-agent-legacy': 0,
+      workspace: 1
+    })
+    expect(filteredPage.nextCursor).toBeNull()
   })
 
   it('removes workspace skill folders', async () => {

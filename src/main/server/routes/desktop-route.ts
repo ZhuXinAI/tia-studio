@@ -8,7 +8,11 @@ import type { RecommendedSkillId } from '../../skills/skills-manager'
 import { supportedUiLanguages, type UiConfig } from '../../ui-config'
 import type { AutoUpdateState } from '../../auto-updater'
 import type { DesktopBootstrap } from '../../../shared/desktop-bootstrap'
-import type { DesktopAutomationRecord, DesktopSkillRecord } from '../../../shared/desktop-discovery'
+import type {
+  DesktopAutomationRecord,
+  DesktopSkillCatalogPage,
+  DesktopSkillCatalogQuery
+} from '../../../shared/desktop-discovery'
 
 const uiConfigSchema = z.object({
   transparent: z.boolean().optional(),
@@ -28,9 +32,26 @@ const managedRuntimeKindSchema = z.enum([
 ])
 
 const runtimeOnboardingSkillIdSchema = z.enum(['agent-browser', 'find-skills'])
+const desktopSkillSourceSchema = z.enum([
+  'global-codex',
+  'global-claude',
+  'global-agent',
+  'global-agent-legacy',
+  'workspace'
+])
 
 const runtimeOnboardingSkillsSchema = z.object({
   skillIds: z.array(runtimeOnboardingSkillIdSchema)
+})
+
+const desktopSkillCatalogQuerySchema = z.object({
+  cursor: z
+    .string()
+    .regex(/^\d+$/, 'Cursor must be a non-negative integer')
+    .optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  search: z.string().max(200).optional(),
+  source: desktopSkillSourceSchema.optional()
 })
 
 type RegisterDesktopRouteOptions = {
@@ -49,7 +70,7 @@ type RegisterDesktopRouteOptions = {
   clearManagedRuntime: (kind: ManagedRuntimeKind) => Promise<ManagedRuntimesState>
   getRuntimeOnboardingSkillsStatus: () => Promise<RecommendedSkillId[]>
   installRuntimeOnboardingSkills: (skillIds: RecommendedSkillId[]) => Promise<RecommendedSkillId[]>
-  listSkills: () => Promise<DesktopSkillRecord[]>
+  listSkillsCatalogPage: (query: DesktopSkillCatalogQuery) => Promise<DesktopSkillCatalogPage>
   listAutomations: () => Promise<DesktopAutomationRecord[]>
   pickDirectory: () => Promise<string | null>
 }
@@ -218,8 +239,21 @@ export function registerDesktopRoute(app: Hono, options: RegisterDesktopRouteOpt
   })
 
   app.get('/v1/desktop/skills', async (context) => {
+    const parsed = desktopSkillCatalogQuerySchema.safeParse({
+      cursor: context.req.query('cursor') ?? undefined,
+      limit: context.req.query('limit') ?? undefined,
+      search: context.req.query('search') ?? undefined,
+      source: context.req.query('source') ?? undefined
+    })
+    if (!parsed.success) {
+      return context.json(
+        { ok: false as const, error: parsed.error.issues[0]?.message ?? 'Validation error' },
+        400
+      )
+    }
+
     return context.json({
-      skills: await options.listSkills()
+      ...(await options.listSkillsCatalogPage(parsed.data))
     })
   })
 

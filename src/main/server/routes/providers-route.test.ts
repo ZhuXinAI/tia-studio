@@ -290,6 +290,33 @@ describe('providers route', () => {
     await expect(providersRepo.getById(provider.id)).resolves.toBeNull()
   })
 
+  it('removes built-in preset providers from the added list instead of deleting the preset row', async () => {
+    const provider = await providersRepo.create({
+      id: 'built-in-minimax',
+      name: 'MiniMax',
+      type: 'anthropic',
+      apiKey: 'test-key',
+      apiHost: 'https://api.minimaxi.com/anthropic/v1',
+      selectedModel: 'MiniMax-M2.7',
+      enabled: true,
+      isBuiltIn: true,
+      isAdded: true,
+      isDefault: true
+    })
+
+    const response = await app.request(`http://localhost/v1/providers/${provider.id}`, {
+      method: 'DELETE'
+    })
+
+    expect(response.status).toBe(204)
+    await expect(providersRepo.getById(provider.id)).resolves.toMatchObject({
+      id: provider.id,
+      enabled: false,
+      isAdded: false,
+      isDefault: false
+    })
+  })
+
   it('rejects provider deletion when assistants still reference it', async () => {
     const provider = await providersRepo.create({
       name: 'OpenAI',

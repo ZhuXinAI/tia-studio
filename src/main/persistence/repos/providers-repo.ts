@@ -180,8 +180,8 @@ export class ProvidersRepository {
     const selectedModelContextWindowTokens =
       input.selectedModelContextWindowTokens !== undefined
         ? normalizeModelContextWindowTokens(input.selectedModelContextWindowTokens)
-        : inferKnownModelContextWindowTokens(nextSelectedModel) ??
-          (modelSelectionChanged ? null : existing.selectedModelContextWindowTokens)
+        : (inferKnownModelContextWindowTokens(nextSelectedModel) ??
+          (modelSelectionChanged ? null : existing.selectedModelContextWindowTokens))
     const nextIsDefault = input.isDefault === undefined ? existing.isDefault : input.isDefault
 
     if (nextIsDefault) {
@@ -226,7 +226,11 @@ export class ProvidersRepository {
     }
 
     if (existing.isBuiltIn) {
-      throw new Error('Cannot delete built-in provider')
+      await this.db.execute(
+        'UPDATE app_providers SET enabled = 0, is_added = 0, is_default = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [id]
+      )
+      return true
     }
 
     await this.db.execute('DELETE FROM app_providers WHERE id = ?', [id])

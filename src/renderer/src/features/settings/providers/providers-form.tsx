@@ -34,6 +34,7 @@ export type ProviderFormValues = {
   apiKey: string
   apiHost: string
   selectedModel: string
+  selectedModelContextWindowTokensText: string
   providerModelsText: string
   supportsVision: boolean
   enabled: boolean
@@ -80,6 +81,20 @@ export function parseProviderModelsInput(input: string): string[] {
     .filter((item) => item.length > 0)
 }
 
+function parseContextWindowTokensInput(input: string): number | undefined {
+  const normalizedInput = input.trim()
+  if (normalizedInput.length === 0) {
+    return undefined
+  }
+
+  const parsed = Number(normalizedInput)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return undefined
+  }
+
+  return Math.round(parsed)
+}
+
 export function shouldShowProviderModelsField(isPrebuilt: boolean): boolean {
   return isPrebuilt
 }
@@ -109,6 +124,9 @@ function toProviderPayload(
     selectedModel: isAcpProvider
       ? values.selectedModel.trim() || 'default'
       : values.selectedModel.trim(),
+    selectedModelContextWindowTokens: parseContextWindowTokensInput(
+      values.selectedModelContextWindowTokensText
+    ),
     providerModels: showProviderModels
       ? parseProviderModelsInput(values.providerModelsText)
       : undefined,
@@ -137,6 +155,7 @@ export function ProvidersForm({
     selectedModel:
       initialValue?.selectedModel ??
       (initialValue?.type ? getDefaultModelForProviderType(initialValue.type) : 'gpt-4o'),
+    selectedModelContextWindowTokensText: initialValue?.selectedModelContextWindowTokensText ?? '',
     providerModelsText: initialValue?.providerModelsText ?? '',
     supportsVision: initialValue?.supportsVision ?? false,
     enabled: initialValue?.enabled ?? true,
@@ -369,6 +388,28 @@ export function ProvidersForm({
               />
               <FieldError>{errors.selectedModel}</FieldError>
             </Field>
+
+            <Field>
+              <FieldLabel htmlFor="provider-context-window">
+                Model context window (optional)
+              </FieldLabel>
+              <FieldDescription>
+                Used for the thread context usage indicator when the app cannot infer an exact limit
+                from provider metadata.
+              </FieldDescription>
+              <Input
+                id="provider-context-window"
+                type="number"
+                min="1"
+                step="1"
+                inputMode="numeric"
+                value={values.selectedModelContextWindowTokensText}
+                onChange={(event) =>
+                  updateValue('selectedModelContextWindowTokensText', event.target.value)
+                }
+                placeholder="200000"
+              />
+            </Field>
           </>
         )}
 
@@ -442,9 +483,7 @@ export function ProvidersForm({
             <Switch
               id="provider-is-default"
               checked={values.isDefault}
-              onCheckedChange={(checked) =>
-                setValues((prev) => ({ ...prev, isDefault: checked }))
-              }
+              onCheckedChange={(checked) => setValues((prev) => ({ ...prev, isDefault: checked }))}
             />
           </div>
         </Field>
