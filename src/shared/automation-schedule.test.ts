@@ -9,7 +9,7 @@ describe('automation schedule helpers', () => {
     )
 
     expect(details.summary).toBe('Every Monday, Wednesday, Friday at 09:00')
-    expect(details.nextRunAt).toBe('2026-07-01T01:00:00.000Z')
+    expect(details.nextRunAt).toBe(new Date(2026, 6, 1, 9, 0, 0, 0).toISOString())
     expect(details.normalizedRule).toBe('FREQ=WEEKLY;BYHOUR=9;BYMINUTE=0;BYDAY=MO,WE,FR')
   })
 
