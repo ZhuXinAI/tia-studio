@@ -61,6 +61,7 @@ export class AutomationService {
       if (!workspace || workspace.isMissing) throw new Error('Automation workspace is unavailable')
       if (!provider || !provider.enabled) throw new Error('Automation provider is unavailable')
       const session = await this.options.runtime.createSession({
+        automationId: automation.id,
         workspaceId: workspace.builtInKind === 'chats' ? null : workspace.id,
         workspacePath: workspace.rootPath,
         title: automation.name,

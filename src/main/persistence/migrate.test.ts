@@ -62,4 +62,33 @@ describe('v3 Pi migration', () => {
     )
     await migrated.close()
   })
+
+  it('backfills schedule provenance for the latest existing run', async () => {
+    const path = await databasePath()
+    const db = await migrateAppSchema(path)
+    await db.execute(
+      "INSERT INTO app_providers (id, name, type, api_key, selected_model) VALUES ('p', 'P', 'openai', 'secret', 'gpt-4o')"
+    )
+    await db.execute("INSERT INTO app_workspaces (id, name, root_path) VALUES ('w', 'W', '/tmp/w')")
+    await db.execute(
+      "INSERT INTO app_agent_sessions (id, workspace_id, workspace_path, title, provider_id, provider, model_id) VALUES ('s', 'w', '/tmp/w', 'Scheduled run', 'p', 'openai', 'gpt-4o')"
+    )
+    await db.execute(
+      "INSERT INTO app_agent_sessions (id, workspace_id, workspace_path, title, provider_id, provider, model_id) VALUES ('historical', 'w', '/tmp/w', 'Schedule', 'p', 'openai', 'gpt-4o')"
+    )
+    await db.execute(
+      "INSERT INTO app_automations (id, name, prompt, rrule, workspace_id, provider_id, model_id, last_session_id) VALUES ('a', 'Schedule', 'Run', 'FREQ=DAILY', 'w', 'p', 'gpt-4o', 's')"
+    )
+    await db.close()
+
+    const migrated = await migrateAppSchema(path)
+    const sessions = await migrated.execute(
+      'SELECT id, automation_id FROM app_agent_sessions ORDER BY id'
+    )
+    expect(sessions.rows).toMatchObject([
+      { id: 'historical', automation_id: 'a' },
+      { id: 's', automation_id: 'a' }
+    ])
+    await migrated.close()
+  })
 })

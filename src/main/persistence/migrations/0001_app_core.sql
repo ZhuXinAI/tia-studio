@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS app_channel_pairings (
 
 CREATE TABLE IF NOT EXISTS app_agent_sessions (
   id TEXT PRIMARY KEY,
+  automation_id TEXT,
   upstream_session_id TEXT,
   upstream_session_file TEXT,
   workspace_id TEXT,

@@ -104,6 +104,7 @@ export type AgentInteractionResponse =
 
 export type AgentSessionSnapshot = {
   id: AgentSessionId
+  automationId?: string
   upstreamSessionId?: string
   upstreamSessionFile?: string
   workspaceId: string | null
@@ -200,6 +201,7 @@ export type AgentCommandReceipt = {
 }
 
 export type CreateAgentSessionInput = {
+  automationId?: string
   workspaceId: string | null
   workspacePath: string
   title?: string

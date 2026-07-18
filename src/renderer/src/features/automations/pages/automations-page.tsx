@@ -122,7 +122,7 @@ export function AutomationsPage(): React.JSX.Element {
       setEditingId(null)
       toast.success('Automation saved')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to save automation')
+      toast.error(error instanceof Error ? error.message : 'Unable to save schedule')
     }
   }
 
@@ -147,13 +147,13 @@ export function AutomationsPage(): React.JSX.Element {
     <section className="flex h-full min-h-0 flex-col overflow-hidden bg-[color:var(--surface-paper)]">
       <header className="flex items-center justify-between border-b border-[color:var(--surface-border)] px-6 py-4">
         <div>
-          <h1 className="text-lg font-semibold">Automations</h1>
+          <h1 className="text-lg font-semibold">Schedules</h1>
           <p className="text-sm text-muted-foreground">
             Scheduled Pi work owned and executed by TIA Studio.
           </p>
         </div>
         <Button onClick={() => beginEdit()} disabled={!workspaces.length || !providers.length}>
-          <Plus className="size-4" /> New automation
+          <Plus className="size-4" /> New schedule
         </Button>
       </header>
 
@@ -162,7 +162,7 @@ export function AutomationsPage(): React.JSX.Element {
           {isLoading ? <p className="p-3 text-sm text-muted-foreground">Loading…</p> : null}
           {!isLoading && automations.length === 0 ? (
             <div className="p-3 text-sm text-muted-foreground">
-              Create an automation to schedule repeatable Pi work.
+              Create a schedule for repeatable Pi work.
             </div>
           ) : null}
           <div className="space-y-1">
@@ -202,7 +202,7 @@ export function AutomationsPage(): React.JSX.Element {
             <div className="mx-auto max-w-3xl space-y-5">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">
-                  {editingId === 'new' ? 'New automation' : 'Edit automation'}
+                  {editingId === 'new' ? 'New schedule' : 'Edit schedule'}
                 </h2>
                 <Button variant="ghost" size="icon" onClick={() => setEditingId(null)}>
                   <X className="size-4" />
@@ -317,7 +317,7 @@ export function AutomationsPage(): React.JSX.Element {
                   disabled={mutationPending || !draft.name.trim() || !draft.prompt.trim()}
                 >
                   <Save className="size-4" />
-                  {mutationPending ? 'Saving…' : 'Save automation'}
+                  {mutationPending ? 'Saving…' : 'Save schedule'}
                 </Button>
               </div>
             </div>
@@ -398,7 +398,7 @@ export function AutomationsPage(): React.JSX.Element {
             <div className="grid h-full place-items-center text-center text-sm text-muted-foreground">
               <div>
                 <Clock3 className="mx-auto mb-3 size-6" />
-                <p>Select an automation or create one.</p>
+                <p>Select a schedule or create one.</p>
               </div>
             </div>
           )}

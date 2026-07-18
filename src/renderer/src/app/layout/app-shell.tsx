@@ -90,7 +90,7 @@ export function AppShell(): React.JSX.Element {
               >
                 <NavLink to="/automations" className="no-drag inline-flex items-center gap-2">
                   <Clock3 className="size-4" />
-                  <span className="text-sm font-medium">Automations</span>
+                  <span className="text-sm font-medium">Schedules</span>
                 </NavLink>
               </Button>
             </div>

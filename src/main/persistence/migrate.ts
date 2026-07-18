@@ -137,6 +137,36 @@ async function ensureAutomationsTable(db: AppDatabase): Promise<void> {
   await db.execute(
     'CREATE INDEX IF NOT EXISTS idx_app_automations_due ON app_automations(status, next_run_at)'
   )
+  await db.execute(`
+    UPDATE app_agent_sessions
+    SET automation_id = (
+      SELECT app_automations.id
+      FROM app_automations
+      WHERE app_automations.last_session_id = app_agent_sessions.id
+      LIMIT 1
+    )
+    WHERE automation_id IS NULL
+      AND EXISTS (
+        SELECT 1 FROM app_automations
+        WHERE app_automations.last_session_id = app_agent_sessions.id
+      )
+  `)
+  // Older schedules retained only their latest session ID. Recover historical runs that still
+  // have the schedule's original title; future runs persist automation_id when they are created.
+  await db.execute(`
+    UPDATE app_agent_sessions
+    SET automation_id = (
+      SELECT app_automations.id
+      FROM app_automations
+      WHERE app_automations.name = app_agent_sessions.title
+      LIMIT 1
+    )
+    WHERE automation_id IS NULL
+      AND EXISTS (
+        SELECT 1 FROM app_automations
+        WHERE app_automations.name = app_agent_sessions.title
+      )
+  `)
 }
 
 export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> {
@@ -150,6 +180,7 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   }
   for (const statement of statements(sql)) await db.execute(statement)
   await ensureProviderColumns(db)
+  await addColumn(db, 'app_agent_sessions', 'automation_id', 'TEXT')
   await addColumn(db, 'app_agent_sessions', 'pinned', 'INTEGER NOT NULL DEFAULT 0')
   await addColumn(db, 'app_agent_sessions', 'todos_json', "TEXT NOT NULL DEFAULT '[]'")
   await addColumn(db, 'app_agent_messages', 'completed_at', 'TEXT')

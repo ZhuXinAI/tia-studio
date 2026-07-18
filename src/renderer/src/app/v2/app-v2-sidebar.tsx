@@ -3,6 +3,7 @@ import {
   ChevronRight,
   Clock3,
   Folder,
+  FolderPlus,
   MessageSquarePlus,
   PanelLeftClose,
   PanelLeftOpen,
@@ -33,6 +34,7 @@ import {
   useDeleteAgentSession,
   useSetAgentSessionPinned
 } from '../../features/threads/agent-sessions-query'
+import { useAutomations } from '../../features/automations/automations-query'
 import { getThreadDisplayTitle, toErrorMessage } from '../../features/threads/thread-page-routing'
 
 function isWindowsPlatform(): boolean {
@@ -56,6 +58,7 @@ function ThreadLink({
   href,
   isActive,
   isPending,
+  isScheduled,
   onTogglePinned,
   onDelete
 }: {
@@ -63,6 +66,7 @@ function ThreadLink({
   href: string
   isActive: boolean
   isPending: boolean
+  isScheduled: boolean
   onTogglePinned: () => void
   onDelete: () => void
 }): React.JSX.Element {
@@ -82,6 +86,12 @@ function ThreadLink({
         <span className="size-1.5 shrink-0 rounded-full bg-current opacity-60" />
         <span className="truncate">{displayTitle}</span>
       </NavLink>
+      {isScheduled ? (
+        <Clock3
+          className="size-3.5 shrink-0 text-muted-foreground"
+          aria-label="Created by a schedule"
+        />
+      ) : null}
       <div
         className={cn(
           'flex shrink-0 items-center transition-opacity group-hover/thread:opacity-100 group-focus-within/thread:opacity-100',
@@ -152,11 +162,15 @@ function SidebarSection({
 function WorkspaceThreads({
   workspace,
   activeThreadId,
-  isOpen
+  isOpen,
+  scheduledSessionIds,
+  scheduledSessionTitles
 }: {
   workspace: WorkspaceRecord
   activeThreadId: string | null
   isOpen: boolean
+  scheduledSessionIds: ReadonlySet<string>
+  scheduledSessionTitles: ReadonlySet<string>
 }): React.JSX.Element {
   const navigate = useNavigate()
   const deleteThreadMutation = useDeleteAgentSession()
@@ -220,6 +234,11 @@ function WorkspaceThreads({
           }
           isActive={activeThreadId === thread.id}
           isPending={deleteThreadMutation.isPending || updateThreadPinnedMutation.isPending}
+          isScheduled={
+            Boolean(thread.automationId) ||
+            scheduledSessionIds.has(thread.id) ||
+            scheduledSessionTitles.has(thread.title)
+          }
           onTogglePinned={() => {
             void handleTogglePinned(thread)
           }}
@@ -245,6 +264,7 @@ export function AppV2Sidebar({
   const navigate = useNavigate()
   const params = useParams()
   const { data: workspaces = [], isLoading } = useWorkspaces()
+  const { data: automations = [] } = useAutomations()
   const createWorkspaceMutation = useCreateWorkspace()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -271,6 +291,14 @@ export function AppV2Sidebar({
         )
       }),
     [searchQuery, workspaces]
+  )
+  const scheduledSessionIds = useMemo(
+    () => new Set(automations.flatMap((automation) => automation.lastSessionId ?? [])),
+    [automations]
+  )
+  const scheduledSessionTitles = useMemo(
+    () => new Set(automations.map((automation) => automation.name)),
+    [automations]
   )
   const activeWorkspaceId = params.workspaceId ?? null
   const activeThreadId = params.threadId ?? null
@@ -349,7 +377,7 @@ export function AppV2Sidebar({
           </NavLink>
         </Button>
         <Button asChild variant="ghost" size="icon" className="size-8">
-          <NavLink to="/automations" aria-label="Open automations" title="Automations">
+          <NavLink to="/automations" aria-label="Open schedules" title="Schedules">
             <Clock3 className="size-4" />
           </NavLink>
         </Button>
@@ -422,7 +450,7 @@ export function AppV2Sidebar({
           >
             <NavLink to="/automations">
               <Clock3 className="size-4" />
-              Automations
+              Schedules
             </NavLink>
           </Button>
         </div>
@@ -446,7 +474,7 @@ export function AppV2Sidebar({
               aria-label="Create workspace"
               title="Create workspace"
             >
-              <Plus className="size-4" />
+              <FolderPlus className="size-4" />
             </Button>
           }
         >
@@ -517,6 +545,8 @@ export function AppV2Sidebar({
                       workspace={workspace}
                       activeThreadId={activeThreadId}
                       isOpen={workspaceOpen}
+                      scheduledSessionIds={scheduledSessionIds}
+                      scheduledSessionTitles={scheduledSessionTitles}
                     />
                   </div>
                 )
@@ -542,6 +572,8 @@ export function AppV2Sidebar({
               workspace={chatsWorkspace}
               activeThreadId={isChatsActive ? activeThreadId : null}
               isOpen={isChatsOpen}
+              scheduledSessionIds={scheduledSessionIds}
+              scheduledSessionTitles={scheduledSessionTitles}
             />
           ) : null}
         </SidebarSection>

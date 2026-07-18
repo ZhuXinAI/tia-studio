@@ -23,6 +23,7 @@ function json<T>(value: unknown, fallback: T): T {
 function parseSession(row: Record<string, unknown>): AgentSessionSnapshot {
   return {
     id: String(row.id),
+    automationId: row.automation_id ? String(row.automation_id) : undefined,
     upstreamSessionId: row.upstream_session_id ? String(row.upstream_session_id) : undefined,
     upstreamSessionFile: row.upstream_session_file ? String(row.upstream_session_file) : undefined,
     workspaceId: row.workspace_id ? String(row.workspace_id) : null,
@@ -47,7 +48,7 @@ function parseSession(row: Record<string, unknown>): AgentSessionSnapshot {
 }
 
 const SESSION_COLUMNS = `
-  id, upstream_session_id, upstream_session_file, workspace_id, workspace_path, title,
+  id, automation_id, upstream_session_id, upstream_session_file, workspace_id, workspace_path, title,
   provider_id, provider, model_id, thinking_level, access_mode, pinned, status, is_compacting,
   queue_json, todos_json, pending_interaction_json, created_at, updated_at
 `
@@ -89,12 +90,13 @@ export class AgentSessionsRepository {
     await this.db.execute(
       `
         INSERT INTO app_agent_sessions (
-          id, workspace_id, workspace_path, title, provider_id, provider, model_id,
+          id, automation_id, workspace_id, workspace_path, title, provider_id, provider, model_id,
           thinking_level, access_mode, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'starting')
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'starting')
       `,
       [
         id,
+        input.automationId ?? null,
         input.workspaceId,
         input.workspacePath,
         title,

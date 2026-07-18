@@ -18,8 +18,15 @@ describe('AgentSessionsRepository', () => {
     await db.execute(
       "INSERT INTO app_providers (id, name, type, api_key, selected_model) VALUES ('p', 'P', 'openai', 'k', 'gpt-4o')"
     )
+    await db.execute(
+      "INSERT INTO app_workspaces (id, name, root_path) VALUES ('w', 'Workspace', '/tmp/workspace')"
+    )
+    await db.execute(
+      "INSERT INTO app_automations (id, name, prompt, rrule, workspace_id, provider_id, model_id) VALUES ('schedule', 'Schedule', 'Run', 'FREQ=DAILY', 'w', 'p', 'gpt-4o')"
+    )
     const repo = new AgentSessionsRepository(db)
     const session = await repo.create({
+      automationId: 'schedule',
       workspaceId: null,
       workspacePath: directory,
       providerId: 'p',
@@ -27,6 +34,7 @@ describe('AgentSessionsRepository', () => {
       modelId: 'gpt-4o',
       accessMode: 'standard'
     })
+    expect(session.automationId).toBe('schedule')
     const pending = await repo.update(session.id, {
       accessMode: 'full',
       pinned: true,
