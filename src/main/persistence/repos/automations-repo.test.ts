@@ -1,17 +1,18 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { migrateAppSchema } from '../migrate'
 import { ProvidersRepository } from './providers-repo'
 import { WorkspaceRecordsRepository } from './workspace-records-repo'
 import { AutomationsRepository } from './automations-repo'
+import { removeTestDirectory } from '../../../test/remove-test-directory'
 
 let directory: string | null = null
 
 afterEach(async () => {
   if (directory) {
-    await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+    await removeTestDirectory(directory)
   }
   directory = null
 })

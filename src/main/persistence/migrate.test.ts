@@ -1,19 +1,14 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it } from 'vitest'
 import { migrateAppSchema } from './migrate'
+import { removeTestDirectory } from '../../test/remove-test-directory'
 
 const directories: string[] = []
 
 afterEach(async () => {
-  await Promise.all(
-    directories
-      .splice(0)
-      .map((directory) =>
-        rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
-      )
-  )
+  await Promise.all(directories.splice(0).map(removeTestDirectory))
 })
 
 async function databasePath(): Promise<string> {

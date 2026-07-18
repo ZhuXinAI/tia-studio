@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -6,11 +6,12 @@ import { migrateAppSchema } from '../persistence/migrate'
 import { AgentSessionsRepository } from '../persistence/repos/agent-sessions-repo'
 import { ProvidersRepository } from '../persistence/repos/providers-repo'
 import { AgentRuntimeManager } from './agent-runtime-manager'
+import { removeTestDirectory } from '../../test/remove-test-directory'
 
 let directory: string | null = null
 afterEach(async () => {
   if (directory) {
-    await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+    await removeTestDirectory(directory)
   }
   directory = null
 })
