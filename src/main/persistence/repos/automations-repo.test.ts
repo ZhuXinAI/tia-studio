@@ -10,7 +10,9 @@ import { AutomationsRepository } from './automations-repo'
 let directory: string | null = null
 
 afterEach(async () => {
-  if (directory) await rm(directory, { recursive: true, force: true })
+  if (directory) {
+    await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+  }
   directory = null
 })
 
