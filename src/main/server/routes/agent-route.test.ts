@@ -152,11 +152,11 @@ describe('agent route', () => {
     const response = await app.request('http://localhost/v1/agent/sessions/session-1/model', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider: 'openai', modelId: 'gpt-5' })
+      body: JSON.stringify({ providerId: 'provider-1', provider: 'openai', modelId: 'gpt-5' })
     })
 
     expect(response.status).toBe(200)
-    expect(runtime.setModel).toHaveBeenCalledWith('session-1', 'openai', 'gpt-5')
+    expect(runtime.setModel).toHaveBeenCalledWith('session-1', 'provider-1', 'openai', 'gpt-5')
   })
 
   it('streams ordered application events over SSE and unsubscribes on cancel', async () => {

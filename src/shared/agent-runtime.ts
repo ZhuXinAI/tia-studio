@@ -57,6 +57,7 @@ export type AppAgentMessage = {
   role: 'user' | 'assistant' | 'system'
   parts: AgentMessagePart[]
   createdAt: string
+  completedAt?: string
   status: 'streaming' | 'complete' | 'error'
   upstreamId?: string
 }
@@ -215,7 +216,12 @@ export interface AppAgentRuntime {
   closeSession(sessionId: AgentSessionId): Promise<void>
   sendMessage(input: SendAgentMessageInput): Promise<AgentCommandReceipt>
   cancelRun(sessionId: AgentSessionId): Promise<void>
-  setModel(sessionId: AgentSessionId, provider: string, modelId: string): Promise<void>
+  setModel(
+    sessionId: AgentSessionId,
+    providerId: string,
+    provider: string,
+    modelId: string
+  ): Promise<void>
   setThinkingLevel(sessionId: AgentSessionId, level: AgentThinkingLevel): Promise<void>
   setAccessMode(sessionId: AgentSessionId, mode: AgentAccessMode): Promise<void>
   renameSession(sessionId: AgentSessionId, title: string): Promise<void>
@@ -297,7 +303,11 @@ export function reduceAgentEvent(view: AgentSessionView, event: AppAgentEvent): 
       }))
       break
     case 'message.completed':
-      updateMessage(event.messageId, (message) => ({ ...message, status: event.status }))
+      updateMessage(event.messageId, (message) => ({
+        ...message,
+        status: event.status,
+        completedAt: event.timestamp
+      }))
       break
     case 'tool.started': {
       const messageId = event.messageId ?? messages.at(-1)?.id

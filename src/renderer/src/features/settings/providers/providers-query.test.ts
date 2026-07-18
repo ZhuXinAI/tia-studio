@@ -120,7 +120,8 @@ describe('providers query api client', () => {
     )
 
     const updatedProvider = await updateProvider(createdProvider.id, {
-      selectedModel: 'gpt-5-mini'
+      selectedModel: 'gpt-5-mini',
+      providerModels: []
     })
 
     expect(updatedProvider.selectedModel).toBe('gpt-5-mini')
@@ -131,6 +132,10 @@ describe('providers query api client', () => {
         method: 'PATCH'
       })
     )
+    expect(JSON.parse(String(fetchSpy.mock.calls[1]?.[1]?.body))).toMatchObject({
+      selectedModel: 'gpt-5-mini',
+      providerModels: []
+    })
 
     await deleteProvider(createdProvider.id)
 
@@ -211,12 +216,15 @@ describe('providers query api client', () => {
 
     window.addEventListener(providerConnectionEventName, listener)
 
-    await testProviderConnection({
-      name: 'OpenAI',
-      type: 'openai',
-      apiKey: 'secret',
-      selectedModel: 'gpt-5'
-    })
+    await testProviderConnection(
+      {
+        name: 'OpenAI',
+        type: 'openai',
+        apiKey: '',
+        selectedModel: 'gpt-5'
+      },
+      'provider-1'
+    )
 
     expect(listener).toHaveBeenCalledTimes(1)
     expect(fetchSpy).toHaveBeenCalledWith(
@@ -225,6 +233,11 @@ describe('providers query api client', () => {
         method: 'POST'
       })
     )
+    const request = (fetchSpy.mock.calls as unknown as Array<[string, RequestInit]>)[0]?.[1]
+    expect(JSON.parse(String(request?.body))).toMatchObject({
+      apiKey: '',
+      providerId: 'provider-1'
+    })
     window.removeEventListener(providerConnectionEventName, listener)
   })
 

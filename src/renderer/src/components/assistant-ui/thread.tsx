@@ -15,6 +15,7 @@ import {
   ReasoningTrigger
 } from '@renderer/components/assistant-ui/reasoning'
 import { ToolFallback } from '@renderer/components/assistant-ui/tool-fallback'
+import { WorkTrace } from '@renderer/components/assistant-ui/work-trace'
 import {
   ToolGroupContent,
   ToolGroupRoot,
@@ -325,15 +326,15 @@ const AssistantMessage: FC = () => {
       >
         <MessagePrimitive.GroupedParts
           groupBy={groupPartByType({
-            reasoning: ['group-chainOfThought', 'group-reasoning'],
-            'tool-call': ['group-chainOfThought', 'group-tool'],
+            reasoning: ['group-chainOfThought'],
+            'tool-call': ['group-chainOfThought'],
             'standalone-tool-call': []
           })}
         >
           {({ part, children }) => {
             switch (part.type) {
               case 'group-chainOfThought':
-                return <div data-slot="aui_chain-of-thought">{children}</div>
+                return <WorkTrace>{children}</WorkTrace>
               case 'group-tool':
                 if (ToolGroup) {
                   return <ToolGroup group={part}>{children}</ToolGroup>
@@ -364,21 +365,17 @@ const AssistantMessage: FC = () => {
               case 'text':
                 return <MarkdownText />
               case 'reasoning':
-                return <Reasoning {...part} />
+                return (
+                  <div className="border-s border-border/40 ps-3 text-sm text-muted-foreground">
+                    <Reasoning {...part} />
+                  </div>
+                )
               case 'tool-call':
                 return part.toolUI ?? <ToolFallbackComponent {...part} />
               case 'data':
                 return part.dataRendererUI
               case 'indicator':
-                return (
-                  <span
-                    data-slot="aui_assistant-message-indicator"
-                    className="animate-pulse font-sans"
-                    aria-label="Assistant is working"
-                  >
-                    {'●'}
-                  </span>
-                )
+                return null
               default:
                 return null
             }

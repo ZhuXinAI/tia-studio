@@ -117,6 +117,7 @@ export class AgentSessionsRepository {
         | 'upstreamSessionId'
         | 'upstreamSessionFile'
         | 'title'
+        | 'providerId'
         | 'provider'
         | 'modelId'
         | 'thinkingLevel'
@@ -133,7 +134,7 @@ export class AgentSessionsRepository {
     await this.db.execute(
       `
         UPDATE app_agent_sessions SET
-          upstream_session_id = ?, upstream_session_file = ?, title = ?, provider = ?,
+          upstream_session_id = ?, upstream_session_file = ?, title = ?, provider_id = ?, provider = ?,
           model_id = ?, thinking_level = ?, access_mode = ?, pinned = ?, status = ?, is_compacting = ?,
           queue_json = ?, pending_interaction_json = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
@@ -142,6 +143,7 @@ export class AgentSessionsRepository {
         input.upstreamSessionId ?? existing.upstreamSessionId ?? null,
         input.upstreamSessionFile ?? existing.upstreamSessionFile ?? null,
         input.title ?? existing.title,
+        input.providerId ?? existing.providerId,
         input.provider ?? existing.provider,
         input.modelId ?? existing.modelId,
         input.thinkingLevel ?? existing.thinkingLevel,
@@ -171,12 +173,13 @@ export class AgentSessionsRepository {
   async appendMessage(message: AppAgentMessage): Promise<void> {
     await this.db.execute(
       `
-        INSERT INTO app_agent_messages (id, session_id, role, parts_json, status, upstream_id, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO app_agent_messages (id, session_id, role, parts_json, status, upstream_id, created_at, completed_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           parts_json = excluded.parts_json,
           status = excluded.status,
-          upstream_id = excluded.upstream_id
+          upstream_id = excluded.upstream_id,
+          completed_at = excluded.completed_at
       `,
       [
         message.id,
@@ -185,7 +188,8 @@ export class AgentSessionsRepository {
         JSON.stringify(message.parts),
         message.status,
         message.upstreamId ?? null,
-        message.createdAt
+        message.createdAt,
+        message.completedAt ?? null
       ]
     )
   }
@@ -193,7 +197,7 @@ export class AgentSessionsRepository {
   async listMessages(sessionId: string): Promise<AppAgentMessage[]> {
     const result = await this.db.execute(
       `
-        SELECT id, session_id, role, parts_json, status, upstream_id, created_at
+        SELECT id, session_id, role, parts_json, status, upstream_id, created_at, completed_at
         FROM app_agent_messages WHERE session_id = ? ORDER BY created_at ASC, rowid ASC
       `,
       [sessionId]
@@ -207,7 +211,8 @@ export class AgentSessionsRepository {
         parts: json(String(record.parts_json), []),
         status: String(record.status) as AppAgentMessage['status'],
         upstreamId: record.upstream_id ? String(record.upstream_id) : undefined,
-        createdAt: String(record.created_at)
+        createdAt: String(record.created_at),
+        completedAt: record.completed_at ? String(record.completed_at) : undefined
       }
     })
   }

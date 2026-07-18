@@ -1,3 +1,4 @@
+import { Eye, EyeOff } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { Button } from '../../../components/ui/button'
@@ -10,6 +11,8 @@ import type { ProviderType, SaveProviderInput } from './providers-query'
 
 const providerSelectClassName =
   'h-11 w-full rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 py-2 text-sm shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_44%,transparent)]'
+
+export const SAVED_API_KEY_MASK = '••••••••••••'
 
 const defaultModelByProviderType: Record<ProviderType, string> = {
   openai: 'gpt-4o',
@@ -86,6 +89,7 @@ type ProvidersFormProps = {
   isPrebuilt?: boolean
   isBuiltIn?: boolean
   stickyActions?: boolean
+  onCancel?: () => void
   onSubmit: (values: SaveProviderInput, onSuccess?: () => void) => Promise<void> | void
   onTestConnection?: (values: SaveProviderInput) => Promise<void> | void
 }
@@ -103,9 +107,7 @@ function toProviderPayload(
     selectedModelContextWindowTokens: parseContextWindowTokensInput(
       values.selectedModelContextWindowTokensText
     ),
-    providerModels: showProviderModels
-      ? parseProviderModelsInput(values.providerModelsText)
-      : undefined,
+    providerModels: showProviderModels ? parseProviderModelsInput(values.providerModelsText) : [],
     supportsVision: values.supportsVision,
     enabled: values.enabled,
     isDefault: values.isDefault ?? false
@@ -119,6 +121,7 @@ export function ProvidersForm({
   isPrebuilt = false,
   isBuiltIn = false,
   stickyActions = false,
+  onCancel,
   onSubmit,
   onTestConnection
 }: ProvidersFormProps): React.JSX.Element {
@@ -138,6 +141,7 @@ export function ProvidersForm({
     isDefault: initialValue?.isDefault ?? false
   })
   const [errors, setErrors] = useState<ProviderFormErrors>({})
+  const [isApiKeyVisible, setIsApiKeyVisible] = useState(false)
   const [hasProviderModels, setHasProviderModels] = useState<boolean>(() => {
     return Boolean(initialValue?.providerModelsText?.trim().length) || isPrebuilt
   })
@@ -219,7 +223,7 @@ export function ProvidersForm({
       <div className="space-y-4">
         {isBuiltIn ? (
           <Field>
-            <div className="flex items-center justify-between rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-4 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_46%,transparent)]">
+            <div className="flex items-center justify-between gap-6 py-1">
               <div className="space-y-0.5">
                 <FieldLabel htmlFor="provider-enabled">
                   {t('settings.providers.form.enableProvider')}
@@ -237,49 +241,39 @@ export function ProvidersForm({
           </Field>
         ) : null}
 
-        <Field>
-          <FieldLabel htmlFor="provider-name">
-            {t('settings.providers.form.providerName')}
-          </FieldLabel>
-          <Input
-            id="provider-name"
-            value={values.name}
-            onChange={(event) => updateValue('name', event.target.value)}
-            placeholder="OpenAI"
-            disabled={isBuiltIn}
-          />
-        </Field>
+        {!isBuiltIn ? (
+          <>
+            <Field>
+              <FieldLabel htmlFor="provider-name">
+                {t('settings.providers.form.providerName')}
+              </FieldLabel>
+              <Input
+                id="provider-name"
+                value={values.name}
+                onChange={(event) => updateValue('name', event.target.value)}
+                placeholder="OpenAI"
+              />
+            </Field>
 
-        <Field>
-          <FieldLabel htmlFor="provider-type">{t('settings.providers.form.type')}</FieldLabel>
-          <select
-            id="provider-type"
-            className={providerSelectClassName}
-            value={values.type}
-            onChange={(event) => updateValue('type', event.target.value as ProviderType)}
-            disabled={isBuiltIn}
-          >
-            {providerTypeOptions.map((providerType) => (
-              <option key={providerType} value={providerType}>
-                {t(`settings.providers.typeLabels.${providerType}`)}
-              </option>
-            ))}
-          </select>
-        </Field>
+            <Field>
+              <FieldLabel htmlFor="provider-type">API protocol</FieldLabel>
+              <select
+                id="provider-type"
+                className={providerSelectClassName}
+                value={values.type}
+                onChange={(event) => updateValue('type', event.target.value as ProviderType)}
+              >
+                {providerTypeOptions.map((providerType) => (
+                  <option key={providerType} value={providerType}>
+                    {t(`settings.providers.typeLabels.${providerType}`)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </>
+        ) : null}
 
         <>
-          <Field>
-            <FieldLabel htmlFor="provider-api-key">
-              {t('settings.providers.form.apiKey')}
-            </FieldLabel>
-            <Input
-              id="provider-api-key"
-              value={values.apiKey}
-              onChange={(event) => updateValue('apiKey', event.target.value)}
-              placeholder="sk-..."
-            />
-          </Field>
-
           <Field>
             <FieldLabel htmlFor="provider-api-host">
               {t('settings.providers.form.apiHost')}
@@ -290,6 +284,33 @@ export function ProvidersForm({
               onChange={(event) => updateValue('apiHost', event.target.value)}
               placeholder="https://api.openai.com/v1"
             />
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="provider-api-key">
+              {t('settings.providers.form.apiKey')}
+            </FieldLabel>
+            <div className="relative">
+              <Input
+                id="provider-api-key"
+                type={isApiKeyVisible ? 'text' : 'password'}
+                className="pr-10"
+                value={values.apiKey}
+                onChange={(event) => updateValue('apiKey', event.target.value)}
+                placeholder="sk-..."
+              />
+              {values.apiKey === SAVED_API_KEY_MASK ? (
+                <span className="sr-only">A saved API key will be kept unless replaced.</span>
+              ) : null}
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={isApiKeyVisible ? 'Hide API key' : 'Show API key'}
+                onClick={() => setIsApiKeyVisible((visible) => !visible)}
+              >
+                {isApiKeyVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
           </Field>
 
           <Field>
@@ -329,7 +350,7 @@ export function ProvidersForm({
         </>
 
         <Field>
-          <div className="flex items-center justify-between rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-4 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_46%,transparent)]">
+          <div className="flex items-center justify-between gap-6 py-1">
             <div className="space-y-0.5">
               <FieldLabel htmlFor="provider-model-presets">
                 {t('settings.providers.form.includeModelPresets')}
@@ -364,7 +385,7 @@ export function ProvidersForm({
         ) : null}
 
         <Field>
-          <div className="flex items-center justify-between rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-4 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_46%,transparent)]">
+          <div className="flex items-center justify-between gap-6 py-1">
             <div className="space-y-0.5">
               <FieldLabel htmlFor="supports-vision">
                 {t('settings.providers.form.supportsVision')}
@@ -384,7 +405,7 @@ export function ProvidersForm({
         </Field>
 
         <Field>
-          <div className="flex items-center justify-between rounded-[1rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-4 py-4 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_46%,transparent)]">
+          <div className="flex items-center justify-between gap-6 py-1">
             <div className="space-y-0.5">
               <FieldLabel htmlFor="provider-is-default">Make this the default provider</FieldLabel>
               <FieldDescription>
@@ -408,6 +429,16 @@ export function ProvidersForm({
             : 'mt-4 flex flex-wrap justify-end gap-2'
         }
       >
+        {onCancel ? (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onCancel}
+            disabled={isSubmitting || isTestingConnection}
+          >
+            Cancel
+          </Button>
+        ) : null}
         {onTestConnection ? (
           <Button
             type="button"

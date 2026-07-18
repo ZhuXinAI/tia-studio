@@ -16,6 +16,7 @@ import type {
 } from '../../../../../shared/agent-runtime'
 import { reduceAgentEvent } from '../../../../../shared/agent-runtime'
 import { cancelAgentRun, sendAgentMessage, subscribeToAgentSession } from '../agent-sessions-query'
+import { mergeAssistantRunMessages } from './pi-thread-message-groups'
 
 function dataUrlToAttachment(input: {
   id: string
@@ -93,6 +94,17 @@ function convertMessage(message: AppAgentMessage) {
     role: message.role,
     content: message.parts.map(convertPart),
     createdAt: new Date(message.createdAt),
+    metadata: {
+      custom: {
+        workStartedAtMs: new Date(message.createdAt).getTime(),
+        workDurationMs: message.completedAt
+          ? Math.max(
+              0,
+              new Date(message.completedAt).getTime() - new Date(message.createdAt).getTime()
+            )
+          : undefined
+      }
+    },
     ...(message.role === 'assistant'
       ? {
           status:
@@ -170,7 +182,7 @@ export function PiThreadRuntimeProvider({
   const runtime = useExternalStoreRuntime({
     isRunning: view.snapshot.status === 'running',
     isLoading: view.snapshot.status === 'starting' || view.snapshot.status === 'recovering',
-    messages: view.messages,
+    messages: mergeAssistantRunMessages(view.messages),
     convertMessage,
     adapters,
     onNew: async (message) => {

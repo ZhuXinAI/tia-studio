@@ -110,10 +110,12 @@ export async function setAgentAccessMode(
 
 export async function setAgentModel(
   sessionId: string,
+  providerId: string,
   provider: string,
   modelId: string
 ): Promise<AgentSessionSnapshot> {
   return api.patch<AgentSessionSnapshot>(`/v1/agent/sessions/${sessionId}/model`, {
+    providerId,
     provider,
     modelId
   })

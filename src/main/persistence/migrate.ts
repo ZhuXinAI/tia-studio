@@ -124,6 +124,7 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   for (const statement of statements(sql)) await db.execute(statement)
   await ensureProviderColumns(db)
   await addColumn(db, 'app_agent_sessions', 'pinned', 'INTEGER NOT NULL DEFAULT 0')
+  await addColumn(db, 'app_agent_messages', 'completed_at', 'TEXT')
   await runDestructiveV3Cutover(db)
   for (const statement of statements(sql)) await db.execute(statement)
   await backfillKnownContextWindows(db)

@@ -69,11 +69,12 @@ export const testProviderConnectionSchema = z
   .object({
     type: providerTypeSchema,
     apiKey: z.string(),
+    providerId: z.string().min(1).optional(),
     apiHost: z.string().url().optional(),
     selectedModel: z.string().min(1)
   })
   .superRefine((input, context) => {
-    if (apiKeyOptionalForType(input.type) || input.apiKey.trim().length > 0) {
+    if (apiKeyOptionalForType(input.type) || input.apiKey.trim().length > 0 || input.providerId) {
       return
     }
 

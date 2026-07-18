@@ -1,91 +1,48 @@
 # Channels in TIA Studio
 
-Channels are how a TIA Studio assistant shows up in real conversations.
+Channels connect external conversations to the same embedded Pi runtime used by the desktop app. There is no Assistant or Claw layer between a channel and Pi.
 
-When you attach a channel to an assistant, that assistant can receive inbound messages from the outside world, route them into its runtime, and send replies back through the same transport. In practice, this is what turns an assistant into a local claw.
+## Runtime behavior
 
-## What a channel does
+For each inbound remote conversation, TIA Studio:
 
-A channel is responsible for a small, focused part of the system:
+1. authenticates or pairs the sender when the adapter requires it;
+2. normalizes the inbound message;
+3. creates or resumes one persistent Pi thread in the built-in Chats workspace;
+4. runs that thread with Standard Access through the application-owned runtime; and
+5. sends Pi's response back through the source channel.
 
-- Receive inbound messages from a supported platform
-- Normalize those messages into TIA Studio's shared channel message shape
-- Route each remote conversation into the correct assistant thread
-- Deliver assistant replies back to the source platform
-- Maintain channel-specific auth or connection state where needed
+Repeated messages from the same channel and remote chat reuse the same binding. Permission requests remain visible in the corresponding desktop thread.
 
-The assistant still owns identity, tools, memory, prompts, workspace, cron, and heartbeat behavior. The channel is the transport bridge.
+## Supported connections
 
-## Current support
+| Channel  | Setup                 | Pairing | Group mention control | Image delivery |
+| -------- | --------------------- | ------- | --------------------- | -------------- |
+| Discord  | Bot token             | —       | Yes                   | Yes            |
+| Lark     | App ID and app secret | —       | Yes                   | Yes            |
+| Telegram | Bot token             | Yes     | —                     | Yes            |
+| WhatsApp | QR sign-in            | Yes     | Yes                   | Yes            |
+| WeChat   | QR sign-in            | —       | —                     | No             |
+| WeCom    | Bot ID and secret     | —       | Yes                   | No             |
 
-| Channel   | Direct Chat | Group Chat | Group Trigger                       | Notes                                                              |
-| --------- | ----------- | ---------- | ----------------------------------- | ------------------------------------------------------------------ |
-| Discord   | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
-| Lark      | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
-| Telegram  | ✅          | 🚫         | Not available yet                   | Telegram is currently DM-only while group behavior is under review |
-| WhatsApp  | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
-| Wecom     | ✅          | ✅         | Requires bot `@` mention by default | Group mention gating can be configured per channel                 |
-| Wechat-KF | ✅          | 🚫         | Not applicable                      | Relay-backed one-to-one customer-service sessions only             |
+Create and manage connections from **Settings → Channels**. The page reports connection state, QR authentication state where applicable, pairing counts, and adapter errors without exposing saved credentials.
 
 ## Group behavior
 
-For channels that support groups, TIA Studio uses a `groupRequireMention` channel setting.
+Discord, Lark, WhatsApp, and WeCom expose a `groupRequireMention` setting. It defaults to `true`, so a group message triggers Pi only when the bot is explicitly mentioned. Disabling it allows every supported group message on that connection to trigger a response.
 
-- Default: `true`
-- Meaning: group messages only trigger the assistant when the bot is explicitly mentioned
-- If disabled: every group message can trigger a reply on that channel
+Telegram does not expose this group toggle. WhatsApp and Telegram use pairing approval for unknown direct-message senders.
 
-This is meant to keep group chats feeling close to DM behavior while avoiding accidental interruptions in busy shared rooms.
+## Channel commands
 
-Telegram is the current exception: even if the setting exists in stored channel config, Telegram runtime behavior is intentionally limited to direct messages for now.
+- `/new` closes the current binding's Pi session and starts a new thread.
+- `/stop` cancels the active run for the bound thread. If no run is active, the channel reports that nothing is running.
 
-## Channel-specific notes
+All other messages continue the currently bound thread. If Pi fails, the channel returns a concise error and the desktop thread retains the detailed state.
 
-### Lark
+## Security boundary
 
-- Supports direct chats and group chats
-- Uses bot identity lookup to detect whether the current bot was actually mentioned in a group
-- Group replies are mention-gated by default
-
-### Discord
-
-- Supports direct messages and guild text channels
-- Uses the connected bot identity to detect explicit user mentions in guild channels
-- Group replies are mention-gated by default
-
-### Telegram
-
-- Supports direct chats
-- Group support is intentionally disabled for now
-- Pairing and approval still apply for direct conversations
-
-### WhatsApp
-
-- Supports direct chats and group chats
-- Tracks the connected bot JID and compares it against mentioned JIDs in group messages
-- Group replies are mention-gated by default
-
-### Wecom
-
-- Supports direct chats and group chats
-- Detects bot mentions from the text payload used by the current Wecom adapter
-- Group replies are mention-gated by default
-
-### Wechat-KF
-
-- Supports relay-backed one-to-one customer-service sessions
-- Uses the relay server configured for the channel to exchange inbound and outbound text messages
-- Group chat behavior is not supported
-
-## Why channels matter
-
-Channels let you keep one assistant identity while meeting users where they already are.
-
-That means:
-
-- the same assistant can work in the desktop app and in an external chat
-- the same workspace and memory are reused across both
-- channel conversations still map into assistant threads
-- operational features like cron and heartbeat remain assistant-owned instead of becoming channel-owned
-
-If you want the broader claw architecture story, check [CLAW.md](./CLAW.md).
+- Channel credentials remain in Electron main and local application storage.
+- Channel threads use Standard Access; a remote message cannot silently enable Full Access.
+- The renderer and external adapters use application-owned schemas rather than Pi SDK objects.
+- The built-in Chats directory begins empty and does not receive injected identity, memory, soul, prompt, or preboot files.

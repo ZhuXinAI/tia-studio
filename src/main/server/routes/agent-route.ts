@@ -193,12 +193,17 @@ export function registerAgentRoute(
 
   app.patch('/v1/agent/sessions/:sessionId/model', async (context) => {
     const parsed = z
-      .object({ provider: z.string().min(1), modelId: z.string().min(1) })
+      .object({
+        providerId: z.string().min(1),
+        provider: z.string().min(1),
+        modelId: z.string().min(1)
+      })
       .safeParse(await jsonBody(context))
     if (!parsed.success) return context.json({ error: parsed.error.issues[0]?.message }, 400)
     try {
       await options.runtime.setModel(
         context.req.param('sessionId'),
+        parsed.data.providerId,
         parsed.data.provider,
         parsed.data.modelId
       )

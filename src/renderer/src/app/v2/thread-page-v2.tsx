@@ -1,5 +1,5 @@
 import { Bot, Check, ChevronDown, Shield, ShieldCheck } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, useNavigate, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -37,26 +37,21 @@ import type { ProviderRecord } from '../../features/settings/providers/providers
 
 function ThreadComposerControls({
   session,
-  provider,
+  providers,
   behavior,
   onBehaviorChange,
   onModelChange,
   onAccessChange
 }: {
   session: AgentSessionSnapshot
-  provider: ProviderRecord | null
+  providers: ProviderRecord[]
   behavior: AgentSendBehavior
   onBehaviorChange: (behavior: AgentSendBehavior) => void
-  onModelChange: (modelId: string) => void
+  onModelChange: (provider: ProviderRecord, modelId: string) => void
   onAccessChange: (full: boolean) => void
 }): React.JSX.Element {
-  const models = Array.from(
-    new Set(
-      [session.modelId, provider?.selectedModel, ...(provider?.providerModels ?? [])].filter(
-        Boolean
-      )
-    )
-  ) as string[]
+  const enabledProviders = providers.filter((provider) => provider.enabled)
+  const activeProvider = enabledProviders.find((provider) => provider.id === session.providerId)
   const disabled = session.status === 'running'
 
   return (
@@ -72,20 +67,40 @@ function ThreadComposerControls({
             disabled={disabled}
           >
             <Bot className="size-3.5 shrink-0" />
-            <span className="truncate">{session.modelId}</span>
+            <span className="truncate">
+              {activeProvider?.name ?? session.provider} · {session.modelId}
+            </span>
             <ChevronDown className="size-3 shrink-0 opacity-60" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" side="top" className="w-64">
-          <DropdownMenuLabel className="px-2 text-xs text-muted-foreground">
-            {provider?.name ?? session.provider}
-          </DropdownMenuLabel>
-          {models.map((modelId) => (
-            <DropdownMenuItem key={modelId} onSelect={() => onModelChange(modelId)}>
-              <span className="min-w-0 flex-1 truncate">{modelId}</span>
-              {modelId === session.modelId ? <Check className="size-4" /> : null}
-            </DropdownMenuItem>
-          ))}
+          {enabledProviders.map((provider, providerIndex) => {
+            const providerModels = provider.providerModels?.includes(provider.selectedModel)
+              ? provider.providerModels
+              : []
+            const models = Array.from(
+              new Set([provider.selectedModel, ...providerModels].filter(Boolean))
+            )
+            return (
+              <div key={provider.id}>
+                {providerIndex > 0 ? <DropdownMenuSeparator /> : null}
+                <DropdownMenuLabel className="px-2 text-xs text-muted-foreground">
+                  {provider.name}
+                </DropdownMenuLabel>
+                {models.map((modelId) => (
+                  <DropdownMenuItem
+                    key={`${provider.id}/${modelId}`}
+                    onSelect={() => onModelChange(provider, modelId)}
+                  >
+                    <span className="min-w-0 flex-1 truncate">{modelId}</span>
+                    {provider.id === session.providerId && modelId === session.modelId ? (
+                      <Check className="size-4" />
+                    ) : null}
+                  </DropdownMenuItem>
+                ))}
+              </div>
+            )
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -253,6 +268,7 @@ export function ThreadPageV2(): React.JSX.Element {
   const [behavior, setBehavior] = useState<AgentSendBehavior>('steer')
   const [creationError, setCreationError] = useState<string | null>(null)
   const creationStartedRef = useRef(false)
+  const modelReconciliationRef = useRef<string | null>(null)
   const rightRail = useAppV2ShellRightRail()
 
   const workspace = useMemo(
@@ -325,16 +341,38 @@ export function ThreadPageV2(): React.JSX.Element {
     }
   }
 
-  async function changeModel(modelId: string): Promise<void> {
-    if (!session || modelId === session.modelId) return
-    try {
-      const updated = await setAgentModel(session.id, session.provider, modelId)
-      queryClient.setQueryData(agentSessionKeys.detail(session.id), updated)
-      await queryClient.invalidateQueries({ queryKey: agentSessionKeys.all })
-    } catch (error) {
-      toast.error(toErrorMessage(error))
+  const changeModel = useCallback(
+    async (nextProvider: ProviderRecord, modelId: string): Promise<void> => {
+      if (!session || (nextProvider.id === session.providerId && modelId === session.modelId))
+        return
+      try {
+        const updated = await setAgentModel(session.id, nextProvider.id, nextProvider.type, modelId)
+        queryClient.setQueryData(agentSessionKeys.detail(session.id), updated)
+        await queryClient.invalidateQueries({ queryKey: agentSessionKeys.all })
+      } catch (error) {
+        toast.error(toErrorMessage(error))
+      }
+    },
+    [queryClient, session]
+  )
+
+  useEffect(() => {
+    if (!session || session.status === 'running') return
+    const currentProvider = providers.find((item) => item.id === session.providerId)
+    if (!currentProvider) return
+    const providerModels = currentProvider.providerModels?.includes(currentProvider.selectedModel)
+      ? currentProvider.providerModels
+      : []
+    const configuredModels = new Set([currentProvider.selectedModel, ...providerModels])
+    if (configuredModels.has(session.modelId)) {
+      modelReconciliationRef.current = null
+      return
     }
-  }
+    const reconciliationKey = `${session.id}/${currentProvider.id}/${currentProvider.selectedModel}`
+    if (modelReconciliationRef.current === reconciliationKey) return
+    modelReconciliationRef.current = reconciliationKey
+    void changeModel(currentProvider, currentProvider.selectedModel)
+  }, [changeModel, providers, session])
 
   if (!params.threadId) {
     if (!providersLoading && !provider) {
@@ -413,10 +451,10 @@ export function ThreadPageV2(): React.JSX.Element {
               ComposerControls: () => (
                 <ThreadComposerControls
                   session={session}
-                  provider={providers.find((item) => item.id === session.providerId) ?? null}
+                  providers={providers}
                   behavior={behavior}
                   onBehaviorChange={setBehavior}
-                  onModelChange={(modelId) => void changeModel(modelId)}
+                  onModelChange={(nextProvider, modelId) => void changeModel(nextProvider, modelId)}
                   onAccessChange={(full) => void toggleAccess(full)}
                 />
               )

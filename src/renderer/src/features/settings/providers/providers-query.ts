@@ -14,6 +14,7 @@ export type ProviderRecord = {
   name: string
   type: ProviderType
   apiKey: string
+  hasApiKey?: boolean
   apiHost: string | null
   selectedModel: string
   selectedModelContextWindowTokens?: number | null
@@ -170,7 +171,7 @@ export async function updateProvider(
     providerModels:
       input.providerModels === undefined
         ? undefined
-        : (normalizeProviderModels(input.providerModels) ?? undefined)
+        : (normalizeProviderModels(input.providerModels) ?? [])
   }
 
   return apiClient.patch<ProviderRecord>(`/v1/providers/${providerId}`, normalizedInput)
@@ -180,7 +181,10 @@ export async function deleteProvider(providerId: string): Promise<void> {
   await apiClient.delete(`/v1/providers/${providerId}`)
 }
 
-export async function testProviderConnection(input: SaveProviderInput): Promise<void> {
+export async function testProviderConnection(
+  input: SaveProviderInput,
+  providerId?: string
+): Promise<void> {
   window.dispatchEvent(
     new CustomEvent(providerConnectionEventName, {
       detail: {
@@ -197,6 +201,7 @@ export async function testProviderConnection(input: SaveProviderInput): Promise<
     {
       type: input.type,
       apiKey: input.apiKey,
+      providerId,
       apiHost: input.apiHost?.trim() || undefined,
       selectedModel: input.selectedModel.trim()
     }
@@ -251,6 +256,6 @@ export function useDeleteProvider() {
 
 export function useTestProviderConnection() {
   return useMutation({
-    mutationFn: testProviderConnection
+    mutationFn: (input: SaveProviderInput) => testProviderConnection(input)
   })
 }

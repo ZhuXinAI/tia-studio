@@ -21,7 +21,13 @@ function parseJsonBodyErrorResponse() {
 export function registerProvidersRoute(app: Hono, options: RegisterProvidersRouteOptions): void {
   app.get('/v1/providers', async (context) => {
     const providers = await options.providersRepo.list()
-    return context.json(providers.map((provider) => ({ ...provider, apiKey: '' })))
+    return context.json(
+      providers.map((provider) => ({
+        ...provider,
+        apiKey: '',
+        hasApiKey: provider.apiKey.trim().length > 0
+      }))
+    )
   })
 
   app.post('/v1/providers', async (context) => {
@@ -41,7 +47,10 @@ export function registerProvidersRoute(app: Hono, options: RegisterProvidersRout
     }
 
     const provider = await options.providersRepo.create(parsed.data)
-    return context.json({ ...provider, apiKey: '' }, 201)
+    return context.json(
+      { ...provider, apiKey: '', hasApiKey: provider.apiKey.trim().length > 0 },
+      201
+    )
   })
 
   app.patch('/v1/providers/:providerId', async (context) => {
@@ -68,7 +77,7 @@ export function registerProvidersRoute(app: Hono, options: RegisterProvidersRout
       return context.json({ ok: false, error: 'Provider not found' }, 404)
     }
 
-    return context.json({ ...provider, apiKey: '' })
+    return context.json({ ...provider, apiKey: '', hasApiKey: provider.apiKey.trim().length > 0 })
   })
 
   app.delete('/v1/providers/:providerId', async (context) => {
@@ -99,7 +108,13 @@ export function registerProvidersRoute(app: Hono, options: RegisterProvidersRout
     }
 
     try {
-      await testProviderConnection(parsed.data)
+      const savedProvider = parsed.data.providerId
+        ? await options.providersRepo.getById(parsed.data.providerId)
+        : null
+      await testProviderConnection({
+        ...parsed.data,
+        apiKey: parsed.data.apiKey.trim() || savedProvider?.apiKey || ''
+      })
       return context.json({ ok: true })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Connection check failed'

@@ -247,6 +247,7 @@ export function AppV2Sidebar({
   onToggleCollapsed
 }: AppV2SidebarProps): React.JSX.Element {
   const location = useLocation()
+  const navigate = useNavigate()
   const params = useParams()
   const { data: workspaces = [], isLoading } = useWorkspaces()
   const createWorkspaceMutation = useCreateWorkspace()
@@ -310,12 +311,16 @@ export function AppV2Sidebar({
         return
       }
 
-      await createWorkspaceMutation.mutateAsync({
+      const createdWorkspace = await createWorkspaceMutation.mutateAsync({
         name: toWorkspaceName(selectedPath),
         rootPath: selectedPath
       })
+      setExpandedWorkspaceIds((current) => new Set(current).add(createdWorkspace.id))
+      navigate(`/workspaces/${createdWorkspace.id}`)
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to create workspace')
+      const message = error instanceof Error ? error.message : 'Failed to create workspace'
+      setErrorMessage(message)
+      toast.error(message)
     }
   }
 
@@ -450,6 +455,7 @@ export function AppV2Sidebar({
             </Button>
           }
         >
+          {errorMessage ? <p className="px-2 text-xs text-destructive">{errorMessage}</p> : null}
           <div className="space-y-3">
             <div className="space-y-1">
               {isLoading ? (

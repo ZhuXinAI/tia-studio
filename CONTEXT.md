@@ -21,7 +21,7 @@ The built-in workspace for ad-hoc and channel-originated conversations. Chats al
 _Avoid_: Global workspace, inbox mode
 
 **New Chat**:
-The conversation entry flow where a user chooses a model and may optionally choose a workspace before the first message is sent. If no workspace is chosen, the thread is created in Chats.
+The conversation entry flow that creates a thread in the currently active workspace, or in Chats when no folder workspace is active. The composer exposes the thread's model and access policy before the first message is sent.
 _Avoid_: Blank thread, draft session
 
 **Thread**:
@@ -33,7 +33,7 @@ A v3 thread whose identity and agent history begin in Pi. Legacy thread records 
 _Avoid_: Migrated thread, legacy session
 
 **Agent Runtime**:
-The single application-owned execution boundary that connects every TIA work entry point to Pi. Desktop chat, channels, and automations share this boundary rather than retaining separate legacy harnesses.
+The single application-owned execution boundary that connects executable TIA work to Pi. Desktop chat and channels share this boundary rather than retaining separate legacy harnesses; any future executable automation must enter through the same boundary.
 _Avoid_: Mastra runtime, chat backend, legacy runtime
 
 **Agent Transport**:
@@ -52,10 +52,6 @@ _Avoid_: Assistant provider, Pi auth file, prompt configuration
 The per-thread, persisted permission policy applied to a Pi Thread's filesystem and command execution. New threads use Standard Access for routine workspace work with targeted approvals; Full Access explicitly skips those approval gates for that thread.
 _Avoid_: Agent prompt, provider permission, unrestricted renderer access
 
-**Thread Details**:
-The contextual companion surface for a selected thread. It summarizes the thread's workspace, fixed model choice, relevant capabilities, and origin context without becoming a primary navigation or settings surface.
-_Avoid_: Review panel, browser panel, settings drawer
-
 **Channel Thread Binding**:
 A persistent mapping from one external remote chat to one TIA thread. Repeated messages from the same remote chat continue in the same TIA thread until an explicit future rule creates a new one.
 _Avoid_: Per-message thread, temporary route
@@ -65,11 +61,11 @@ An optional external messaging connection routed through the Agent Runtime. Chan
 _Avoid_: Workspace, inbox, app mode
 
 **Automation**:
-An explicit time-based run that starts a real new thread inside a named workspace. Automation replaces heartbeat-style background behavior and cron-owned hidden work logs with user-visible assistant work, and it is managed from its own dedicated page instead of inside the workspace chat view.
-_Avoid_: Heartbeat, cron job, background ping
+A discovered Codex schedule shown in TIA Studio's read-only Automations catalog. The current page can search, filter, and inspect definitions, but it does not create, edit, pause, or execute them.
+_Avoid_: TIA-owned scheduler, heartbeat, hidden background run
 
 **Skills**:
-The user-facing surface for adding or enabling reusable assistant capabilities. Skills is the product term, even when the underlying implementation may use MCP servers or other integration machinery.
+A read-only catalog of reusable assistant capabilities discovered from global Codex, Claude, Agents, and workspace skill folders. The current page reports real local sources and does not claim to install or enable skills.
 _Avoid_: Plugins, MCP page
 
 **Appearance Tokens**:

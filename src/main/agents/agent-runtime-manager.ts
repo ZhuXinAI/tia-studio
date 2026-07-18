@@ -61,6 +61,27 @@ function deterministicTitle(text: string): string {
   return normalized.length > 72 ? `${normalized.slice(0, 69).trimEnd()}…` : normalized
 }
 
+const SESSION_STARTUP_TIMEOUT_MS = 20_000
+
+function withStartupTimeout<T>(promise: Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error('Pi startup timed out. Check the selected provider and try again.')),
+      SESSION_STARTUP_TIMEOUT_MS
+    )
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      }
+    )
+  })
+}
+
 export class AgentRuntimeManager implements AppAgentRuntime {
   private readonly live = new Map<string, LiveSession>()
   private readonly listeners = new Map<string, Set<(event: AppAgentEvent) => void>>()
@@ -70,7 +91,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
   async createSession(input: CreateAgentSessionInput): Promise<AgentSessionSnapshot> {
     const record = await this.options.sessionsRepo.create(input)
     try {
-      return await this.startSession(record)
+      return await withStartupTimeout(this.startSession(record))
     } catch (error) {
       await this.options.sessionsRepo.delete(record.id)
       throw error
@@ -175,14 +196,35 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     await (await this.requireLive(sessionId)).session.abort()
   }
 
-  async setModel(sessionId: string, provider: string, modelId: string): Promise<void> {
+  async setModel(
+    sessionId: string,
+    providerId: string,
+    providerType: string,
+    modelId: string
+  ): Promise<void> {
     const runtime = await this.requireLive(sessionId)
-    const piProvider = provider === runtime.snapshot.provider ? runtime.piProvider : provider
+    const provider = await this.options.providersRepo.getById(providerId)
+    if (!provider || !provider.enabled) throw new Error('The selected provider is unavailable')
+    const agentDir = join(this.options.agentDataRoot, sessionId)
+    const { piProvider } = await writePiModelConfig(agentDir, {
+      ...provider,
+      selectedModel: modelId
+    })
+    await runtime.modelRuntime.reloadConfig()
+    const apiKey = provider.apiKey.trim() || (provider.type === 'ollama' ? 'ollama' : '')
+    if (apiKey) await runtime.modelRuntime.setRuntimeApiKey(piProvider, apiKey)
     const model = runtime.modelRuntime.getModel(piProvider, modelId)
     if (!model) throw new Error(`Pi model is unavailable: ${piProvider}/${modelId}`)
     await runtime.session.setModel(model)
-    const updated = await this.options.sessionsRepo.update(sessionId, { provider, modelId })
-    if (updated) runtime.snapshot = updated
+    const updated = await this.options.sessionsRepo.update(sessionId, {
+      providerId,
+      provider: providerType,
+      modelId
+    })
+    if (updated) {
+      runtime.piProvider = piProvider
+      runtime.snapshot = updated
+    }
   }
 
   async setThinkingLevel(sessionId: string, level: AgentThinkingLevel): Promise<void> {
@@ -296,7 +338,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       noThemes: true
     })
     await resourceLoader.reload()
-    let runtime: LiveSession | undefined
+    const runtimeRef: { current?: LiveSession } = {}
     const nameTheThread: ToolDefinition = {
       name: 'nameTheThread',
       label: 'Name the thread',
@@ -320,6 +362,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
         additionalProperties: false
       } as ToolDefinition['parameters'],
       execute: async (_toolCallId, params) => {
+        const runtime = runtimeRef.current
         if (!runtime) throw new Error('The session is not ready to be named')
         const title = deterministicTitle(String((params as { title: unknown }).title))
         runtime.session.setSessionName(title)
@@ -349,7 +392,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     })
     const lastSequence = await this.options.sessionsRepo.getLastSequence(record.id)
     const mapper = new PiSdkEventMapper(record.id, () => new Date(), lastSequence)
-    runtime = {
+    const runtime: LiveSession = {
       session,
       modelRuntime,
       piProvider,
@@ -359,6 +402,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       unsubscribe: () => {},
       pendingInteractions: new Map()
     }
+    runtimeRef.current = runtime
     try {
       this.live.set(record.id, runtime)
       runtime.unsubscribe = session.subscribe((event: AgentSessionEvent) => {

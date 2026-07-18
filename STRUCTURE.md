@@ -7,12 +7,12 @@ Electron main is the sole owner of Pi Coding Agent sessions, credentials, filesy
 ## `src/main`
 
 - `agents/` — embedded Pi session lifecycle, SDK event mapping, permission extension, and model/runtime configuration.
-- `channels/` — Discord, Lark, Telegram, WhatsApp, Wecom, and Wechat-KF adapters plus remote-chat-to-session routing.
+- `channels/` — Discord, Lark, Telegram, WhatsApp, WeChat, and WeCom adapters plus remote-chat-to-session routing.
 - `config/` — local server and application configuration.
-- `desktop/` — desktop bootstrap and app-owned automation scheduling surfaces.
+- `desktop/` — desktop bootstrap plus read-only discovery of local skills and Codex automation definitions.
 - `persistence/` — SQLite migrations and repositories for profiles, providers, workspaces, channels, application sessions, normalized messages, and events.
 - `server/` — Hono application, authentication, validators, provider checks, and local HTTP/SSE routes.
-- `skills/` — local skill discovery and management. Skill-loading policy is separate from the v3 harness and must not become a workspace prompt preloader.
+- `skills/` — local skill discovery. The current renderer catalog is read-only, and skill-loading policy must not become a workspace prompt preloader.
 - `web-search/` — web-search settings and provider integration.
 
 `index.ts` composes these services and owns startup/disposal. Pi is imported as a library and runs inside this Node.js host process.
@@ -23,8 +23,9 @@ Electron main is the sole owner of Pi Coding Agent sessions, credentials, filesy
 - `components/assistant-ui/` — the official assistant-ui thread foundation and its rendering primitives.
 - `features/threads/` — session list/data queries and the external-store adapter that maps application events and commands to assistant-ui.
 - `features/workspaces/` — workspace selection and workspace-backed session surfaces.
-- `features/settings/` — providers, channels, MCP servers, display, updates, web search, and other supported settings.
-- `features/automations/` — app-owned scheduling UI.
+- `features/settings/` — providers, channels, MCP servers, language, display, updates, and other supported settings.
+- `features/skills/` — read-only local skill catalog with source filtering and incremental loading.
+- `features/automations/` — read-only inspection of discovered Codex automation definitions.
 - `lib/` — local API client and desktop bootstrap helpers.
 
 ## `src/shared`
