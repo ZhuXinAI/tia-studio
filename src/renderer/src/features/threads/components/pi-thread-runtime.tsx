@@ -187,12 +187,25 @@ export function PiThreadRuntimeProvider({
     adapters,
     onNew: async (message) => {
       const content = extractAppendMessage(message)
-      const receipt = await sendAgentMessage({
-        sessionId: session.id,
-        behavior: view.snapshot.status === 'running' ? behavior : 'normal',
-        ...content
-      })
-      if (!receipt.accepted) throw new Error(receipt.error ?? 'Pi rejected the message')
+      const previousStatus = view.snapshot.status
+      setView((current) => ({
+        ...current,
+        snapshot: { ...current.snapshot, status: 'running' }
+      }))
+      try {
+        const receipt = await sendAgentMessage({
+          sessionId: session.id,
+          behavior: previousStatus === 'running' ? behavior : 'normal',
+          ...content
+        })
+        if (!receipt.accepted) throw new Error(receipt.error ?? 'Pi rejected the message')
+      } catch (error) {
+        setView((current) => ({
+          ...current,
+          snapshot: { ...current.snapshot, status: previousStatus }
+        }))
+        throw error
+      }
     },
     onCancel: async () => cancelAgentRun(session.id),
     unstable_capabilities: { copy: true }

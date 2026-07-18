@@ -32,20 +32,3 @@ export type DesktopSkillCatalogPage = {
   sourceCounts: DesktopSkillSourceCounts
   nextCursor: string | null
 }
-
-export type DesktopAutomationRecord = {
-  id: string
-  kind: string | null
-  name: string
-  prompt: string | null
-  status: string | null
-  rrule: string | null
-  model: string | null
-  reasoningEffort: string | null
-  executionEnvironment: string | null
-  cwds: string[]
-  createdAt: string | null
-  updatedAt: string | null
-  directoryPath: string
-  filePath: string
-}

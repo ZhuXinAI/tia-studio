@@ -61,12 +61,12 @@ An optional external messaging connection routed through the Agent Runtime. Chan
 _Avoid_: Workspace, inbox, app mode
 
 **Automation**:
-A discovered Codex schedule shown in TIA Studio's read-only Automations catalog. The current page can search, filter, and inspect definitions, but it does not create, edit, pause, or execute them.
+A TIA-owned persisted schedule that creates an ordinary Pi Thread in its configured workspace. Automations can be created, edited, paused, resumed, deleted, and run immediately from TIA Studio; they do not import or proxy Codex schedules.
 _Avoid_: TIA-owned scheduler, heartbeat, hidden background run
 
 **Skills**:
-A read-only catalog of reusable assistant capabilities discovered from global Codex, Claude, Agents, and workspace skill folders. The current page reports real local sources and does not claim to install or enable skills.
-_Avoid_: Plugins, MCP page
+A complete reusable capability bundle installed from TIA Studio's curated skills.sh catalog into either TIA-owned global storage or a workspace's skill folder. Pi discovers global and workspace skills through its resource loader. Skills and MCP servers share one extension surface while remaining distinct runtime concepts.
+_Avoid_: Codex skill import, pretend install, single-file skill copy
 
 **Appearance Tokens**:
 The user-adjustable visual settings that control TIA Studio's base theme, accent color, background color, and foreground color. Appearance Tokens preserve the product's visual system while allowing personal tuning.

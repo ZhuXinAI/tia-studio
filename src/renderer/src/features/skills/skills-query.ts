@@ -1,66 +1,34 @@
-import { useInfiniteQuery } from '@tanstack/react-query'
-import { createApiClient } from '../../lib/api-client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
-  DesktopSkillCatalogPage,
-  DesktopSkillSource
-} from '../../../../shared/desktop-discovery'
+  SkillInstallScope,
+  SkillMarketplaceRecord
+} from '../../../../shared/skill-marketplace'
+import { createApiClient } from '../../lib/api-client'
 
-const apiClient = createApiClient()
-const desktopSkillCatalogPageSize = 24
+const api = createApiClient()
 
-export const skillCatalogKeys = {
-  all: ['desktop-skills'] as const,
-  list: (input: { search: string; source: DesktopSkillSource | 'all' }) =>
-    [...skillCatalogKeys.all, 'list', input] as const
+export const skillMarketplaceKeys = {
+  all: ['skill-marketplace'] as const,
+  list: (workspaceId?: string) => [...skillMarketplaceKeys.all, workspaceId ?? 'global'] as const
 }
 
-function buildDesktopSkillsCatalogPath(input: {
-  cursor?: string | null
-  search: string
-  source: DesktopSkillSource | null
-}): string {
-  const searchParams = new URLSearchParams()
-  searchParams.set('limit', String(desktopSkillCatalogPageSize))
-
-  if (input.cursor) {
-    searchParams.set('cursor', input.cursor)
-  }
-  if (input.search.trim().length > 0) {
-    searchParams.set('search', input.search.trim())
-  }
-  if (input.source) {
-    searchParams.set('source', input.source)
-  }
-
-  return `/v1/desktop/skills?${searchParams.toString()}`
+export function useSkillMarketplace(workspaceId?: string) {
+  return useQuery({
+    queryKey: skillMarketplaceKeys.list(workspaceId),
+    queryFn: async () => {
+      const query = workspaceId ? `?workspaceId=${encodeURIComponent(workspaceId)}` : ''
+      return (
+        await api.get<{ skills: SkillMarketplaceRecord[] }>(`/v1/desktop/skill-marketplace${query}`)
+      ).skills
+    }
+  })
 }
 
-export async function listDesktopSkillsCatalogPage(input: {
-  cursor?: string | null
-  search: string
-  source: DesktopSkillSource | null
-}): Promise<DesktopSkillCatalogPage> {
-  return apiClient.get<DesktopSkillCatalogPage>(buildDesktopSkillsCatalogPath(input))
-}
-
-export function useDesktopSkillsCatalog(input: {
-  search: string
-  source: DesktopSkillSource | null
-}) {
-  const normalizedSearch = input.search.trim()
-
-  return useInfiniteQuery({
-    queryKey: skillCatalogKeys.list({
-      search: normalizedSearch,
-      source: input.source ?? 'all'
-    }),
-    initialPageParam: null as string | null,
-    queryFn: ({ pageParam }) =>
-      listDesktopSkillsCatalogPage({
-        cursor: pageParam,
-        search: normalizedSearch,
-        source: input.source
-      }),
-    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined
+export function useInstallMarketplaceSkill() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { skillId: string; scope: SkillInstallScope; workspaceId?: string }) =>
+      api.post('/v1/desktop/skill-marketplace/install', input),
+    onSuccess: () => client.invalidateQueries({ queryKey: skillMarketplaceKeys.all })
   })
 }

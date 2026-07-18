@@ -9,10 +9,10 @@ import { supportedUiLanguages, type UiConfig } from '../../ui-config'
 import type { AutoUpdateState } from '../../auto-updater'
 import type { DesktopBootstrap } from '../../../shared/desktop-bootstrap'
 import type {
-  DesktopAutomationRecord,
   DesktopSkillCatalogPage,
   DesktopSkillCatalogQuery
 } from '../../../shared/desktop-discovery'
+import type { SkillInstallScope, SkillMarketplaceRecord } from '../../../shared/skill-marketplace'
 
 const uiConfigSchema = z.object({
   transparent: z.boolean().optional(),
@@ -44,6 +44,11 @@ const desktopSkillCatalogQuerySchema = z.object({
   search: z.string().max(200).optional(),
   source: desktopSkillSourceSchema.optional()
 })
+const marketplaceInstallSchema = z.object({
+  skillId: z.string().min(1),
+  scope: z.enum(['global', 'workspace']),
+  workspaceId: z.string().min(1).optional()
+})
 
 type RegisterDesktopRouteOptions = {
   getDesktopBootstrap: () => DesktopBootstrap
@@ -62,7 +67,12 @@ type RegisterDesktopRouteOptions = {
   getRuntimeOnboardingSkillsStatus: () => Promise<RecommendedSkillId[]>
   installRuntimeOnboardingSkills: (skillIds: RecommendedSkillId[]) => Promise<RecommendedSkillId[]>
   listSkillsCatalogPage: (query: DesktopSkillCatalogQuery) => Promise<DesktopSkillCatalogPage>
-  listAutomations: () => Promise<DesktopAutomationRecord[]>
+  listSkillMarketplace: (workspaceId?: string) => Promise<SkillMarketplaceRecord[]>
+  installMarketplaceSkill: (input: {
+    skillId: string
+    scope: SkillInstallScope
+    workspaceId?: string
+  }) => Promise<void>
   pickDirectory: () => Promise<string | null>
 }
 
@@ -248,10 +258,17 @@ export function registerDesktopRoute(app: Hono, options: RegisterDesktopRouteOpt
     })
   })
 
-  app.get('/v1/desktop/automations', async (context) => {
+  app.get('/v1/desktop/skill-marketplace', async (context) => {
     return context.json({
-      automations: await options.listAutomations()
+      skills: await options.listSkillMarketplace(context.req.query('workspaceId'))
     })
+  })
+
+  app.post('/v1/desktop/skill-marketplace/install', async (context) => {
+    const parsed = await readValidatedJsonBody(context, marketplaceInstallSchema)
+    if (!parsed.ok) return parsed.response
+    await options.installMarketplaceSkill(parsed.data)
+    return context.json({ ok: true as const })
   })
 
   app.post('/v1/desktop/dialogs/pick-directory', async (context) => {

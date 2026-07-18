@@ -31,7 +31,8 @@ describe('AgentRuntimeManager with embedded Pi SDK', () => {
       providersRepo: providers,
       agentDataRoot: join(directory, 'agent'),
       sessionDataRoot: join(directory, 'sessions'),
-      credentialRoot: directory
+      credentialRoot: directory,
+      globalSkillsRoot: join(directory, 'skills')
     })
 
     await expect(
@@ -63,7 +64,8 @@ describe('AgentRuntimeManager with embedded Pi SDK', () => {
       providersRepo: providers,
       agentDataRoot: join(directory, 'agent'),
       sessionDataRoot: join(directory, 'sessions'),
-      credentialRoot: directory
+      credentialRoot: directory,
+      globalSkillsRoot: join(directory, 'skills')
     })
     const created = await manager.createSession({
       workspaceId: null,

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   getInstalledRecommendedSkills,
   installRecommendedSkillsWithBunx,
+  listSkillMarketplace,
   listSkills,
   listDiscoveredSkillsPage,
   removeWorkspaceSkill
@@ -351,5 +352,29 @@ description: Helper skill.
     const installed = await getInstalledRecommendedSkills()
 
     expect(installed).toEqual(['agent-browser', 'find-skills'])
+  })
+
+  it('returns only the top 20 marketplace skills with owned install state', async () => {
+    const globalRoot = path.join(tempRoot, 'tia-global-skills')
+    const workspaceRoot = path.join(workspaceDirectory, 'skills')
+    await createSkill(
+      globalRoot,
+      'find-skills',
+      '---\nname: find-skills\ndescription: Find skills.\n---\n'
+    )
+    await createSkill(
+      workspaceRoot,
+      'frontend-design',
+      '---\nname: frontend-design\ndescription: Design.\n---\n'
+    )
+
+    const catalog = await listSkillMarketplace({
+      globalSkillsRoot: globalRoot,
+      workspaceSkillsRoot: workspaceRoot
+    })
+
+    expect(catalog).toHaveLength(20)
+    expect(catalog[0]).toMatchObject({ slug: 'find-skills', installedGlobal: true })
+    expect(catalog[1]).toMatchObject({ slug: 'frontend-design', installedWorkspace: true })
   })
 })

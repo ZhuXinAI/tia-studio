@@ -22,6 +22,7 @@ const snapshot: AgentSessionSnapshot = {
   status: 'idle',
   isCompacting: false,
   queue: { steering: [], followUps: [] },
+  todos: [],
   createdAt: '2026-07-16T00:00:00.000Z',
   updatedAt: '2026-07-16T00:00:00.000Z'
 }

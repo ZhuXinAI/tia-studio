@@ -18,7 +18,6 @@ import { registerWebSearchSettingsRoute } from './routes/web-search-settings-rou
 import { registerWorkspacesRoute } from './routes/workspaces-route'
 import type { DesktopBootstrap } from '../../shared/desktop-bootstrap'
 import type {
-  DesktopAutomationRecord,
   DesktopSkillCatalogPage,
   DesktopSkillCatalogQuery
 } from '../../shared/desktop-discovery'
@@ -29,9 +28,13 @@ import type {
   ManagedRuntimesState
 } from '../persistence/repos/managed-runtimes-repo'
 import type { RecommendedSkillId } from '../skills/skills-manager'
+import type { SkillInstallScope, SkillMarketplaceRecord } from '../../shared/skill-marketplace'
 import type { AgentSessionsRepository } from '../persistence/repos/agent-sessions-repo'
 import type { AppAgentRuntime } from '../../shared/agent-runtime'
 import { registerAgentRoute } from './routes/agent-route'
+import type { AutomationsRepository } from '../persistence/repos/automations-repo'
+import type { AutomationService } from '../automations/automation-service'
+import { registerAutomationsRoute } from './routes/automations-route'
 
 type CreateAppOptions = {
   token: string
@@ -58,7 +61,12 @@ type CreateAppOptions = {
       skillIds: RecommendedSkillId[]
     ) => Promise<RecommendedSkillId[]>
     listSkillsCatalogPage: (query: DesktopSkillCatalogQuery) => Promise<DesktopSkillCatalogPage>
-    listAutomations: () => Promise<DesktopAutomationRecord[]>
+    listSkillMarketplace: (workspaceId?: string) => Promise<SkillMarketplaceRecord[]>
+    installMarketplaceSkill: (input: {
+      skillId: string
+      scope: SkillInstallScope
+      workspaceId?: string
+    }) => Promise<void>
     pickDirectory: () => Promise<string | null>
   }
   repositories?: {
@@ -71,6 +79,10 @@ type CreateAppOptions = {
     agentSessions?: AgentSessionsRepository
   }
   agentRuntime?: AppAgentRuntime
+  automations?: {
+    repository: AutomationsRepository
+    service: AutomationService
+  }
   channelService?: {
     reload(): Promise<void>
   }
@@ -162,12 +174,20 @@ export function createApp(options: CreateAppOptions): Hono {
     })
   }
 
-  if (options.agentRuntime && options.repositories?.agentSessions && options.repositories.workspaces) {
+  if (
+    options.agentRuntime &&
+    options.repositories?.agentSessions &&
+    options.repositories.workspaces
+  ) {
     registerAgentRoute(app, {
       runtime: options.agentRuntime,
       sessionsRepo: options.repositories.agentSessions,
       workspacesRepo: options.repositories.workspaces
     })
+  }
+
+  if (options.automations) {
+    registerAutomationsRoute(app, options.automations)
   }
 
   return app

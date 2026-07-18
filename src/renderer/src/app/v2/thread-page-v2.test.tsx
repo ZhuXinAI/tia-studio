@@ -2,7 +2,7 @@
 
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { Link, MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ThreadPageV2 } from './thread-page-v2'
@@ -39,7 +39,10 @@ vi.mock('../../features/settings/providers/providers-query', () => ({
 
 vi.mock('../../features/workspaces/workspaces-query', () => ({
   useWorkspaces: () => ({
-    data: [{ id: 'chats', rootPath: '/tmp/chats', builtInKind: 'chats' }],
+    data: [
+      { id: 'chats', rootPath: '/tmp/chats', builtInKind: 'chats' },
+      { id: 'workspace-1', rootPath: '/tmp/workspace-1', builtInKind: null }
+    ],
     isLoading: false
   })
 }))
@@ -80,9 +83,9 @@ describe('ThreadPageV2 startup', () => {
     await act(async () => {
       root.render(
         <QueryClientProvider client={queryClient}>
-          <MemoryRouter initialEntries={['/chat']}>
+          <MemoryRouter initialEntries={['/chat/new']}>
             <Routes>
-              <Route path="/chat" element={<ThreadPageV2 />} />
+              <Route path="/chat/new" element={<ThreadPageV2 />} />
             </Routes>
           </MemoryRouter>
         </QueryClientProvider>
@@ -101,5 +104,63 @@ describe('ThreadPageV2 startup', () => {
     await flush()
 
     expect(mocks.createSession).toHaveBeenCalledTimes(2)
+  })
+
+  it('starts sessions only from explicit new-thread routes', async () => {
+    mocks.createSession.mockResolvedValueOnce({ id: 'chat-1', workspaceId: null })
+    mocks.createSession.mockResolvedValueOnce({
+      id: 'workspace-thread-1',
+      workspaceId: 'workspace-1'
+    })
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+    })
+
+    function Layout(): React.JSX.Element {
+      return (
+        <>
+          <Link to="/workspaces/workspace-1/new">New workspace thread</Link>
+          <Outlet />
+        </>
+      )
+    }
+
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={['/chat/new']}>
+            <Routes>
+              <Route element={<Layout />}>
+                <Route path="/chat" element={<ThreadPageV2 />} />
+                <Route path="/chat/new" element={<ThreadPageV2 />} />
+                <Route path="/chat/:threadId" element={<ThreadPageV2 />} />
+                <Route path="/workspaces/:workspaceId" element={<ThreadPageV2 />} />
+                <Route path="/workspaces/:workspaceId/new" element={<ThreadPageV2 />} />
+                <Route
+                  path="/workspaces/:workspaceId/threads/:threadId"
+                  element={<ThreadPageV2 />}
+                />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      )
+    })
+    await flush()
+    expect(mocks.createSession).toHaveBeenCalledTimes(1)
+
+    const workspaceLink = Array.from(container.querySelectorAll('a')).find(
+      (link) => link.textContent === 'New workspace thread'
+    )
+    await act(async () => workspaceLink?.click())
+    await flush()
+
+    expect(mocks.createSession).toHaveBeenCalledTimes(2)
+    expect(mocks.createSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        workspaceId: 'workspace-1',
+        workspacePath: '/tmp/workspace-1'
+      })
+    )
   })
 })

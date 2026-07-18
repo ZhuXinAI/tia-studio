@@ -37,6 +37,7 @@ function parseSession(row: Record<string, unknown>): AgentSessionSnapshot {
     status: String(row.status) as AgentSessionStatus,
     isCompacting: Number(row.is_compacting) === 1,
     queue: json(String(row.queue_json ?? '{}'), { steering: [], followUps: [] }),
+    todos: json(String(row.todos_json ?? '[]'), []),
     pendingInteraction: row.pending_interaction_json
       ? json(String(row.pending_interaction_json), undefined)
       : undefined,
@@ -48,7 +49,7 @@ function parseSession(row: Record<string, unknown>): AgentSessionSnapshot {
 const SESSION_COLUMNS = `
   id, upstream_session_id, upstream_session_file, workspace_id, workspace_path, title,
   provider_id, provider, model_id, thinking_level, access_mode, pinned, status, is_compacting,
-  queue_json, pending_interaction_json, created_at, updated_at
+  queue_json, todos_json, pending_interaction_json, created_at, updated_at
 `
 
 export class AgentSessionsRepository {
@@ -126,6 +127,7 @@ export class AgentSessionsRepository {
         | 'status'
         | 'isCompacting'
         | 'queue'
+        | 'todos'
       >
     > & { pendingInteraction?: AgentInteractionRequest | null }
   ): Promise<AgentSessionSnapshot | null> {
@@ -136,7 +138,7 @@ export class AgentSessionsRepository {
         UPDATE app_agent_sessions SET
           upstream_session_id = ?, upstream_session_file = ?, title = ?, provider_id = ?, provider = ?,
           model_id = ?, thinking_level = ?, access_mode = ?, pinned = ?, status = ?, is_compacting = ?,
-          queue_json = ?, pending_interaction_json = ?, updated_at = CURRENT_TIMESTAMP
+          queue_json = ?, todos_json = ?, pending_interaction_json = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `,
       [
@@ -152,6 +154,7 @@ export class AgentSessionsRepository {
         input.status ?? existing.status,
         (input.isCompacting ?? existing.isCompacting) ? 1 : 0,
         JSON.stringify(input.queue ?? existing.queue),
+        JSON.stringify(input.todos ?? existing.todos),
         'pendingInteraction' in input
           ? input.pendingInteraction
             ? JSON.stringify(input.pendingInteraction)

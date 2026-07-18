@@ -130,7 +130,7 @@ Edit, regenerate, export, and branch controls are absent because the application
 
 Channels no longer bind to a separate agent entity. Each remote conversation creates or resumes a normal Pi session in Chats using the default enabled provider. `/new` creates a new session and `/stop` cancels the active run. Concurrent inbound turns are handled deterministically; no backend model call decides routing.
 
-Automation-triggered executions create ordinary Pi sessions in their named workspace and use this same runtime contract. The automation catalog itself remains a desktop discovery surface.
+Automation-triggered executions create ordinary Pi sessions in their named workspace and use this same runtime contract. TIA owns the automation records, scheduling, CRUD lifecycle, and run history; Codex schedules are not imported.
 
 ## Explicit exclusions
 

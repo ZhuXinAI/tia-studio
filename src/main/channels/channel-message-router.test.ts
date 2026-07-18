@@ -21,6 +21,7 @@ const session: AgentSessionSnapshot = {
   status: 'idle',
   isCompacting: false,
   queue: { steering: [], followUps: [] },
+  todos: [],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString()
 }

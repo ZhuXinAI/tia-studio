@@ -3,7 +3,6 @@ import '../i18n'
 import { AppV2Shell } from './v2/app-v2-shell'
 import { ThreadPageV2 } from './v2/thread-page-v2'
 import { ProvidersSettingsPage } from '../features/settings/pages/providers-settings-page'
-import { McpServersSettingsPage } from '../features/settings/pages/mcp-servers-settings-page'
 import { AboutSettingsPage } from '../features/settings/pages/about-settings-page'
 import { DisplaySettingsPage } from '../features/settings/pages/display-settings-page'
 import { GeneralSettingsPage } from '../features/settings/pages/general-settings-page'
@@ -80,7 +79,7 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: 'mcp-servers',
-            element: <McpServersSettingsPage />
+            loader: () => redirect('/skills?tab=mcps')
           },
           {
             path: 'about',

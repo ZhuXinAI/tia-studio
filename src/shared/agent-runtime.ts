@@ -4,6 +4,12 @@ export type AgentToolCallId = string
 
 export type AgentThinkingLevel = 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
 export type AgentAccessMode = 'standard' | 'full'
+export type AgentTodoItem = {
+  id: string
+  title: string
+  detail?: string
+  status: 'pending' | 'in_progress' | 'completed'
+}
 export type AgentSendBehavior = 'normal' | 'steer' | 'follow-up'
 export type AgentSessionStatus =
   | 'starting'
@@ -112,6 +118,7 @@ export type AgentSessionSnapshot = {
   status: AgentSessionStatus
   isCompacting: boolean
   queue: { steering: string[]; followUps: string[] }
+  todos: AgentTodoItem[]
   pendingInteraction?: AgentInteractionRequest
   createdAt: string
   updatedAt: string

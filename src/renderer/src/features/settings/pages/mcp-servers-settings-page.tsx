@@ -191,7 +191,9 @@ function formatRawJsonInput(value: McpServersSettings): string {
   return JSON.stringify(value, null, 2)
 }
 
-export function McpServersSettingsPage(): React.JSX.Element {
+export function McpServersSettingsPage({
+  embedded = false
+}: { embedded?: boolean } = {}): React.JSX.Element {
   const { t } = useTranslation()
   const [settings, setSettings] = useState<McpServersSettings | null>(null)
   const [draft, setDraft] = useState<McpServersSettings | null>(null)
@@ -363,265 +365,267 @@ export function McpServersSettingsPage(): React.JSX.Element {
     }
   }
 
-  return (
-    <>
-      <SettingsContent size="wide">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-1">
-            <p className="section-kicker">Shared tool plumbing</p>
-            <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
-              {t('settings.mcp.title')}
-            </h1>
-            <p className="max-w-3xl text-sm text-muted-foreground">
-              {t('settings.mcp.description')}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={addServer}
-              disabled={isLoading || isSaving}
-            >
-              <Plus className="size-4" />
-              {t('settings.mcp.buttons.addServer')}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={openJsonDialog}
-              disabled={isLoading || isSaving}
-            >
-              {t('settings.mcp.buttons.editJson')}
-            </Button>
-            <Button
-              type="button"
-              onClick={() => void saveSettings()}
-              disabled={!isDirty || isSaving || isLoading}
-            >
-              <Save className="size-4" />
-              {isSaving ? t('settings.mcp.buttons.saving') : t('settings.mcp.buttons.save')}
-            </Button>
-          </div>
-        </header>
+  const content = (
+    <div className={embedded ? 'space-y-6' : ''}>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <p className="section-kicker">Shared tool plumbing</p>
+          <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
+            {t('settings.mcp.title')}
+          </h1>
+          <p className="max-w-3xl text-sm text-muted-foreground">{t('settings.mcp.description')}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addServer}
+            disabled={isLoading || isSaving}
+          >
+            <Plus className="size-4" />
+            {t('settings.mcp.buttons.addServer')}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={openJsonDialog}
+            disabled={isLoading || isSaving}
+          >
+            {t('settings.mcp.buttons.editJson')}
+          </Button>
+          <Button
+            type="button"
+            onClick={() => void saveSettings()}
+            disabled={!isDirty || isSaving || isLoading}
+          >
+            <Save className="size-4" />
+            {isSaving ? t('settings.mcp.buttons.saving') : t('settings.mcp.buttons.save')}
+          </Button>
+        </div>
+      </header>
 
-        <Card className="border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_78%,transparent))]">
-          <CardHeader className="pb-3">
-            <p className="section-kicker text-[0.66rem]">Shared registry</p>
-            <CardTitle className="font-editorial text-[1.8rem] leading-none tracking-[-0.03em]">
-              {t('settings.mcp.cardTitle')}
-            </CardTitle>
-            <CardDescription>{t('settings.mcp.cardDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {isLoading ? (
-              <p className="text-muted-foreground text-sm">{t('settings.mcp.loading')}</p>
-            ) : null}
+      <Card className="border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_78%,transparent))]">
+        <CardHeader className="pb-3">
+          <p className="section-kicker text-[0.66rem]">Shared registry</p>
+          <CardTitle className="font-editorial text-[1.8rem] leading-none tracking-[-0.03em]">
+            {t('settings.mcp.cardTitle')}
+          </CardTitle>
+          <CardDescription>{t('settings.mcp.cardDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isLoading ? (
+            <p className="text-muted-foreground text-sm">{t('settings.mcp.loading')}</p>
+          ) : null}
 
-            {!isLoading && serverEntries.length === 0 ? (
-              <p className="text-muted-foreground text-sm">{t('settings.mcp.empty')}</p>
-            ) : null}
+          {!isLoading && serverEntries.length === 0 ? (
+            <p className="text-muted-foreground text-sm">{t('settings.mcp.empty')}</p>
+          ) : null}
 
-            {serverEntries.map(([serverId, server]) =>
-              (() => {
-                const requiredRuntime = getRequiredManagedRuntimeKind(server.command)
+          {serverEntries.map(([serverId, server]) =>
+            (() => {
+              const requiredRuntime = getRequiredManagedRuntimeKind(server.command)
 
-                return (
-                  <article
-                    key={serverId}
-                    className="space-y-4 rounded-[1.2rem] border border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel-soft)_72%,transparent))] px-5 py-4 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_42%,transparent)]"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <p className="section-kicker text-[0.62rem]">Server entry</p>
-                        <h2 className="flex items-center gap-2 font-editorial text-[1.35rem] leading-none tracking-[-0.02em]">
-                          <Cable className="size-4" />
-                          {serverId}
-                        </h2>
-                        <p className="text-muted-foreground text-sm">
-                          {t('settings.mcp.serverDescription')}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          aria-label={t('settings.mcp.toggleAriaLabel', { id: serverId })}
-                          checked={server.isActive}
-                          onCheckedChange={(checked) =>
-                            updateServer(serverId, (current) => ({
-                              ...current,
-                              isActive: checked
-                            }))
-                          }
-                          disabled={isSaving}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          aria-label={t('settings.mcp.deleteAriaLabel', { id: serverId })}
-                          onClick={() => removeServer(serverId)}
-                          disabled={isSaving}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </div>
+              return (
+                <article
+                  key={serverId}
+                  className="space-y-4 rounded-[1.2rem] border border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel-soft)_72%,transparent))] px-5 py-4 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_42%,transparent)]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="section-kicker text-[0.62rem]">Server entry</p>
+                      <h2 className="flex items-center gap-2 font-editorial text-[1.35rem] leading-none tracking-[-0.02em]">
+                        <Cable className="size-4" />
+                        {serverId}
+                      </h2>
+                      <p className="text-muted-foreground text-sm">
+                        {t('settings.mcp.serverDescription')}
+                      </p>
                     </div>
 
-                    {requiredRuntime ? (
-                      <div className="rounded-md border border-amber-300/40 bg-amber-400/10 px-3 py-2">
-                        <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-                          {t('settings.mcp.managedRuntimeTitle')}
-                        </p>
-                        <p className="text-sm text-amber-900/80 dark:text-amber-200/80">
-                          {t('settings.mcp.managedRuntimeDescriptionPrefix', {
-                            runtime: requiredRuntime
-                          })}{' '}
-                          before enabling this server. Runtime setup is no longer a separate AppV2
-                          settings page.
-                        </p>
-                      </div>
-                    ) : null}
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <Field>
-                        <FieldLabel htmlFor={`mcp-name-${serverId}`}>
-                          {t('settings.mcp.fields.displayName')}
-                        </FieldLabel>
-                        <Input
-                          id={`mcp-name-${serverId}`}
-                          value={server.name}
-                          onChange={(event) =>
-                            updateServer(serverId, (current) => ({
-                              ...current,
-                              name: event.target.value
-                            }))
-                          }
-                          placeholder="amap-maps"
-                        />
-                      </Field>
-                      <Field>
-                        <FieldLabel htmlFor={`mcp-type-${serverId}`}>
-                          {t('settings.mcp.fields.transportType')}
-                        </FieldLabel>
-                        <Input
-                          id={`mcp-type-${serverId}`}
-                          value={server.type}
-                          onChange={(event) =>
-                            updateServer(serverId, (current) => ({
-                              ...current,
-                              type: event.target.value
-                            }))
-                          }
-                          placeholder="stdio"
-                        />
-                      </Field>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        aria-label={t('settings.mcp.toggleAriaLabel', { id: serverId })}
+                        checked={server.isActive}
+                        onCheckedChange={(checked) =>
+                          updateServer(serverId, (current) => ({
+                            ...current,
+                            isActive: checked
+                          }))
+                        }
+                        disabled={isSaving}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t('settings.mcp.deleteAriaLabel', { id: serverId })}
+                        onClick={() => removeServer(serverId)}
+                        disabled={isSaving}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
                     </div>
+                  </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <Field>
-                        <FieldLabel htmlFor={`mcp-command-${serverId}`}>
-                          {t('settings.mcp.fields.command')}
-                        </FieldLabel>
-                        <Input
-                          id={`mcp-command-${serverId}`}
-                          value={server.command ?? ''}
-                          onChange={(event) =>
-                            updateServer(serverId, (current) => ({
-                              ...current,
-                              ...(event.target.value.trim().length > 0
-                                ? { command: event.target.value }
-                                : { command: undefined })
-                            }))
-                          }
-                          placeholder="npx"
-                        />
-                      </Field>
-                      <Field>
-                        <FieldLabel htmlFor={`mcp-install-source-${serverId}`}>
-                          {t('settings.mcp.fields.installSource')}
-                        </FieldLabel>
-                        <Input
-                          id={`mcp-install-source-${serverId}`}
-                          value={server.installSource}
-                          onChange={(event) =>
-                            updateServer(serverId, (current) => ({
-                              ...current,
-                              installSource: event.target.value
-                            }))
-                          }
-                          placeholder="unknown"
-                        />
-                      </Field>
+                  {requiredRuntime ? (
+                    <div className="rounded-md border border-amber-300/40 bg-amber-400/10 px-3 py-2">
+                      <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                        {t('settings.mcp.managedRuntimeTitle')}
+                      </p>
+                      <p className="text-sm text-amber-900/80 dark:text-amber-200/80">
+                        {t('settings.mcp.managedRuntimeDescriptionPrefix', {
+                          runtime: requiredRuntime
+                        })}{' '}
+                        before enabling this server. Runtime setup is no longer a separate AppV2
+                        settings page.
+                      </p>
                     </div>
+                  ) : null}
 
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <Field>
-                      <FieldLabel htmlFor={`mcp-url-${serverId}`}>
-                        {t('settings.mcp.fields.url')}
+                      <FieldLabel htmlFor={`mcp-name-${serverId}`}>
+                        {t('settings.mcp.fields.displayName')}
                       </FieldLabel>
                       <Input
-                        id={`mcp-url-${serverId}`}
-                        value={server.url ?? ''}
+                        id={`mcp-name-${serverId}`}
+                        value={server.name}
+                        onChange={(event) =>
+                          updateServer(serverId, (current) => ({
+                            ...current,
+                            name: event.target.value
+                          }))
+                        }
+                        placeholder="amap-maps"
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor={`mcp-type-${serverId}`}>
+                        {t('settings.mcp.fields.transportType')}
+                      </FieldLabel>
+                      <Input
+                        id={`mcp-type-${serverId}`}
+                        value={server.type}
+                        onChange={(event) =>
+                          updateServer(serverId, (current) => ({
+                            ...current,
+                            type: event.target.value
+                          }))
+                        }
+                        placeholder="stdio"
+                      />
+                    </Field>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field>
+                      <FieldLabel htmlFor={`mcp-command-${serverId}`}>
+                        {t('settings.mcp.fields.command')}
+                      </FieldLabel>
+                      <Input
+                        id={`mcp-command-${serverId}`}
+                        value={server.command ?? ''}
                         onChange={(event) =>
                           updateServer(serverId, (current) => ({
                             ...current,
                             ...(event.target.value.trim().length > 0
-                              ? { url: event.target.value }
-                              : { url: undefined })
+                              ? { command: event.target.value }
+                              : { command: undefined })
                           }))
                         }
-                        placeholder="https://your-server.example.com/mcp"
+                        placeholder="npx"
                       />
                     </Field>
+                    <Field>
+                      <FieldLabel htmlFor={`mcp-install-source-${serverId}`}>
+                        {t('settings.mcp.fields.installSource')}
+                      </FieldLabel>
+                      <Input
+                        id={`mcp-install-source-${serverId}`}
+                        value={server.installSource}
+                        onChange={(event) =>
+                          updateServer(serverId, (current) => ({
+                            ...current,
+                            installSource: event.target.value
+                          }))
+                        }
+                        placeholder="unknown"
+                      />
+                    </Field>
+                  </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <Field>
-                        <FieldLabel htmlFor={`mcp-args-${serverId}`}>
-                          {t('settings.mcp.fields.arguments')}
-                        </FieldLabel>
-                        <Textarea
-                          id={`mcp-args-${serverId}`}
-                          rows={4}
-                          value={formatListInput(server.args)}
-                          onChange={(event) =>
-                            updateServer(serverId, (current) => ({
-                              ...current,
-                              args: parseListInput(event.target.value)
-                            }))
-                          }
-                          placeholder={'-y\n@amap/amap-maps-mcp-server'}
-                        />
-                      </Field>
-                      <Field>
-                        <FieldLabel htmlFor={`mcp-env-${serverId}`}>
-                          {t('settings.mcp.fields.environmentVariables')}
-                        </FieldLabel>
-                        <Textarea
-                          id={`mcp-env-${serverId}`}
-                          rows={4}
-                          value={envInputByServerId[serverId] ?? formatEnvInput(server.env)}
-                          onChange={(event) => {
-                            const nextValue = event.target.value
-                            setEnvInputByServerId((current) => ({
-                              ...current,
-                              [serverId]: nextValue
-                            }))
-                            updateServer(serverId, (current) => ({
-                              ...current,
-                              env: parseEnvInput(nextValue)
-                            }))
-                          }}
-                          placeholder={'AMAP_MAPS_API_KEY=your-api-key'}
-                        />
-                      </Field>
-                    </div>
-                  </article>
-                )
-              })()
-            )}
-          </CardContent>
-        </Card>
-      </SettingsContent>
+                  <Field>
+                    <FieldLabel htmlFor={`mcp-url-${serverId}`}>
+                      {t('settings.mcp.fields.url')}
+                    </FieldLabel>
+                    <Input
+                      id={`mcp-url-${serverId}`}
+                      value={server.url ?? ''}
+                      onChange={(event) =>
+                        updateServer(serverId, (current) => ({
+                          ...current,
+                          ...(event.target.value.trim().length > 0
+                            ? { url: event.target.value }
+                            : { url: undefined })
+                        }))
+                      }
+                      placeholder="https://your-server.example.com/mcp"
+                    />
+                  </Field>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field>
+                      <FieldLabel htmlFor={`mcp-args-${serverId}`}>
+                        {t('settings.mcp.fields.arguments')}
+                      </FieldLabel>
+                      <Textarea
+                        id={`mcp-args-${serverId}`}
+                        rows={4}
+                        value={formatListInput(server.args)}
+                        onChange={(event) =>
+                          updateServer(serverId, (current) => ({
+                            ...current,
+                            args: parseListInput(event.target.value)
+                          }))
+                        }
+                        placeholder={'-y\n@amap/amap-maps-mcp-server'}
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor={`mcp-env-${serverId}`}>
+                        {t('settings.mcp.fields.environmentVariables')}
+                      </FieldLabel>
+                      <Textarea
+                        id={`mcp-env-${serverId}`}
+                        rows={4}
+                        value={envInputByServerId[serverId] ?? formatEnvInput(server.env)}
+                        onChange={(event) => {
+                          const nextValue = event.target.value
+                          setEnvInputByServerId((current) => ({
+                            ...current,
+                            [serverId]: nextValue
+                          }))
+                          updateServer(serverId, (current) => ({
+                            ...current,
+                            env: parseEnvInput(nextValue)
+                          }))
+                        }}
+                        placeholder={'AMAP_MAPS_API_KEY=your-api-key'}
+                      />
+                    </Field>
+                  </div>
+                </article>
+              )
+            })()
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+
+  return (
+    <>
+      {embedded ? content : <SettingsContent size="wide">{content}</SettingsContent>}
 
       <Dialog open={isJsonDialogOpen} onOpenChange={setIsJsonDialogOpen}>
         <DialogContent className="max-w-4xl gap-5">

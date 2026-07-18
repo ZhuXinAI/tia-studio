@@ -1,24 +1,45 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { SaveTiaAutomationInput, TiaAutomationRecord } from '../../../../shared/automations'
 import { createApiClient } from '../../lib/api-client'
-import type { DesktopAutomationRecord } from '../../../../shared/desktop-discovery'
 
-const apiClient = createApiClient()
+const api = createApiClient()
 
-export const automationCatalogKeys = {
-  all: ['desktop-automations'] as const,
-  list: () => [...automationCatalogKeys.all, 'list'] as const
+export const automationKeys = {
+  all: ['tia-automations'] as const,
+  list: () => [...automationKeys.all, 'list'] as const
 }
 
-export async function listDesktopAutomations(): Promise<DesktopAutomationRecord[]> {
-  const response = await apiClient.get<{ automations: DesktopAutomationRecord[] }>(
-    '/v1/desktop/automations'
-  )
-  return response.automations
-}
-
-export function useDesktopAutomations() {
+export function useAutomations() {
   return useQuery({
-    queryKey: automationCatalogKeys.list(),
-    queryFn: listDesktopAutomations
+    queryKey: automationKeys.list(),
+    queryFn: () => api.get<TiaAutomationRecord[]>('/v1/automations'),
+    refetchInterval: 30_000
   })
 }
+
+function invalidatingMutation<TInput>(mutationFn: (input: TInput) => Promise<unknown>) {
+  return function useAutomationMutation() {
+    const client = useQueryClient()
+    return useMutation({
+      mutationFn,
+      onSuccess: () => client.invalidateQueries({ queryKey: automationKeys.all })
+    })
+  }
+}
+
+export const useCreateAutomation = invalidatingMutation((input: SaveTiaAutomationInput) =>
+  api.post<TiaAutomationRecord>('/v1/automations', input)
+)
+
+export const useUpdateAutomation = invalidatingMutation(
+  ({ id, input }: { id: string; input: SaveTiaAutomationInput }) =>
+    api.put<TiaAutomationRecord>(`/v1/automations/${id}`, input)
+)
+
+export const useDeleteAutomation = invalidatingMutation((id: string) =>
+  api.delete(`/v1/automations/${id}`)
+)
+
+export const useRunAutomation = invalidatingMutation((id: string) =>
+  api.post<TiaAutomationRecord>(`/v1/automations/${id}/run`)
+)

@@ -18,6 +18,7 @@ import type {
   AgentInteractionResponse,
   AgentSessionSnapshot,
   AgentThinkingLevel,
+  AgentTodoItem,
   AppAgentEvent,
   AppAgentMessage,
   AppAgentRuntime,
@@ -53,6 +54,7 @@ export type AgentRuntimeManagerOptions = {
   agentDataRoot: string
   sessionDataRoot: string
   credentialRoot: string
+  globalSkillsRoot: string
 }
 
 function deterministicTitle(text: string): string {
@@ -129,6 +131,19 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     const attachments = input.attachments ?? []
     if (!trimmed && attachments.length === 0) {
       return { commandId: randomUUID(), accepted: false, error: 'Message is empty' }
+    }
+
+    if (runtime.snapshot.title === 'New thread' && trimmed) {
+      const title = deterministicTitle(trimmed)
+      runtime.session.setSessionName(title)
+      const updated = await this.options.sessionsRepo.update(input.sessionId, { title })
+      if (updated) {
+        runtime.snapshot = updated
+        await this.publish(
+          runtime,
+          runtime.mapper.applicationEvent({ type: 'session.updated', snapshot: updated })
+        )
+      }
     }
 
     const message: AppAgentMessage = {
@@ -293,6 +308,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     await Promise.all([
       mkdir(this.options.agentDataRoot, { recursive: true }),
       mkdir(this.options.sessionDataRoot, { recursive: true }),
+      mkdir(this.options.globalSkillsRoot, { recursive: true }),
       mkdir(record.workspacePath, { recursive: true })
     ])
     const agentDir = join(this.options.agentDataRoot, record.id)
@@ -334,19 +350,21 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       ],
       noExtensions: true,
       noSkills: true,
+      additionalSkillPaths: [this.options.globalSkillsRoot, join(record.workspacePath, 'skills')],
       noPromptTemplates: true,
       noThemes: true
     })
     await resourceLoader.reload()
     const runtimeRef: { current?: LiveSession } = {}
     const nameTheThread: ToolDefinition = {
-      name: 'nameTheThread',
+      name: 'name_thread',
       label: 'Name the thread',
       description:
         'Give this conversation a short, specific title that describes the user’s task. Use this after the first user request and again only when the task meaningfully changes.',
       promptSnippet: 'Name the current conversation with a concise task title.',
       promptGuidelines: [
-        'Call nameTheThread after receiving the first substantive user request. Do not ask the user to name the thread.'
+        'Call name_thread after receiving the first substantive user request. Do not ask the user to name the thread.',
+        'Use a short task-oriented title. Call it again only when the task changes materially.'
       ],
       parameters: {
         type: 'object',
@@ -379,6 +397,82 @@ export class AgentRuntimeManager implements AppAgentRuntime {
         }
       }
     }
+    const updateTodoList: ToolDefinition = {
+      name: 'update_todo_list',
+      label: 'Update todo list',
+      description:
+        'Publish the current execution plan as a concise todo list, keep it current, and mark completed items.',
+      promptSnippet: 'Use update_todo_list for multi-step work so the user can follow progress.',
+      promptGuidelines: [
+        'Use update_todo_list when the request has multiple meaningful steps.',
+        'Keep exactly one item in progress at a time and update the list as work completes.'
+      ],
+      parameters: {
+        type: 'object',
+        properties: {
+          items: {
+            type: 'array',
+            maxItems: 12,
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', minLength: 1, maxLength: 80 },
+                title: { type: 'string', minLength: 1, maxLength: 160 },
+                detail: { type: 'string', maxLength: 240 },
+                status: { type: 'string', enum: ['pending', 'in_progress', 'completed'] }
+              },
+              required: ['id', 'title', 'status'],
+              additionalProperties: false
+            }
+          }
+        },
+        required: ['items'],
+        additionalProperties: false
+      } as ToolDefinition['parameters'],
+      execute: async (_toolCallId, params) => {
+        const runtime = runtimeRef.current
+        if (!runtime) throw new Error('The session is not ready to update todos')
+        const rawItems = (params as { items?: unknown }).items
+        const todos: AgentTodoItem[] = Array.isArray(rawItems)
+          ? rawItems
+              .slice(0, 12)
+              .map((raw, index) => {
+                const item = raw as Record<string, unknown>
+                const status: AgentTodoItem['status'] =
+                  item.status === 'completed' || item.status === 'in_progress'
+                    ? item.status
+                    : 'pending'
+                return {
+                  id: String(item.id || `todo-${index + 1}`),
+                  title: String(item.title || '')
+                    .trim()
+                    .slice(0, 160),
+                  ...(typeof item.detail === 'string' && item.detail.trim()
+                    ? { detail: item.detail.trim().slice(0, 240) }
+                    : {}),
+                  status
+                }
+              })
+              .filter((item) => item.title.length > 0)
+          : []
+        const updated = await this.options.sessionsRepo.update(record.id, { todos })
+        if (!updated) throw new Error('Session not found')
+        runtime.snapshot = updated
+        await this.publish(
+          runtime,
+          runtime.mapper.applicationEvent({ type: 'session.updated', snapshot: updated })
+        )
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Updated ${todos.length} todo item${todos.length === 1 ? '' : 's'}.`
+            }
+          ],
+          details: { todos }
+        }
+      }
+    }
     const { session } = await createAgentSession({
       cwd: record.workspacePath,
       agentDir,
@@ -388,7 +482,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       sessionManager,
       settingsManager,
       resourceLoader,
-      customTools: [nameTheThread]
+      customTools: [nameTheThread, updateTodoList]
     })
     const lastSequence = await this.options.sessionsRepo.getLastSequence(record.id)
     const mapper = new PiSdkEventMapper(record.id, () => new Date(), lastSequence)

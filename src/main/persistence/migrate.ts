@@ -112,6 +112,33 @@ async function backfillKnownContextWindows(db: AppDatabase): Promise<void> {
   }
 }
 
+async function ensureAutomationsTable(db: AppDatabase): Promise<void> {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_automations (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      prompt TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      rrule TEXT NOT NULL,
+      workspace_id TEXT NOT NULL,
+      provider_id TEXT NOT NULL,
+      model_id TEXT NOT NULL,
+      next_run_at TEXT,
+      last_run_at TEXT,
+      last_session_id TEXT,
+      last_error TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (workspace_id) REFERENCES app_workspaces(id) ON DELETE CASCADE,
+      FOREIGN KEY (provider_id) REFERENCES app_providers(id),
+      FOREIGN KEY (last_session_id) REFERENCES app_agent_sessions(id) ON DELETE SET NULL
+    )
+  `)
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_automations_due ON app_automations(status, next_run_at)'
+  )
+}
+
 export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> {
   const db = createAppDatabase(pathOrUrl)
   await db.execute('PRAGMA foreign_keys = ON')
@@ -124,7 +151,9 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   for (const statement of statements(sql)) await db.execute(statement)
   await ensureProviderColumns(db)
   await addColumn(db, 'app_agent_sessions', 'pinned', 'INTEGER NOT NULL DEFAULT 0')
+  await addColumn(db, 'app_agent_sessions', 'todos_json', "TEXT NOT NULL DEFAULT '[]'")
   await addColumn(db, 'app_agent_messages', 'completed_at', 'TEXT')
+  await ensureAutomationsTable(db)
   await runDestructiveV3Cutover(db)
   for (const statement of statements(sql)) await db.execute(statement)
   await backfillKnownContextWindows(db)

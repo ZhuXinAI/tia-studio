@@ -37,7 +37,15 @@ import {
   type ToolCallMessagePartComponent,
   useAuiState
 } from '@assistant-ui/react'
-import { ArrowDownIcon, ArrowUpIcon, CheckIcon, CopyIcon, MicIcon, SquareIcon } from 'lucide-react'
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CheckIcon,
+  CopyIcon,
+  LoaderCircle,
+  MicIcon,
+  SquareIcon
+} from 'lucide-react'
 import {
   createContext,
   useContext,
@@ -62,6 +70,7 @@ export type ThreadComponents = {
   ToolGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined
   ReasoningGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined
   ComposerControls?: ComponentType | undefined
+  ComposerHeader?: ComponentType | undefined
 }
 
 export type ThreadProps = {
@@ -88,7 +97,7 @@ export const Thread: FC<ThreadProps> = ({ components = EMPTY_COMPONENTS }) => {
 }
 
 const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
-  const { Welcome = ThreadEmpty } = useContext(ThreadComponentsContext)
+  const { Welcome = ThreadEmpty, ComposerHeader } = useContext(ThreadComponentsContext)
 
   return (
     <ThreadPrimitive.Root
@@ -120,6 +129,16 @@ const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
             <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
           </div>
 
+          <AuiIf condition={(s) => s.thread.isRunning && s.thread.messages.at(-1)?.role === 'user'}>
+            <div
+              className="mb-5 flex items-center gap-2 px-2 text-sm text-muted-foreground"
+              role="status"
+            >
+              <LoaderCircle className="size-4 animate-spin" />
+              <span>Working…</span>
+            </div>
+          </AuiIf>
+
           <ThreadPrimitive.ViewportFooter
             className={cn(
               'aui-thread-viewport-footer bg-background flex flex-col gap-4 overflow-visible pb-4 md:pb-6',
@@ -128,6 +147,7 @@ const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
           >
             <ThreadScrollToBottom />
             <ThreadFollowupSuggestions />
+            {ComposerHeader ? <ComposerHeader /> : null}
             <Composer />
             <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
               <ThreadSuggestions />

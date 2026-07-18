@@ -1,7 +1,8 @@
 import { execFile } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import os from 'node:os'
 import path from 'node:path'
-import { readdir, readFile, realpath, rm, stat } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readdir, readFile, realpath, rename, rm, stat } from 'node:fs/promises'
 import type { Dirent } from 'node:fs'
 import { promisify } from 'node:util'
 import type {
@@ -11,6 +12,7 @@ import type {
   DesktopSkillSource,
   DesktopSkillSourceCounts
 } from '../../shared/desktop-discovery'
+import type { SkillInstallScope, SkillMarketplaceRecord } from '../../shared/skill-marketplace'
 
 type SkillSource = DesktopSkillSource
 export type RecommendedSkillId = 'agent-browser' | 'find-skills'
@@ -53,6 +55,28 @@ type RunInstallCommand = (
 ) => Promise<void>
 
 const execFileAsync = promisify(execFile)
+const topSkillDefinitions = [
+  ['find-skills', 'Find Skills', 'vercel-labs/skills', 2559128],
+  ['frontend-design', 'Frontend Design', 'anthropics/skills', 677536],
+  ['grill-me', 'Grill Me', 'mattpocock/skills', 589016],
+  ['vercel-react-best-practices', 'React Best Practices', 'vercel-labs/agent-skills', 560599],
+  ['agent-browser', 'Agent Browser', 'vercel-labs/agent-browser', 556072],
+  ['grill-with-docs', 'Grill with Docs', 'mattpocock/skills', 498165],
+  ['improve-codebase-architecture', 'Improve Codebase Architecture', 'mattpocock/skills', 486099],
+  ['web-design-guidelines', 'Web Design Guidelines', 'vercel-labs/agent-skills', 472135],
+  ['tdd', 'Test-Driven Development', 'mattpocock/skills', 466614],
+  ['microsoft-foundry', 'Microsoft Foundry', 'microsoft/azure-skills', 463543],
+  ['azure-ai', 'Azure AI', 'microsoft/azure-skills', 460067],
+  ['azure-deploy', 'Azure Deploy', 'microsoft/azure-skills', 459766],
+  ['azure-diagnostics', 'Azure Diagnostics', 'microsoft/azure-skills', 459616],
+  ['azure-prepare', 'Azure Prepare', 'microsoft/azure-skills', 459460],
+  ['azure-storage', 'Azure Storage', 'microsoft/azure-skills', 459148],
+  ['azure-validate', 'Azure Validate', 'microsoft/azure-skills', 458815],
+  ['entra-app-registration', 'Entra App Registration', 'microsoft/azure-skills', 458700],
+  ['appinsights-instrumentation', 'App Insights Instrumentation', 'microsoft/azure-skills', 458620],
+  ['azure-compliance', 'Azure Compliance', 'microsoft/azure-skills', 458541],
+  ['azure-resource-lookup', 'Azure Resource Lookup', 'microsoft/azure-skills', 458534]
+] as const
 const recommendedSkillDefinitions: RecommendedSkillDefinition[] = [
   {
     id: 'agent-browser',
@@ -593,4 +617,91 @@ export async function getInstalledRecommendedSkills(): Promise<RecommendedSkillI
   return recommendedSkillDefinitions
     .filter((definition) => normalizedNames.has(normalizeSkillKey(definition.skillName)))
     .map((definition) => definition.id)
+}
+
+async function hasInstalledSkill(rootPath: string | null, slug: string): Promise<boolean> {
+  if (!rootPath) return false
+  try {
+    return (await stat(path.join(rootPath, slug, 'SKILL.md'))).isFile()
+  } catch (error) {
+    if (isFileMissingError(error)) return false
+    throw error
+  }
+}
+
+export async function listSkillMarketplace(input: {
+  globalSkillsRoot: string
+  workspaceSkillsRoot?: string | null
+}): Promise<SkillMarketplaceRecord[]> {
+  return Promise.all(
+    topSkillDefinitions.map(async ([slug, name, source, installs], index) => ({
+      id: `${source}/${slug}`,
+      rank: index + 1,
+      slug,
+      name,
+      source,
+      installs,
+      installedGlobal: await hasInstalledSkill(input.globalSkillsRoot, slug),
+      installedWorkspace: await hasInstalledSkill(input.workspaceSkillsRoot ?? null, slug)
+    }))
+  )
+}
+
+export async function installMarketplaceSkill(input: {
+  skillId: string
+  scope: SkillInstallScope
+  globalSkillsRoot: string
+  workspaceSkillsRoot?: string | null
+}): Promise<void> {
+  const definition = topSkillDefinitions.find(
+    ([slug, , source]) => `${source}/${slug}` === input.skillId
+  )
+  if (!definition) throw new Error('Skill is not in the TIA catalog')
+  const [slug, , source] = definition
+  const targetRoot = input.scope === 'global' ? input.globalSkillsRoot : input.workspaceSkillsRoot
+  if (!targetRoot) throw new Error('Choose a workspace before installing a workspace skill')
+  await mkdir(targetRoot, { recursive: true })
+
+  const cloneRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-skill-install-'))
+  const checkout = path.join(cloneRoot, 'source')
+  const staging = path.join(targetRoot, `.${slug}-${randomUUID()}`)
+  const target = path.join(targetRoot, slug)
+  const backup = path.join(targetRoot, `.${slug}-backup-${randomUUID()}`)
+  try {
+    await execFileAsync(
+      'git',
+      ['clone', '--depth', '1', `https://github.com/${source}.git`, checkout],
+      {
+        encoding: 'utf8'
+      }
+    )
+    const candidates = await collectSkillDirectories(checkout)
+    let sourceDirectory: string | null = null
+    for (const candidate of candidates) {
+      const metadata = await readSkillMetadata(path.join(candidate.absolutePath, 'SKILL.md'))
+      if (metadata.name === slug || path.basename(candidate.absolutePath) === slug) {
+        sourceDirectory = candidate.absolutePath
+        break
+      }
+    }
+    if (!sourceDirectory) throw new Error(`Skill bundle ${slug} was not found in ${source}`)
+    await cp(sourceDirectory, staging, { recursive: true, errorOnExist: true })
+    let hadExisting = false
+    try {
+      await rename(target, backup)
+      hadExisting = true
+    } catch (error) {
+      if (!isFileMissingError(error)) throw error
+    }
+    try {
+      await rename(staging, target)
+      if (hadExisting) await rm(backup, { recursive: true, force: true })
+    } catch (error) {
+      if (hadExisting) await rename(backup, target).catch(() => undefined)
+      throw error
+    }
+  } finally {
+    await rm(staging, { recursive: true, force: true })
+    await rm(cloneRoot, { recursive: true, force: true })
+  }
 }

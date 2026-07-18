@@ -3,13 +3,12 @@ import {
   ChevronRight,
   Clock3,
   Folder,
-  FolderPlus,
-  MessageSquare,
   MessageSquarePlus,
   PanelLeftClose,
   PanelLeftOpen,
   Pin,
   PinOff,
+  Plus,
   Search,
   Settings,
   Sparkles,
@@ -143,11 +142,7 @@ function SidebarSection({
           {isOpen ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
           <span className="truncate">{title}</span>
         </button>
-        {action ? (
-          <div className="opacity-0 transition-opacity group-hover/section:opacity-100 group-focus-within/section:opacity-100">
-            {action}
-          </div>
-        ) : null}
+        {action ? <div>{action}</div> : null}
       </div>
       {isOpen ? children : null}
     </section>
@@ -417,7 +412,7 @@ export function AppV2Sidebar({
           >
             <NavLink to="/skills">
               <Sparkles className="size-4" />
-              Skills
+              Skills & MCPs
             </NavLink>
           </Button>
           <Button
@@ -451,7 +446,7 @@ export function AppV2Sidebar({
               aria-label="Create workspace"
               title="Create workspace"
             >
-              <FolderPlus className="size-4" />
+              <Plus className="size-4" />
             </Button>
           }
         >
@@ -492,15 +487,31 @@ export function AppV2Sidebar({
                           <ChevronRight className="size-3.5" />
                         )}
                       </Button>
-                      <NavLink
-                        to={`/workspaces/${workspace.id}`}
-                        className="flex min-w-0 flex-1 items-center gap-2 py-1"
+                      <button
+                        type="button"
+                        className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left"
+                        onClick={() => toggleWorkspaceOpen(workspace.id)}
                       >
                         <Folder className="size-4 shrink-0 text-muted-foreground" />
                         <span className="min-w-0 flex-1 truncate font-medium">
                           {workspace.name}
                         </span>
-                      </NavLink>
+                      </button>
+                      <Button
+                        asChild
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 shrink-0"
+                      >
+                        <NavLink
+                          to={`/workspaces/${workspace.id}/new`}
+                          aria-label={`New thread in ${workspace.name}`}
+                          title={`New thread in ${workspace.name}`}
+                        >
+                          <Plus className="size-3.5" />
+                        </NavLink>
+                      </Button>
                     </div>
                     <WorkspaceThreads
                       workspace={workspace}
@@ -518,22 +529,14 @@ export function AppV2Sidebar({
           title="Chats"
           isOpen={isChatsOpen}
           onToggle={() => setIsChatsOpen((current) => !current)}
+          action={
+            <Button asChild variant="ghost" size="icon" className="size-7">
+              <NavLink to="/chat/new" aria-label="New chat" title="New chat">
+                <Plus className="size-4" />
+              </NavLink>
+            </Button>
+          }
         >
-          <NavLink
-            to="/chat"
-            className={cn(
-              'flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm transition-colors',
-              isChatsActive
-                ? 'bg-[color:var(--surface-active)] text-foreground'
-                : 'hover:bg-[color:var(--surface-muted)]'
-            )}
-          >
-            <MessageSquare className="size-4 text-muted-foreground" />
-            <span className="font-medium">Chats</span>
-            <span className="ml-auto rounded-full bg-[color:var(--surface-muted)] px-2 py-0.5 text-[10px] text-muted-foreground">
-              Built in
-            </span>
-          </NavLink>
           {chatsWorkspace ? (
             <WorkspaceThreads
               workspace={chatsWorkspace}

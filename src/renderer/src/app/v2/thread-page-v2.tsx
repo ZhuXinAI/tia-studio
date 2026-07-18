@@ -1,12 +1,13 @@
-import { Bot, Check, ChevronDown, Shield, ShieldCheck } from 'lucide-react'
+import { Bot, Check, ChevronDown, Circle, ListTodo, Shield, ShieldCheck } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { NavLink, useNavigate, useParams } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type {
   AgentInteractionRequest,
   AgentSendBehavior,
-  AgentSessionSnapshot
+  AgentSessionSnapshot,
+  AgentTodoItem
 } from '../../../../shared/agent-runtime'
 import { Thread } from '../../components/assistant-ui/thread'
 import { Button } from '../../components/ui/button'
@@ -33,6 +34,12 @@ import { useProviders } from '../../features/settings/providers/providers-query'
 import { useWorkspaces } from '../../features/workspaces/workspaces-query'
 import { toErrorMessage } from '../../features/threads/thread-page-routing'
 import { useAppV2ShellRightRail } from './app-v2-shell-right-rail'
+import { useAppV2Titlebar } from './app-v2-titlebar'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from '../../components/ui/collapsible'
 import type { ProviderRecord } from '../../features/settings/providers/providers-query'
 
 function ThreadComposerControls({
@@ -160,6 +167,60 @@ function ThreadComposerControls({
   )
 }
 
+function ThreadTodoPanel({ todos }: { todos: AgentTodoItem[] }): React.JSX.Element | null {
+  const [open, setOpen] = useState(true)
+  if (todos.length === 0) return null
+  const completed = todos.filter((todo) => todo.status === 'completed').length
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="overflow-hidden rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)]"
+    >
+      <CollapsibleTrigger className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-muted-foreground hover:text-foreground">
+        <ChevronDown className="size-4 transition-transform data-[state=closed]:-rotate-90" />
+        <ListTodo className="size-4" />
+        <span className="font-medium text-foreground">{todos.length} Todo</span>
+        <span className="ml-auto text-xs tabular-nums">
+          {completed}/{todos.length}
+        </span>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="space-y-2 border-t border-[color:var(--surface-border)] px-4 py-3">
+          {todos.map((todo) => (
+            <div key={todo.id} className="flex items-start gap-2.5 text-sm">
+              {todo.status === 'completed' ? (
+                <Check className="mt-0.5 size-4 text-muted-foreground" />
+              ) : (
+                <Circle
+                  className={
+                    todo.status === 'in_progress'
+                      ? 'mt-0.5 size-4 fill-primary/20 text-primary'
+                      : 'mt-0.5 size-4 text-muted-foreground'
+                  }
+                />
+              )}
+              <div className="min-w-0">
+                <p
+                  className={
+                    todo.status === 'completed' ? 'text-muted-foreground line-through' : ''
+                  }
+                >
+                  {todo.title}
+                </p>
+                {todo.detail ? (
+                  <p className="mt-0.5 text-xs text-muted-foreground">{todo.detail}</p>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
+
 function sessionHref(session: AgentSessionSnapshot): string {
   return session.workspaceId
     ? `/workspaces/${session.workspaceId}/threads/${session.id}`
@@ -252,6 +313,7 @@ function InteractionCard({
 
 export function ThreadPageV2(): React.JSX.Element {
   const params = useParams<{ workspaceId?: string; threadId?: string }>()
+  const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const createSession = useCreateAgentSession()
@@ -270,6 +332,8 @@ export function ThreadPageV2(): React.JSX.Element {
   const creationStartedRef = useRef(false)
   const modelReconciliationRef = useRef<string | null>(null)
   const rightRail = useAppV2ShellRightRail()
+  const { setTitle: setTitlebarTitle } = useAppV2Titlebar()
+  const isNewThreadRoute = location.pathname.endsWith('/new')
 
   const workspace = useMemo(
     () =>
@@ -290,8 +354,16 @@ export function ThreadPageV2(): React.JSX.Element {
   }, [rightRail])
 
   useEffect(() => {
+    setTitlebarTitle(session?.title ?? null)
+    return () => setTitlebarTitle(null)
+  }, [session?.title, setTitlebarTitle])
+
+  useEffect(() => {
+    if (params.threadId || !isNewThreadRoute) {
+      creationStartedRef.current = false
+      return
+    }
     if (
-      params.threadId ||
       creationStartedRef.current ||
       workspacesLoading ||
       providersLoading ||
@@ -322,6 +394,7 @@ export function ThreadPageV2(): React.JSX.Element {
   }, [
     createSession,
     navigate,
+    isNewThreadRoute,
     params.threadId,
     provider,
     providersLoading,
@@ -373,6 +446,19 @@ export function ThreadPageV2(): React.JSX.Element {
     modelReconciliationRef.current = reconciliationKey
     void changeModel(currentProvider, currentProvider.selectedModel)
   }, [changeModel, providers, session])
+
+  if (!params.threadId && !isNewThreadRoute) {
+    return (
+      <div className="grid h-full place-items-center p-8 text-center">
+        <div className="space-y-2">
+          <p className="font-medium">No thread selected</p>
+          <p className="text-sm text-muted-foreground">
+            Choose a thread from the sidebar or use the plus button to start one.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   if (!params.threadId) {
     if (!providersLoading && !provider) {
@@ -448,6 +534,7 @@ export function ThreadPageV2(): React.JSX.Element {
         >
           <Thread
             components={{
+              ComposerHeader: () => <ThreadTodoPanel todos={session.todos ?? []} />,
               ComposerControls: () => (
                 <ThreadComposerControls
                   session={session}

@@ -1,4 +1,4 @@
-import { ArrowLeft, Cable, Cloud, Info, Languages, MessageCircleMore, Monitor } from 'lucide-react'
+import { ArrowLeft, Cloud, Info, Languages, MessageCircleMore, Monitor } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { NavLink, useLocation } from 'react-router-dom'
@@ -30,11 +30,6 @@ const configurationItems: SettingsNavItem[] = [
     titleKey: 'settings.sidebar.items.channels',
     icon: MessageCircleMore,
     to: '/settings/channels'
-  },
-  {
-    titleKey: 'settings.sidebar.items.mcpServers',
-    icon: Cable,
-    to: '/settings/mcp-servers'
   }
 ]
 

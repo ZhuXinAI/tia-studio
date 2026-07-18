@@ -30,7 +30,6 @@ import { WechatChannel } from './channels/wechat-channel'
 import { WeComChannel } from './channels/wecom-channel'
 import { WhatsAppAuthStateStore } from './channels/whatsapp-auth-state-store'
 import { WhatsAppChannel } from './channels/whatsapp-channel'
-import { listDesktopAutomations } from './desktop/desktop-automations'
 import { migrateAppSchema } from './persistence/migrate'
 import { ChannelPairingsRepository } from './persistence/repos/channel-pairings-repo'
 import { ChannelSessionBindingsRepository } from './persistence/repos/channel-session-bindings-repo'
@@ -53,7 +52,9 @@ import { registerSingleInstanceApp } from './single-instance'
 import {
   getInstalledRecommendedSkills,
   installRecommendedSkillsWithBunx,
+  installMarketplaceSkill,
   listDiscoveredSkillsPage,
+  listSkillMarketplace,
   type RecommendedSkillId
 } from './skills/skills-manager'
 import { bringWindowToFront, buildTrayMenuTemplate } from './tray'
@@ -61,6 +62,8 @@ import { UiConfigStore } from './ui-config'
 import { desktopBootstrapQueryParam, type DesktopBootstrap } from '../shared/desktop-bootstrap'
 import { AgentSessionsRepository } from './persistence/repos/agent-sessions-repo'
 import { AgentRuntimeManager } from './agents/agent-runtime-manager'
+import { AutomationsRepository } from './persistence/repos/automations-repo'
+import { AutomationService } from './automations/automation-service'
 
 const hasSingleInstanceLock = registerSingleInstanceApp({
   app,
@@ -87,6 +90,7 @@ let channelService: ChannelService | null = null
 let channelMessageRouter: ChannelMessageRouter | null = null
 let uiConfigStore: UiConfigStore | null = null
 let agentRuntimeManager: AgentRuntimeManager | null = null
+let automationService: AutomationService | null = null
 let gracefulQuitStarted = false
 
 function logAppLifecycle(eventName: string, data?: Record<string, unknown>): void {
@@ -288,6 +292,7 @@ async function startLocalApiServer(): Promise<void> {
   const db = await migrateAppSchema(persistenceDatabasePath)
   const providersRepo = new ProvidersRepository(db)
   const agentSessionsRepo = new AgentSessionsRepository(db)
+  const automationsRepo = new AutomationsRepository(db)
   const workspaceRecordsRepo = new WorkspaceRecordsRepository(db)
   const workspacesRepo = new WorkspacesRepository({
     workspaceRecordsRepo,
@@ -316,8 +321,16 @@ async function startLocalApiServer(): Promise<void> {
     providersRepo,
     agentDataRoot: join(app.getPath('userData'), 'pi-agent'),
     sessionDataRoot: join(app.getPath('userData'), 'pi-sessions'),
-    credentialRoot: app.getPath('userData')
+    credentialRoot: app.getPath('userData'),
+    globalSkillsRoot: join(app.getPath('userData'), 'skills')
   })
+  automationService = new AutomationService({
+    repository: automationsRepo,
+    runtime: agentRuntimeManager,
+    providers: providersRepo,
+    workspaces: workspacesRepo
+  })
+  automationService.start()
   channelService = new ChannelService({
     channelsRepo,
     eventBus: channelEventBus,
@@ -462,7 +475,25 @@ async function startLocalApiServer(): Promise<void> {
           includeWorkspaceSource: false,
           ...query
         }),
-      listAutomations: async () => listDesktopAutomations(),
+      listSkillMarketplace: async (workspaceId) => {
+        const workspace = workspaceId ? await workspacesRepo.getById(workspaceId) : null
+        return listSkillMarketplace({
+          globalSkillsRoot: join(app.getPath('userData'), 'skills'),
+          workspaceSkillsRoot: workspace ? join(workspace.rootPath, 'skills') : null
+        })
+      },
+      installMarketplaceSkill: async (input) => {
+        const workspace = input.workspaceId ? await workspacesRepo.getById(input.workspaceId) : null
+        if (input.scope === 'workspace' && !workspace) {
+          throw new Error('Workspace not found')
+        }
+        await installMarketplaceSkill({
+          skillId: input.skillId,
+          scope: input.scope,
+          globalSkillsRoot: join(app.getPath('userData'), 'skills'),
+          workspaceSkillsRoot: workspace ? join(workspace.rootPath, 'skills') : null
+        })
+      },
       pickDirectory: async () => pickDirectory()
     },
     repositories: {
@@ -475,6 +506,10 @@ async function startLocalApiServer(): Promise<void> {
       agentSessions: agentSessionsRepo
     },
     agentRuntime: agentRuntimeManager,
+    automations: {
+      repository: automationsRepo,
+      service: automationService
+    },
     channelService,
     channelSetupRecovery: {
       async recover(channel) {
@@ -710,6 +745,8 @@ app.on('before-quit', (event) => {
     appTray = null
   }
   void (async () => {
+    automationService?.stop()
+    automationService = null
     await agentRuntimeManager?.shutdown()
     agentRuntimeManager = null
     stopLocalApiServer()
