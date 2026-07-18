@@ -1,5 +1,3 @@
-export type SkillInstallScope = 'global' | 'workspace'
-
 export type SkillMarketplaceRecord = {
   id: string
   rank: number
@@ -8,5 +6,4 @@ export type SkillMarketplaceRecord = {
   source: string
   installs: number
   installedGlobal: boolean
-  installedWorkspace: boolean
 }

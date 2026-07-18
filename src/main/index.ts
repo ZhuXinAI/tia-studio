@@ -475,23 +475,14 @@ async function startLocalApiServer(): Promise<void> {
           includeWorkspaceSource: false,
           ...query
         }),
-      listSkillMarketplace: async (workspaceId) => {
-        const workspace = workspaceId ? await workspacesRepo.getById(workspaceId) : null
-        return listSkillMarketplace({
-          globalSkillsRoot: join(app.getPath('userData'), 'skills'),
-          workspaceSkillsRoot: workspace ? join(workspace.rootPath, 'skills') : null
-        })
-      },
+      listSkillMarketplace: async () =>
+        listSkillMarketplace({
+          globalSkillsRoot: join(app.getPath('userData'), 'skills')
+        }),
       installMarketplaceSkill: async (input) => {
-        const workspace = input.workspaceId ? await workspacesRepo.getById(input.workspaceId) : null
-        if (input.scope === 'workspace' && !workspace) {
-          throw new Error('Workspace not found')
-        }
         await installMarketplaceSkill({
           skillId: input.skillId,
-          scope: input.scope,
-          globalSkillsRoot: join(app.getPath('userData'), 'skills'),
-          workspaceSkillsRoot: workspace ? join(workspace.rootPath, 'skills') : null
+          globalSkillsRoot: join(app.getPath('userData'), 'skills')
         })
       },
       pickDirectory: async () => pickDirectory()

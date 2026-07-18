@@ -1,25 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type {
-  SkillInstallScope,
-  SkillMarketplaceRecord
-} from '../../../../shared/skill-marketplace'
+import type { SkillMarketplaceRecord } from '../../../../shared/skill-marketplace'
 import { createApiClient } from '../../lib/api-client'
 
 const api = createApiClient()
 
 export const skillMarketplaceKeys = {
   all: ['skill-marketplace'] as const,
-  list: (workspaceId?: string) => [...skillMarketplaceKeys.all, workspaceId ?? 'global'] as const
+  list: () => [...skillMarketplaceKeys.all, 'global'] as const
 }
 
-export function useSkillMarketplace(workspaceId?: string) {
+export function useSkillMarketplace() {
   return useQuery({
-    queryKey: skillMarketplaceKeys.list(workspaceId),
+    queryKey: skillMarketplaceKeys.list(),
     queryFn: async () => {
-      const query = workspaceId ? `?workspaceId=${encodeURIComponent(workspaceId)}` : ''
-      return (
-        await api.get<{ skills: SkillMarketplaceRecord[] }>(`/v1/desktop/skill-marketplace${query}`)
-      ).skills
+      return (await api.get<{ skills: SkillMarketplaceRecord[] }>('/v1/desktop/skill-marketplace'))
+        .skills
     }
   })
 }
@@ -27,7 +22,7 @@ export function useSkillMarketplace(workspaceId?: string) {
 export function useInstallMarketplaceSkill() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: (input: { skillId: string; scope: SkillInstallScope; workspaceId?: string }) =>
+    mutationFn: (input: { skillId: string }) =>
       api.post('/v1/desktop/skill-marketplace/install', input),
     onSuccess: () => client.invalidateQueries({ queryKey: skillMarketplaceKeys.all })
   })

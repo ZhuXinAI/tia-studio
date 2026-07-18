@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Cable, Check, Download, Search, Sparkles } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -6,7 +6,6 @@ import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { cn } from '../../../lib/utils'
 import { McpServersSettingsPage } from '../../settings/pages/mcp-servers-settings-page'
-import { useWorkspaces } from '../../workspaces/workspaces-query'
 import { useInstallMarketplaceSkill, useSkillMarketplace } from '../skills-query'
 
 function formatInstalls(installs: number): string {
@@ -18,15 +17,9 @@ function formatInstalls(installs: number): string {
 export function SkillsPage(): React.JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') === 'mcps' ? 'mcps' : 'skills'
-  const { data: workspaces = [] } = useWorkspaces()
-  const namedWorkspaces = workspaces.filter((workspace) => workspace.builtInKind !== 'chats')
-  const [workspaceId, setWorkspaceId] = useState<string>(namedWorkspaces[0]?.id ?? '')
   const [query, setQuery] = useState('')
-  const { data: skills = [], isLoading } = useSkillMarketplace(workspaceId || undefined)
+  const { data: skills = [], isLoading } = useSkillMarketplace()
   const installMutation = useInstallMarketplaceSkill()
-  useEffect(() => {
-    if (!workspaceId && namedWorkspaces[0]) setWorkspaceId(namedWorkspaces[0].id)
-  }, [namedWorkspaces, workspaceId])
   const visibleSkills = useMemo(() => {
     const normalized = query.trim().toLowerCase()
     return normalized
@@ -36,16 +29,10 @@ export function SkillsPage(): React.JSX.Element {
       : skills
   }, [query, skills])
 
-  async function install(skillId: string, scope: 'global' | 'workspace'): Promise<void> {
+  async function install(skillId: string): Promise<void> {
     try {
-      await installMutation.mutateAsync({
-        skillId,
-        scope,
-        ...(scope === 'workspace' && workspaceId ? { workspaceId } : {})
-      })
-      toast.success(
-        scope === 'global' ? 'Installed for every TIA workspace' : 'Installed in this workspace'
-      )
+      await installMutation.mutateAsync({ skillId })
+      toast.success('Installed for every TIA workspace')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Skill installation failed')
     }
@@ -90,7 +77,7 @@ export function SkillsPage(): React.JSX.Element {
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex flex-wrap items-center gap-3 border-b border-[color:var(--surface-border)] px-7 py-4">
+          <div className="border-b border-[color:var(--surface-border)] px-7 py-4">
             <div className="relative min-w-[16rem] flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -100,28 +87,13 @@ export function SkillsPage(): React.JSX.Element {
                 className="pl-9"
               />
             </div>
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              Workspace target
-              <select
-                className="h-9 max-w-[15rem] rounded-md border bg-background px-3 text-sm text-foreground"
-                value={workspaceId}
-                onChange={(event) => setWorkspaceId(event.target.value)}
-              >
-                <option value="">Choose workspace</option>
-                {namedWorkspaces.map((workspace) => (
-                  <option key={workspace.id} value={workspace.id}>
-                    {workspace.name}
-                  </option>
-                ))}
-              </select>
-            </label>
           </div>
 
           <div className="chat-scrollbar min-h-0 flex-1 overflow-y-auto px-7 py-5">
             <div className="mx-auto max-w-5xl">
               <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
                 <span>Top skills on skills.sh · all time</span>
-                <span>Complete bundles are copied into TIA-owned folders</span>
+                <span>Installed skills are available to every Pi workspace</span>
               </div>
               {isLoading ? (
                 <p className="py-8 text-sm text-muted-foreground">Loading catalog…</p>
@@ -140,12 +112,7 @@ export function SkillsPage(): React.JSX.Element {
                         <h2 className="truncate text-sm font-medium">{skill.name}</h2>
                         {skill.installedGlobal ? (
                           <span className="rounded-full bg-[color:var(--surface-muted)] px-2 py-0.5 text-[10px]">
-                            Global
-                          </span>
-                        ) : null}
-                        {skill.installedWorkspace ? (
-                          <span className="rounded-full bg-[color:var(--surface-active)] px-2 py-0.5 text-[10px]">
-                            Workspace
+                            Installed
                           </span>
                         ) : null}
                       </div>
@@ -153,36 +120,20 @@ export function SkillsPage(): React.JSX.Element {
                         {skill.source} · {formatInstalls(skill.installs)} installs
                       </p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={installMutation.isPending || skill.installedGlobal}
-                        onClick={() => void install(skill.id, 'global')}
-                      >
-                        {skill.installedGlobal ? (
-                          <Check className="size-3.5" />
-                        ) : (
-                          <Download className="size-3.5" />
-                        )}{' '}
-                        Global
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={
-                          !workspaceId || installMutation.isPending || skill.installedWorkspace
-                        }
-                        onClick={() => void install(skill.id, 'workspace')}
-                      >
-                        {skill.installedWorkspace ? (
-                          <Check className="size-3.5" />
-                        ) : (
-                          <Download className="size-3.5" />
-                        )}{' '}
-                        Workspace
-                      </Button>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0"
+                      disabled={installMutation.isPending || skill.installedGlobal}
+                      onClick={() => void install(skill.id)}
+                    >
+                      {skill.installedGlobal ? (
+                        <Check className="size-3.5" />
+                      ) : (
+                        <Download className="size-3.5" />
+                      )}{' '}
+                      {skill.installedGlobal ? 'Installed' : 'Install'}
+                    </Button>
                   </article>
                 ))}
               </div>

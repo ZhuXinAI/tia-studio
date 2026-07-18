@@ -12,7 +12,7 @@ import type {
   DesktopSkillSource,
   DesktopSkillSourceCounts
 } from '../../shared/desktop-discovery'
-import type { SkillInstallScope, SkillMarketplaceRecord } from '../../shared/skill-marketplace'
+import type { SkillMarketplaceRecord } from '../../shared/skill-marketplace'
 
 type SkillSource = DesktopSkillSource
 export type RecommendedSkillId = 'agent-browser' | 'find-skills'
@@ -631,7 +631,6 @@ async function hasInstalledSkill(rootPath: string | null, slug: string): Promise
 
 export async function listSkillMarketplace(input: {
   globalSkillsRoot: string
-  workspaceSkillsRoot?: string | null
 }): Promise<SkillMarketplaceRecord[]> {
   return Promise.all(
     topSkillDefinitions.map(async ([slug, name, source, installs], index) => ({
@@ -641,25 +640,22 @@ export async function listSkillMarketplace(input: {
       name,
       source,
       installs,
-      installedGlobal: await hasInstalledSkill(input.globalSkillsRoot, slug),
-      installedWorkspace: await hasInstalledSkill(input.workspaceSkillsRoot ?? null, slug)
+      installedGlobal: await hasInstalledSkill(input.globalSkillsRoot, slug)
     }))
   )
 }
 
 export async function installMarketplaceSkill(input: {
   skillId: string
-  scope: SkillInstallScope
   globalSkillsRoot: string
-  workspaceSkillsRoot?: string | null
 }): Promise<void> {
   const definition = topSkillDefinitions.find(
     ([slug, , source]) => `${source}/${slug}` === input.skillId
   )
   if (!definition) throw new Error('Skill is not in the TIA catalog')
   const [slug, , source] = definition
-  const targetRoot = input.scope === 'global' ? input.globalSkillsRoot : input.workspaceSkillsRoot
-  if (!targetRoot) throw new Error('Choose a workspace before installing a workspace skill')
+  const targetRoot = input.globalSkillsRoot
+  if (await hasInstalledSkill(targetRoot, slug)) return
   await mkdir(targetRoot, { recursive: true })
 
   const cloneRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-skill-install-'))

@@ -4,6 +4,7 @@ import { access, mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   getInstalledRecommendedSkills,
+  installMarketplaceSkill,
   installRecommendedSkillsWithBunx,
   listSkillMarketplace,
   listSkills,
@@ -356,25 +357,33 @@ description: Helper skill.
 
   it('returns only the top 20 marketplace skills with owned install state', async () => {
     const globalRoot = path.join(tempRoot, 'tia-global-skills')
-    const workspaceRoot = path.join(workspaceDirectory, 'skills')
     await createSkill(
       globalRoot,
       'find-skills',
       '---\nname: find-skills\ndescription: Find skills.\n---\n'
     )
-    await createSkill(
-      workspaceRoot,
-      'frontend-design',
-      '---\nname: frontend-design\ndescription: Design.\n---\n'
-    )
-
     const catalog = await listSkillMarketplace({
-      globalSkillsRoot: globalRoot,
-      workspaceSkillsRoot: workspaceRoot
+      globalSkillsRoot: globalRoot
     })
 
     expect(catalog).toHaveLength(20)
     expect(catalog[0]).toMatchObject({ slug: 'find-skills', installedGlobal: true })
-    expect(catalog[1]).toMatchObject({ slug: 'frontend-design', installedWorkspace: true })
+    expect(catalog[1]).toMatchObject({ slug: 'frontend-design', installedGlobal: false })
+  })
+
+  it('does not download a marketplace skill that is already installed', async () => {
+    const globalRoot = path.join(tempRoot, 'tia-global-skills')
+    await createSkill(
+      globalRoot,
+      'find-skills',
+      '---\nname: find-skills\ndescription: Find skills.\n---\n'
+    )
+
+    await expect(
+      installMarketplaceSkill({
+        skillId: 'vercel-labs/skills/find-skills',
+        globalSkillsRoot: globalRoot
+      })
+    ).resolves.toBeUndefined()
   })
 })

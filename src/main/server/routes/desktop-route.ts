@@ -12,7 +12,7 @@ import type {
   DesktopSkillCatalogPage,
   DesktopSkillCatalogQuery
 } from '../../../shared/desktop-discovery'
-import type { SkillInstallScope, SkillMarketplaceRecord } from '../../../shared/skill-marketplace'
+import type { SkillMarketplaceRecord } from '../../../shared/skill-marketplace'
 
 const uiConfigSchema = z.object({
   transparent: z.boolean().optional(),
@@ -45,9 +45,7 @@ const desktopSkillCatalogQuerySchema = z.object({
   source: desktopSkillSourceSchema.optional()
 })
 const marketplaceInstallSchema = z.object({
-  skillId: z.string().min(1),
-  scope: z.enum(['global', 'workspace']),
-  workspaceId: z.string().min(1).optional()
+  skillId: z.string().min(1)
 })
 
 type RegisterDesktopRouteOptions = {
@@ -67,12 +65,8 @@ type RegisterDesktopRouteOptions = {
   getRuntimeOnboardingSkillsStatus: () => Promise<RecommendedSkillId[]>
   installRuntimeOnboardingSkills: (skillIds: RecommendedSkillId[]) => Promise<RecommendedSkillId[]>
   listSkillsCatalogPage: (query: DesktopSkillCatalogQuery) => Promise<DesktopSkillCatalogPage>
-  listSkillMarketplace: (workspaceId?: string) => Promise<SkillMarketplaceRecord[]>
-  installMarketplaceSkill: (input: {
-    skillId: string
-    scope: SkillInstallScope
-    workspaceId?: string
-  }) => Promise<void>
+  listSkillMarketplace: () => Promise<SkillMarketplaceRecord[]>
+  installMarketplaceSkill: (input: { skillId: string }) => Promise<void>
   pickDirectory: () => Promise<string | null>
 }
 
@@ -260,7 +254,7 @@ export function registerDesktopRoute(app: Hono, options: RegisterDesktopRouteOpt
 
   app.get('/v1/desktop/skill-marketplace', async (context) => {
     return context.json({
-      skills: await options.listSkillMarketplace(context.req.query('workspaceId'))
+      skills: await options.listSkillMarketplace()
     })
   })
 

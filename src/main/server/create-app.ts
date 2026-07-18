@@ -28,7 +28,7 @@ import type {
   ManagedRuntimesState
 } from '../persistence/repos/managed-runtimes-repo'
 import type { RecommendedSkillId } from '../skills/skills-manager'
-import type { SkillInstallScope, SkillMarketplaceRecord } from '../../shared/skill-marketplace'
+import type { SkillMarketplaceRecord } from '../../shared/skill-marketplace'
 import type { AgentSessionsRepository } from '../persistence/repos/agent-sessions-repo'
 import type { AppAgentRuntime } from '../../shared/agent-runtime'
 import { registerAgentRoute } from './routes/agent-route'
@@ -61,12 +61,8 @@ type CreateAppOptions = {
       skillIds: RecommendedSkillId[]
     ) => Promise<RecommendedSkillId[]>
     listSkillsCatalogPage: (query: DesktopSkillCatalogQuery) => Promise<DesktopSkillCatalogPage>
-    listSkillMarketplace: (workspaceId?: string) => Promise<SkillMarketplaceRecord[]>
-    installMarketplaceSkill: (input: {
-      skillId: string
-      scope: SkillInstallScope
-      workspaceId?: string
-    }) => Promise<void>
+    listSkillMarketplace: () => Promise<SkillMarketplaceRecord[]>
+    installMarketplaceSkill: (input: { skillId: string }) => Promise<void>
     pickDirectory: () => Promise<string | null>
   }
   repositories?: {
