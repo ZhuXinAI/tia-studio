@@ -12,8 +12,6 @@ import type { ProviderType, SaveProviderInput } from './providers-query'
 const providerSelectClassName =
   'h-11 w-full rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 py-2 text-sm shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_44%,transparent)]'
 
-export const SAVED_API_KEY_MASK = '••••••••••••'
-
 const defaultModelByProviderType: Record<ProviderType, string> = {
   openai: 'gpt-4o',
   'openai-response': 'gpt-4o',
@@ -299,9 +297,6 @@ export function ProvidersForm({
                 onChange={(event) => updateValue('apiKey', event.target.value)}
                 placeholder="sk-..."
               />
-              {values.apiKey === SAVED_API_KEY_MASK ? (
-                <span className="sr-only">A saved API key will be kept unless replaced.</span>
-              ) : null}
               <button
                 type="button"
                 className="absolute right-3 top-1/2 -translate-y-1/2 rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"

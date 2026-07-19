@@ -28,6 +28,7 @@ import type {
 import { reduceAgentEvent } from '../../shared/agent-runtime'
 import type { AgentSessionsRepository } from '../persistence/repos/agent-sessions-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
+import type { PermissionRulesRepository } from '../persistence/repos/permission-rules-repo'
 import { writePiModelConfig } from './pi/pi-model-config'
 import { createPiPermissionExtension } from './pi/pi-permission-extension'
 import { PiSdkEventMapper } from './pi/pi-sdk-event-mapper'
@@ -51,6 +52,7 @@ type LiveSession = {
 export type AgentRuntimeManagerOptions = {
   sessionsRepo: AgentSessionsRepository
   providersRepo: ProvidersRepository
+  permissionRulesRepo: PermissionRulesRepository
   agentDataRoot: string
   sessionDataRoot: string
   credentialRoot: string
@@ -337,6 +339,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
           record.workspacePath
         )
       : SessionManager.create(record.workspacePath, this.options.sessionDataRoot, { id: record.id })
+    const runtimeRef: { current?: LiveSession } = {}
     const resourceLoader = new DefaultResourceLoader({
       cwd: record.workspacePath,
       agentDir,
@@ -345,7 +348,32 @@ export class AgentRuntimeManager implements AppAgentRuntime {
         createPiPermissionExtension({
           workspacePath: record.workspacePath,
           credentialRoot: this.options.credentialRoot,
-          fullAccess: record.accessMode === 'full'
+          fullAccess: record.accessMode === 'full',
+          listWorkspaceRules: () => this.options.permissionRulesRepo.list(record.workspacePath),
+          touchWorkspaceRules: (ids) => this.options.permissionRulesRepo.touch(ids),
+          saveWorkspaceRules: async (proposals) => {
+            await this.options.permissionRulesRepo.createWorkspaceAllows({
+              workspacePath: record.workspacePath,
+              proposals,
+              rationale: 'Approved from a TIA Studio thread'
+            })
+          },
+          requestPermission: async (analysis) => {
+            const runtime = runtimeRef.current
+            if (!runtime) return 'deny'
+            const response = await this.requestInteraction(runtime, {
+              id: randomUUID(),
+              method: 'permission',
+              title: 'Allow this command?',
+              message: `Run command: ${analysis.command}`,
+              command: analysis.command,
+              workspacePath: record.workspacePath,
+              reusable: analysis.reusable,
+              proposedPrefixes: analysis.proposals.map((proposal) => proposal.display),
+              ...(analysis.reason ? { nonReusableReason: analysis.reason } : {})
+            })
+            return 'permissionOutcome' in response ? response.permissionOutcome : 'deny'
+          }
         })
       ],
       noExtensions: true,
@@ -355,7 +383,6 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       noThemes: true
     })
     await resourceLoader.reload()
-    const runtimeRef: { current?: LiveSession } = {}
     const nameTheThread: ToolDefinition = {
       name: 'name_thread',
       label: 'Name the thread',

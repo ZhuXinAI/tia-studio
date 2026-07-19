@@ -2,9 +2,21 @@ import { execFile } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import os from 'node:os'
 import path from 'node:path'
-import { cp, mkdir, mkdtemp, readdir, readFile, realpath, rename, rm, stat } from 'node:fs/promises'
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  realpath,
+  rename,
+  rm,
+  stat,
+  writeFile
+} from 'node:fs/promises'
 import type { Dirent } from 'node:fs'
 import { promisify } from 'node:util'
+import { gunzip } from 'node:zlib'
 import type {
   DesktopSkillCatalogPage,
   DesktopSkillCatalogQuery,
@@ -55,6 +67,9 @@ type RunInstallCommand = (
 ) => Promise<void>
 
 const execFileAsync = promisify(execFile)
+const gunzipAsync = promisify(gunzip)
+const maxSkillArchiveBytes = 50 * 1024 * 1024
+const maxExpandedSkillArchiveBytes = 250 * 1024 * 1024
 const topSkillDefinitions = [
   ['find-skills', 'Find Skills', 'vercel-labs/skills', 2559128],
   ['frontend-design', 'Frontend Design', 'anthropics/skills', 677536],
@@ -100,6 +115,103 @@ const skillSourceOrder: Record<SkillSource, number> = {
 
 const defaultSkillCatalogPageLimit = 24
 const maxSkillCatalogPageLimit = 100
+
+function tarString(buffer: Buffer, start: number, length: number): string {
+  const end = buffer.indexOf(0, start)
+  return buffer
+    .subarray(start, end >= start && end < start + length ? end : start + length)
+    .toString()
+}
+
+function tarSize(buffer: Buffer, offset: number): number {
+  const raw = tarString(buffer, offset + 124, 12).trim()
+  const size = raw ? Number.parseInt(raw, 8) : 0
+  if (!Number.isSafeInteger(size) || size < 0) throw new Error('Skill archive is malformed')
+  return size
+}
+
+function parsePaxPath(content: Buffer): string | undefined {
+  let offset = 0
+  while (offset < content.length) {
+    const space = content.indexOf(32, offset)
+    if (space < 0) return undefined
+    const length = Number.parseInt(content.subarray(offset, space).toString(), 10)
+    if (!Number.isSafeInteger(length) || length <= 0) return undefined
+    const record = content
+      .subarray(space + 1, offset + length)
+      .toString()
+      .trimEnd()
+    const separator = record.indexOf('=')
+    if (separator > 0 && record.slice(0, separator) === 'path') {
+      return record.slice(separator + 1)
+    }
+    offset += length
+  }
+  return undefined
+}
+
+async function extractSkillTar(archive: Buffer, targetRoot: string): Promise<void> {
+  if (archive.length > maxExpandedSkillArchiveBytes) {
+    throw new Error('Skill archive is too large after extraction')
+  }
+  const resolvedRoot = path.resolve(targetRoot)
+  let offset = 0
+  let pendingPath: string | undefined
+  while (offset + 512 <= archive.length) {
+    const header = archive.subarray(offset, offset + 512)
+    if (header.every((byte) => byte === 0)) break
+    const size = tarSize(archive, offset)
+    const contentStart = offset + 512
+    const contentEnd = contentStart + size
+    if (contentEnd > archive.length) throw new Error('Skill archive is truncated')
+    const type = String.fromCharCode(header[156] ?? 0)
+    const name = tarString(header, 0, 100)
+    const prefix = tarString(header, 345, 155)
+    const archivePath = pendingPath ?? (prefix ? `${prefix}/${name}` : name)
+    pendingPath = undefined
+
+    if (type === 'x') {
+      pendingPath = parsePaxPath(archive.subarray(contentStart, contentEnd))
+    } else if (type === 'L') {
+      pendingPath = tarString(archive, contentStart, size)
+    } else if (type === '0' || type === '\0' || type === '5') {
+      const target = path.resolve(resolvedRoot, archivePath)
+      const relativeTarget = path.relative(resolvedRoot, target)
+      if (!archivePath || relativeTarget.startsWith('..') || path.isAbsolute(relativeTarget)) {
+        throw new Error('Skill archive contains an unsafe path')
+      }
+      if (type === '5') {
+        await mkdir(target, { recursive: true })
+      } else {
+        await mkdir(path.dirname(target), { recursive: true })
+        await writeFile(target, archive.subarray(contentStart, contentEnd))
+      }
+    }
+    offset = contentStart + Math.ceil(size / 512) * 512
+  }
+}
+
+export async function downloadGitHubSkillRepository(
+  source: string,
+  targetRoot: string
+): Promise<void> {
+  const response = await fetch(`https://codeload.github.com/${source}/tar.gz/HEAD`, {
+    headers: {
+      Accept: 'application/x-gzip',
+      'User-Agent': 'TIA-Studio'
+    },
+    redirect: 'follow'
+  })
+  if (!response.ok) {
+    throw new Error(`GitHub returned ${response.status} while downloading ${source}`)
+  }
+  const contentLength = Number(response.headers.get('content-length') ?? 0)
+  if (contentLength > maxSkillArchiveBytes) throw new Error('Skill archive is too large')
+  const compressed = Buffer.from(await response.arrayBuffer())
+  if (compressed.length > maxSkillArchiveBytes) throw new Error('Skill archive is too large')
+  const archive = await gunzipAsync(compressed)
+  await extractSkillTar(archive, targetRoot)
+}
 
 function parseFrontmatter(content: string): Record<string, string> {
   const lines = content.split(/\r?\n/)
@@ -664,13 +776,7 @@ export async function installMarketplaceSkill(input: {
   const target = path.join(targetRoot, slug)
   const backup = path.join(targetRoot, `.${slug}-backup-${randomUUID()}`)
   try {
-    await execFileAsync(
-      'git',
-      ['clone', '--depth', '1', `https://github.com/${source}.git`, checkout],
-      {
-        encoding: 'utf8'
-      }
-    )
+    await downloadGitHubSkillRepository(source, checkout)
     const candidates = await collectSkillDirectories(checkout)
     let sourceDirectory: string | null = null
     for (const candidate of candidates) {

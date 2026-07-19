@@ -53,6 +53,7 @@ import {
   type FC,
   type PropsWithChildren
 } from 'react'
+import { useTranslation } from '../../i18n/use-app-translation'
 
 export type ThreadGroupPart = MessagePrimitive.GroupedParts.GroupPart
 
@@ -97,6 +98,7 @@ export const Thread: FC<ThreadProps> = ({ components = EMPTY_COMPONENTS }) => {
 }
 
 const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
+  const { t } = useTranslation()
   const { Welcome = ThreadEmpty, ComposerHeader } = useContext(ThreadComponentsContext)
 
   return (
@@ -135,7 +137,7 @@ const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
               role="status"
             >
               <LoaderCircle className="size-4 animate-spin" />
-              <span>Working…</span>
+              <span>{t('threads.page.working')}</span>
             </div>
           </AuiIf>
 
@@ -168,10 +170,11 @@ const ThreadMessage: FC = () => {
 }
 
 const ThreadScrollToBottom: FC = () => {
+  const { t } = useTranslation()
   return (
     <ThreadPrimitive.ScrollToBottom asChild>
       <TooltipIconButton
-        tooltip="Scroll to bottom"
+        tooltip={t('threads.composer.scrollBottom')}
         variant="outline"
         className="aui-thread-scroll-to-bottom dark:border-border dark:bg-background dark:hover:bg-accent absolute -top-12 z-10 self-center rounded-full p-4 disabled:invisible"
       >
@@ -182,10 +185,11 @@ const ThreadScrollToBottom: FC = () => {
 }
 
 export const ThreadEmpty: FC = () => {
+  const { t } = useTranslation()
   return (
     <div className="aui-thread-welcome-root mb-6 flex flex-col items-center px-4 text-center">
       <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-2xl font-semibold duration-200">
-        What are we building?
+        {t('threads.page.emptyPrompt')}
       </h1>
     </div>
   )
@@ -216,6 +220,7 @@ const ThreadSuggestionItem: FC = () => {
 }
 
 const Composer: FC = () => {
+  const { t } = useTranslation()
   return (
     <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
       <ComposerPrimitive.AttachmentDropzone asChild>
@@ -225,12 +230,12 @@ const Composer: FC = () => {
         >
           <ComposerAttachments />
           <ComposerPrimitive.Input
-            placeholder="Send a message..."
+            placeholder={t('threads.composer.messagePlaceholder')}
             className="aui-composer-input caret-primary placeholder:text-muted-foreground/80 max-h-32 min-h-10 w-full resize-none bg-transparent px-2.5 py-1 text-base outline-none"
             rows={1}
             autoFocus
             enterKeyHint="send"
-            aria-label="Message input"
+            aria-label={t('threads.composer.messageInput')}
           />
           <ComposerAction />
         </div>
@@ -240,6 +245,7 @@ const Composer: FC = () => {
 }
 
 const ComposerAction: FC = () => {
+  const { t } = useTranslation()
   const { ComposerControls } = useContext(ThreadComponentsContext)
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between">
@@ -252,13 +258,13 @@ const ComposerAction: FC = () => {
           <AuiIf condition={(s) => s.composer.dictation == null}>
             <ComposerPrimitive.Dictate asChild>
               <TooltipIconButton
-                tooltip="Voice input"
+                tooltip={t('threads.composer.voiceInput')}
                 side="bottom"
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="aui-composer-dictate size-7 rounded-full"
-                aria-label="Start voice input"
+                aria-label={t('threads.composer.startVoice')}
               >
                 <MicIcon className="aui-composer-dictate-icon size-4" />
               </TooltipIconButton>
@@ -267,13 +273,13 @@ const ComposerAction: FC = () => {
           <AuiIf condition={(s) => s.composer.dictation != null}>
             <ComposerPrimitive.StopDictation asChild>
               <TooltipIconButton
-                tooltip="Stop dictation"
+                tooltip={t('threads.composer.stopDictation')}
                 side="bottom"
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="aui-composer-stop-dictation text-destructive size-7 rounded-full"
-                aria-label="Stop voice input"
+                aria-label={t('threads.composer.stopVoice')}
               >
                 <SquareIcon className="aui-composer-stop-dictation-icon size-3.5 animate-pulse fill-current" />
               </TooltipIconButton>
@@ -283,13 +289,13 @@ const ComposerAction: FC = () => {
         <AuiIf condition={(s) => !s.thread.isRunning}>
           <ComposerPrimitive.Send asChild>
             <TooltipIconButton
-              tooltip="Send message"
+              tooltip={t('threads.composer.send')}
               side="bottom"
               type="button"
               variant="default"
               size="icon"
               className="aui-composer-send size-7 rounded-full"
-              aria-label="Send message"
+              aria-label={t('threads.composer.send')}
             >
               <ArrowUpIcon className="aui-composer-send-icon size-4.5" />
             </TooltipIconButton>
@@ -302,7 +308,7 @@ const ComposerAction: FC = () => {
               variant="default"
               size="icon"
               className="aui-composer-cancel size-7 rounded-full"
-              aria-label="Stop generating"
+              aria-label={t('threads.composer.stop')}
             >
               <SquareIcon className="aui-composer-cancel-icon size-3.5 fill-current" />
             </Button>

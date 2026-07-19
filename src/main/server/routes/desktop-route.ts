@@ -261,8 +261,16 @@ export function registerDesktopRoute(app: Hono, options: RegisterDesktopRouteOpt
   app.post('/v1/desktop/skill-marketplace/install', async (context) => {
     const parsed = await readValidatedJsonBody(context, marketplaceInstallSchema)
     if (!parsed.ok) return parsed.response
-    await options.installMarketplaceSkill(parsed.data)
-    return context.json({ ok: true as const })
+    try {
+      await options.installMarketplaceSkill(parsed.data)
+      return context.json({ ok: true as const })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown installation error'
+      return context.json(
+        { ok: false as const, error: `Skill installation failed: ${message}` },
+        502
+      )
+    }
   })
 
   app.post('/v1/desktop/dialogs/pick-directory', async (context) => {

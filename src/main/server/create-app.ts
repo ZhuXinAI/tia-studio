@@ -4,6 +4,7 @@ import type { ChannelsRepository } from '../persistence/repos/channels-repo'
 import type { ChannelPairingsRepository } from '../persistence/repos/channel-pairings-repo'
 import type { McpServersRepository } from '../persistence/repos/mcp-servers-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
+import type { PermissionRulesRepository } from '../persistence/repos/permission-rules-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
 import type { WorkspacesRepository } from '../persistence/repos/workspaces-repo'
 import type { WhatsAppAuthStateStore } from '../channels/whatsapp-auth-state-store'
@@ -35,6 +36,7 @@ import { registerAgentRoute } from './routes/agent-route'
 import type { AutomationsRepository } from '../persistence/repos/automations-repo'
 import type { AutomationService } from '../automations/automation-service'
 import { registerAutomationsRoute } from './routes/automations-route'
+import { registerPermissionRulesRoute } from './routes/permission-rules-route'
 
 type CreateAppOptions = {
   token: string
@@ -67,6 +69,7 @@ type CreateAppOptions = {
   }
   repositories?: {
     providers: ProvidersRepository
+    permissionRules?: PermissionRulesRepository
     workspaces?: WorkspacesRepository
     webSearchSettings: WebSearchSettingsRepository
     mcpServers: McpServersRepository
@@ -168,6 +171,11 @@ export function createApp(options: CreateAppOptions): Hono {
     registerMcpServersRoute(app, {
       mcpServersRepo: options.repositories.mcpServers
     })
+    if (options.repositories.permissionRules) {
+      registerPermissionRulesRoute(app, {
+        permissionRulesRepo: options.repositories.permissionRules
+      })
+    }
   }
 
   if (

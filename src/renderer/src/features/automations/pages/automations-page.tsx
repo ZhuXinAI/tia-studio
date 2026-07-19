@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Clock3, Pause, Play, Plus, Save, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import type { SaveTiaAutomationInput, TiaAutomationRecord } from '../../../../../shared/automations'
-import { describeAutomationSchedule } from '../../../../../shared/automation-schedule'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Textarea } from '../../../components/ui/textarea'
@@ -16,6 +15,7 @@ import {
   useRunAutomation,
   useUpdateAutomation
 } from '../automations-query'
+import { useTranslation } from '../../../i18n/use-app-translation'
 
 type Draft = SaveTiaAutomationInput & {
   frequency: 'HOURLY' | 'DAILY' | 'WEEKLY'
@@ -23,15 +23,7 @@ type Draft = SaveTiaAutomationInput & {
   weekday: string
 }
 
-const weekdays = [
-  ['MO', 'Monday'],
-  ['TU', 'Tuesday'],
-  ['WE', 'Wednesday'],
-  ['TH', 'Thursday'],
-  ['FR', 'Friday'],
-  ['SA', 'Saturday'],
-  ['SU', 'Sunday']
-] as const
+const weekdays = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'] as const
 
 function parseSchedule(rrule: string): Pick<Draft, 'frequency' | 'time' | 'weekday'> {
   const values = Object.fromEntries(
@@ -75,15 +67,16 @@ function createDraft(
   }
 }
 
-function formatTimestamp(value: string | null): string {
+function formatTimestamp(value: string | null, locale: string, neverLabel: string): string {
   return value
-    ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
+    ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(
         new Date(value)
       )
-    : 'Never'
+    : neverLabel
 }
 
 export function AutomationsPage(): React.JSX.Element {
+  const { t, i18n } = useTranslation()
   const { data: automations = [], isLoading } = useAutomations()
   const { data: workspaces = [] } = useWorkspaces()
   const { data: providers = [] } = useProviders()
@@ -95,6 +88,22 @@ export function AutomationsPage(): React.JSX.Element {
   const [editingId, setEditingId] = useState<string | 'new' | null>(null)
   const selected = automations.find((item) => item.id === selectedId) ?? null
   const [draft, setDraft] = useState<Draft>(() => createDraft([], []))
+
+  function scheduleSummary(rrule: string): string {
+    const schedule = parseSchedule(rrule)
+    const [, minute = '0'] = schedule.time.split(':')
+    if (schedule.frequency === 'WEEKLY') {
+      const days = schedule.weekday
+        .split(',')
+        .map((day) => t(`automations.weekdays.${day}`))
+        .join(', ')
+      return t('automations.schedule.everyDaysAt', { days, time: schedule.time })
+    }
+    if (schedule.frequency === 'HOURLY') {
+      return t('automations.schedule.everyHourAt', { minute: minute.padStart(2, '0') })
+    }
+    return t('automations.schedule.everyDayAt', { time: schedule.time })
+  }
 
   useEffect(() => {
     if (!selectedId && automations[0]) setSelectedId(automations[0].id)
@@ -120,9 +129,9 @@ export function AutomationsPage(): React.JSX.Element {
         await updateMutation.mutateAsync({ id: editingId, input })
       }
       setEditingId(null)
-      toast.success('Automation saved')
+      toast.success(t('automations.saved'))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to save schedule')
+      toast.error(error instanceof Error ? error.message : t('automations.saveFailed'))
     }
   }
 
@@ -147,23 +156,21 @@ export function AutomationsPage(): React.JSX.Element {
     <section className="flex h-full min-h-0 flex-col overflow-hidden bg-[color:var(--surface-paper)]">
       <header className="flex items-center justify-between border-b border-[color:var(--surface-border)] px-6 py-4">
         <div>
-          <h1 className="text-lg font-semibold">Schedules</h1>
-          <p className="text-sm text-muted-foreground">
-            Scheduled Pi work owned and executed by TIA Studio.
-          </p>
+          <h1 className="text-lg font-semibold">{t('automations.title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('automations.description')}</p>
         </div>
         <Button onClick={() => beginEdit()} disabled={!workspaces.length || !providers.length}>
-          <Plus className="size-4" /> New schedule
+          <Plus className="size-4" /> {t('automations.new')}
         </Button>
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-[18rem_minmax(0,1fr)]">
         <aside className="chat-scrollbar overflow-y-auto border-r border-[color:var(--surface-border)] p-3">
-          {isLoading ? <p className="p-3 text-sm text-muted-foreground">Loading…</p> : null}
+          {isLoading ? (
+            <p className="p-3 text-sm text-muted-foreground">{t('automations.loading')}</p>
+          ) : null}
           {!isLoading && automations.length === 0 ? (
-            <div className="p-3 text-sm text-muted-foreground">
-              Create a schedule for repeatable Pi work.
-            </div>
+            <div className="p-3 text-sm text-muted-foreground">{t('automations.empty')}</div>
           ) : null}
           <div className="space-y-1">
             {automations.map((automation) => (
@@ -190,7 +197,7 @@ export function AutomationsPage(): React.JSX.Element {
                   <span className="truncate text-sm font-medium">{automation.name}</span>
                 </div>
                 <p className="mt-1 truncate pl-4 text-xs text-muted-foreground">
-                  {describeAutomationSchedule(automation.rrule).summary}
+                  {scheduleSummary(automation.rrule)}
                 </p>
               </button>
             ))}
@@ -202,7 +209,7 @@ export function AutomationsPage(): React.JSX.Element {
             <div className="mx-auto max-w-3xl space-y-5">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">
-                  {editingId === 'new' ? 'New schedule' : 'Edit schedule'}
+                  {editingId === 'new' ? t('automations.new') : t('automations.edit')}
                 </h2>
                 <Button variant="ghost" size="icon" onClick={() => setEditingId(null)}>
                   <X className="size-4" />
@@ -210,14 +217,14 @@ export function AutomationsPage(): React.JSX.Element {
               </div>
               <div className="grid gap-4 rounded-xl border border-[color:var(--surface-border)] p-5">
                 <label className="grid gap-1.5 text-sm">
-                  <span>Name</span>
+                  <span>{t('automations.fields.name')}</span>
                   <Input
                     value={draft.name}
                     onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                   />
                 </label>
                 <label className="grid gap-1.5 text-sm">
-                  <span>Instructions</span>
+                  <span>{t('automations.fields.instructions')}</span>
                   <Textarea
                     rows={8}
                     value={draft.prompt}
@@ -226,7 +233,7 @@ export function AutomationsPage(): React.JSX.Element {
                 </label>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="grid gap-1.5 text-sm">
-                    <span>Workspace</span>
+                    <span>{t('automations.fields.workspace')}</span>
                     <select
                       className="h-10 rounded-md border bg-background px-3"
                       value={draft.workspaceId}
@@ -240,7 +247,7 @@ export function AutomationsPage(): React.JSX.Element {
                     </select>
                   </label>
                   <label className="grid gap-1.5 text-sm">
-                    <span>Provider</span>
+                    <span>{t('automations.fields.provider')}</span>
                     <select
                       className="h-10 rounded-md border bg-background px-3"
                       value={draft.providerId}
@@ -264,7 +271,7 @@ export function AutomationsPage(): React.JSX.Element {
                   </label>
                 </div>
                 <label className="grid gap-1.5 text-sm">
-                  <span>Model</span>
+                  <span>{t('automations.fields.model')}</span>
                   <Input
                     value={draft.modelId}
                     onChange={(e) => setDraft({ ...draft, modelId: e.target.value })}
@@ -272,7 +279,7 @@ export function AutomationsPage(): React.JSX.Element {
                 </label>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <label className="grid gap-1.5 text-sm">
-                    <span>Repeat</span>
+                    <span>{t('automations.fields.repeat')}</span>
                     <select
                       className="h-10 rounded-md border bg-background px-3"
                       value={draft.frequency}
@@ -280,29 +287,33 @@ export function AutomationsPage(): React.JSX.Element {
                         setDraft({ ...draft, frequency: e.target.value as Draft['frequency'] })
                       }
                     >
-                      <option value="HOURLY">Hourly</option>
-                      <option value="DAILY">Daily</option>
-                      <option value="WEEKLY">Weekly</option>
+                      <option value="HOURLY">{t('automations.frequency.hourly')}</option>
+                      <option value="DAILY">{t('automations.frequency.daily')}</option>
+                      <option value="WEEKLY">{t('automations.frequency.weekly')}</option>
                     </select>
                   </label>
                   {draft.frequency === 'WEEKLY' ? (
                     <label className="grid gap-1.5 text-sm">
-                      <span>Day</span>
+                      <span>{t('automations.fields.day')}</span>
                       <select
                         className="h-10 rounded-md border bg-background px-3"
                         value={draft.weekday}
                         onChange={(e) => setDraft({ ...draft, weekday: e.target.value })}
                       >
-                        {weekdays.map(([value, label]) => (
+                        {weekdays.map((value) => (
                           <option key={value} value={value}>
-                            {label}
+                            {t(`automations.weekdays.${value}`)}
                           </option>
                         ))}
                       </select>
                     </label>
                   ) : null}
                   <label className="grid gap-1.5 text-sm">
-                    <span>{draft.frequency === 'HOURLY' ? 'Minute' : 'Time'}</span>
+                    <span>
+                      {draft.frequency === 'HOURLY'
+                        ? t('automations.fields.minute')
+                        : t('automations.fields.time')}
+                    </span>
                     <Input
                       type="time"
                       value={draft.time}
@@ -317,7 +328,7 @@ export function AutomationsPage(): React.JSX.Element {
                   disabled={mutationPending || !draft.name.trim() || !draft.prompt.trim()}
                 >
                   <Save className="size-4" />
-                  {mutationPending ? 'Saving…' : 'Save schedule'}
+                  {mutationPending ? t('automations.saving') : t('automations.save')}
                 </Button>
               </div>
             </div>
@@ -332,23 +343,23 @@ export function AutomationsPage(): React.JSX.Element {
                         selected.status === 'active' ? 'bg-emerald-500' : 'bg-muted-foreground'
                       )}
                     />
-                    {selected.status}
+                    {t(`automations.status.${selected.status}`)}
                   </div>
                   <h2 className="mt-2 text-2xl font-semibold">{selected.name}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {describeAutomationSchedule(selected.rrule).summary}
+                    {scheduleSummary(selected.rrule)}
                   </p>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => beginEdit(selected)}>
-                    Edit
+                    {t('common.actions.edit')}
                   </Button>
                   <Button
                     onClick={() => void runMutation.mutateAsync(selected.id)}
                     disabled={runMutation.isPending}
                   >
                     <Play className="size-4" />
-                    Run now
+                    {t('automations.runNow')}
                   </Button>
                 </div>
               </div>
@@ -357,10 +368,19 @@ export function AutomationsPage(): React.JSX.Element {
               </div>
               <dl className="grid gap-px overflow-hidden rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-border)] sm:grid-cols-2">
                 {[
-                  ['Workspace', workspaceNames.get(selected.workspaceId) ?? selected.workspaceId],
-                  ['Model', selected.modelId],
-                  ['Next run', formatTimestamp(selected.nextRunAt)],
-                  ['Last run', formatTimestamp(selected.lastRunAt)]
+                  [
+                    t('automations.fields.workspace'),
+                    workspaceNames.get(selected.workspaceId) ?? selected.workspaceId
+                  ],
+                  [t('automations.fields.model'), selected.modelId],
+                  [
+                    t('automations.fields.nextRun'),
+                    formatTimestamp(selected.nextRunAt, i18n.language, t('automations.never'))
+                  ],
+                  [
+                    t('automations.fields.lastRun'),
+                    formatTimestamp(selected.lastRunAt, i18n.language, t('automations.never'))
+                  ]
                 ].map(([label, value]) => (
                   <div key={label} className="bg-[color:var(--surface-paper)] p-4">
                     <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -380,7 +400,7 @@ export function AutomationsPage(): React.JSX.Element {
                   ) : (
                     <Play className="size-4" />
                   )}
-                  {selected.status === 'active' ? 'Pause' : 'Resume'}
+                  {selected.status === 'active' ? t('automations.pause') : t('automations.resume')}
                 </Button>
                 <Button
                   variant="ghost"
@@ -390,7 +410,7 @@ export function AutomationsPage(): React.JSX.Element {
                   }
                 >
                   <Trash2 className="size-4" />
-                  Delete
+                  {t('automations.delete')}
                 </Button>
               </div>
             </div>
@@ -398,7 +418,7 @@ export function AutomationsPage(): React.JSX.Element {
             <div className="grid h-full place-items-center text-center text-sm text-muted-foreground">
               <div>
                 <Clock3 className="mx-auto mb-3 size-6" />
-                <p>Select a schedule or create one.</p>
+                <p>{t('automations.selectPrompt')}</p>
               </div>
             </div>
           )}

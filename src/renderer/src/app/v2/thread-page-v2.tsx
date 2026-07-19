@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type {
   AgentInteractionRequest,
+  AgentInteractionResponse,
   AgentSendBehavior,
   AgentSessionSnapshot,
   AgentTodoItem
@@ -41,6 +42,7 @@ import {
   CollapsibleTrigger
 } from '../../components/ui/collapsible'
 import type { ProviderRecord } from '../../features/settings/providers/providers-query'
+import { useTranslation } from '../../i18n/use-app-translation'
 
 function ThreadComposerControls({
   session,
@@ -57,6 +59,7 @@ function ThreadComposerControls({
   onModelChange: (provider: ProviderRecord, modelId: string) => void
   onAccessChange: (full: boolean) => void
 }): React.JSX.Element {
+  const { t } = useTranslation()
   const enabledProviders = providers.filter((provider) => provider.enabled)
   const activeProvider = enabledProviders.find((provider) => provider.id === session.providerId)
   const disabled = session.status === 'running'
@@ -70,7 +73,7 @@ function ThreadComposerControls({
             variant="ghost"
             size="sm"
             className="h-7 max-w-44 gap-1.5 rounded-lg px-2 text-xs font-normal text-muted-foreground"
-            aria-label="Select model"
+            aria-label={t('threads.composer.selectModel')}
             disabled={disabled}
           >
             <Bot className="size-3.5 shrink-0" />
@@ -118,7 +121,7 @@ function ThreadComposerControls({
             variant="ghost"
             size="sm"
             className="h-7 gap-1.5 rounded-lg px-2 text-xs font-normal text-muted-foreground"
-            aria-label="Select permission mode"
+            aria-label={t('threads.composer.selectPermission')}
             disabled={disabled}
           >
             {session.accessMode === 'full' ? (
@@ -126,26 +129,28 @@ function ThreadComposerControls({
             ) : (
               <Shield className="size-3.5" />
             )}
-            {session.accessMode === 'full' ? 'Full Access' : 'Ask Permission'}
+            {session.accessMode === 'full'
+              ? t('threads.composer.fullAccess')
+              : t('threads.composer.askPermission')}
             <ChevronDown className="size-3 opacity-60" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" side="top" className="w-52">
           <DropdownMenuItem onSelect={() => onAccessChange(false)}>
             <Shield className="mr-2 size-4" />
-            <span className="flex-1">Ask Permission</span>
+            <span className="flex-1">{t('threads.composer.askPermission')}</span>
             {session.accessMode === 'standard' ? <Check className="size-4" /> : null}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onAccessChange(true)}>
             <ShieldCheck className="mr-2 size-4" />
-            <span className="flex-1">Full Access</span>
+            <span className="flex-1">{t('threads.composer.fullAccess')}</span>
             {session.accessMode === 'full' ? <Check className="size-4" /> : null}
           </DropdownMenuItem>
           {session.status === 'running' ? (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs text-muted-foreground">
-                Permission mode is locked while Pi is running.
+                {t('threads.composer.permissionLocked')}
               </DropdownMenuLabel>
             </>
           ) : null}
@@ -157,10 +162,10 @@ function ThreadComposerControls({
           value={behavior}
           onChange={(event) => onBehaviorChange(event.target.value as AgentSendBehavior)}
           className="h-7 max-w-36 rounded-lg border-0 bg-transparent px-2 text-xs text-muted-foreground outline-none hover:bg-muted"
-          aria-label="Message behavior while Pi is running"
+          aria-label={t('threads.composer.runningBehavior')}
         >
-          <option value="steer">Steer current run</option>
-          <option value="follow-up">Queue follow-up</option>
+          <option value="steer">{t('threads.composer.steer')}</option>
+          <option value="follow-up">{t('threads.composer.followUp')}</option>
         </select>
       ) : null}
     </>
@@ -168,6 +173,7 @@ function ThreadComposerControls({
 }
 
 function ThreadTodoPanel({ todos }: { todos: AgentTodoItem[] }): React.JSX.Element | null {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(true)
   if (todos.length === 0) return null
   const completed = todos.filter((todo) => todo.status === 'completed').length
@@ -181,7 +187,9 @@ function ThreadTodoPanel({ todos }: { todos: AgentTodoItem[] }): React.JSX.Eleme
       <CollapsibleTrigger className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-muted-foreground hover:text-foreground">
         <ChevronDown className="size-4 transition-transform data-[state=closed]:-rotate-90" />
         <ListTodo className="size-4" />
-        <span className="font-medium text-foreground">{todos.length} Todo</span>
+        <span className="font-medium text-foreground">
+          {t('threads.page.todo', { count: todos.length })}
+        </span>
         <span className="ml-auto text-xs tabular-nums">
           {completed}/{todos.length}
         </span>
@@ -234,15 +242,11 @@ function InteractionCard({
   sessionId: string
   request: AgentInteractionRequest
 }): React.JSX.Element {
+  const { t } = useTranslation()
   const [value, setValue] = useState(request.method === 'editor' ? (request.prefill ?? '') : '')
   const [isPending, setIsPending] = useState(false)
 
-  async function respond(
-    response:
-      | { id: string; confirmed: boolean }
-      | { id: string; value: string }
-      | { id: string; cancelled: true }
-  ): Promise<void> {
+  async function respond(response: AgentInteractionResponse): Promise<void> {
     setIsPending(true)
     try {
       await respondToAgentInteraction(sessionId, response)
@@ -255,12 +259,73 @@ function InteractionCard({
   return (
     <div className="border-border bg-muted/40 mx-4 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm">
       <div className="min-w-0 flex-1">
-        <p className="font-medium">{request.title}</p>
-        {request.method === 'confirm' ? (
-          <p className="text-muted-foreground mt-0.5 text-xs">{request.message}</p>
+        <p className="font-medium">
+          {request.method === 'permission' ? t('threads.page.allowCommand') : request.title}
+        </p>
+        {request.method === 'confirm' || request.method === 'permission' ? (
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            {request.method === 'permission'
+              ? t('threads.page.runCommand', { command: request.command })
+              : request.message}
+          </p>
+        ) : null}
+        {request.method === 'permission' && request.proposedPrefixes.length > 0 ? (
+          <div className="mt-2 space-y-1 text-xs">
+            <p className="text-muted-foreground">{t('threads.page.rememberedPrefix')}</p>
+            {request.proposedPrefixes.map((prefix) => (
+              <code key={prefix} className="bg-background block w-fit rounded px-1.5 py-0.5">
+                {prefix}
+              </code>
+            ))}
+          </div>
+        ) : null}
+        {request.method === 'permission' && !request.reusable ? (
+          <p className="text-muted-foreground mt-2 text-xs">
+            {t('threads.page.onceOnly', { reason: request.nonReusableReason ?? '' })}
+          </p>
         ) : null}
       </div>
-      {request.method === 'confirm' ? (
+      {request.method === 'permission' ? (
+        <>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isPending}
+            onClick={() => void respond({ id: request.id, permissionOutcome: 'deny' })}
+          >
+            {t('threads.page.deny')}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isPending}
+            onClick={() => void respond({ id: request.id, permissionOutcome: 'allow-once' })}
+          >
+            {t('threads.page.allowOnce')}
+          </Button>
+          {request.reusable ? (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isPending}
+                onClick={() => void respond({ id: request.id, permissionOutcome: 'allow-session' })}
+              >
+                {t('threads.page.allowSession')}
+              </Button>
+              <Button
+                size="sm"
+                disabled={isPending}
+                onClick={() =>
+                  void respond({ id: request.id, permissionOutcome: 'allow-workspace' })
+                }
+              >
+                {t('threads.page.allowWorkspace')}
+              </Button>
+            </>
+          ) : null}
+        </>
+      ) : request.method === 'confirm' ? (
         <>
           <Button
             size="sm"
@@ -268,14 +333,14 @@ function InteractionCard({
             disabled={isPending}
             onClick={() => void respond({ id: request.id, confirmed: false })}
           >
-            Deny
+            {t('threads.page.deny')}
           </Button>
           <Button
             size="sm"
             disabled={isPending}
             onClick={() => void respond({ id: request.id, confirmed: true })}
           >
-            Allow once
+            {t('threads.page.allowOnce')}
           </Button>
         </>
       ) : request.method === 'select' ? (
@@ -303,7 +368,7 @@ function InteractionCard({
             disabled={isPending}
             onClick={() => void respond({ id: request.id, value })}
           >
-            Submit
+            {t('threads.page.submit')}
           </Button>
         </>
       )}
@@ -312,6 +377,7 @@ function InteractionCard({
 }
 
 export function ThreadPageV2(): React.JSX.Element {
+  const { t } = useTranslation()
   const params = useParams<{ workspaceId?: string; threadId?: string }>()
   const location = useLocation()
   const navigate = useNavigate()
@@ -451,9 +517,9 @@ export function ThreadPageV2(): React.JSX.Element {
     return (
       <div className="grid h-full place-items-center p-8 text-center">
         <div className="space-y-2">
-          <p className="font-medium">No thread selected</p>
+          <p className="font-medium">{t('threads.page.noSelection')}</p>
           <p className="text-sm text-muted-foreground">
-            Choose a thread from the sidebar or use the plus button to start one.
+            {t('threads.page.noSelectionDescription')}
           </p>
         </div>
       </div>
@@ -465,9 +531,9 @@ export function ThreadPageV2(): React.JSX.Element {
       return (
         <div className="grid h-full place-items-center p-8 text-center">
           <div>
-            <p className="font-medium">Configure a provider to start Pi.</p>
+            <p className="font-medium">{t('threads.page.configureProvider')}</p>
             <Button asChild variant="link">
-              <NavLink to="/settings/providers">Open provider settings</NavLink>
+              <NavLink to="/settings/providers">{t('threads.page.openProviderSettings')}</NavLink>
             </Button>
           </div>
         </div>
@@ -477,7 +543,7 @@ export function ThreadPageV2(): React.JSX.Element {
       return (
         <div className="grid h-full place-items-center p-8 text-center">
           <div className="max-w-md space-y-3">
-            <p className="font-medium">Pi could not start</p>
+            <p className="font-medium">{t('threads.page.startFailed')}</p>
             <p className="text-sm text-muted-foreground">{creationError}</p>
             <Button
               variant="outline"
@@ -486,7 +552,7 @@ export function ThreadPageV2(): React.JSX.Element {
                 setCreationError(null)
               }}
             >
-              Try again
+              {t('threads.page.tryAgain')}
             </Button>
           </div>
         </div>
@@ -494,7 +560,7 @@ export function ThreadPageV2(): React.JSX.Element {
     }
     return (
       <div className="grid h-full place-items-center text-sm text-muted-foreground">
-        Starting Pi…
+        {t('threads.page.starting')}
       </div>
     )
   }
@@ -502,7 +568,7 @@ export function ThreadPageV2(): React.JSX.Element {
   if (sessionLoading || messagesLoading) {
     return (
       <div className="grid h-full place-items-center text-sm text-muted-foreground">
-        Loading thread…
+        {t('threads.page.loading')}
       </div>
     )
   }
@@ -510,7 +576,7 @@ export function ThreadPageV2(): React.JSX.Element {
   if (!session || sessionError) {
     return (
       <div className="grid h-full place-items-center p-8 text-center text-sm text-destructive">
-        {toErrorMessage(sessionError ?? new Error('Thread not found'))}
+        {toErrorMessage(sessionError ?? new Error(t('threads.page.notFound')))}
       </div>
     )
   }

@@ -13,6 +13,7 @@ import { appEntryLoader } from './routes/app-entry-loader'
 import { AppEntryRoute } from './routes/app-entry-route'
 import { SkillsPage } from '../features/skills/pages/skills-page'
 import { AutomationsPage } from '../features/automations/pages/automations-page'
+import { PermissionsSettingsPage } from '../features/settings/pages/permissions-settings-page'
 
 export const appRoutes: RouteObject[] = [
   {
@@ -76,6 +77,10 @@ export const appRoutes: RouteObject[] = [
           {
             path: 'channels',
             element: <ChannelsSettingsPage />
+          },
+          {
+            path: 'permissions',
+            element: <PermissionsSettingsPage />
           },
           {
             path: 'mcp-servers',

@@ -1,10 +1,15 @@
 import type { InlineExtension } from '@earendil-works/pi-coding-agent'
 import { isAbsolute, join, relative, resolve } from 'node:path'
+import type { AgentPermissionOutcome } from '../../../shared/agent-runtime'
+import {
+  analyzePermissionCommand,
+  evaluatePermissionRules,
+  type PermissionRule,
+  type PermissionRuleProposal
+} from '../../../shared/permission-rules'
 
 export type PiPermissionDecision = 'allow' | 'approve' | 'block'
 
-const destructive =
-  /(^|[;&|]\s*)(sudo\b|doas\b|rm\s+-[^\n]*r[^\n]*f|git\s+reset\s+--hard|git\s+clean\s+-[^\n]*f|mkfs\b|diskutil\s+erase|shutdown\b|reboot\b|kill\s+-9\b)/i
 const credential =
   /(^|[/\\])(\.env(?:\.|$)|\.ssh|\.gnupg|credentials?|secrets?|auth\.json|keychain)([/\\]|$)/i
 const protectedNames = new Set([
@@ -44,7 +49,7 @@ export function classifyPiToolCall(input: {
     ((input.toolName === 'write' || input.toolName === 'edit') &&
       resolvedPath &&
       !isWithin(input.workspacePath, resolvedPath)) ||
-    (input.toolName === 'bash' && destructive.test(command))
+    input.toolName === 'bash'
   ) {
     return 'approve'
   }
@@ -55,7 +60,14 @@ export function createPiPermissionExtension(input: {
   workspacePath: string
   credentialRoot: string
   fullAccess: boolean
+  listWorkspaceRules?: () => Promise<PermissionRule[]>
+  saveWorkspaceRules?: (proposals: PermissionRuleProposal[]) => Promise<void>
+  touchWorkspaceRules?: (ids: string[]) => Promise<void>
+  requestPermission?: (
+    analysis: ReturnType<typeof analyzePermissionCommand>
+  ) => Promise<AgentPermissionOutcome>
 }): InlineExtension {
+  const sessionRules: PermissionRule[] = []
   return {
     name: 'tia-permissions',
     factory: (pi) => {
@@ -77,12 +89,50 @@ export function createPiPermissionExtension(input: {
         if (decision === 'block') {
           return { block: true, reason: 'TIA Studio blocked access to credential storage.' }
         }
+        if (event.toolName === 'bash') {
+          const analysis = analyzePermissionCommand(command)
+          const workspaceRules = (await input.listWorkspaceRules?.()) ?? []
+          const evaluated = evaluatePermissionRules(analysis, [...workspaceRules, ...sessionRules])
+          if (evaluated.decision === 'deny') {
+            return { block: true, reason: 'Blocked by a TIA Studio permission rule.' }
+          }
+          if (input.fullAccess) return
+          if (evaluated.decision === 'allow') {
+            const persistedIds = evaluated.matchedRuleIds.filter((id) => !id.startsWith('session:'))
+            if (persistedIds.length > 0) await input.touchWorkspaceRules?.(persistedIds)
+            return
+          }
+
+          const outcome = input.requestPermission
+            ? await input.requestPermission(analysis)
+            : (await context.ui.confirm('Allow this action?', `Run command: ${command}`))
+              ? 'allow-once'
+              : 'deny'
+          if (outcome === 'deny') return { block: true, reason: 'Blocked by user' }
+          if (outcome === 'allow-session' && analysis.reusable) {
+            const now = new Date().toISOString()
+            sessionRules.push(
+              ...analysis.proposals.map((proposal, index) => ({
+                id: `session:${now}:${index}`,
+                workspacePath: input.workspacePath,
+                tool: proposal.tool,
+                decision: 'allow' as const,
+                argvPrefix: proposal.argvPrefix,
+                rationale: 'Allowed for this session by the user',
+                origin: 'user-approval' as const,
+                createdAt: now,
+                updatedAt: now
+              }))
+            )
+          }
+          if (outcome === 'allow-workspace' && analysis.reusable) {
+            await input.saveWorkspaceRules?.(analysis.proposals)
+          }
+          return
+        }
         if (decision === 'allow') return
-        const description =
-          event.toolName === 'bash'
-            ? `Run destructive command: ${command}`
-            : `Write outside the selected workspace: ${toolPath}`
-        const confirmed = await context.ui.confirm('Allow risky action?', description)
+        const description = `Write outside the selected workspace: ${toolPath}`
+        const confirmed = await context.ui.confirm('Allow this action?', description)
         if (!confirmed) return { block: true, reason: 'Blocked by user' }
         return undefined
       })

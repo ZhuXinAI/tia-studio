@@ -42,6 +42,10 @@ const sendMessageSchema = z
 const interactionResponseSchema = z.union([
   z.object({ id: z.string().min(1), value: z.string() }),
   z.object({ id: z.string().min(1), confirmed: z.boolean() }),
+  z.object({
+    id: z.string().min(1),
+    permissionOutcome: z.enum(['deny', 'allow-once', 'allow-session', 'allow-workspace'])
+  }),
   z.object({ id: z.string().min(1), cancelled: z.literal(true) })
 ])
 

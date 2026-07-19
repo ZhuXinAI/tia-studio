@@ -2,7 +2,9 @@ import os from 'node:os'
 import path from 'node:path'
 import { access, mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { gzipSync } from 'node:zlib'
 import {
+  downloadGitHubSkillRepository,
   getInstalledRecommendedSkills,
   installMarketplaceSkill,
   installRecommendedSkillsWithBunx,
@@ -11,6 +13,24 @@ import {
   listDiscoveredSkillsPage,
   removeWorkspaceSkill
 } from './skills-manager'
+
+function tarFile(name: string, content: string): Buffer {
+  const body = Buffer.from(content)
+  const header = Buffer.alloc(512)
+  header.write(name, 0, 100)
+  header.write('0000644\0', 100, 8)
+  header.write('0000000\0', 108, 8)
+  header.write('0000000\0', 116, 8)
+  header.write(`${body.length.toString(8).padStart(11, '0')}\0`, 124, 12)
+  header.write('00000000000\0', 136, 12)
+  header.fill(32, 148, 156)
+  header[156] = '0'.charCodeAt(0)
+  header.write('ustar\0', 257, 6)
+  const checksum = header.reduce((sum, byte) => sum + byte, 0)
+  header.write(`${checksum.toString(8).padStart(6, '0')}\0 `, 148, 8)
+  const padding = Buffer.alloc(Math.ceil(body.length / 512) * 512 - body.length)
+  return Buffer.concat([header, body, padding, Buffer.alloc(1024)])
+}
 
 async function createSkill(
   baseDirectory: string,
@@ -38,6 +58,7 @@ describe('skills manager', () => {
 
   afterEach(async () => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
     if (tempRoot) {
       await rm(tempRoot, { recursive: true, force: true })
     }
@@ -385,5 +406,38 @@ description: Helper skill.
         globalSkillsRoot: globalRoot
       })
     ).resolves.toBeUndefined()
+  })
+
+  it('downloads and extracts a GitHub skill archive without requiring git', async () => {
+    const globalRoot = path.join(tempRoot, 'tia-global-skills')
+    const archive = gzipSync(
+      tarFile(
+        'repository-main/skills/find-skills/SKILL.md',
+        '---\nname: find-skills\ndescription: Find skills.\n---\n'
+      )
+    )
+    const fetchMock = vi.fn(async () => new Response(archive, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await installMarketplaceSkill({
+      skillId: 'vercel-labs/skills/find-skills',
+      globalSkillsRoot: globalRoot
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://codeload.github.com/vercel-labs/skills/tar.gz/HEAD',
+      expect.objectContaining({ redirect: 'follow' })
+    )
+    await expect(access(path.join(globalRoot, 'find-skills', 'SKILL.md'))).resolves.toBeUndefined()
+  })
+
+  it('surfaces GitHub download failures with the repository name', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('', { status: 403 }))
+    )
+    await expect(
+      downloadGitHubSkillRepository('vercel-labs/skills', path.join(tempRoot, 'download'))
+    ).rejects.toThrow('GitHub returned 403 while downloading vercel-labs/skills')
   })
 })

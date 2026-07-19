@@ -14,6 +14,7 @@ import { CheckIcon, CopyIcon } from 'lucide-react'
 
 import { TooltipIconButton } from '@renderer/components/assistant-ui/tooltip-icon-button'
 import { cn } from '@renderer/lib/utils'
+import { useTranslation } from '../../i18n/use-app-translation'
 
 const MarkdownTextImpl = () => {
   return (
@@ -29,6 +30,7 @@ const MarkdownTextImpl = () => {
 export const MarkdownText = memo(MarkdownTextImpl)
 
 const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
+  const { t } = useTranslation()
   const { isCopied, copyToClipboard } = useCopyToClipboard()
   const onCopy = () => {
     if (!code || isCopied) return
@@ -40,7 +42,7 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
       <span className="aui-code-header-language text-muted-foreground font-medium lowercase">
         {language}
       </span>
-      <TooltipIconButton tooltip="Copy" onClick={onCopy}>
+      <TooltipIconButton tooltip={t('threads.ui.copy')} onClick={onCopy}>
         {!isCopied && <CopyIcon className="animate-in zoom-in-75 fade-in duration-150" />}
         {isCopied && <CheckIcon className="animate-in zoom-in-50 fade-in duration-200 ease-out" />}
       </TooltipIconButton>

@@ -43,9 +43,14 @@ This is the durable implementation tracker for the destructive v3 harness cutove
 
 - [x] Default every thread to persisted Standard Access.
 - [x] Auto-allow routine workspace reads/writes and non-destructive commands.
-- [x] Require in-thread approval for destructive commands, privilege escalation, and writes outside the workspace; block credential-file access outright.
+- [x] Require in-thread approval for shell commands and writes outside the workspace; block credential-file access outright.
 - [x] Block TIA Studio credential storage from Pi.
 - [x] Implement per-thread Full Access that skips approval gates and remains visibly active.
+- [x] Model remembered Bash permissions as structured argv-prefix rules with hard-block, deny, ask, and allow precedence.
+- [x] Add Deny, Allow once, Allow for session, and workspace-scoped approval outcomes to the in-thread permission interaction.
+- [x] Persist workspace approvals, keep session approvals memory-only, and evaluate simple compound commands segment by segment.
+- [x] Refuse reusable-rule generation for complex shell syntax, package installers, interpreters, privilege wrappers, and destructive commands.
+- [x] Add a Command Permissions settings page with scope, source, rationale, last-used time, and revoke controls.
 - [x] Test policy classification, interaction lifecycle, and persistence.
 
 ## 5. Official assistant-ui thread
@@ -59,6 +64,8 @@ This is the durable implementation tracker for the destructive v3 harness cutove
 - [x] Add Standard/Full Access and idle/steer/follow-up composer behavior.
 - [x] Keep copy/cancel/rename and remove unsupported edit/regenerate/branch actions.
 - [x] Preserve the existing thread-list shell and shell-owned status/context surfaces.
+- [x] Localize the home sidebar, thread controls and states, attachment/reasoning chrome, Skills catalog, and Schedules editor.
+- [x] Make marketplace skill installs independent of an external Git executable and return actionable HTTP errors.
 - [x] Delete the replaced custom thread card, message list, transport adapter, and obsolete styling/components.
 
 ## 6. Full legacy cleanup

@@ -7,6 +7,7 @@ import {
   CollapsibleTrigger
 } from '@renderer/components/ui/collapsible'
 import { resolveWorkDuration } from './work-duration'
+import { useTranslation } from '../../i18n/use-app-translation'
 
 function formatWorkDuration(milliseconds: number): string {
   const seconds = Math.max(1, Math.round(milliseconds / 1000))
@@ -15,6 +16,7 @@ function formatWorkDuration(milliseconds: number): string {
 }
 
 const WorkTrace: FC<PropsWithChildren> = ({ children }) => {
+  const { t } = useTranslation()
   const running = useAuiState((state) => state.message.status?.type === 'running')
   const messageCreatedAt = useAuiState((state) => state.message.createdAt?.getTime())
   const workStartedAt = useAuiState((state) => {
@@ -38,12 +40,16 @@ const WorkTrace: FC<PropsWithChildren> = ({ children }) => {
   }, [running, startedAt])
 
   const duration = resolveWorkDuration({ elapsed, running, storedDuration })
-  const label = `${running ? 'Working for' : 'Worked for'} ${formatWorkDuration(duration)}`
+  const label = t(running ? 'threads.ui.workingFor' : 'threads.ui.workedFor', {
+    duration: formatWorkDuration(duration)
+  })
 
   return (
     <Collapsible className="group/work-trace mb-3" open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger className="flex items-center gap-2 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-        {running ? <LoaderCircle className="size-3.5 animate-spin" aria-label="Working" /> : null}
+        {running ? (
+          <LoaderCircle className="size-3.5 animate-spin" aria-label={t('threads.ui.working')} />
+        ) : null}
         <span className="tabular-nums">{label}</span>
         <ChevronDownIcon className="size-4 transition-transform group-data-[state=open]/work-trace:rotate-180" />
       </CollapsibleTrigger>

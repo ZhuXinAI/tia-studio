@@ -52,6 +52,22 @@ _Avoid_: Assistant provider, Pi auth file, prompt configuration
 The per-thread, persisted permission policy applied to a Pi Thread's filesystem and command execution. New threads use Standard Access for routine workspace work with targeted approvals; Full Access explicitly skips those approval gates for that thread.
 _Avoid_: Agent prompt, provider permission, unrestricted renderer access
 
+**Permission Rule**:
+A structured policy for one tool and command prefix within one workspace. When several rules apply, the safest result wins: a hard block overrides deny, deny overrides ask, and ask overrides allow.
+_Avoid_: Command regex, risk category, renderer permission
+
+**Session Approval**:
+A permission granted for the lifetime of one active Pi Thread runtime. It is forgotten when that runtime closes or restarts and never broadens another thread.
+_Avoid_: Allow once, workspace rule, permanent approval
+
+**Workspace Approval**:
+A persisted permission for a displayed command prefix in one workspace. It can be reviewed and revoked, and never becomes a global approval by default.
+_Avoid_: Global allowlist, risk-category approval, hidden exception
+
+**Hard Block**:
+An application-owned safety boundary that cannot be overridden by a user approval or Full Access. Credential storage is protected by a Hard Block.
+_Avoid_: Deny rule, confirmation prompt, renderer validation
+
 **Channel Thread Binding**:
 A persistent mapping from one external remote chat to one TIA thread. Repeated messages from the same remote chat continue in the same TIA thread until an explicit future rule creates a new one.
 _Avoid_: Per-message thread, temporary route

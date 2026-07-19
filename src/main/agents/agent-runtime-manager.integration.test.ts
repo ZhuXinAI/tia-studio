@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { migrateAppSchema } from '../persistence/migrate'
 import { AgentSessionsRepository } from '../persistence/repos/agent-sessions-repo'
 import { ProvidersRepository } from '../persistence/repos/providers-repo'
+import { PermissionRulesRepository } from '../persistence/repos/permission-rules-repo'
 import { AgentRuntimeManager } from './agent-runtime-manager'
 import { removeTestDirectory } from '../../test/remove-test-directory'
 
@@ -32,6 +33,7 @@ describe('AgentRuntimeManager with embedded Pi SDK', () => {
     const manager = new AgentRuntimeManager({
       sessionsRepo: sessions,
       providersRepo: providers,
+      permissionRulesRepo: new PermissionRulesRepository(db),
       agentDataRoot: join(directory, 'agent'),
       sessionDataRoot: join(directory, 'sessions'),
       credentialRoot: directory,
@@ -65,6 +67,7 @@ describe('AgentRuntimeManager with embedded Pi SDK', () => {
     const manager = new AgentRuntimeManager({
       sessionsRepo: new AgentSessionsRepository(db),
       providersRepo: providers,
+      permissionRulesRepo: new PermissionRulesRepository(db),
       agentDataRoot: join(directory, 'agent'),
       sessionDataRoot: join(directory, 'sessions'),
       credentialRoot: directory,

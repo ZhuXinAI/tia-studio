@@ -28,7 +28,7 @@ import openaiLogo from '../../../assets/providers/openai.png'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { queryClient } from '../../../lib/query-client'
 import { cn } from '../../../lib/utils'
-import { ProvidersForm, SAVED_API_KEY_MASK } from '../providers/providers-form'
+import { ProvidersForm } from '../providers/providers-form'
 import {
   createProvider,
   deleteProvider,
@@ -93,7 +93,7 @@ function toInitialFormValue(provider: ProviderRecord | null): ProviderFormInitia
   return {
     name: provider.name,
     type: provider.type,
-    apiKey: provider.hasApiKey ? SAVED_API_KEY_MASK : provider.apiKey,
+    apiKey: provider.apiKey,
     apiHost: provider.apiHost ?? '',
     selectedModel: provider.selectedModel,
     selectedModelContextWindowTokensText:
@@ -224,12 +224,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
     if (!activeProvider) return
     setIsSubmitting(true)
     try {
-      replaceProvider(
-        await updateProvider(activeProvider.id, {
-          ...values,
-          apiKey: values.apiKey === SAVED_API_KEY_MASK ? '' : values.apiKey
-        })
-      )
+      replaceProvider(await updateProvider(activeProvider.id, values))
       toast.success(t('settings.providers.toasts.providerSaved'))
       dismissDialogAfterSave()
     } catch (error) {
@@ -270,13 +265,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
   const handleTestConnection = async (values: SaveProviderInput): Promise<void> => {
     setIsTestingConnection(true)
     try {
-      await testProviderConnection(
-        {
-          ...values,
-          apiKey: values.apiKey === SAVED_API_KEY_MASK ? '' : values.apiKey
-        },
-        dialogMode === 'edit' ? activeProvider?.id : undefined
-      )
+      await testProviderConnection(values, dialogMode === 'edit' ? activeProvider?.id : undefined)
       toast.success(
         t('settings.providers.toasts.connectionSuccess', {
           type: values.type,

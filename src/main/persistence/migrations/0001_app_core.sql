@@ -120,6 +120,19 @@ CREATE TABLE IF NOT EXISTS app_agent_events (
   UNIQUE(session_id, sequence)
 );
 
+CREATE TABLE IF NOT EXISTS app_permission_rules (
+  id TEXT PRIMARY KEY,
+  workspace_path TEXT NOT NULL,
+  tool TEXT NOT NULL,
+  decision TEXT NOT NULL,
+  argv_prefix_json TEXT NOT NULL,
+  rationale TEXT NOT NULL,
+  origin TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_used_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS app_channel_session_bindings (
   channel_id TEXT NOT NULL,
   remote_chat_id TEXT NOT NULL,
@@ -136,6 +149,7 @@ CREATE INDEX IF NOT EXISTS idx_app_channels_enabled ON app_channels(enabled);
 CREATE INDEX IF NOT EXISTS idx_app_agent_sessions_workspace ON app_agent_sessions(workspace_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_app_agent_messages_session ON app_agent_messages(session_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_app_agent_events_session_sequence ON app_agent_events(session_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_app_permission_rules_workspace ON app_permission_rules(workspace_path, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_app_channel_session_bindings_session ON app_channel_session_bindings(session_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_app_channel_pairings_channel_sender ON app_channel_pairings(channel_id, remote_chat_id, sender_id);
 CREATE INDEX IF NOT EXISTS idx_app_channel_pairings_channel_status ON app_channel_pairings(channel_id, status);

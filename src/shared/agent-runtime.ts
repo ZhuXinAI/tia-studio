@@ -96,10 +96,24 @@ export type AgentInteractionRequest =
       title: string
       prefill?: string
     }
+  | {
+      id: string
+      method: 'permission'
+      title: string
+      message: string
+      command: string
+      workspacePath: string
+      reusable: boolean
+      proposedPrefixes: string[]
+      nonReusableReason?: string
+    }
+
+export type AgentPermissionOutcome = 'deny' | 'allow-once' | 'allow-session' | 'allow-workspace'
 
 export type AgentInteractionResponse =
   | { id: string; value: string }
   | { id: string; confirmed: boolean }
+  | { id: string; permissionOutcome: AgentPermissionOutcome }
   | { id: string; cancelled: true }
 
 export type AgentSessionSnapshot = {

@@ -169,6 +169,26 @@ async function ensureAutomationsTable(db: AppDatabase): Promise<void> {
   `)
 }
 
+async function ensurePermissionRulesTable(db: AppDatabase): Promise<void> {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_permission_rules (
+      id TEXT PRIMARY KEY,
+      workspace_path TEXT NOT NULL,
+      tool TEXT NOT NULL,
+      decision TEXT NOT NULL,
+      argv_prefix_json TEXT NOT NULL,
+      rationale TEXT NOT NULL,
+      origin TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_used_at TEXT
+    )
+  `)
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_permission_rules_workspace ON app_permission_rules(workspace_path, updated_at DESC)'
+  )
+}
+
 export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> {
   const db = createAppDatabase(pathOrUrl)
   await db.execute('PRAGMA foreign_keys = ON')
@@ -185,6 +205,7 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   await addColumn(db, 'app_agent_sessions', 'todos_json', "TEXT NOT NULL DEFAULT '[]'")
   await addColumn(db, 'app_agent_messages', 'completed_at', 'TEXT')
   await ensureAutomationsTable(db)
+  await ensurePermissionRulesTable(db)
   await runDestructiveV3Cutover(db)
   for (const statement of statements(sql)) await db.execute(statement)
   await backfillKnownContextWindows(db)

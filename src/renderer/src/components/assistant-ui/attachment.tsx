@@ -15,6 +15,7 @@ import { Dialog, DialogTitle, DialogContent, DialogTrigger } from '@renderer/com
 import { Avatar, AvatarImage, AvatarFallback } from '@renderer/components/ui/avatar'
 import { TooltipIconButton } from '@renderer/components/assistant-ui/tooltip-icon-button'
 import { cn } from '@renderer/lib/utils'
+import { useTranslation } from '../../i18n/use-app-translation'
 
 const useFileSrc = (file: File | undefined) => {
   const [src, setSrc] = useState<string | undefined>(undefined)
@@ -55,11 +56,12 @@ type AttachmentPreviewProps = {
 }
 
 const AttachmentPreview: FC<AttachmentPreviewProps> = ({ src }) => {
+  const { t } = useTranslation()
   const [isLoaded, setIsLoaded] = useState(false)
   return (
     <img
       src={src}
-      alt="Attachment preview"
+      alt={t('threads.ui.attachmentPreview')}
       className={cn(
         'block h-auto max-h-[80vh] w-auto max-w-full object-contain',
         isLoaded
@@ -72,6 +74,7 @@ const AttachmentPreview: FC<AttachmentPreviewProps> = ({ src }) => {
 }
 
 const AttachmentPreviewDialog: FC<PropsWithChildren> = ({ children }) => {
+  const { t } = useTranslation()
   const src = useAttachmentSrc()
 
   if (!src) return children
@@ -85,7 +88,7 @@ const AttachmentPreviewDialog: FC<PropsWithChildren> = ({ children }) => {
         {children}
       </DialogTrigger>
       <DialogContent className="aui-attachment-preview-dialog-content [&>button]:bg-foreground/60 [&_svg]:text-background [&>button]:hover:[&_svg]:text-destructive p-2 sm:max-w-3xl [&>button]:rounded-full [&>button]:p-1 [&>button]:opacity-100 [&>button]:ring-0!">
-        <DialogTitle className="aui-sr-only sr-only">Image Attachment Preview</DialogTitle>
+        <DialogTitle className="aui-sr-only sr-only">{t('threads.ui.imagePreview')}</DialogTitle>
         <div className="aui-attachment-preview bg-background relative mx-auto flex max-h-[80dvh] w-full items-center justify-center overflow-hidden">
           <AttachmentPreview src={src} />
         </div>
@@ -95,13 +98,14 @@ const AttachmentPreviewDialog: FC<PropsWithChildren> = ({ children }) => {
 }
 
 const AttachmentThumb: FC = () => {
+  const { t } = useTranslation()
   const src = useAttachmentSrc()
 
   return (
     <Avatar className="aui-attachment-tile-avatar h-full w-full rounded-none">
       <AvatarImage
         src={src}
-        alt="Attachment preview"
+        alt={t('threads.ui.attachmentPreview')}
         className="aui-attachment-tile-image object-cover"
       />
       <AvatarFallback>
@@ -112,23 +116,20 @@ const AttachmentThumb: FC = () => {
 }
 
 const AttachmentUI: FC = () => {
+  const { t } = useTranslation()
   const aui = useAui()
   const isComposer = aui.attachment.source !== 'message'
 
   const isImage = useAuiState((s) => s.attachment.type === 'image')
-  const typeLabel = useAuiState((s) => {
-    const type = s.attachment.type
-    switch (type) {
-      case 'image':
-        return 'Image'
-      case 'document':
-        return 'Document'
-      case 'file':
-        return 'File'
-      default:
-        return type
-    }
-  })
+  const attachmentType = useAuiState((s) => s.attachment.type)
+  const typeLabel =
+    attachmentType === 'image'
+      ? t('threads.ui.image')
+      : attachmentType === 'document'
+        ? t('threads.ui.document')
+        : attachmentType === 'file'
+          ? t('threads.ui.file')
+          : attachmentType
 
   const uploadState = useAuiState((s) =>
     s.attachment.status.type === 'running'
@@ -142,7 +143,7 @@ const AttachmentUI: FC = () => {
 
   const errorMessage = useAuiState((s) =>
     s.attachment.status.type === 'incomplete' && s.attachment.status.reason === 'error'
-      ? 'Upload failed'
+      ? t('threads.ui.uploadFailed')
       : undefined
   )
 
@@ -163,9 +164,14 @@ const AttachmentUI: FC = () => {
               )}
               role="button"
               tabIndex={0}
-              aria-label={`${typeLabel} attachment${
-                isError ? ', upload failed' : isUploading ? ', uploading' : ''
-              }`}
+              aria-label={t('threads.ui.attachmentLabel', {
+                type: typeLabel,
+                status: isError
+                  ? t('threads.ui.uploadFailedStatus')
+                  : isUploading
+                    ? t('threads.ui.uploadingStatus')
+                    : ''
+              })}
             >
               <AttachmentThumb />
               {isUploading && (
@@ -198,10 +204,11 @@ const AttachmentUI: FC = () => {
 }
 
 const AttachmentRemove: FC = () => {
+  const { t } = useTranslation()
   return (
     <AttachmentPrimitive.Remove asChild>
       <TooltipIconButton
-        tooltip="Remove file"
+        tooltip={t('threads.ui.removeFile')}
         className="aui-attachment-tile-remove text-muted-foreground hover:[&_svg]:text-destructive absolute end-1.5 top-1.5 size-3.5 rounded-full bg-white opacity-100 shadow-sm hover:bg-white! [&_svg]:text-black"
         side="top"
       >
@@ -228,15 +235,16 @@ export const ComposerAttachments: FC = () => {
 }
 
 export const ComposerAddAttachment: FC = () => {
+  const { t } = useTranslation()
   return (
     <ComposerPrimitive.AddAttachment asChild>
       <TooltipIconButton
-        tooltip="Add Attachment"
+        tooltip={t('threads.ui.addAttachment')}
         side="bottom"
         variant="ghost"
         size="icon"
         className="aui-composer-add-attachment hover:bg-muted-foreground/15 dark:border-muted-foreground/15 dark:hover:bg-muted-foreground/30 size-7 rounded-full p-1 text-xs font-semibold"
-        aria-label="Add Attachment"
+        aria-label={t('threads.ui.addAttachment')}
       >
         <PlusIcon className="aui-attachment-add-icon size-4.5 stroke-[1.5px]" />
       </TooltipIconButton>

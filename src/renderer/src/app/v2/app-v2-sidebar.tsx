@@ -36,6 +36,7 @@ import {
 } from '../../features/threads/agent-sessions-query'
 import { useAutomations } from '../../features/automations/automations-query'
 import { getThreadDisplayTitle, toErrorMessage } from '../../features/threads/thread-page-routing'
+import { useTranslation } from '../../i18n/use-app-translation'
 
 function isWindowsPlatform(): boolean {
   return isDesktopWindowsPlatform()
@@ -70,6 +71,7 @@ function ThreadLink({
   onTogglePinned: () => void
   onDelete: () => void
 }): React.JSX.Element {
+  const { t } = useTranslation()
   const displayTitle = getThreadDisplayTitle(thread.title)
   const pinned = thread.pinned
 
@@ -89,7 +91,7 @@ function ThreadLink({
       {isScheduled ? (
         <Clock3
           className="size-3.5 shrink-0 text-muted-foreground"
-          aria-label="Created by a schedule"
+          aria-label={t('threads.sidebar.scheduled')}
         />
       ) : null}
       <div
@@ -105,8 +107,12 @@ function ThreadLink({
           className="size-6"
           disabled={isPending}
           onClick={onTogglePinned}
-          aria-label={pinned ? `Unpin ${displayTitle}` : `Pin ${displayTitle}`}
-          title={pinned ? `Unpin ${displayTitle}` : `Pin ${displayTitle}`}
+          aria-label={t(pinned ? 'threads.sidebar.unpin' : 'threads.sidebar.pin', {
+            title: displayTitle
+          })}
+          title={t(pinned ? 'threads.sidebar.unpin' : 'threads.sidebar.pin', {
+            title: displayTitle
+          })}
         >
           {pinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
         </Button>
@@ -117,8 +123,8 @@ function ThreadLink({
           className="size-6 text-muted-foreground hover:text-destructive"
           disabled={isPending}
           onClick={onDelete}
-          aria-label={`Delete ${displayTitle}`}
-          title={`Delete ${displayTitle}`}
+          aria-label={t('threads.sidebar.delete', { title: displayTitle })}
+          title={t('threads.sidebar.delete', { title: displayTitle })}
         >
           <Trash2 className="size-3.5" />
         </Button>
@@ -172,6 +178,7 @@ function WorkspaceThreads({
   scheduledSessionIds: ReadonlySet<string>
   scheduledSessionTitles: ReadonlySet<string>
 }): React.JSX.Element {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const deleteThreadMutation = useDeleteAgentSession()
   const updateThreadPinnedMutation = useSetAgentSessionPinned()
@@ -218,7 +225,7 @@ function WorkspaceThreads({
   }
 
   if (recentThreads.length === 0) {
-    return <p className="px-8 py-1 text-xs text-muted-foreground">No threads yet.</p>
+    return <p className="px-8 py-1 text-xs text-muted-foreground">{t('threads.sidebar.empty')}</p>
   }
 
   return (
@@ -260,6 +267,7 @@ export function AppV2Sidebar({
   isCollapsed,
   onToggleCollapsed
 }: AppV2SidebarProps): React.JSX.Element {
+  const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const params = useParams()
@@ -341,7 +349,8 @@ export function AppV2Sidebar({
       setExpandedWorkspaceIds((current) => new Set(current).add(createdWorkspace.id))
       navigate(`/workspaces/${createdWorkspace.id}`)
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to create workspace'
+      const message =
+        error instanceof Error ? error.message : t('threads.sidebar.createWorkspaceFailed')
       setErrorMessage(message)
       toast.error(message)
     }
@@ -361,28 +370,44 @@ export function AppV2Sidebar({
           size="icon"
           className="no-drag size-8"
           onClick={onToggleCollapsed}
-          aria-label="Expand sidebar"
-          title="Expand sidebar"
+          aria-label={t('appShell.nav.expandSidebar')}
+          title={t('appShell.nav.expandSidebar')}
         >
           <PanelLeftOpen className="size-4" />
         </Button>
         <Button asChild variant="ghost" size="icon" className="size-8">
-          <NavLink to={newChatHref} aria-label="New chat" title="New chat">
+          <NavLink
+            to={newChatHref}
+            aria-label={t('appShell.nav.newChat')}
+            title={t('appShell.nav.newChat')}
+          >
             <MessageSquarePlus className="size-4" />
           </NavLink>
         </Button>
         <Button asChild variant="ghost" size="icon" className="size-8">
-          <NavLink to="/skills" aria-label="Open skills" title="Skills">
+          <NavLink
+            to="/skills"
+            aria-label={t('appShell.nav.openSkills')}
+            title={t('appShell.nav.skills')}
+          >
             <Sparkles className="size-4" />
           </NavLink>
         </Button>
         <Button asChild variant="ghost" size="icon" className="size-8">
-          <NavLink to="/automations" aria-label="Open schedules" title="Schedules">
+          <NavLink
+            to="/automations"
+            aria-label={t('appShell.nav.openSchedules')}
+            title={t('appShell.nav.schedules')}
+          >
             <Clock3 className="size-4" />
           </NavLink>
         </Button>
         <Button asChild variant="ghost" size="icon" className="mt-auto size-8">
-          <NavLink to="/settings/general" aria-label="Open settings" title="Open settings">
+          <NavLink
+            to="/settings/general"
+            aria-label={t('appShell.nav.openSettings')}
+            title={t('appShell.nav.openSettings')}
+          >
             <Settings className="size-4" />
           </NavLink>
         </Button>
@@ -406,8 +431,8 @@ export function AppV2Sidebar({
               size="icon"
               className="no-drag"
               onClick={onToggleCollapsed}
-              aria-label="Collapse sidebar"
-              title="Collapse sidebar"
+              aria-label={t('appShell.nav.collapseSidebar')}
+              title={t('appShell.nav.collapseSidebar')}
             >
               <PanelLeftClose className="size-4" />
             </Button>
@@ -420,7 +445,7 @@ export function AppV2Sidebar({
             ref={workspaceSearchInputRef}
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search workspaces"
+            placeholder={t('threads.sidebar.searchWorkspaces')}
             className="h-10 rounded-xl pl-8 text-sm"
           />
         </div>
@@ -428,7 +453,7 @@ export function AppV2Sidebar({
         <Button asChild className={cn('w-full', sidebarActionButtonClassName)}>
           <NavLink to={newChatHref}>
             <MessageSquarePlus className="size-4" />
-            New Chat
+            {t('appShell.nav.newChat')}
           </NavLink>
         </Button>
 
@@ -440,7 +465,7 @@ export function AppV2Sidebar({
           >
             <NavLink to="/skills">
               <Sparkles className="size-4" />
-              Skills & MCPs
+              {t('appShell.nav.skills')}
             </NavLink>
           </Button>
           <Button
@@ -450,7 +475,7 @@ export function AppV2Sidebar({
           >
             <NavLink to="/automations">
               <Clock3 className="size-4" />
-              Schedules
+              {t('appShell.nav.schedules')}
             </NavLink>
           </Button>
         </div>
@@ -458,7 +483,7 @@ export function AppV2Sidebar({
 
       <div className="chat-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4">
         <SidebarSection
-          title="Workspaces"
+          title={t('threads.sidebar.workspaces')}
           isOpen={isWorkspacesOpen}
           onToggle={() => setIsWorkspacesOpen((current) => !current)}
           action={
@@ -471,8 +496,8 @@ export function AppV2Sidebar({
                 void handleCreateWorkspace()
               }}
               disabled={createWorkspaceMutation.isPending}
-              aria-label="Create workspace"
-              title="Create workspace"
+              aria-label={t('threads.sidebar.createWorkspace')}
+              title={t('threads.sidebar.createWorkspace')}
             >
               <FolderPlus className="size-4" />
             </Button>
@@ -482,10 +507,14 @@ export function AppV2Sidebar({
           <div className="space-y-3">
             <div className="space-y-1">
               {isLoading ? (
-                <p className="px-2 text-xs text-muted-foreground">Loading workspaces...</p>
+                <p className="px-2 text-xs text-muted-foreground">
+                  {t('threads.sidebar.loadingWorkspaces')}
+                </p>
               ) : null}
               {namedWorkspaces.length === 0 && !isLoading ? (
-                <p className="px-2 text-xs text-muted-foreground">No named workspaces yet.</p>
+                <p className="px-2 text-xs text-muted-foreground">
+                  {t('threads.sidebar.noWorkspaces')}
+                </p>
               ) : null}
               {namedWorkspaces.map((workspace) => {
                 const isActive = activeWorkspaceId === workspace.id
@@ -506,8 +535,18 @@ export function AppV2Sidebar({
                         size="icon"
                         className="size-7 shrink-0"
                         onClick={() => toggleWorkspaceOpen(workspace.id)}
-                        aria-label={`${workspaceOpen ? 'Collapse' : 'Expand'} ${workspace.name}`}
-                        title={`${workspaceOpen ? 'Collapse' : 'Expand'} ${workspace.name}`}
+                        aria-label={t(
+                          workspaceOpen
+                            ? 'threads.sidebar.collapseWorkspace'
+                            : 'threads.sidebar.expandWorkspace',
+                          { name: workspace.name }
+                        )}
+                        title={t(
+                          workspaceOpen
+                            ? 'threads.sidebar.collapseWorkspace'
+                            : 'threads.sidebar.expandWorkspace',
+                          { name: workspace.name }
+                        )}
                       >
                         {workspaceOpen ? (
                           <ChevronDown className="size-3.5" />
@@ -534,8 +573,12 @@ export function AppV2Sidebar({
                       >
                         <NavLink
                           to={`/workspaces/${workspace.id}/new`}
-                          aria-label={`New thread in ${workspace.name}`}
-                          title={`New thread in ${workspace.name}`}
+                          aria-label={t('threads.sidebar.newThreadInWorkspace', {
+                            name: workspace.name
+                          })}
+                          title={t('threads.sidebar.newThreadInWorkspace', {
+                            name: workspace.name
+                          })}
                         >
                           <Plus className="size-3.5" />
                         </NavLink>
@@ -556,12 +599,16 @@ export function AppV2Sidebar({
         </SidebarSection>
         {errorMessage ? <p className="mt-2 px-2 text-xs text-destructive">{errorMessage}</p> : null}
         <SidebarSection
-          title="Chats"
+          title={t('threads.sidebar.chats')}
           isOpen={isChatsOpen}
           onToggle={() => setIsChatsOpen((current) => !current)}
           action={
             <Button asChild variant="ghost" size="icon" className="size-7">
-              <NavLink to="/chat/new" aria-label="New chat" title="New chat">
+              <NavLink
+                to="/chat/new"
+                aria-label={t('appShell.nav.newChat')}
+                title={t('appShell.nav.newChat')}
+              >
                 <Plus className="size-4" />
               </NavLink>
             </Button>
@@ -581,9 +628,9 @@ export function AppV2Sidebar({
 
       <div className="border-t border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-3">
         <Button asChild variant="ghost" className="w-full justify-start">
-          <NavLink to="/settings/general" aria-label="Open settings">
+          <NavLink to="/settings/general" aria-label={t('appShell.nav.openSettings')}>
             <Settings className="size-4" />
-            Settings
+            {t('appShell.nav.settings')}
           </NavLink>
         </Button>
       </div>

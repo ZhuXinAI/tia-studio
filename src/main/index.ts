@@ -40,6 +40,7 @@ import {
 } from './persistence/repos/managed-runtimes-repo'
 import { McpServersRepository } from './persistence/repos/mcp-servers-repo'
 import { ProvidersRepository } from './persistence/repos/providers-repo'
+import { PermissionRulesRepository } from './persistence/repos/permission-rules-repo'
 import { WebSearchSettingsRepository } from './persistence/repos/web-search-settings-repo'
 import { WorkspaceRecordsRepository } from './persistence/repos/workspace-records-repo'
 import {
@@ -291,6 +292,7 @@ async function startLocalApiServer(): Promise<void> {
   persistenceDatabasePath = join(app.getPath('userData'), 'tia-studio.db')
   const db = await migrateAppSchema(persistenceDatabasePath)
   const providersRepo = new ProvidersRepository(db)
+  const permissionRulesRepo = new PermissionRulesRepository(db)
   const agentSessionsRepo = new AgentSessionsRepository(db)
   const automationsRepo = new AutomationsRepository(db)
   const workspaceRecordsRepo = new WorkspaceRecordsRepository(db)
@@ -319,6 +321,7 @@ async function startLocalApiServer(): Promise<void> {
   agentRuntimeManager = new AgentRuntimeManager({
     sessionsRepo: agentSessionsRepo,
     providersRepo,
+    permissionRulesRepo,
     agentDataRoot: join(app.getPath('userData'), 'pi-agent'),
     sessionDataRoot: join(app.getPath('userData'), 'pi-sessions'),
     credentialRoot: app.getPath('userData'),
@@ -489,6 +492,7 @@ async function startLocalApiServer(): Promise<void> {
     },
     repositories: {
       providers: providersRepo,
+      permissionRules: permissionRulesRepo,
       workspaces: workspacesRepo,
       channels: channelsRepo,
       pairings: channelPairingsRepo,
@@ -570,6 +574,7 @@ function createMainWindow(): BrowserWindow {
   const desktopWindowBackgroundColor = '#101214'
   // Create the browser window.
   const browserWindow = new BrowserWindow({
+    title: 'TIA Studio',
     width: 1280,
     height: 860,
     minWidth: 720,

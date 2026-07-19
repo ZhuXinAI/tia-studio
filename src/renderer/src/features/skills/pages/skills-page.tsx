@@ -7,14 +7,16 @@ import { Input } from '../../../components/ui/input'
 import { cn } from '../../../lib/utils'
 import { McpServersSettingsPage } from '../../settings/pages/mcp-servers-settings-page'
 import { useInstallMarketplaceSkill, useSkillMarketplace } from '../skills-query'
+import { useTranslation } from '../../../i18n/use-app-translation'
 
-function formatInstalls(installs: number): string {
-  return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(
+function formatInstalls(installs: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 }).format(
     installs
   )
 }
 
 export function SkillsPage(): React.JSX.Element {
+  const { t, i18n } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') === 'mcps' ? 'mcps' : 'skills'
   const [query, setQuery] = useState('')
@@ -32,9 +34,9 @@ export function SkillsPage(): React.JSX.Element {
   async function install(skillId: string): Promise<void> {
     try {
       await installMutation.mutateAsync({ skillId })
-      toast.success('Installed for every TIA workspace')
+      toast.success(t('skills.installSuccess'))
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Skill installation failed')
+      toast.error(error instanceof Error ? error.message : t('skills.installFailed'))
     }
   }
 
@@ -43,16 +45,14 @@ export function SkillsPage(): React.JSX.Element {
       <header className="border-b border-[color:var(--surface-border)] px-7 pt-5">
         <div className="flex items-end justify-between gap-4 pb-5">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Skills and MCPs</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Extend Pi with owned skill bundles and shared MCP servers.
-            </p>
+            <h1 className="text-2xl font-semibold tracking-tight">{t('skills.title')}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t('skills.description')}</p>
           </div>
         </div>
-        <nav className="flex gap-6" aria-label="Extensions">
+        <nav className="flex gap-6" aria-label={t('skills.extensionsLabel')}>
           {[
-            ['skills', 'Skills', Sparkles],
-            ['mcps', 'MCPs', Cable]
+            ['skills', t('skills.skillsTab'), Sparkles],
+            ['mcps', t('skills.mcpsTab'), Cable]
           ].map(([id, label, Icon]) => (
             <button
               key={id as string}
@@ -83,7 +83,7 @@ export function SkillsPage(): React.JSX.Element {
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search the top 20"
+                placeholder={t('skills.searchPlaceholder')}
                 className="pl-9"
               />
             </div>
@@ -92,11 +92,11 @@ export function SkillsPage(): React.JSX.Element {
           <div className="chat-scrollbar min-h-0 flex-1 overflow-y-auto px-7 py-5">
             <div className="mx-auto max-w-5xl">
               <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
-                <span>Top skills on skills.sh · all time</span>
-                <span>Installed skills are available to every Pi workspace</span>
+                <span>{t('skills.catalogLabel')}</span>
+                <span>{t('skills.globalScope')}</span>
               </div>
               {isLoading ? (
-                <p className="py-8 text-sm text-muted-foreground">Loading catalog…</p>
+                <p className="py-8 text-sm text-muted-foreground">{t('skills.loading')}</p>
               ) : null}
               <div className="grid gap-px overflow-hidden rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-border)] lg:grid-cols-2">
                 {visibleSkills.map((skill) => (
@@ -112,12 +112,15 @@ export function SkillsPage(): React.JSX.Element {
                         <h2 className="truncate text-sm font-medium">{skill.name}</h2>
                         {skill.installedGlobal ? (
                           <span className="rounded-full bg-[color:var(--surface-muted)] px-2 py-0.5 text-[10px]">
-                            Installed
+                            {t('skills.installed')}
                           </span>
                         ) : null}
                       </div>
                       <p className="mt-1 truncate text-xs text-muted-foreground">
-                        {skill.source} · {formatInstalls(skill.installs)} installs
+                        {skill.source} ·{' '}
+                        {t('skills.installs', {
+                          formattedCount: formatInstalls(skill.installs, i18n.language)
+                        })}
                       </p>
                     </div>
                     <Button
@@ -132,7 +135,7 @@ export function SkillsPage(): React.JSX.Element {
                       ) : (
                         <Download className="size-3.5" />
                       )}{' '}
-                      {skill.installedGlobal ? 'Installed' : 'Install'}
+                      {skill.installedGlobal ? t('skills.installed') : t('skills.install')}
                     </Button>
                   </article>
                 ))}

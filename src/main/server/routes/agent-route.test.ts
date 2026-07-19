@@ -160,6 +160,23 @@ describe('agent route', () => {
     expect(runtime.setModel).toHaveBeenCalledWith('session-1', 'provider-1', 'openai', 'gpt-5')
   })
 
+  it('accepts a structured permission outcome', async () => {
+    const response = await app.request(
+      'http://localhost/v1/agent/sessions/session-1/interactions',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: 'permission-1', permissionOutcome: 'allow-workspace' })
+      }
+    )
+
+    expect(response.status).toBe(200)
+    expect(runtime.respondToInteraction).toHaveBeenCalledWith('session-1', {
+      id: 'permission-1',
+      permissionOutcome: 'allow-workspace'
+    })
+  })
+
   it('streams ordered application events over SSE and unsubscribes on cancel', async () => {
     let listener: ((event: AppAgentEvent) => void) | undefined
     const unsubscribe = vi.fn()

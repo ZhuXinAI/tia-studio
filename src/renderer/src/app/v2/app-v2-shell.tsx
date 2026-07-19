@@ -43,20 +43,15 @@ export function AppV2Shell(): React.JSX.Element {
           <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
             <div className="app-window-ambient absolute inset-0" />
           </div>
-          <div
-            className={clsx(
-              'drag-region fixed left-0 right-0 top-0 z-30 flex h-8 items-center justify-center border-b border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] px-24',
-              {
-                'pl-[80px]': !isWindowsPlatform()
-              }
-            )}
-          >
-            {titlebarTitle ? (
-              <span className="truncate text-xs font-medium text-muted-foreground">
-                {titlebarTitle}
-              </span>
-            ) : null}
-          </div>
+          {!isWindowsPlatform() ? (
+            <div className="drag-region fixed left-0 right-0 top-0 z-30 flex h-8 items-center justify-center border-b border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] px-24 pl-[80px]">
+              {titlebarTitle ? (
+                <span className="truncate text-xs font-medium text-muted-foreground">
+                  {titlebarTitle}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           <div className="relative flex min-h-0 flex-1 overflow-hidden">
             <div className="flex min-h-0 flex-1 overflow-hidden">
               {shouldShowSidebar ? (
@@ -69,7 +64,8 @@ export function AppV2Shell(): React.JSX.Element {
                 <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
                   <main
                     className={clsx(
-                      'min-h-0 min-w-0 flex-1 bg-transparent pt-8',
+                      'min-h-0 min-w-0 flex-1 bg-transparent',
+                      !isWindowsPlatform() && 'pt-8',
                       isSettingsRoute ? 'overflow-hidden' : 'overflow-hidden'
                     )}
                   >

@@ -18,16 +18,23 @@ function parseJsonBodyErrorResponse() {
   }
 }
 
+function providerResponse<T extends { apiKey: string }>(provider: T, includeApiKey: boolean) {
+  return {
+    ...provider,
+    apiKey: includeApiKey ? provider.apiKey : '',
+    hasApiKey: provider.apiKey.trim().length > 0
+  }
+}
+
+function canReadProviderCredentials(authorization: string | undefined): boolean {
+  return authorization?.startsWith('Bearer ') === true
+}
+
 export function registerProvidersRoute(app: Hono, options: RegisterProvidersRouteOptions): void {
   app.get('/v1/providers', async (context) => {
     const providers = await options.providersRepo.list()
-    return context.json(
-      providers.map((provider) => ({
-        ...provider,
-        apiKey: '',
-        hasApiKey: provider.apiKey.trim().length > 0
-      }))
-    )
+    const includeApiKey = canReadProviderCredentials(context.req.header('Authorization'))
+    return context.json(providers.map((provider) => providerResponse(provider, includeApiKey)))
   })
 
   app.post('/v1/providers', async (context) => {
@@ -48,7 +55,7 @@ export function registerProvidersRoute(app: Hono, options: RegisterProvidersRout
 
     const provider = await options.providersRepo.create(parsed.data)
     return context.json(
-      { ...provider, apiKey: '', hasApiKey: provider.apiKey.trim().length > 0 },
+      providerResponse(provider, canReadProviderCredentials(context.req.header('Authorization'))),
       201
     )
   })
@@ -77,7 +84,9 @@ export function registerProvidersRoute(app: Hono, options: RegisterProvidersRout
       return context.json({ ok: false, error: 'Provider not found' }, 404)
     }
 
-    return context.json({ ...provider, apiKey: '', hasApiKey: provider.apiKey.trim().length > 0 })
+    return context.json(
+      providerResponse(provider, canReadProviderCredentials(context.req.header('Authorization')))
+    )
   })
 
   app.delete('/v1/providers/:providerId', async (context) => {
