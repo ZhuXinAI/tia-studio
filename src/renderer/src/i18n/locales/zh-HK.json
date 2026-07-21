@@ -71,6 +71,10 @@
     "display": {
       "title": "顯示設定",
       "description": "調整 TIA Studio 的外觀",
+      "kickers": {
+        "themeAppearance": "Theme and appearance",
+        "appearance": "Appearance"
+      },
       "themeLabel": "主題",
       "themeOptions": {
         "light": "淺色",
@@ -78,7 +82,17 @@
         "system": "跟隨系統"
       },
       "transparentTitle": "透明視窗",
-      "transparentDescription": "啟用通透視窗背景（需要重新啟動）"
+      "transparentDescription": "啟用通透視窗背景（需要重新啟動）",
+      "tokens": {
+        "kicker": "Appearance Tokens",
+        "title": "Neutral tuning",
+        "description": "Adjust the accent, background, and foreground colors while keeping the neutral visual system intact.",
+        "accent": "Accent",
+        "background": "Background",
+        "foreground": "Foreground",
+        "colorAriaLabel": "{{label}} color",
+        "reset": "Reset to Default"
+      }
     },
     "about": {
       "title": "關於與回饋",
@@ -302,6 +316,16 @@
     "mcp": {
       "title": "MCP 伺服器設定",
       "description": "管理本機 mcp.json 並控制全域 MCP 啟用狀態。",
+      "headerDescription": "Connect shared tools that TIA Studio can use across local sessions.",
+      "savedServers": "Saved servers",
+      "serverCount_one": "{{count}} server",
+      "serverCount_other": "{{count}} servers",
+      "emptyTitle": "No MCP servers configured",
+      "emptyDescription": "Add a server to make its tools available to TIA Studio.",
+      "status": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
       "buttons": {
         "addServer": "新增 MCP 伺服器",
         "editJson": "編輯 JSON",
@@ -334,6 +358,15 @@
         "fieldLabel": "MCP 設定 JSON",
         "helper": "套用變更時會驗證 JSON 解析與 MCP 欄位規則。"
       },
+      "dialog": {
+        "addTitle": "Add MCP server",
+        "editTitle": "Edit MCP server",
+        "description": "Configure how TIA Studio starts or connects to this tool server.",
+        "available": "Available to TIA Studio",
+        "enableDescription": "Enable this server for new sessions.",
+        "enableAriaLabel": "Enable MCP server",
+        "serverId": "Server ID"
+      },
       "validation": {
         "unexpectedError": "要求發生未預期錯誤",
         "invalidPayload": "MCP 設定資料無效。",
@@ -348,6 +381,9 @@
     "channels": {
       "title": "頻道",
       "description": "在同一處管理已設定的 WhatsApp、Telegram、Lark 與企業微信頻道。",
+      "activeCount": "Active Channels",
+      "pairingQueues": "Pairing Queues",
+      "routeDescription": "Routes messages to TIA Studio in the built-in Chats workspace.",
       "configuredTitle": "已設定頻道",
       "configuredDescription": "編輯現有頻道憑證、查看綁定關係，或移除未使用的頻道。",
       "channelTypes": {
@@ -514,7 +550,7 @@
   },
   "automations": {
     "title": "排程",
-    "description": "由 TIA Studio 管理並執行的定時 Pi 工作。",
+    "description": "由 TIA Studio 管理並執行的定時工作。",
     "new": "新增排程",
     "edit": "編輯排程",
     "loading": "正在載入…",

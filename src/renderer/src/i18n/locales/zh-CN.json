@@ -71,6 +71,10 @@
     "display": {
       "title": "显示设置",
       "description": "调整 TIA Studio 的外观",
+      "kickers": {
+        "themeAppearance": "Theme and appearance",
+        "appearance": "Appearance"
+      },
       "themeLabel": "主题",
       "themeOptions": {
         "light": "浅色",
@@ -78,7 +82,17 @@
         "system": "跟随系统"
       },
       "transparentTitle": "透明窗口",
-      "transparentDescription": "启用通透的透明窗口背景（需要重启）"
+      "transparentDescription": "启用通透的透明窗口背景（需要重启）",
+      "tokens": {
+        "kicker": "Appearance Tokens",
+        "title": "Neutral tuning",
+        "description": "Adjust the accent, background, and foreground colors while keeping the neutral visual system intact.",
+        "accent": "Accent",
+        "background": "Background",
+        "foreground": "Foreground",
+        "colorAriaLabel": "{{label}} color",
+        "reset": "Reset to Default"
+      }
     },
     "about": {
       "title": "关于与反馈",
@@ -302,6 +316,16 @@
     "mcp": {
       "title": "MCP 服务器设置",
       "description": "管理本地 mcp.json 并控制全局 MCP 启用状态。",
+      "headerDescription": "Connect shared tools that TIA Studio can use across local sessions.",
+      "savedServers": "Saved servers",
+      "serverCount_one": "{{count}} server",
+      "serverCount_other": "{{count}} servers",
+      "emptyTitle": "No MCP servers configured",
+      "emptyDescription": "Add a server to make its tools available to TIA Studio.",
+      "status": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
       "buttons": {
         "addServer": "添加 MCP 服务器",
         "editJson": "编辑 JSON",
@@ -334,6 +358,15 @@
         "fieldLabel": "MCP 设置 JSON",
         "helper": "应用更改时会校验 JSON 解析和 MCP 字段规则。"
       },
+      "dialog": {
+        "addTitle": "Add MCP server",
+        "editTitle": "Edit MCP server",
+        "description": "Configure how TIA Studio starts or connects to this tool server.",
+        "available": "Available to TIA Studio",
+        "enableDescription": "Enable this server for new sessions.",
+        "enableAriaLabel": "Enable MCP server",
+        "serverId": "Server ID"
+      },
       "validation": {
         "unexpectedError": "请求发生意外错误",
         "invalidPayload": "MCP 设置数据无效。",
@@ -348,6 +381,9 @@
     "channels": {
       "title": "频道",
       "description": "在统一的全局设置中管理可复用的频道连接和凭证。",
+      "activeCount": "Active Channels",
+      "pairingQueues": "Pairing Queues",
+      "routeDescription": "Routes messages to TIA Studio in the built-in Chats workspace.",
       "configuredTitle": "频道连接",
       "configuredDescription": "查看连接状态、更新凭证，或移除不再需要的频道。",
       "channelTypes": {
@@ -514,7 +550,7 @@
   },
   "automations": {
     "title": "计划任务",
-    "description": "由 TIA Studio 管理并执行的定时 Pi 工作。",
+    "description": "由 TIA Studio 管理并执行的定时工作。",
     "new": "新建计划",
     "edit": "编辑计划",
     "loading": "正在加载…",

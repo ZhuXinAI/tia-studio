@@ -1,6 +1,6 @@
 import { Bot, Check, ChevronDown, Circle, ListTodo, Shield, ShieldCheck } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { NavLink, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { NavLink, useNavigate, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type {
@@ -30,7 +30,10 @@ import {
   useAgentSession,
   useCreateAgentSession
 } from '../../features/threads/agent-sessions-query'
-import { PiThreadRuntimeProvider } from '../../features/threads/components/pi-thread-runtime'
+import {
+  NewPiThreadRuntimeProvider,
+  PiThreadRuntimeProvider
+} from '../../features/threads/components/pi-thread-runtime'
 import { useProviders } from '../../features/settings/providers/providers-query'
 import { useWorkspaces } from '../../features/workspaces/workspaces-query'
 import { toErrorMessage } from '../../features/threads/thread-page-routing'
@@ -83,7 +86,11 @@ function ThreadComposerControls({
             <ChevronDown className="size-3 shrink-0 opacity-60" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" side="top" className="w-64">
+        <DropdownMenuContent
+          align="start"
+          side="top"
+          className="max-h-[200px] w-64 overflow-y-auto"
+        >
           {enabledProviders.map((provider, providerIndex) => {
             const providerModels = provider.providerModels?.includes(provider.selectedModel)
               ? provider.providerModels
@@ -120,7 +127,11 @@ function ThreadComposerControls({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-7 gap-1.5 rounded-lg px-2 text-xs font-normal text-muted-foreground"
+            className={
+              session.accessMode === 'full'
+                ? 'h-7 gap-1.5 rounded-lg bg-amber-900/30 px-2 text-xs font-medium text-amber-800 hover:bg-amber-900/40 dark:text-amber-200'
+                : 'h-7 gap-1.5 rounded-lg px-2 text-xs font-normal text-muted-foreground'
+            }
             aria-label={t('threads.composer.selectPermission')}
             disabled={disabled}
           >
@@ -379,7 +390,6 @@ function InteractionCard({
 export function ThreadPageV2(): React.JSX.Element {
   const { t } = useTranslation()
   const params = useParams<{ workspaceId?: string; threadId?: string }>()
-  const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const createSession = useCreateAgentSession()
@@ -394,12 +404,9 @@ export function ThreadPageV2(): React.JSX.Element {
     params.threadId ?? null
   )
   const [behavior, setBehavior] = useState<AgentSendBehavior>('steer')
-  const [creationError, setCreationError] = useState<string | null>(null)
-  const creationStartedRef = useRef(false)
   const modelReconciliationRef = useRef<string | null>(null)
   const rightRail = useAppV2ShellRightRail()
   const { setTitle: setTitlebarTitle } = useAppV2Titlebar()
-  const isNewThreadRoute = location.pathname.endsWith('/new')
 
   const workspace = useMemo(
     () =>
@@ -423,51 +430,6 @@ export function ThreadPageV2(): React.JSX.Element {
     setTitlebarTitle(session?.title ?? null)
     return () => setTitlebarTitle(null)
   }, [session?.title, setTitlebarTitle])
-
-  useEffect(() => {
-    if (params.threadId || !isNewThreadRoute) {
-      creationStartedRef.current = false
-      return
-    }
-    if (
-      creationStartedRef.current ||
-      workspacesLoading ||
-      providersLoading ||
-      creationError ||
-      !workspace ||
-      !provider
-    ) {
-      return
-    }
-
-    creationStartedRef.current = true
-    void createSession
-      .mutateAsync({
-        workspaceId: workspace.builtInKind === 'chats' ? null : workspace.id,
-        workspacePath: workspace.rootPath,
-        providerId: provider.id,
-        provider: provider.type,
-        modelId: provider.selectedModel,
-        accessMode: 'standard'
-      })
-      .then((created) => navigate(sessionHref(created), { replace: true }))
-      .catch((error) => {
-        const message = toErrorMessage(error)
-        creationStartedRef.current = false
-        setCreationError(message)
-        toast.error(message)
-      })
-  }, [
-    createSession,
-    navigate,
-    isNewThreadRoute,
-    params.threadId,
-    provider,
-    providersLoading,
-    workspace,
-    creationError,
-    workspacesLoading
-  ])
 
   async function toggleAccess(full: boolean): Promise<void> {
     if (!session) return
@@ -513,19 +475,6 @@ export function ThreadPageV2(): React.JSX.Element {
     void changeModel(currentProvider, currentProvider.selectedModel)
   }, [changeModel, providers, session])
 
-  if (!params.threadId && !isNewThreadRoute) {
-    return (
-      <div className="grid h-full place-items-center p-8 text-center">
-        <div className="space-y-2">
-          <p className="font-medium">{t('threads.page.noSelection')}</p>
-          <p className="text-sm text-muted-foreground">
-            {t('threads.page.noSelectionDescription')}
-          </p>
-        </div>
-      </div>
-    )
-  }
-
   if (!params.threadId) {
     if (!providersLoading && !provider) {
       return (
@@ -539,29 +488,30 @@ export function ThreadPageV2(): React.JSX.Element {
         </div>
       )
     }
-    if (creationError) {
+    if (workspacesLoading || providersLoading || !workspace || !provider) {
       return (
-        <div className="grid h-full place-items-center p-8 text-center">
-          <div className="max-w-md space-y-3">
-            <p className="font-medium">{t('threads.page.startFailed')}</p>
-            <p className="text-sm text-muted-foreground">{creationError}</p>
-            <Button
-              variant="outline"
-              onClick={() => {
-                creationStartedRef.current = false
-                setCreationError(null)
-              }}
-            >
-              {t('threads.page.tryAgain')}
-            </Button>
-          </div>
+        <div className="grid h-full place-items-center text-sm text-muted-foreground">
+          {t('threads.page.loading')}
         </div>
       )
     }
     return (
-      <div className="grid h-full place-items-center text-sm text-muted-foreground">
-        {t('threads.page.starting')}
-      </div>
+      <NewPiThreadRuntimeProvider
+        createSession={() =>
+          createSession.mutateAsync({
+            workspaceId: workspace.builtInKind === 'chats' ? null : workspace.id,
+            workspacePath: workspace.rootPath,
+            providerId: provider.id,
+            provider: provider.type,
+            modelId: provider.selectedModel,
+            accessMode: 'standard'
+          })
+        }
+        onCreated={(created) => navigate(sessionHref(created), { replace: true })}
+        onError={(error) => toast.error(toErrorMessage(error))}
+      >
+        <Thread />
+      </NewPiThreadRuntimeProvider>
     )
   }
 

@@ -424,12 +424,16 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                <span className="text-sm font-medium text-muted-foreground">Active Channels</span>
+                <span className="text-sm font-medium text-muted-foreground">
+                  {t('settings.channels.activeCount')}
+                </span>
                 <span className="font-editorial text-xl leading-none">{activeChannelCount}</span>
               </div>
               <div className="h-4 w-px bg-[color:var(--surface-border)]" />
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">Pairing Queues</span>
+                <span className="text-sm font-medium text-muted-foreground">
+                  {t('settings.channels.pairingQueues')}
+                </span>
                 <span className="font-editorial text-xl leading-none">{pairingChannelCount}</span>
               </div>
             </div>
@@ -471,7 +475,7 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                       </div>
 
                       <p className="text-sm text-muted-foreground">
-                        Routes messages to Pi in the built-in Chats workspace.
+                        {t('settings.channels.routeDescription')}
                       </p>
 
                       {channel.type === 'telegram' || channel.type === 'whatsapp' ? (

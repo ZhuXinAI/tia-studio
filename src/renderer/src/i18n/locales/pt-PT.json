@@ -71,6 +71,10 @@
     "display": {
       "title": "Definições de ecrã",
       "description": "Ajuste a aparência do TIA Studio",
+      "kickers": {
+        "themeAppearance": "Theme and appearance",
+        "appearance": "Appearance"
+      },
       "themeLabel": "Tema",
       "themeOptions": {
         "light": "Claro",
@@ -78,7 +82,17 @@
         "system": "Sistema"
       },
       "transparentTitle": "Janela transparente",
-      "transparentDescription": "Ativar fundo de janela transparente vibrante (requer reinício)"
+      "transparentDescription": "Ativar fundo de janela transparente vibrante (requer reinício)",
+      "tokens": {
+        "kicker": "Appearance Tokens",
+        "title": "Neutral tuning",
+        "description": "Adjust the accent, background, and foreground colors while keeping the neutral visual system intact.",
+        "accent": "Accent",
+        "background": "Background",
+        "foreground": "Foreground",
+        "colorAriaLabel": "{{label}} color",
+        "reset": "Reset to Default"
+      }
     },
     "about": {
       "title": "Acerca de e feedback",
@@ -302,6 +316,16 @@
     "mcp": {
       "title": "MCP Server Settings",
       "description": "Manage your local mcp.json source-of-truth and control global MCP activation.",
+      "headerDescription": "Connect shared tools that TIA Studio can use across local sessions.",
+      "savedServers": "Saved servers",
+      "serverCount_one": "{{count}} server",
+      "serverCount_other": "{{count}} servers",
+      "emptyTitle": "No MCP servers configured",
+      "emptyDescription": "Add a server to make its tools available to TIA Studio.",
+      "status": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
       "buttons": {
         "addServer": "Add MCP Server",
         "editJson": "Edit JSON",
@@ -334,6 +358,15 @@
         "fieldLabel": "MCP Settings JSON",
         "helper": "JSON parsing and MCP field rules are checked when you apply changes."
       },
+      "dialog": {
+        "addTitle": "Add MCP server",
+        "editTitle": "Edit MCP server",
+        "description": "Configure how TIA Studio starts or connects to this tool server.",
+        "available": "Available to TIA Studio",
+        "enableDescription": "Enable this server for new sessions.",
+        "enableAriaLabel": "Enable MCP server",
+        "serverId": "Server ID"
+      },
       "validation": {
         "unexpectedError": "Unexpected request error",
         "invalidPayload": "Invalid MCP settings payload.",
@@ -348,6 +381,9 @@
     "channels": {
       "title": "Canais",
       "description": "Gira os canais Telegram e Lark configurados num só lugar.",
+      "activeCount": "Active Channels",
+      "pairingQueues": "Pairing Queues",
+      "routeDescription": "Routes messages to TIA Studio in the built-in Chats workspace.",
       "configuredTitle": "Canais configurados",
       "configuredDescription": "Edite credenciais existentes, reveja associações ou remova canais não utilizados.",
       "channelTypes": {
@@ -514,7 +550,7 @@
   },
   "automations": {
     "title": "Schedules",
-    "description": "Scheduled Pi work owned and executed by TIA Studio.",
+    "description": "Trabalho agendado gerido e executado pelo TIA Studio.",
     "new": "New schedule",
     "edit": "Edit schedule",
     "loading": "Loading…",

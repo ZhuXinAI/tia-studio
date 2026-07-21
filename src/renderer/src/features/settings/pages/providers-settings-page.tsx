@@ -151,11 +151,24 @@ export function ProvidersSettingsPage(): React.JSX.Element {
   const [isDeletingProviderId, setIsDeletingProviderId] = useState<string | null>(null)
 
   const savedProviders = useMemo(
-    () => sortProviders(providers.filter((provider) => provider.isAdded !== false)),
+    () =>
+      sortProviders(
+        providers.filter(
+          (provider) => provider.isAdded !== false && String(provider.type).toLowerCase() !== 'acp'
+        )
+      ),
     [providers]
   )
   const availablePresets = useMemo(
-    () => sortProviders(providers.filter((provider) => provider.isBuiltIn && !provider.isAdded)),
+    () =>
+      sortProviders(
+        providers.filter(
+          (provider) =>
+            provider.isBuiltIn &&
+            !provider.isAdded &&
+            String(provider.type).toLowerCase() !== 'acp'
+        )
+      ),
     [providers]
   )
   const activeProvider = useMemo(

@@ -28,7 +28,7 @@ export const appRoutes: RouteObject[] = [
       },
       {
         path: 'chat',
-        element: <ThreadPageV2 />
+        loader: () => redirect('/chat/new')
       },
       {
         path: 'chat/new',
@@ -40,7 +40,7 @@ export const appRoutes: RouteObject[] = [
       },
       {
         path: 'workspaces/:workspaceId',
-        element: <ThreadPageV2 />
+        loader: ({ params }) => redirect(`/workspaces/${params.workspaceId}/new`)
       },
       {
         path: 'workspaces/:workspaceId/new',

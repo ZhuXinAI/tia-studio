@@ -324,11 +324,8 @@ export function McpServersSettingsPage({
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 pb-12">
       <header className="flex items-end justify-between gap-6 border-b border-[color:var(--surface-border)] pb-5">
         <div className="space-y-2">
-          <h1 className="font-editorial text-[2rem] leading-none tracking-[-0.035em]">
-            MCP servers
-          </h1>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            Connect shared tools that Pi can use across local sessions.
+            {t('settings.mcp.headerDescription')}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -338,7 +335,7 @@ export function McpServersSettingsPage({
           </Button>
           <Button type="button" onClick={openCreateDialog} disabled={isLoading}>
             <Plus className="size-4" />
-            Add server
+            {t('settings.mcp.buttons.addServer')}
           </Button>
         </div>
       </header>
@@ -346,11 +343,11 @@ export function McpServersSettingsPage({
       <section aria-labelledby="saved-mcp-servers-title" className="space-y-3">
         <div className="flex items-center justify-between gap-4">
           <h2 id="saved-mcp-servers-title" className="text-sm font-semibold">
-            Saved servers
+            {t('settings.mcp.savedServers')}
           </h2>
           {!isLoading ? (
             <span className="text-xs tabular-nums text-muted-foreground">
-              {serverEntries.length} {serverEntries.length === 1 ? 'server' : 'servers'}
+              {t('settings.mcp.serverCount', { count: serverEntries.length })}
             </span>
           ) : null}
         </div>
@@ -365,14 +362,14 @@ export function McpServersSettingsPage({
           {!isLoading && serverEntries.length === 0 ? (
             <div className="flex items-center justify-between gap-6 px-5 py-6">
               <div className="space-y-1">
-                <p className="font-medium">No MCP servers configured</p>
+                <p className="font-medium">{t('settings.mcp.emptyTitle')}</p>
                 <p className="text-sm text-muted-foreground">
-                  Add a server to make its tools available to Pi.
+                  {t('settings.mcp.emptyDescription')}
                 </p>
               </div>
               <Button type="button" variant="outline" onClick={openCreateDialog}>
                 <Plus className="size-4" />
-                Add server
+                {t('settings.mcp.buttons.addServer')}
               </Button>
             </div>
           ) : null}
@@ -413,7 +410,9 @@ export function McpServersSettingsPage({
                       server.isActive ? 'bg-emerald-500' : 'bg-muted-foreground/50'
                     )}
                   />
-                  {server.isActive ? 'Enabled' : 'Disabled'}
+                  {server.isActive
+                    ? t('settings.mcp.status.enabled')
+                    : t('settings.mcp.status.disabled')}
                 </span>
               </button>
               <div className="flex shrink-0 items-center gap-1">
@@ -456,10 +455,12 @@ export function McpServersSettingsPage({
         <DialogContent className="flex max-h-[88vh] max-w-2xl flex-col gap-0 overflow-hidden p-0">
           <DialogHeader className="border-b border-[color:var(--surface-border)] px-6 py-5 pr-14">
             <DialogTitle>
-              {serverDialogMode === 'edit' ? 'Edit MCP server' : 'Add MCP server'}
+              {serverDialogMode === 'edit'
+                ? t('settings.mcp.dialog.editTitle')
+                : t('settings.mcp.dialog.addTitle')}
             </DialogTitle>
             <DialogDescription>
-              Configure how Pi starts or connects to this tool server.
+              {t('settings.mcp.dialog.description')}
             </DialogDescription>
           </DialogHeader>
 
@@ -468,21 +469,21 @@ export function McpServersSettingsPage({
               <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
                 <div className="flex items-center justify-between gap-5 rounded-lg border border-[color:var(--surface-border)] px-4 py-3">
                   <div>
-                    <p className="text-sm font-medium">Available to Pi</p>
+                    <p className="text-sm font-medium">{t('settings.mcp.dialog.available')}</p>
                     <p className="text-xs text-muted-foreground">
-                      Enable this server for new sessions.
+                      {t('settings.mcp.dialog.enableDescription')}
                     </p>
                   </div>
                   <Switch
                     checked={formServer.isActive}
                     onCheckedChange={(isActive) => updateFormServer({ isActive })}
-                    aria-label="Enable MCP server"
+                    aria-label={t('settings.mcp.dialog.enableAriaLabel')}
                   />
                 </div>
 
                 {serverDialogMode === 'create' ? (
                   <Field>
-                    <FieldLabel htmlFor="mcp-server-id">Server ID</FieldLabel>
+                    <FieldLabel htmlFor="mcp-server-id">{t('settings.mcp.dialog.serverId')}</FieldLabel>
                     <Input
                       id="mcp-server-id"
                       value={formServerId}
@@ -492,7 +493,8 @@ export function McpServersSettingsPage({
                   </Field>
                 ) : (
                   <div className="text-xs text-muted-foreground">
-                    Server ID <span className="font-mono text-foreground">{activeServerId}</span>
+                    {t('settings.mcp.dialog.serverId')}{' '}
+                    <span className="font-mono text-foreground">{activeServerId}</span>
                   </div>
                 )}
 
@@ -650,7 +652,7 @@ export function McpServersSettingsPage({
               {t('settings.mcp.buttons.cancel')}
             </Button>
             <Button type="button" onClick={() => void saveJsonDialog()} disabled={isSaving}>
-              {isSaving ? 'Saving…' : t('settings.mcp.buttons.save')}
+              {isSaving ? t('settings.mcp.buttons.saving') : t('settings.mcp.buttons.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

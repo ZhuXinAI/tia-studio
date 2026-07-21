@@ -71,6 +71,10 @@
     "display": {
       "title": "Ρυθμίσεις εμφάνισης",
       "description": "Προσαρμόστε την εμφάνιση του TIA Studio",
+      "kickers": {
+        "themeAppearance": "Theme and appearance",
+        "appearance": "Appearance"
+      },
       "themeLabel": "Θέμα",
       "themeOptions": {
         "light": "Ανοιχτό",
@@ -78,7 +82,17 @@
         "system": "Σύστημα"
       },
       "transparentTitle": "Διαφανές παράθυρο",
-      "transparentDescription": "Ενεργοποιήστε ένα έντονο διαφανές φόντο παραθύρου (απαιτείται επανεκκίνηση)"
+      "transparentDescription": "Ενεργοποιήστε ένα έντονο διαφανές φόντο παραθύρου (απαιτείται επανεκκίνηση)",
+      "tokens": {
+        "kicker": "Appearance Tokens",
+        "title": "Neutral tuning",
+        "description": "Adjust the accent, background, and foreground colors while keeping the neutral visual system intact.",
+        "accent": "Accent",
+        "background": "Background",
+        "foreground": "Foreground",
+        "colorAriaLabel": "{{label}} color",
+        "reset": "Reset to Default"
+      }
     },
     "about": {
       "title": "Σχετικά & Σχόλια",
@@ -302,6 +316,16 @@
     "mcp": {
       "title": "Ρυθμίσεις διακομιστή MCP",
       "description": "Διαχειριστείτε το τοπικό mcp.json και ελέγξτε την παγκόσμια ενεργοποίηση MCP.",
+      "headerDescription": "Connect shared tools that TIA Studio can use across local sessions.",
+      "savedServers": "Saved servers",
+      "serverCount_one": "{{count}} server",
+      "serverCount_other": "{{count}} servers",
+      "emptyTitle": "No MCP servers configured",
+      "emptyDescription": "Add a server to make its tools available to TIA Studio.",
+      "status": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
       "buttons": {
         "addServer": "Προσθήκη διακομιστή MCP",
         "editJson": "Επεξεργασία JSON",
@@ -334,6 +358,15 @@
         "fieldLabel": "JSON ρυθμίσεων MCP",
         "helper": "Η ανάλυση JSON και οι κανόνες πεδίων MCP ελέγχονται όταν εφαρμόζετε αλλαγές."
       },
+      "dialog": {
+        "addTitle": "Add MCP server",
+        "editTitle": "Edit MCP server",
+        "description": "Configure how TIA Studio starts or connects to this tool server.",
+        "available": "Available to TIA Studio",
+        "enableDescription": "Enable this server for new sessions.",
+        "enableAriaLabel": "Enable MCP server",
+        "serverId": "Server ID"
+      },
       "validation": {
         "unexpectedError": "Απροσδόκητο σφάλμα αιτήματος",
         "invalidPayload": "Μη έγκυρα δεδομένα ρυθμίσεων MCP.",
@@ -348,6 +381,9 @@
     "channels": {
       "title": "Κανάλια",
       "description": "Διαχειριστείτε τα ρυθμισμένα κανάλια Telegram και Lark σε ένα σημείο.",
+      "activeCount": "Active Channels",
+      "pairingQueues": "Pairing Queues",
+      "routeDescription": "Routes messages to TIA Studio in the built-in Chats workspace.",
       "configuredTitle": "Ρυθμισμένα κανάλια",
       "configuredDescription": "Επεξεργαστείτε υπάρχοντα διαπιστευτήρια, ελέγξτε συνδέσεις ή αφαιρέστε αχρησιμοποίητα κανάλια.",
       "channelTypes": {
@@ -514,7 +550,7 @@
   },
   "automations": {
     "title": "Schedules",
-    "description": "Scheduled Pi work owned and executed by TIA Studio.",
+    "description": "Προγραμματισμένη εργασία που διαχειρίζεται και εκτελεί το TIA Studio.",
     "new": "New schedule",
     "edit": "Edit schedule",
     "loading": "Loading…",

@@ -113,7 +113,7 @@ export function DisplaySettingsPage(): React.JSX.Element {
   return (
     <SettingsContent>
       <header className="space-y-3 border-b border-[color:var(--surface-border)] pb-5">
-        <p className="section-kicker">Theme and appearance</p>
+        <p className="section-kicker">{t('settings.display.kickers.themeAppearance')}</p>
         <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
           {t('settings.display.title')}
         </h1>
@@ -124,7 +124,7 @@ export function DisplaySettingsPage(): React.JSX.Element {
 
       <Card className="border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_96%,transparent),color-mix(in_srgb,var(--surface-panel)_78%,transparent))] shadow-none">
         <CardHeader className="pb-0">
-          <p className="section-kicker">Appearance</p>
+          <p className="section-kicker">{t('settings.display.kickers.appearance')}</p>
           <CardTitle className="font-editorial text-[1.9rem] leading-none tracking-[-0.03em]">
             {t('settings.display.themeLabel')}
           </CardTitle>
@@ -159,19 +159,20 @@ export function DisplaySettingsPage(): React.JSX.Element {
 
           <div className="space-y-4 rounded-[1.25rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-5">
             <div className="space-y-1">
-              <p className="section-kicker text-[0.66rem]">Appearance Tokens</p>
-              <h3 className="text-sm font-medium">Neutral tuning</h3>
+              <p className="section-kicker text-[0.66rem]">
+                {t('settings.display.tokens.kicker')}
+              </p>
+              <h3 className="text-sm font-medium">{t('settings.display.tokens.title')}</h3>
               <p className="text-sm text-muted-foreground">
-                Adjust the accent, background, and foreground colors while keeping the neutral
-                visual system intact.
+                {t('settings.display.tokens.description')}
               </p>
             </div>
 
             <div className="grid gap-3">
               {[
-                ['accentColor', 'Accent'],
-                ['backgroundColor', 'Background'],
-                ['foregroundColor', 'Foreground']
+                ['accentColor', t('settings.display.tokens.accent')],
+                ['backgroundColor', t('settings.display.tokens.background')],
+                ['foregroundColor', t('settings.display.tokens.foreground')]
               ].map(([key, label]) => (
                 <label key={key} className="flex items-center justify-between gap-3 text-sm">
                   <span className="font-medium">{label}</span>
@@ -183,7 +184,7 @@ export function DisplaySettingsPage(): React.JSX.Element {
                         updateAppearanceToken(key as keyof AppearanceTokens, event.target.value)
                       }
                       className="size-9 cursor-pointer rounded-md border border-[color:var(--surface-border)] bg-transparent p-1"
-                      aria-label={`${label} color`}
+                      aria-label={t('settings.display.tokens.colorAriaLabel', { label })}
                     />
                     <code className="w-20 rounded-md bg-[color:var(--surface-muted)] px-2 py-1 text-[11px]">
                       {appearanceTokens[key as keyof AppearanceTokens]}
@@ -195,7 +196,7 @@ export function DisplaySettingsPage(): React.JSX.Element {
 
             <Button type="button" variant="outline" size="sm" onClick={handleResetAppearanceTokens}>
               <RotateCcw className="size-4" />
-              Reset to Default
+              {t('settings.display.tokens.reset')}
             </Button>
           </div>
         </CardContent>

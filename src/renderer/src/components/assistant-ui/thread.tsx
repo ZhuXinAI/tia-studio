@@ -43,7 +43,6 @@ import {
   CheckIcon,
   CopyIcon,
   LoaderCircle,
-  MicIcon,
   SquareIcon
 } from 'lucide-react'
 import {
@@ -251,41 +250,9 @@ const ComposerAction: FC = () => {
     <div className="aui-composer-action-wrapper relative flex items-center justify-between">
       <div className="flex min-w-0 items-center gap-1">
         <ComposerAddAttachment />
-        {ComposerControls ? <ComposerControls /> : null}
       </div>
       <div className="flex items-center gap-1.5">
-        <AuiIf condition={(s) => s.thread.capabilities.dictation}>
-          <AuiIf condition={(s) => s.composer.dictation == null}>
-            <ComposerPrimitive.Dictate asChild>
-              <TooltipIconButton
-                tooltip={t('threads.composer.voiceInput')}
-                side="bottom"
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="aui-composer-dictate size-7 rounded-full"
-                aria-label={t('threads.composer.startVoice')}
-              >
-                <MicIcon className="aui-composer-dictate-icon size-4" />
-              </TooltipIconButton>
-            </ComposerPrimitive.Dictate>
-          </AuiIf>
-          <AuiIf condition={(s) => s.composer.dictation != null}>
-            <ComposerPrimitive.StopDictation asChild>
-              <TooltipIconButton
-                tooltip={t('threads.composer.stopDictation')}
-                side="bottom"
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="aui-composer-stop-dictation text-destructive size-7 rounded-full"
-                aria-label={t('threads.composer.stopVoice')}
-              >
-                <SquareIcon className="aui-composer-stop-dictation-icon size-3.5 animate-pulse fill-current" />
-              </TooltipIconButton>
-            </ComposerPrimitive.StopDictation>
-          </AuiIf>
-        </AuiIf>
+        {ComposerControls ? <ComposerControls /> : null}
         <AuiIf condition={(s) => !s.thread.isRunning}>
           <ComposerPrimitive.Send asChild>
             <TooltipIconButton

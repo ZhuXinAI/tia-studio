@@ -74,8 +74,7 @@ describe('ThreadPageV2 startup', () => {
     delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT
   })
 
-  it('replaces the indefinite loading state with an error and permits retry', async () => {
-    mocks.createSession.mockRejectedValue(new Error('Pi model is unavailable'))
+  it('keeps the new-chat route as an empty composer until the user sends a message', async () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
     })
@@ -93,25 +92,11 @@ describe('ThreadPageV2 startup', () => {
     })
     await flush()
 
-    expect(container.textContent).toContain('Pi could not start')
-    expect(container.textContent).toContain('Pi model is unavailable')
-    expect(container.textContent).not.toContain('Starting Pi…')
-
-    const retry = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === 'Try again'
-    )
-    await act(async () => retry?.click())
-    await flush()
-
-    expect(mocks.createSession).toHaveBeenCalledTimes(2)
+    expect(container.textContent).toContain('What are we building?')
+    expect(mocks.createSession).not.toHaveBeenCalled()
   })
 
-  it('starts sessions only from explicit new-thread routes', async () => {
-    mocks.createSession.mockResolvedValueOnce({ id: 'chat-1', workspaceId: null })
-    mocks.createSession.mockResolvedValueOnce({
-      id: 'workspace-thread-1',
-      workspaceId: 'workspace-1'
-    })
+  it('keeps chat and workspace new routes available without creating sessions on navigation', async () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
     })
@@ -147,7 +132,7 @@ describe('ThreadPageV2 startup', () => {
       )
     })
     await flush()
-    expect(mocks.createSession).toHaveBeenCalledTimes(1)
+    expect(mocks.createSession).not.toHaveBeenCalled()
 
     const workspaceLink = Array.from(container.querySelectorAll('a')).find(
       (link) => link.textContent === 'New workspace thread'
@@ -155,12 +140,6 @@ describe('ThreadPageV2 startup', () => {
     await act(async () => workspaceLink?.click())
     await flush()
 
-    expect(mocks.createSession).toHaveBeenCalledTimes(2)
-    expect(mocks.createSession).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        workspaceId: 'workspace-1',
-        workspacePath: '/tmp/workspace-1'
-      })
-    )
+    expect(mocks.createSession).not.toHaveBeenCalled()
   })
 })

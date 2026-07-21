@@ -105,7 +105,7 @@ export function SettingsSidebarNav(): React.JSX.Element {
           <SidebarMenu>{renderItems(configurationItems)}</SidebarMenu>
         </SidebarGroup>
 
-        <SidebarGroup>
+        <SidebarGroup className="mt-5">
           <SidebarGroupLabel>Preferences</SidebarGroupLabel>
           <SidebarMenu>{renderItems(preferenceItems)}</SidebarMenu>
         </SidebarGroup>

@@ -1,7 +1,6 @@
 import {
   AssistantRuntimeProvider,
   SimpleImageAttachmentAdapter,
-  WebSpeechDictationAdapter,
   useExternalStoreRuntime,
   type AppendMessage
 } from '@assistant-ui/react'
@@ -169,15 +168,7 @@ export function PiThreadRuntimeProvider({
     })
   }, [session.id])
 
-  const adapters = useMemo(
-    () => ({
-      attachments: new SimpleImageAttachmentAdapter(),
-      ...(WebSpeechDictationAdapter.isSupported()
-        ? { dictation: new WebSpeechDictationAdapter({ continuous: true, interimResults: true }) }
-        : {})
-    }),
-    []
-  )
+  const adapters = useMemo(() => ({ attachments: new SimpleImageAttachmentAdapter() }), [])
 
   const runtime = useExternalStoreRuntime({
     isRunning: view.snapshot.status === 'running',
@@ -208,6 +199,47 @@ export function PiThreadRuntimeProvider({
       }
     },
     onCancel: async () => cancelAgentRun(session.id),
+    unstable_capabilities: { copy: true }
+  })
+
+  return <AssistantRuntimeProvider runtime={runtime}>{children}</AssistantRuntimeProvider>
+}
+
+export function NewPiThreadRuntimeProvider({
+  createSession,
+  onCreated,
+  onError,
+  children
+}: {
+  createSession: () => Promise<AgentSessionSnapshot>
+  onCreated: (session: AgentSessionSnapshot) => void
+  onError: (error: unknown) => void
+  children: React.ReactNode
+}): React.JSX.Element {
+  const adapters = useMemo(() => ({ attachments: new SimpleImageAttachmentAdapter() }), [])
+
+  const runtime = useExternalStoreRuntime({
+    isRunning: false,
+    isLoading: false,
+    messages: [] as AppAgentMessage[],
+    convertMessage: (message) => convertMessage(message),
+    adapters,
+    onNew: async (message) => {
+      try {
+        const session = await createSession()
+        onCreated(session)
+        const receipt = await sendAgentMessage({
+          sessionId: session.id,
+          behavior: 'normal',
+          ...extractAppendMessage(message)
+        })
+        if (!receipt.accepted) throw new Error(receipt.error ?? 'TIA Studio rejected the message')
+      } catch (error) {
+        onError(error)
+        throw error
+      }
+    },
+    onCancel: async () => undefined,
     unstable_capabilities: { copy: true }
   })
 
