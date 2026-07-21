@@ -21,7 +21,7 @@ TIA Studio is a local-first Electron workspace for running Pi Coding Agent conve
 ### Connections and configuration
 
 - Locally stored provider profiles with custom endpoints, model lists, connection checks, vision support, and default selection
-- MCP server configuration for stdio and URL-based servers
+- Pi-backed MCP tools from active stdio server configuration
 - Discord, Lark, Telegram, WhatsApp, WeChat, and WeCom channels routed into Pi threads in Chats
 - Language selection, light/dark/system themes, and adjustable appearance colors
 

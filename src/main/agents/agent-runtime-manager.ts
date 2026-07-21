@@ -29,9 +29,20 @@ import { reduceAgentEvent } from '../../shared/agent-runtime'
 import type { AgentSessionsRepository } from '../persistence/repos/agent-sessions-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { PermissionRulesRepository } from '../persistence/repos/permission-rules-repo'
+import type { McpServersRepository } from '../persistence/repos/mcp-servers-repo'
 import { writePiModelConfig } from './pi/pi-model-config'
+import {
+  createMcpClientTools,
+  type McpClientTools,
+  type McpClientToolsOptions
+} from './pi/mcp-client-tools'
+import type { McpServerHealthRegistry } from './pi/mcp-server-health'
 import { createPiPermissionExtension } from './pi/pi-permission-extension'
 import { PiSdkEventMapper } from './pi/pi-sdk-event-mapper'
+import {
+  createTiaStateManagementTools,
+  type TiaStateManagementToolsOptions
+} from './pi/tia-state-management-tools'
 
 type PendingInteraction = {
   resolve: (response: AgentInteractionResponse) => void
@@ -47,6 +58,7 @@ type LiveSession = {
   messages: AppAgentMessage[]
   unsubscribe: () => void
   pendingInteractions: Map<string, PendingInteraction>
+  mcpTools: McpClientTools
 }
 
 export type AgentRuntimeManagerOptions = {
@@ -57,6 +69,10 @@ export type AgentRuntimeManagerOptions = {
   sessionDataRoot: string
   credentialRoot: string
   globalSkillsRoot: string
+  mcpServersRepo?: McpServersRepository
+  mcpServerHealth?: McpServerHealthRegistry
+  resolveMcpCommand?: McpClientToolsOptions['resolveCommand']
+  stateManagement?: Omit<TiaStateManagementToolsOptions, 'workspaceRootPath' | 'confirm'>
 }
 
 function deterministicTitle(text: string): string {
@@ -114,6 +130,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     await runtime.session.abort()
     runtime.unsubscribe()
     runtime.session.dispose()
+    await runtime.mcpTools.close()
     for (const [id, pending] of runtime.pendingInteractions) {
       pending.cleanup?.()
       pending.resolve({ id, cancelled: true })
@@ -340,6 +357,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
         )
       : SessionManager.create(record.workspacePath, this.options.sessionDataRoot, { id: record.id })
     const runtimeRef: { current?: LiveSession } = {}
+    const mcpTools = await this.loadMcpClientTools()
     const resourceLoader = new DefaultResourceLoader({
       cwd: record.workspacePath,
       agentDir,
@@ -500,6 +518,23 @@ export class AgentRuntimeManager implements AppAgentRuntime {
         }
       }
     }
+    const stateManagementTools = this.options.stateManagement
+      ? createTiaStateManagementTools({
+          ...this.options.stateManagement,
+          workspaceRootPath: record.workspacePath,
+          confirm: async ({ title, message }) => {
+            const runtime = runtimeRef.current
+            if (!runtime) throw new Error('The session is not ready to confirm this change')
+            const response = await this.requestInteraction(runtime, {
+              id: randomUUID(),
+              method: 'confirm',
+              title,
+              message
+            })
+            return 'confirmed' in response && response.confirmed
+          }
+        })
+      : []
     const { session } = await createAgentSession({
       cwd: record.workspacePath,
       agentDir,
@@ -509,7 +544,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       sessionManager,
       settingsManager,
       resourceLoader,
-      customTools: [nameTheThread, updateTodoList]
+      customTools: [nameTheThread, updateTodoList, ...stateManagementTools, ...mcpTools.tools]
     })
     const lastSequence = await this.options.sessionsRepo.getLastSequence(record.id)
     const mapper = new PiSdkEventMapper(record.id, () => new Date(), lastSequence)
@@ -521,7 +556,8 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       snapshot: record,
       messages: await this.options.sessionsRepo.listMessages(record.id),
       unsubscribe: () => {},
-      pendingInteractions: new Map()
+      pendingInteractions: new Map(),
+      mcpTools
     }
     runtimeRef.current = runtime
     try {
@@ -540,13 +576,53 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       if (!updated) throw new Error('Pi session record disappeared during startup')
       runtime.snapshot = updated
       if (updated.title !== 'New thread') session.setSessionName(updated.title)
+      for (const notice of mcpTools.notices) {
+        await this.publish(
+          runtime,
+          runtime.mapper.applicationEvent({
+            type: 'runtime.notice',
+            level: 'warning',
+            text: notice
+          })
+        )
+      }
       return updated
     } catch (error) {
       runtime.unsubscribe()
       this.live.delete(record.id)
       await session.abort().catch(() => {})
       session.dispose()
+      await mcpTools.close()
       throw error
+    }
+  }
+
+  private async loadMcpClientTools(): Promise<McpClientTools> {
+    if (!this.options.mcpServersRepo) {
+      return createMcpClientTools({ mcpServers: {} })
+    }
+
+    try {
+      return await createMcpClientTools(await this.options.mcpServersRepo.getSettings(), {
+        resolveCommand: this.options.resolveMcpCommand,
+        onStatus: (update) => {
+          if (update.state === 'connected') {
+            this.options.mcpServerHealth?.connected(update.serverId, update.toolCount)
+          } else if (update.state === 'unsupported') {
+            this.options.mcpServerHealth?.unsupported(update.serverId)
+          } else {
+            this.options.mcpServerHealth?.failed(update.serverId)
+          }
+        }
+      })
+    } catch (error) {
+      return {
+        tools: [],
+        notices: [
+          `MCP tools were unavailable: ${error instanceof Error ? error.message : 'settings could not be loaded'}`
+        ],
+        close: async () => {}
+      }
     }
   }
 

@@ -456,6 +456,9 @@
     "sidebar": {
       "untitledThread": "未命名线程",
       "scheduled": "由计划任务创建",
+      "generating": "Generating response",
+      "newResponse": "New response",
+      "approvalNeeded": "Approval needed",
       "pin": "置顶 {{title}}",
       "unpin": "取消置顶 {{title}}",
       "delete": "删除 {{title}}",
@@ -528,6 +531,7 @@
       "reasoning": "推理",
       "workingFor": "已处理 {{duration}}",
       "workedFor": "处理用时 {{duration}}",
+      "workedForWaitingOnUser": "Worked for {{duration}}, waiting on user",
       "working": "正在处理",
       "copy": "复制"
     }

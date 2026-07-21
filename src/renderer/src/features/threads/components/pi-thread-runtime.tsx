@@ -4,7 +4,7 @@ import {
   useExternalStoreRuntime,
   type AppendMessage
 } from '@assistant-ui/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   AgentAttachment,
   AgentSendBehavior,
@@ -87,7 +87,12 @@ function convertPart(part: AgentMessagePart) {
   }
 }
 
-function convertMessage(message: AppAgentMessage) {
+function convertMessage(message: AppAgentMessage, session?: AgentSessionSnapshot) {
+  const waitingOnUser = Boolean(session?.pendingInteraction) && message.status === 'streaming'
+  const workStartedAtMs = new Date(message.createdAt).getTime()
+  const waitingDurationMs = waitingOnUser
+    ? Math.max(0, new Date(session?.updatedAt ?? message.createdAt).getTime() - workStartedAtMs)
+    : undefined
   return {
     id: message.id,
     role: message.role,
@@ -95,13 +100,13 @@ function convertMessage(message: AppAgentMessage) {
     createdAt: new Date(message.createdAt),
     metadata: {
       custom: {
-        workStartedAtMs: new Date(message.createdAt).getTime(),
-        workDurationMs: message.completedAt
-          ? Math.max(
-              0,
-              new Date(message.completedAt).getTime() - new Date(message.createdAt).getTime()
-            )
-          : undefined
+        workStartedAtMs,
+        workDurationMs:
+          waitingDurationMs ??
+          (message.completedAt
+            ? Math.max(0, new Date(message.completedAt).getTime() - workStartedAtMs)
+            : undefined),
+        waitingOnUser
       }
     },
     ...(message.role === 'assistant'
@@ -169,12 +174,16 @@ export function PiThreadRuntimeProvider({
   }, [session.id])
 
   const adapters = useMemo(() => ({ attachments: new SimpleImageAttachmentAdapter() }), [])
+  const convertMessageForView = useCallback(
+    (message: AppAgentMessage) => convertMessage(message, view.snapshot),
+    [view.snapshot]
+  )
 
   const runtime = useExternalStoreRuntime({
     isRunning: view.snapshot.status === 'running',
     isLoading: view.snapshot.status === 'starting' || view.snapshot.status === 'recovering',
     messages: mergeAssistantRunMessages(view.messages),
-    convertMessage,
+    convertMessage: convertMessageForView,
     adapters,
     onNew: async (message) => {
       const content = extractAppendMessage(message)

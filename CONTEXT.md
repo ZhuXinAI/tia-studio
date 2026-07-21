@@ -84,6 +84,10 @@ _Avoid_: TIA-owned scheduler, heartbeat, hidden background run
 A complete reusable capability bundle installed from TIA Studio's curated skills.sh catalog into either TIA-owned global storage or a workspace's skill folder. Pi discovers global and workspace skills through its resource loader. Skills and MCP servers share one extension surface while remaining distinct runtime concepts.
 _Avoid_: Codex skill import, pretend install, single-file skill copy
 
+**MCP Server**:
+An active stdio Model Context Protocol server configured in TIA Studio. Electron main owns its client and child process for the lifetime of each Pi Thread: it completes MCP initialization, discovers tools, exposes namespaced tools to Pi, and closes the client when the thread closes. URL/OAuth transports are not yet an executable capability.
+_Avoid_: Renderer-owned client, Pi built-in MCP, configured-but-unavailable server
+
 **Appearance Tokens**:
 The user-adjustable visual settings that control TIA Studio's base theme, accent color, background color, and foreground color. Appearance Tokens preserve the product's visual system while allowing personal tuning.
 _Avoid_: Custom CSS, skin, arbitrary theme

@@ -807,3 +807,27 @@ export async function installMarketplaceSkill(input: {
     await rm(cloneRoot, { recursive: true, force: true })
   }
 }
+
+export async function removeMarketplaceSkill(input: {
+  skillId: string
+  globalSkillsRoot: string
+}): Promise<void> {
+  const definition = topSkillDefinitions.find(
+    ([slug, , source]) => `${source}/${slug}` === input.skillId
+  )
+  if (!definition) throw new Error('Skill is not in the TIA catalog')
+  const [slug] = definition
+  const target = path.resolve(input.globalSkillsRoot, slug)
+  if (path.dirname(target) !== path.resolve(input.globalSkillsRoot)) {
+    throw new Error('Skill path is invalid')
+  }
+  try {
+    if (!(await stat(path.join(target, 'SKILL.md'))).isFile()) {
+      throw new Error('Skill is not installed in TIA global storage')
+    }
+  } catch (error) {
+    if (isFileMissingError(error)) throw new Error('Skill is not installed in TIA global storage')
+    throw error
+  }
+  await rm(target, { recursive: true, force: false })
+}

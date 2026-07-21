@@ -9,6 +9,7 @@ import {
   installMarketplaceSkill,
   installRecommendedSkillsWithBunx,
   listSkillMarketplace,
+  removeMarketplaceSkill,
   listSkills,
   listDiscoveredSkillsPage,
   removeWorkspaceSkill
@@ -288,6 +289,28 @@ description: Keeps workspace linting rules.
 
     await expect(
       access(path.join(workspaceDirectory, 'skills', 'workspace-lint', 'SKILL.md'))
+    ).rejects.toBeDefined()
+  })
+
+  it('removes only an installed TIA marketplace skill', async () => {
+    const globalSkillsRoot = path.join(tempRoot, 'tia-global-skills')
+    await createSkill(
+      globalSkillsRoot,
+      'find-skills',
+      `---
+name: find-skills
+description: Finds installable skills.
+---
+`
+    )
+
+    await removeMarketplaceSkill({
+      skillId: 'vercel-labs/skills/find-skills',
+      globalSkillsRoot
+    })
+
+    await expect(
+      access(path.join(globalSkillsRoot, 'find-skills', 'SKILL.md'))
     ).rejects.toBeDefined()
   })
 

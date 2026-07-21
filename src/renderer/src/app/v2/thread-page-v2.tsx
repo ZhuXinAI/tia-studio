@@ -1,6 +1,6 @@
-import { Bot, Check, ChevronDown, Circle, ListTodo, Shield, ShieldCheck } from 'lucide-react'
+import { Bot, Check, ChevronDown, Circle, Folder, ListTodo, Search, Shield, ShieldCheck } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { NavLink, useNavigate, useParams } from 'react-router-dom'
+import { NavLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type {
@@ -36,6 +36,7 @@ import {
 } from '../../features/threads/components/pi-thread-runtime'
 import { useProviders } from '../../features/settings/providers/providers-query'
 import { useWorkspaces } from '../../features/workspaces/workspaces-query'
+import type { WorkspaceRecord } from '../../features/workspaces/workspaces-query'
 import { toErrorMessage } from '../../features/threads/thread-page-routing'
 import { useAppV2ShellRightRail } from './app-v2-shell-right-rail'
 import { useAppV2Titlebar } from './app-v2-titlebar'
@@ -47,15 +48,20 @@ import {
 import type { ProviderRecord } from '../../features/settings/providers/providers-query'
 import { useTranslation } from '../../i18n/use-app-translation'
 
+type ComposerSettings = Pick<
+  AgentSessionSnapshot,
+  'providerId' | 'provider' | 'modelId' | 'accessMode' | 'status'
+>
+
 function ThreadComposerControls({
-  session,
+  settings,
   providers,
   behavior,
   onBehaviorChange,
   onModelChange,
   onAccessChange
 }: {
-  session: AgentSessionSnapshot
+  settings: ComposerSettings
   providers: ProviderRecord[]
   behavior: AgentSendBehavior
   onBehaviorChange: (behavior: AgentSendBehavior) => void
@@ -64,8 +70,8 @@ function ThreadComposerControls({
 }): React.JSX.Element {
   const { t } = useTranslation()
   const enabledProviders = providers.filter((provider) => provider.enabled)
-  const activeProvider = enabledProviders.find((provider) => provider.id === session.providerId)
-  const disabled = session.status === 'running'
+  const activeProvider = enabledProviders.find((provider) => provider.id === settings.providerId)
+  const disabled = settings.status === 'running'
 
   return (
     <>
@@ -81,7 +87,7 @@ function ThreadComposerControls({
           >
             <Bot className="size-3.5 shrink-0" />
             <span className="truncate">
-              {activeProvider?.name ?? session.provider} · {session.modelId}
+              {activeProvider?.name ?? settings.provider} · {settings.modelId}
             </span>
             <ChevronDown className="size-3 shrink-0 opacity-60" />
           </Button>
@@ -110,7 +116,7 @@ function ThreadComposerControls({
                     onSelect={() => onModelChange(provider, modelId)}
                   >
                     <span className="min-w-0 flex-1 truncate">{modelId}</span>
-                    {provider.id === session.providerId && modelId === session.modelId ? (
+                    {provider.id === settings.providerId && modelId === settings.modelId ? (
                       <Check className="size-4" />
                     ) : null}
                   </DropdownMenuItem>
@@ -128,19 +134,19 @@ function ThreadComposerControls({
             variant="ghost"
             size="sm"
             className={
-              session.accessMode === 'full'
+              settings.accessMode === 'full'
                 ? 'h-7 gap-1.5 rounded-lg bg-amber-900/30 px-2 text-xs font-medium text-amber-800 hover:bg-amber-900/40 dark:text-amber-200'
                 : 'h-7 gap-1.5 rounded-lg px-2 text-xs font-normal text-muted-foreground'
             }
             aria-label={t('threads.composer.selectPermission')}
             disabled={disabled}
           >
-            {session.accessMode === 'full' ? (
+            {settings.accessMode === 'full' ? (
               <ShieldCheck className="size-3.5" />
             ) : (
               <Shield className="size-3.5" />
             )}
-            {session.accessMode === 'full'
+            {settings.accessMode === 'full'
               ? t('threads.composer.fullAccess')
               : t('threads.composer.askPermission')}
             <ChevronDown className="size-3 opacity-60" />
@@ -150,14 +156,14 @@ function ThreadComposerControls({
           <DropdownMenuItem onSelect={() => onAccessChange(false)}>
             <Shield className="mr-2 size-4" />
             <span className="flex-1">{t('threads.composer.askPermission')}</span>
-            {session.accessMode === 'standard' ? <Check className="size-4" /> : null}
+            {settings.accessMode === 'standard' ? <Check className="size-4" /> : null}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onAccessChange(true)}>
             <ShieldCheck className="mr-2 size-4" />
             <span className="flex-1">{t('threads.composer.fullAccess')}</span>
-            {session.accessMode === 'full' ? <Check className="size-4" /> : null}
+            {settings.accessMode === 'full' ? <Check className="size-4" /> : null}
           </DropdownMenuItem>
-          {session.status === 'running' ? (
+          {settings.status === 'running' ? (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs text-muted-foreground">
@@ -168,7 +174,7 @@ function ThreadComposerControls({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {session.status === 'running' ? (
+      {settings.status === 'running' ? (
         <select
           value={behavior}
           onChange={(event) => onBehaviorChange(event.target.value as AgentSendBehavior)}
@@ -180,6 +186,91 @@ function ThreadComposerControls({
         </select>
       ) : null}
     </>
+  )
+}
+
+function DraftWorkspacePicker({
+  selectedWorkspace,
+  workspaces,
+  onSelect
+}: {
+  selectedWorkspace: WorkspaceRecord
+  workspaces: WorkspaceRecord[]
+  onSelect: (workspaceId: string | null) => void
+}): React.JSX.Element | null {
+  const { t } = useTranslation()
+  const [query, setQuery] = useState('')
+  const customWorkspaces = workspaces.filter((workspace) => workspace.builtInKind === null)
+  const normalizedQuery = query.trim().toLowerCase()
+  const filteredWorkspaces = customWorkspaces.filter(
+    (workspace) =>
+      !normalizedQuery ||
+      workspace.name.toLowerCase().includes(normalizedQuery) ||
+      workspace.rootPath.toLowerCase().includes(normalizedQuery)
+  )
+
+  if (customWorkspaces.length === 0) return null
+
+  return (
+    <div className="flex justify-center">
+      <DropdownMenu onOpenChange={(open) => !open && setQuery('')}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 max-w-full gap-1.5 rounded-lg px-2.5 text-xs font-normal text-muted-foreground hover:bg-muted"
+            aria-label={t('threads.sidebar.workspaces')}
+          >
+            <Folder className="size-3.5 shrink-0" />
+            <span className="truncate">
+              {selectedWorkspace.builtInKind === 'chats'
+                ? t('threads.sidebar.chats')
+                : selectedWorkspace.name}
+            </span>
+            <ChevronDown className="size-3 shrink-0 opacity-60" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="center" side="top" className="w-80 p-1.5">
+          <div className="relative mb-1.5 px-1" onKeyDown={(event) => event.stopPropagation()}>
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              autoFocus
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t('threads.sidebar.searchWorkspaces')}
+              className="h-8 pl-7 text-xs"
+              aria-label={t('threads.sidebar.searchWorkspaces')}
+            />
+          </div>
+          <DropdownMenuItem onSelect={() => onSelect(null)}>
+            <Folder className="mr-2 size-4 text-muted-foreground" />
+            <span className="flex-1">{t('threads.sidebar.chats')}</span>
+            {selectedWorkspace.builtInKind === 'chats' ? <Check className="size-4" /> : null}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <div className="max-h-48 overflow-y-auto">
+            {filteredWorkspaces.map((workspace) => (
+              <DropdownMenuItem key={workspace.id} onSelect={() => onSelect(workspace.id)}>
+                <Folder className="mr-2 size-4 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{workspace.name}</span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {workspace.rootPath}
+                  </span>
+                </span>
+                {workspace.id === selectedWorkspace.id ? <Check className="ml-2 size-4" /> : null}
+              </DropdownMenuItem>
+            ))}
+            {filteredWorkspaces.length === 0 ? (
+              <p className="px-2.5 py-2 text-xs text-muted-foreground">
+                {t('threads.sidebar.noWorkspaces')}
+              </p>
+            ) : null}
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }
 
@@ -391,6 +482,8 @@ export function ThreadPageV2(): React.JSX.Element {
   const { t } = useTranslation()
   const params = useParams<{ workspaceId?: string; threadId?: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const draftWorkspaceId = searchParams.get('pwd')
   const queryClient = useQueryClient()
   const createSession = useCreateAgentSession()
   const { data: workspaces = [], isLoading: workspacesLoading } = useWorkspaces()
@@ -404,16 +497,31 @@ export function ThreadPageV2(): React.JSX.Element {
     params.threadId ?? null
   )
   const [behavior, setBehavior] = useState<AgentSendBehavior>('steer')
+  const [draftProviderId, setDraftProviderId] = useState<string | null>(null)
+  const [draftModelId, setDraftModelId] = useState<string | null>(null)
+  const [draftAccessMode, setDraftAccessMode] = useState<'standard' | 'full'>('standard')
   const modelReconciliationRef = useRef<string | null>(null)
   const rightRail = useAppV2ShellRightRail()
   const { setTitle: setTitlebarTitle } = useAppV2Titlebar()
 
   const workspace = useMemo(
-    () =>
-      params.workspaceId
+    () => {
+      const requestedWorkspace = draftWorkspaceId
+        ? (workspaces.find(
+            (item) => item.id === draftWorkspaceId && item.builtInKind === null
+          ) ?? null)
+        : null
+      const legacyWorkspace = params.workspaceId
         ? (workspaces.find((item) => item.id === params.workspaceId) ?? null)
-        : (workspaces.find((item) => item.builtInKind === 'chats') ?? null),
-    [params.workspaceId, workspaces]
+        : null
+      return (
+        requestedWorkspace ??
+        legacyWorkspace ??
+        workspaces.find((item) => item.builtInKind === 'chats') ??
+        null
+      )
+    },
+    [draftWorkspaceId, params.workspaceId, workspaces]
   )
   const provider = useMemo(
     () =>
@@ -421,6 +529,27 @@ export function ThreadPageV2(): React.JSX.Element {
       providers.find((item) => item.enabled),
     [providers]
   )
+  const draftProvider = useMemo(
+    () => providers.find((item) => item.enabled && item.id === draftProviderId) ?? provider,
+    [draftProviderId, provider, providers]
+  )
+  const draftModel = draftModelId ?? draftProvider?.selectedModel ?? ''
+
+  useEffect(() => {
+    if (!draftProvider) return
+    if (draftProvider.id !== draftProviderId) {
+      setDraftProviderId(draftProvider.id)
+      setDraftModelId(draftProvider.selectedModel)
+      return
+    }
+    const availableModels = new Set([
+      draftProvider.selectedModel,
+      ...(draftProvider.providerModels ?? [])
+    ])
+    if (!draftModelId || !availableModels.has(draftModelId)) {
+      setDraftModelId(draftProvider.selectedModel)
+    }
+  }, [draftModelId, draftProvider, draftProviderId])
 
   useEffect(() => {
     rightRail.setHasContent(false)
@@ -488,7 +617,7 @@ export function ThreadPageV2(): React.JSX.Element {
         </div>
       )
     }
-    if (workspacesLoading || providersLoading || !workspace || !provider) {
+    if (workspacesLoading || providersLoading || !workspace || !provider || !draftProvider) {
       return (
         <div className="grid h-full place-items-center text-sm text-muted-foreground">
           {t('threads.page.loading')}
@@ -501,16 +630,48 @@ export function ThreadPageV2(): React.JSX.Element {
           createSession.mutateAsync({
             workspaceId: workspace.builtInKind === 'chats' ? null : workspace.id,
             workspacePath: workspace.rootPath,
-            providerId: provider.id,
-            provider: provider.type,
-            modelId: provider.selectedModel,
-            accessMode: 'standard'
+            providerId: draftProvider.id,
+            provider: draftProvider.type,
+            modelId: draftModel,
+            accessMode: draftAccessMode
           })
         }
         onCreated={(created) => navigate(sessionHref(created), { replace: true })}
         onError={(error) => toast.error(toErrorMessage(error))}
       >
-        <Thread />
+        <Thread
+          components={{
+            ComposerHeader: () => (
+              <DraftWorkspacePicker
+                selectedWorkspace={workspace}
+                workspaces={workspaces}
+                onSelect={(workspaceId) => {
+                  const nextSearch = workspaceId ? `?pwd=${encodeURIComponent(workspaceId)}` : ''
+                  navigate(`/chat/new${nextSearch}`)
+                }}
+              />
+            ),
+            ComposerControls: () => (
+              <ThreadComposerControls
+                settings={{
+                  providerId: draftProvider.id,
+                  provider: draftProvider.type,
+                  modelId: draftModel,
+                  accessMode: draftAccessMode,
+                  status: 'idle'
+                }}
+                providers={providers}
+                behavior={behavior}
+                onBehaviorChange={setBehavior}
+                onModelChange={(nextProvider, modelId) => {
+                  setDraftProviderId(nextProvider.id)
+                  setDraftModelId(modelId)
+                }}
+                onAccessChange={(full) => setDraftAccessMode(full ? 'full' : 'standard')}
+              />
+            )
+          }}
+        />
       </NewPiThreadRuntimeProvider>
     )
   }
@@ -553,7 +714,7 @@ export function ThreadPageV2(): React.JSX.Element {
               ComposerHeader: () => <ThreadTodoPanel todos={session.todos ?? []} />,
               ComposerControls: () => (
                 <ThreadComposerControls
-                  session={session}
+                  settings={session}
                   providers={providers}
                   behavior={behavior}
                   onBehaviorChange={setBehavior}

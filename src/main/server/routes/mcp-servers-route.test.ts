@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { describe, expect, it, vi } from 'vitest'
 import { registerMcpServersRoute } from './mcp-servers-route'
+import { McpServerHealthRegistry } from '../../agents/pi/mcp-server-health'
 
 describe('mcp servers settings route', () => {
   it('returns current mcp settings', async () => {
@@ -88,6 +89,26 @@ describe('mcp servers settings route', () => {
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual(payload)
     expect(saveSettings).toHaveBeenCalledWith(payload)
+  })
+
+  it('returns live health separately from persisted configuration', async () => {
+    const health = new McpServerHealthRegistry()
+    health.failed('amap-maps')
+    const app = new Hono()
+    registerMcpServersRoute(app, {
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} })),
+        saveSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never,
+      mcpServerHealth: health
+    })
+
+    const response = await app.request('http://localhost/v1/settings/mcp-servers/health')
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      serverHealth: { 'amap-maps': { state: 'error' } }
+    })
   })
 
   it('rejects invalid mcp settings payloads', async () => {

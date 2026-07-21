@@ -1,9 +1,11 @@
 import type { Hono } from 'hono'
 import type { McpServersRepository } from '../../persistence/repos/mcp-servers-repo'
+import type { McpServerHealthRegistry } from '../../agents/pi/mcp-server-health'
 import { updateMcpServersSettingsSchema } from '../validators/mcp-servers-validator'
 
 type RegisterMcpServersRouteOptions = {
   mcpServersRepo: McpServersRepository
+  mcpServerHealth?: McpServerHealthRegistry
 }
 
 function parseJsonBodyErrorResponse(): {
@@ -27,6 +29,10 @@ export function registerMcpServersRoute(app: Hono, options: RegisterMcpServersRo
     }
   })
 
+  app.get('/v1/settings/mcp-servers/health', (context) => {
+    return context.json({ serverHealth: options.mcpServerHealth?.list() ?? {} })
+  })
+
   app.put('/v1/settings/mcp-servers', async (context) => {
     let body: unknown
     try {
@@ -45,6 +51,7 @@ export function registerMcpServersRoute(app: Hono, options: RegisterMcpServersRo
 
     try {
       const settings = await options.mcpServersRepo.saveSettings(parsed.data)
+      options.mcpServerHealth?.retain(Object.keys(settings.mcpServers))
       return context.json(settings)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to save MCP servers settings'

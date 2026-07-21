@@ -40,11 +40,11 @@ export const appRoutes: RouteObject[] = [
       },
       {
         path: 'workspaces/:workspaceId',
-        loader: ({ params }) => redirect(`/workspaces/${params.workspaceId}/new`)
+        loader: ({ params }) => redirect(`/chat/new?pwd=${encodeURIComponent(params.workspaceId ?? '')}`)
       },
       {
         path: 'workspaces/:workspaceId/new',
-        element: <ThreadPageV2 />
+        loader: ({ params }) => redirect(`/chat/new?pwd=${encodeURIComponent(params.workspaceId ?? '')}`)
       },
       {
         path: 'workspaces/:workspaceId/threads/:threadId',

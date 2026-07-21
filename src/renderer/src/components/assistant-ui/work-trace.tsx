@@ -18,6 +18,9 @@ function formatWorkDuration(milliseconds: number): string {
 const WorkTrace: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
   const running = useAuiState((state) => state.message.status?.type === 'running')
+  const waitingOnUser = useAuiState(
+    (state) => state.message.metadata?.custom?.waitingOnUser === true
+  )
   const messageCreatedAt = useAuiState((state) => state.message.createdAt?.getTime())
   const workStartedAt = useAuiState((state) => {
     const timestamp = state.message.metadata?.custom?.workStartedAtMs
@@ -30,24 +33,32 @@ const WorkTrace: FC<PropsWithChildren> = ({ children }) => {
   const startedAt = workStartedAt ?? messageCreatedAt
   const [open, setOpen] = useState(false)
   const [elapsed, setElapsed] = useState(() => (startedAt ? Date.now() - startedAt : 0))
+  const activelyWorking = running && !waitingOnUser
 
   useEffect(() => {
-    if (!running || !startedAt) return
+    if (!activelyWorking || !startedAt) return
     const update = (): void => setElapsed(Date.now() - startedAt)
     update()
     const timer = window.setInterval(update, 1000)
     return () => window.clearInterval(timer)
-  }, [running, startedAt])
+  }, [activelyWorking, startedAt])
 
-  const duration = resolveWorkDuration({ elapsed, running, storedDuration })
-  const label = t(running ? 'threads.ui.workingFor' : 'threads.ui.workedFor', {
-    duration: formatWorkDuration(duration)
-  })
+  const duration = resolveWorkDuration({ elapsed, running: activelyWorking, storedDuration })
+  const label = t(
+    waitingOnUser
+      ? 'threads.ui.workedForWaitingOnUser'
+      : activelyWorking
+        ? 'threads.ui.workingFor'
+        : 'threads.ui.workedFor',
+    {
+      duration: formatWorkDuration(duration)
+    }
+  )
 
   return (
     <Collapsible className="group/work-trace mb-3" open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger className="flex items-center gap-2 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-        {running ? (
+        {activelyWorking ? (
           <LoaderCircle className="size-3.5 animate-spin" aria-label={t('threads.ui.working')} />
         ) : null}
         <span className="tabular-nums">{label}</span>

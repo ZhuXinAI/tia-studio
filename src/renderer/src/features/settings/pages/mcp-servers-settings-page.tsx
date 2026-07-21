@@ -20,7 +20,9 @@ import { Field, FieldLabel } from '../../../components/ui/field'
 import { cn } from '../../../lib/utils'
 import {
   getMcpServersSettings,
+  getMcpServersHealth,
   updateMcpServersSettings,
+  type McpServerHealth,
   type McpServerRecord,
   type McpServersSettings
 } from '../mcp-servers/mcp-servers-query'
@@ -156,11 +158,39 @@ function serverSummary(server: McpServerRecord): string {
   return command || server.type
 }
 
+function healthStatus(
+  server: McpServerRecord,
+  health: McpServerHealth | undefined
+): { label: string; message?: string; tone: 'active' | 'error' | 'muted' } {
+  if (!server.isActive) return { label: 'Disabled', tone: 'muted' }
+  if (!health) return { label: 'Waiting for a Pi thread', tone: 'muted' }
+  if (health.state === 'connected') {
+    return {
+      label: health.toolCount === undefined ? 'Connected' : `Connected · ${health.toolCount} tools`,
+      tone: 'active'
+    }
+  }
+  if (health.state === 'unsupported') {
+    return {
+      label: 'Action required',
+      message: 'This transport is not available in TIA yet. Use stdio or disable this server.',
+      tone: 'error'
+    }
+  }
+  return {
+    label: 'Action required',
+    message:
+      'A connection or tool action failed. Review the command, arguments, and environment variables, then open a new thread to retry.',
+    tone: 'error'
+  }
+}
+
 export function McpServersSettingsPage({
   embedded = false
 }: { embedded?: boolean } = {}): React.JSX.Element {
   const { t } = useTranslation()
   const [settings, setSettings] = useState<McpServersSettings | null>(null)
+  const [serverHealth, setServerHealth] = useState<Record<string, McpServerHealth>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [deletingServerId, setDeletingServerId] = useState<string | null>(null)
@@ -188,6 +218,24 @@ export function McpServersSettingsPage({
   useEffect(() => {
     void loadSettings()
   }, [loadSettings])
+
+  useEffect(() => {
+    let isCurrent = true
+    const loadHealth = async (): Promise<void> => {
+      try {
+        const nextHealth = await getMcpServersHealth()
+        if (isCurrent) setServerHealth(nextHealth)
+      } catch {
+        // Health is advisory. A temporary local API failure must not hide saved MCP settings.
+      }
+    }
+    void loadHealth()
+    const intervalId = window.setInterval(() => void loadHealth(), 5_000)
+    return () => {
+      isCurrent = false
+      window.clearInterval(intervalId)
+    }
+  }, [])
 
   const serverEntries = useMemo(
     () =>
@@ -340,6 +388,29 @@ export function McpServersSettingsPage({
         </div>
       </header>
 
+      <section className="rounded-xl border border-sky-400/30 bg-sky-400/5 px-5 py-4 text-sm">
+        <p className="font-semibold text-foreground">Authenticated remote MCPs</p>
+        <p className="mt-1 leading-6 text-muted-foreground">
+          For services such as Linear, prefer the{' '}
+          <a
+            className="font-medium text-foreground underline underline-offset-4"
+            href="https://www.npmjs.com/package/mcp-remote"
+            target="_blank"
+            rel="noreferrer"
+          >
+            mcp-remote
+          </a>{' '}
+          stdio proxy: command <code>npx</code>; arguments <code>-y</code>, <code>mcp-remote</code>,
+          and the server URL. It opens browser OAuth when needed. Its user-level session may be
+          reused by other clients using the same mcp-remote profile and matching configuration, but
+          it does not guarantee sharing a Codex or Claude login.
+        </p>
+        <p className="mt-2 leading-6 text-muted-foreground">
+          If managed Bun is installed in Runtime Setup, TIA runs <code>npx</code> or{' '}
+          <code>bunx</code> through <code>bun x</code> automatically.
+        </p>
+      </section>
+
       <section aria-labelledby="saved-mcp-servers-title" className="space-y-3">
         <div className="flex items-center justify-between gap-4">
           <h2 id="saved-mcp-servers-title" className="text-sm font-semibold">
@@ -374,71 +445,85 @@ export function McpServersSettingsPage({
             </div>
           ) : null}
 
-          {serverEntries.map(([serverId, server], index) => (
-            <article
-              key={serverId}
-              className={cn(
-                'group flex min-h-20 items-center gap-4 px-5 py-4 transition-colors hover:bg-[color:var(--surface-muted)]',
-                index > 0 && 'border-t border-[color:var(--surface-border)]'
-              )}
-            >
-              <button
-                type="button"
-                className="flex min-w-0 flex-1 items-center gap-4 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => openEditDialog(serverId)}
+          {serverEntries.map(([serverId, server], index) => {
+            const status = healthStatus(server, serverHealth[serverId])
+            return (
+              <article
+                key={serverId}
+                className={cn(
+                  'group flex min-h-20 items-center gap-4 px-5 py-4 transition-colors hover:bg-[color:var(--surface-muted)]',
+                  index > 0 && 'border-t border-[color:var(--surface-border)]'
+                )}
               >
-                <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-muted)]">
-                  <Cable className="size-4" />
-                </span>
-                <span className="min-w-0 flex-1 space-y-1">
-                  <span className="block font-semibold text-foreground">
-                    {server.name || serverId}
-                  </span>
-                  <span className="block truncate text-sm text-muted-foreground">
-                    {server.type} · {serverSummary(server)}
-                  </span>
-                </span>
-                <span
-                  className={cn(
-                    'mr-2 inline-flex items-center gap-1.5 text-xs',
-                    server.isActive ? 'text-foreground' : 'text-muted-foreground'
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'size-1.5 rounded-full',
-                      server.isActive ? 'bg-emerald-500' : 'bg-muted-foreground/50'
-                    )}
-                  />
-                  {server.isActive
-                    ? t('settings.mcp.status.enabled')
-                    : t('settings.mcp.status.disabled')}
-                </span>
-              </button>
-              <div className="flex shrink-0 items-center gap-1">
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Edit ${server.name || serverId}`}
+                  className="flex min-w-0 flex-1 items-center gap-4 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => openEditDialog(serverId)}
                 >
-                  <Pencil className="size-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground hover:text-destructive"
-                  aria-label={t('settings.mcp.deleteAriaLabel', { id: serverId })}
-                  disabled={deletingServerId === serverId}
-                  onClick={() => void removeServer(serverId)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-            </article>
-          ))}
+                  <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-muted)]">
+                    <Cable className="size-4" />
+                  </span>
+                  <span className="min-w-0 flex-1 space-y-1">
+                    <span className="block font-semibold text-foreground">
+                      {server.name || serverId}
+                    </span>
+                    <span className="block truncate text-sm text-muted-foreground">
+                      {server.type} · {serverSummary(server)}
+                    </span>
+                    {status.message ? (
+                      <span role="alert" className="block text-xs leading-5 text-destructive">
+                        {status.message}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span
+                    className={cn(
+                      'mr-2 inline-flex items-center gap-1.5 text-xs',
+                      status.tone === 'active'
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : status.tone === 'error'
+                          ? 'text-destructive'
+                          : 'text-muted-foreground'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'size-1.5 rounded-full',
+                        status.tone === 'active'
+                          ? 'bg-emerald-500'
+                          : status.tone === 'error'
+                            ? 'bg-destructive'
+                            : 'bg-muted-foreground/50'
+                      )}
+                    />
+                    {status.label}
+                  </span>
+                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Edit ${server.name || serverId}`}
+                    onClick={() => openEditDialog(serverId)}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive"
+                    aria-label={t('settings.mcp.deleteAriaLabel', { id: serverId })}
+                    disabled={deletingServerId === serverId}
+                    onClick={() => void removeServer(serverId)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              </article>
+            )
+          })}
         </div>
       </section>
     </main>
@@ -459,9 +544,7 @@ export function McpServersSettingsPage({
                 ? t('settings.mcp.dialog.editTitle')
                 : t('settings.mcp.dialog.addTitle')}
             </DialogTitle>
-            <DialogDescription>
-              {t('settings.mcp.dialog.description')}
-            </DialogDescription>
+            <DialogDescription>{t('settings.mcp.dialog.description')}</DialogDescription>
           </DialogHeader>
 
           {formServer ? (
@@ -483,7 +566,9 @@ export function McpServersSettingsPage({
 
                 {serverDialogMode === 'create' ? (
                   <Field>
-                    <FieldLabel htmlFor="mcp-server-id">{t('settings.mcp.dialog.serverId')}</FieldLabel>
+                    <FieldLabel htmlFor="mcp-server-id">
+                      {t('settings.mcp.dialog.serverId')}
+                    </FieldLabel>
                     <Input
                       id="mcp-server-id"
                       value={formServerId}

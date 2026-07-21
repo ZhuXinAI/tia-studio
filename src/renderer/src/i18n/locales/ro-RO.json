@@ -456,6 +456,9 @@
     "sidebar": {
       "untitledThread": "Thread fără titlu",
       "scheduled": "Created by a schedule",
+      "generating": "Generating response",
+      "newResponse": "New response",
+      "approvalNeeded": "Approval needed",
       "pin": "Pin {{title}}",
       "unpin": "Unpin {{title}}",
       "delete": "Delete {{title}}",
@@ -528,6 +531,7 @@
       "reasoning": "Reasoning",
       "workingFor": "Working for {{duration}}",
       "workedFor": "Worked for {{duration}}",
+      "workedForWaitingOnUser": "Worked for {{duration}}, waiting on user",
       "working": "Working",
       "copy": "Copy"
     }

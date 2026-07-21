@@ -456,6 +456,9 @@
     "sidebar": {
       "untitledThread": "未命名執行緒",
       "scheduled": "由排程建立",
+      "generating": "Generating response",
+      "newResponse": "New response",
+      "approvalNeeded": "Approval needed",
       "pin": "置頂 {{title}}",
       "unpin": "取消置頂 {{title}}",
       "delete": "刪除 {{title}}",
@@ -528,6 +531,7 @@
       "reasoning": "推理",
       "workingFor": "已處理 {{duration}}",
       "workedFor": "處理用時 {{duration}}",
+      "workedForWaitingOnUser": "Worked for {{duration}}, waiting on user",
       "working": "正在處理",
       "copy": "複製"
     }

@@ -45,6 +45,7 @@
     "@hono/node-server": "^1.19.9",
     "@larksuiteoapi/node-sdk": "^1.59.0",
     "@libsql/client": "^0.17.0",
+    "@modelcontextprotocol/client": "2.0.0-beta.4",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-collapsible": "^1.1.16",
     "@radix-ui/react-dialog": "^1.1.15",

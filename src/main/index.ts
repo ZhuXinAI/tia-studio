@@ -63,6 +63,7 @@ import { UiConfigStore } from './ui-config'
 import { desktopBootstrapQueryParam, type DesktopBootstrap } from '../shared/desktop-bootstrap'
 import { AgentSessionsRepository } from './persistence/repos/agent-sessions-repo'
 import { AgentRuntimeManager } from './agents/agent-runtime-manager'
+import { McpServerHealthRegistry } from './agents/pi/mcp-server-health'
 import { AutomationsRepository } from './persistence/repos/automations-repo'
 import { AutomationService } from './automations/automation-service'
 
@@ -305,6 +306,7 @@ async function startLocalApiServer(): Promise<void> {
   const channelSessionBindingsRepo = new ChannelSessionBindingsRepository(db)
   const webSearchSettingsRepo = new WebSearchSettingsRepository(db)
   const mcpServersRepo = new McpServersRepository(join(app.getPath('userData'), 'mcp.json'))
+  const mcpServerHealth = new McpServerHealthRegistry()
   const managedRuntimesRepo = new ManagedRuntimesRepository(
     join(app.getPath('userData'), 'managed-runtimes.json')
   )
@@ -325,7 +327,29 @@ async function startLocalApiServer(): Promise<void> {
     agentDataRoot: join(app.getPath('userData'), 'pi-agent'),
     sessionDataRoot: join(app.getPath('userData'), 'pi-sessions'),
     credentialRoot: app.getPath('userData'),
-    globalSkillsRoot: join(app.getPath('userData'), 'skills')
+    globalSkillsRoot: join(app.getPath('userData'), 'skills'),
+    mcpServersRepo,
+    mcpServerHealth,
+    resolveMcpCommand: (command, args, env) =>
+      resolveManagedRuntimeService().resolveManagedCommand(command, args, env),
+    stateManagement: {
+      providers: providersRepo,
+      automations: automationsRepo,
+      automationService: {
+        runNow: async (automationId) => {
+          if (!automationService) throw new Error('Schedule service is not ready')
+          return automationService.runNow(automationId)
+        }
+      },
+      channels: channelsRepo,
+      reloadChannels: async () => {
+        if (!channelService) throw new Error('Connection service is not ready')
+        await channelService.reload()
+      },
+      workspaces: workspacesRepo,
+      mcpServers: mcpServersRepo,
+      globalSkillsRoot: join(app.getPath('userData'), 'skills')
+    }
   })
   automationService = new AutomationService({
     repository: automationsRepo,
@@ -498,6 +522,7 @@ async function startLocalApiServer(): Promise<void> {
       pairings: channelPairingsRepo,
       webSearchSettings: webSearchSettingsRepo,
       mcpServers: mcpServersRepo,
+      mcpServerHealth,
       agentSessions: agentSessionsRepo
     },
     agentRuntime: agentRuntimeManager,

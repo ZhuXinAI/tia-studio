@@ -40,8 +40,13 @@ vi.mock('../../features/settings/providers/providers-query', () => ({
 vi.mock('../../features/workspaces/workspaces-query', () => ({
   useWorkspaces: () => ({
     data: [
-      { id: 'chats', rootPath: '/tmp/chats', builtInKind: 'chats' },
-      { id: 'workspace-1', rootPath: '/tmp/workspace-1', builtInKind: null }
+      { id: 'chats', name: 'Chats', rootPath: '/tmp/chats', builtInKind: 'chats' },
+      {
+        id: 'workspace-1',
+        name: 'Fixture workspace',
+        rootPath: '/tmp/workspace-1',
+        builtInKind: null
+      }
     ],
     isLoading: false
   })
@@ -93,6 +98,32 @@ describe('ThreadPageV2 startup', () => {
     await flush()
 
     expect(container.textContent).toContain('What are we building?')
+    expect(container.textContent).toContain('OpenAI · gpt-5')
+    expect(container.textContent).toContain('Ask Permission')
+    expect(mocks.createSession).not.toHaveBeenCalled()
+  })
+
+  it('selects the workspace identified by pwd without creating a session', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+    })
+
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={['/chat/new?pwd=workspace-1']}>
+            <Routes>
+              <Route path="/chat/new" element={<ThreadPageV2 />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      )
+    })
+    await flush()
+
+    expect(container.textContent).toContain('Fixture workspace')
+    expect(container.textContent).toContain('OpenAI · gpt-5')
+    expect(container.textContent).toContain('Ask Permission')
     expect(mocks.createSession).not.toHaveBeenCalled()
   })
 

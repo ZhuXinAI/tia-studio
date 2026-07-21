@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import type { ChannelsRepository } from '../persistence/repos/channels-repo'
 import type { ChannelPairingsRepository } from '../persistence/repos/channel-pairings-repo'
 import type { McpServersRepository } from '../persistence/repos/mcp-servers-repo'
+import type { McpServerHealthRegistry } from '../agents/pi/mcp-server-health'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { PermissionRulesRepository } from '../persistence/repos/permission-rules-repo'
 import type { WebSearchSettingsRepository } from '../persistence/repos/web-search-settings-repo'
@@ -73,6 +74,7 @@ type CreateAppOptions = {
     workspaces?: WorkspacesRepository
     webSearchSettings: WebSearchSettingsRepository
     mcpServers: McpServersRepository
+    mcpServerHealth?: McpServerHealthRegistry
     channels: ChannelsRepository
     pairings: ChannelPairingsRepository
     agentSessions?: AgentSessionsRepository
@@ -169,7 +171,8 @@ export function createApp(options: CreateAppOptions): Hono {
       webSearchSettingsRepo: options.repositories.webSearchSettings
     })
     registerMcpServersRoute(app, {
-      mcpServersRepo: options.repositories.mcpServers
+      mcpServersRepo: options.repositories.mcpServers,
+      mcpServerHealth: options.repositories.mcpServerHealth
     })
     if (options.repositories.permissionRules) {
       registerPermissionRulesRoute(app, {

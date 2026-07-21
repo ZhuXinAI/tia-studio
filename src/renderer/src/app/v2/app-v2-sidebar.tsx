@@ -1,9 +1,11 @@
 import {
   ChevronDown,
   ChevronRight,
+  CircleHelp,
   Clock3,
   Folder,
   FolderPlus,
+  LoaderCircle,
   MessageSquarePlus,
   PanelLeftClose,
   PanelLeftOpen,
@@ -15,7 +17,7 @@ import {
   Sparkles,
   Trash2
 } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import type { AgentSessionSnapshot } from '../../../../shared/agent-runtime'
@@ -34,6 +36,11 @@ import {
   useDeleteAgentSession,
   useSetAgentSessionPinned
 } from '../../features/threads/agent-sessions-query'
+import {
+  getThreadListStatus,
+  getUnreadCompletionThreadIds,
+  type ThreadListStatus
+} from '../../features/threads/thread-list-status'
 import { useAutomations } from '../../features/automations/automations-query'
 import { getThreadDisplayTitle, toErrorMessage } from '../../features/threads/thread-page-routing'
 import { useTranslation } from '../../i18n/use-app-translation'
@@ -53,6 +60,60 @@ function isChatsWorkspace(workspace: WorkspaceRecord): boolean {
 }
 
 const sidebarActionButtonClassName = 'h-10 justify-start rounded-xl px-3 text-sm'
+const unreadThreadCompletionsStorageKey = 'tia-studio.unread-thread-completions'
+
+function readUnreadThreadCompletions(): Set<string> {
+  if (typeof window === 'undefined') return new Set()
+  try {
+    const stored = JSON.parse(
+      window.sessionStorage.getItem(unreadThreadCompletionsStorageKey) ?? '[]'
+    )
+    return new Set(
+      Array.isArray(stored) ? stored.filter((id): id is string => typeof id === 'string') : []
+    )
+  } catch {
+    return new Set()
+  }
+}
+
+function writeUnreadThreadCompletions(threadIds: ReadonlySet<string>): void {
+  try {
+    window.sessionStorage.setItem(unreadThreadCompletionsStorageKey, JSON.stringify([...threadIds]))
+  } catch {
+    // Session storage is an enhancement; the in-memory indicator still works.
+  }
+}
+
+function ThreadStatusIcon({ status }: { status: ThreadListStatus }): React.JSX.Element {
+  const { t } = useTranslation()
+
+  switch (status) {
+    case 'approval-needed':
+      return (
+        <CircleHelp
+          className="size-3.5 shrink-0 text-yellow-500"
+          aria-label={t('threads.sidebar.approvalNeeded')}
+        />
+      )
+    case 'generating':
+      return (
+        <LoaderCircle
+          className="size-3.5 shrink-0 animate-spin text-muted-foreground"
+          aria-label={t('threads.sidebar.generating')}
+        />
+      )
+    case 'unread-completion':
+      return (
+        <span
+          className="size-2 shrink-0 rounded-full bg-blue-500"
+          aria-label={t('threads.sidebar.newResponse')}
+          title={t('threads.sidebar.newResponse')}
+        />
+      )
+    default:
+      return <span className="size-1.5 shrink-0 rounded-full bg-current opacity-60" />
+  }
+}
 
 function ThreadLink({
   thread,
@@ -60,6 +121,7 @@ function ThreadLink({
   isActive,
   isPending,
   isScheduled,
+  hasUnreadCompletion,
   onTogglePinned,
   onDelete
 }: {
@@ -68,12 +130,14 @@ function ThreadLink({
   isActive: boolean
   isPending: boolean
   isScheduled: boolean
+  hasUnreadCompletion: boolean
   onTogglePinned: () => void
   onDelete: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const displayTitle = getThreadDisplayTitle(thread.title)
   const pinned = thread.pinned
+  const status = getThreadListStatus(thread, hasUnreadCompletion)
 
   return (
     <div
@@ -85,7 +149,7 @@ function ThreadLink({
       )}
     >
       <NavLink to={href} className="flex min-w-0 flex-1 items-center gap-2 px-1 py-0.5">
-        <span className="size-1.5 shrink-0 rounded-full bg-current opacity-60" />
+        <ThreadStatusIcon status={status} />
         <span className="truncate">{displayTitle}</span>
       </NavLink>
       {isScheduled ? (
@@ -169,12 +233,16 @@ function WorkspaceThreads({
   workspace,
   activeThreadId,
   isOpen,
+  threads,
+  unreadCompletionThreadIds,
   scheduledSessionIds,
   scheduledSessionTitles
 }: {
   workspace: WorkspaceRecord
   activeThreadId: string | null
   isOpen: boolean
+  threads: AgentSessionSnapshot[]
+  unreadCompletionThreadIds: ReadonlySet<string>
   scheduledSessionIds: ReadonlySet<string>
   scheduledSessionTitles: ReadonlySet<string>
 }): React.JSX.Element {
@@ -182,18 +250,19 @@ function WorkspaceThreads({
   const navigate = useNavigate()
   const deleteThreadMutation = useDeleteAgentSession()
   const updateThreadPinnedMutation = useSetAgentSessionPinned()
-  const { data: threads = [] } = useAgentSessions(
-    workspace.builtInKind === 'chats' ? null : workspace.id,
-    isOpen
-  )
   const recentThreads = useMemo(
     () =>
-      [...threads].sort(
-        (left, right) =>
-          Number(right.pinned) - Number(left.pinned) ||
-          Date.parse(right.updatedAt) - Date.parse(left.updatedAt)
-      ),
-    [threads]
+      threads
+        .filter(
+          (thread) =>
+            thread.workspaceId === (workspace.builtInKind === 'chats' ? null : workspace.id)
+        )
+        .sort(
+          (left, right) =>
+            Number(right.pinned) - Number(left.pinned) ||
+            Date.parse(right.updatedAt) - Date.parse(left.updatedAt)
+        ),
+    [threads, workspace.builtInKind, workspace.id]
   )
 
   async function handleDeleteThread(thread: AgentSessionSnapshot): Promise<void> {
@@ -246,6 +315,7 @@ function WorkspaceThreads({
             scheduledSessionIds.has(thread.id) ||
             scheduledSessionTitles.has(thread.title)
           }
+          hasUnreadCompletion={unreadCompletionThreadIds.has(thread.id)}
           onTogglePinned={() => {
             void handleTogglePinned(thread)
           }}
@@ -272,6 +342,7 @@ export function AppV2Sidebar({
   const navigate = useNavigate()
   const params = useParams()
   const { data: workspaces = [], isLoading } = useWorkspaces()
+  const { data: threads = [] } = useAgentSessions()
   const { data: automations = [] } = useAutomations()
   const createWorkspaceMutation = useCreateWorkspace()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -279,7 +350,11 @@ export function AppV2Sidebar({
   const [isWorkspacesOpen, setIsWorkspacesOpen] = useState(true)
   const [isChatsOpen, setIsChatsOpen] = useState(true)
   const [expandedWorkspaceIds, setExpandedWorkspaceIds] = useState<Set<string>>(() => new Set())
+  const [unreadCompletionThreadIds, setUnreadCompletionThreadIds] = useState<Set<string>>(
+    readUnreadThreadCompletions
+  )
   const workspaceSearchInputRef = useRef<HTMLInputElement | null>(null)
+  const previousThreadsRef = useRef(new Map<string, AgentSessionSnapshot>())
 
   const chatsWorkspace = useMemo(
     () => workspaces.find((workspace) => isChatsWorkspace(workspace)) ?? null,
@@ -308,10 +383,27 @@ export function AppV2Sidebar({
     () => new Set(automations.map((automation) => automation.name)),
     [automations]
   )
-  const activeWorkspaceId = params.workspaceId ?? null
+  const activeWorkspaceId =
+    params.workspaceId ?? new URLSearchParams(location.search).get('pwd') ?? null
   const activeThreadId = params.threadId ?? null
   const isChatsActive = location.pathname === '/chat' || location.pathname.startsWith('/chat/')
-  const newChatHref = activeWorkspaceId ? `/workspaces/${activeWorkspaceId}/new` : '/chat/new'
+  const newChatHref = activeWorkspaceId ? `/chat/new?pwd=${encodeURIComponent(activeWorkspaceId)}` : '/chat/new'
+
+  useEffect(() => {
+    setUnreadCompletionThreadIds((current) =>
+      getUnreadCompletionThreadIds({
+        currentUnreadThreadIds: current,
+        previousThreads: previousThreadsRef.current,
+        threads,
+        activeThreadId
+      })
+    )
+    previousThreadsRef.current = new Map(threads.map((thread) => [thread.id, thread]))
+  }, [activeThreadId, threads])
+
+  useEffect(() => {
+    writeUnreadThreadCompletions(unreadCompletionThreadIds)
+  }, [unreadCompletionThreadIds])
 
   function isWorkspaceOpen(workspaceId: string): boolean {
     if (activeWorkspaceId === workspaceId) {
@@ -572,7 +664,7 @@ export function AppV2Sidebar({
                         className="size-7 shrink-0"
                       >
                         <NavLink
-                          to={`/workspaces/${workspace.id}/new`}
+                          to={`/chat/new?pwd=${encodeURIComponent(workspace.id)}`}
                           aria-label={t('threads.sidebar.newThreadInWorkspace', {
                             name: workspace.name
                           })}
@@ -588,6 +680,8 @@ export function AppV2Sidebar({
                       workspace={workspace}
                       activeThreadId={activeThreadId}
                       isOpen={workspaceOpen}
+                      threads={threads}
+                      unreadCompletionThreadIds={unreadCompletionThreadIds}
                       scheduledSessionIds={scheduledSessionIds}
                       scheduledSessionTitles={scheduledSessionTitles}
                     />
@@ -619,6 +713,8 @@ export function AppV2Sidebar({
               workspace={chatsWorkspace}
               activeThreadId={isChatsActive ? activeThreadId : null}
               isOpen={isChatsOpen}
+              threads={threads}
+              unreadCompletionThreadIds={unreadCompletionThreadIds}
               scheduledSessionIds={scheduledSessionIds}
               scheduledSessionTitles={scheduledSessionTitles}
             />
