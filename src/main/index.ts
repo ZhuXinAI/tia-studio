@@ -54,6 +54,7 @@ import {
   getInstalledRecommendedSkills,
   installRecommendedSkillsWithBunx,
   installMarketplaceSkill,
+  listDiscoveredSkills,
   listDiscoveredSkillsPage,
   listSkillMarketplace,
   type RecommendedSkillId
@@ -66,6 +67,7 @@ import { AgentRuntimeManager } from './agents/agent-runtime-manager'
 import { McpServerHealthRegistry } from './agents/pi/mcp-server-health'
 import { AutomationsRepository } from './persistence/repos/automations-repo'
 import { AutomationService } from './automations/automation-service'
+import { listWorkspaceFiles } from './workspaces/workspace-file-search'
 
 const hasSingleInstanceLock = registerSingleInstanceApp({
   app,
@@ -524,6 +526,24 @@ async function startLocalApiServer(): Promise<void> {
       mcpServers: mcpServersRepo,
       mcpServerHealth,
       agentSessions: agentSessionsRepo
+    },
+    composerMentions: {
+      async get(workspacePath) {
+        const [skills, files] = await Promise.all([
+          listDiscoveredSkills({ workspaceRootPath: workspacePath, includeWorkspaceSource: true }),
+          listWorkspaceFiles(workspacePath)
+        ])
+        return {
+          skills: skills.map((skill) => ({
+            id: skill.id,
+            name: skill.name,
+            description: skill.description,
+            source: skill.source,
+            relativePath: skill.relativePath
+          })),
+          files
+        }
+      }
     },
     agentRuntime: agentRuntimeManager,
     automations: {

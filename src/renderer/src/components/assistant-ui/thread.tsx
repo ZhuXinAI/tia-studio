@@ -6,6 +6,7 @@ import {
   UserMessageAttachments
 } from '@renderer/components/assistant-ui/attachment'
 import { ThreadFollowupSuggestions } from '@renderer/components/assistant-ui/follow-up-suggestions'
+import { DirectiveText } from '@renderer/components/assistant-ui/directive-text'
 import { MarkdownText } from '@renderer/components/assistant-ui/markdown-text'
 import {
   Reasoning,
@@ -34,6 +35,7 @@ import {
   MessagePrimitive,
   SuggestionPrimitive,
   ThreadPrimitive,
+  unstable_useComposerInput,
   type ToolCallMessagePartComponent,
   useAuiState
 } from '@assistant-ui/react'
@@ -48,6 +50,9 @@ import {
 import {
   createContext,
   useContext,
+  useEffect,
+  useRef,
+  useState,
   type ComponentType,
   type FC,
   type PropsWithChildren
@@ -71,10 +76,13 @@ export type ThreadComponents = {
   ReasoningGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined
   ComposerControls?: ComponentType | undefined
   ComposerHeader?: ComponentType | undefined
+  ComposerAddons?: ComponentType | undefined
 }
 
 export type ThreadProps = {
   components?: ThreadComponents | undefined
+  composerDisabled?: boolean | undefined
+  composerInitialText?: string | undefined
 }
 
 const EMPTY_COMPONENTS: ThreadComponents = {}
@@ -86,18 +94,29 @@ const ThreadComponentsContext = createContext<ThreadComponents>(EMPTY_COMPONENTS
 const isNewChatView = (s: AssistantState) =>
   s.thread.messages.length === 0 && (!s.thread.isLoading || s.threads.isLoading)
 
-export const Thread: FC<ThreadProps> = ({ components = EMPTY_COMPONENTS }) => {
+export const Thread: FC<ThreadProps> = ({
+  components = EMPTY_COMPONENTS,
+  composerDisabled = false,
+  composerInitialText
+}) => {
   const isEmpty = useAuiState(isNewChatView)
 
   return (
     <ThreadComponentsContext.Provider value={components}>
-      <ThreadRoot isEmpty={isEmpty} />
+      <ThreadRoot
+        isEmpty={isEmpty}
+        composerDisabled={composerDisabled}
+        composerInitialText={composerInitialText}
+      />
     </ThreadComponentsContext.Provider>
   )
 }
 
-const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
-  const { t } = useTranslation()
+const ThreadRoot: FC<{
+  isEmpty: boolean
+  composerDisabled: boolean
+  composerInitialText?: string | undefined
+}> = ({ isEmpty, composerDisabled, composerInitialText }) => {
   const { Welcome = ThreadEmpty, ComposerHeader } = useContext(ThreadComponentsContext)
 
   return (
@@ -130,16 +149,6 @@ const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
             <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
           </div>
 
-          <AuiIf condition={(s) => s.thread.isRunning && s.thread.messages.at(-1)?.role === 'user'}>
-            <div
-              className="mb-5 flex items-center gap-2 px-2 text-sm text-muted-foreground"
-              role="status"
-            >
-              <LoaderCircle className="size-4 animate-spin" />
-              <span>{t('threads.page.working')}</span>
-            </div>
-          </AuiIf>
-
           <ThreadPrimitive.ViewportFooter
             className={cn(
               'aui-thread-viewport-footer bg-background flex flex-col gap-4 overflow-visible pb-4 md:pb-6',
@@ -149,7 +158,7 @@ const ThreadRoot: FC<{ isEmpty: boolean }> = ({ isEmpty }) => {
             <ThreadScrollToBottom />
             <ThreadFollowupSuggestions />
             {ComposerHeader ? <ComposerHeader /> : null}
-            <Composer />
+            <Composer disabled={composerDisabled} initialText={composerInitialText} />
             <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
               <ThreadSuggestions />
             </AuiIf>
@@ -218,42 +227,96 @@ const ThreadSuggestionItem: FC = () => {
   )
 }
 
-const Composer: FC = () => {
-  const { t } = useTranslation()
+const Composer: FC<{ disabled: boolean; initialText?: string | undefined }> = ({
+  disabled,
+  initialText
+}) => {
+  const { ComposerAddons } = useContext(ThreadComponentsContext)
   return (
-    <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
-      <ComposerPrimitive.AttachmentDropzone asChild>
-        <div
-          data-slot="aui_composer-shell"
-          className="border-border/60 data-[dragging=true]:border-ring focus-within:border-border dark:border-muted-foreground/15 dark:focus-within:border-muted-foreground/30 flex w-full flex-col gap-2 rounded-(--composer-radius) border bg-(--composer-bg) p-(--composer-padding) shadow-[0_4px_16px_-8px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] transition-[border-color,box-shadow] focus-within:shadow-[0_6px_24px_-8px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.05)] data-[dragging=true]:border-dashed data-[dragging=true]:bg-[color-mix(in_oklab,var(--color-accent)_50%,var(--color-background))] dark:shadow-none"
-        >
-          <ComposerAttachments />
-          <ComposerPrimitive.Input
-            placeholder={t('threads.composer.messagePlaceholder')}
-            className="aui-composer-input caret-primary placeholder:text-muted-foreground/80 max-h-32 min-h-10 w-full resize-none bg-transparent px-2.5 py-1 text-base outline-none"
-            rows={1}
-            autoFocus
-            enterKeyHint="send"
-            aria-label={t('threads.composer.messageInput')}
-          />
-          <ComposerAction />
-        </div>
-      </ComposerPrimitive.AttachmentDropzone>
-    </ComposerPrimitive.Root>
+    <ComposerPrimitive.Unstable_TriggerPopoverRoot>
+      <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
+        <ComposerInitialText text={initialText} />
+        <ComposerPrimitive.AttachmentDropzone asChild>
+          <div
+            data-slot="aui_composer-shell"
+            className="border-border/60 data-[dragging=true]:border-ring focus-within:border-border dark:border-muted-foreground/15 dark:focus-within:border-muted-foreground/30 flex w-full flex-col gap-2 rounded-(--composer-radius) border bg-(--composer-bg) p-(--composer-padding) shadow-[0_4px_16px_-8px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] transition-[border-color,box-shadow] focus-within:shadow-[0_6px_24px_-8px_rgba(0,0,0,0.12),0_1px_2px_rgba(0,0,0,0.05)] data-[dragging=true]:border-dashed data-[dragging=true]:bg-[color-mix(in_oklab,var(--color-accent)_50%,var(--color-background))] dark:shadow-none"
+          >
+            <ComposerAttachments />
+            <ComposerDirectiveInput disabled={disabled} />
+            <ComposerAction disabled={disabled} />
+          </div>
+        </ComposerPrimitive.AttachmentDropzone>
+        {ComposerAddons ? <ComposerAddons /> : null}
+      </ComposerPrimitive.Root>
+    </ComposerPrimitive.Unstable_TriggerPopoverRoot>
   )
 }
 
-const ComposerAction: FC = () => {
+const ComposerInitialText: FC<{ text?: string | undefined }> = ({ text }) => {
+  const { value, setText } = unstable_useComposerInput()
+  const appliedTextRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!text || appliedTextRef.current === text || value.trim()) return
+    setText(text)
+    appliedTextRef.current = text
+  }, [setText, text, value])
+
+  return null
+}
+
+const ComposerDirectiveInput: FC<{ disabled: boolean }> = ({ disabled }) => {
+  const { t } = useTranslation()
+  const { value } = unstable_useComposerInput({ disabled })
+  const [scrollTop, setScrollTop] = useState(0)
+
+  return (
+    <div className="relative min-h-10">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden px-2.5 py-1 text-base wrap-break-word"
+      >
+        <div style={{ transform: `translateY(-${scrollTop}px)` }}>
+          <DirectiveText type="text" text={value} status={{ type: 'complete' }} />
+        </div>
+      </div>
+      <ComposerPrimitive.Input
+        placeholder={t('threads.composer.messagePlaceholder')}
+        className="aui-composer-input caret-primary placeholder:text-muted-foreground/80 relative z-10 max-h-32 min-h-10 w-full resize-none bg-transparent px-2.5 py-1 text-base text-transparent outline-none selection:bg-primary/25"
+        rows={1}
+        autoFocus
+        disabled={disabled}
+        enterKeyHint="send"
+        aria-label={t('threads.composer.messageInput')}
+        onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+      />
+    </div>
+  )
+}
+
+const ComposerAction: FC<{ disabled: boolean }> = ({ disabled }) => {
   const { t } = useTranslation()
   const { ComposerControls } = useContext(ThreadComponentsContext)
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between">
       <div className="flex min-w-0 items-center gap-1">
-        <ComposerAddAttachment />
+        <ComposerAddAttachment disabled={disabled} />
       </div>
       <div className="flex items-center gap-1.5">
         {ComposerControls ? <ComposerControls /> : null}
-        <AuiIf condition={(s) => !s.thread.isRunning}>
+        {disabled ? (
+          <Button
+            type="button"
+            variant="default"
+            size="icon"
+            disabled
+            aria-label="Creating thread"
+            className="aui-composer-send size-7 rounded-full"
+          >
+            <LoaderCircle className="size-3.5 animate-spin" />
+          </Button>
+        ) : null}
+        <AuiIf condition={(s) => !disabled && !s.thread.isRunning}>
           <ComposerPrimitive.Send asChild>
             <TooltipIconButton
               tooltip={t('threads.composer.send')}
@@ -268,7 +331,7 @@ const ComposerAction: FC = () => {
             </TooltipIconButton>
           </ComposerPrimitive.Send>
         </AuiIf>
-        <AuiIf condition={(s) => s.thread.isRunning}>
+        <AuiIf condition={(s) => !disabled && s.thread.isRunning}>
           <ComposerPrimitive.Cancel asChild>
             <Button
               type="button"
@@ -419,13 +482,39 @@ const UserMessage: FC = () => {
 
       <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
         <div className="aui-user-message-content peer bg-muted text-foreground rounded-xl px-4 py-2 wrap-break-word empty:hidden">
-          <MessagePrimitive.Parts />
+          <MessagePrimitive.Parts components={{ Text: DirectiveText }} />
         </div>
         <div className="aui-user-action-bar-wrapper absolute start-0 top-1/2 -translate-x-full -translate-y-1/2 pe-2 peer-empty:hidden rtl:translate-x-full">
           <UserActionBar />
         </div>
       </div>
+      <UserMessagePending />
     </MessagePrimitive.Root>
+  )
+}
+
+const UserMessagePending: FC = () => {
+  const { t } = useTranslation()
+  const pending = useAuiState((s) => {
+    if (!s.thread.isRunning) return false
+    if (s.message.isLast) return true
+
+    return (
+      s.message.index === s.thread.messages.length - 2 &&
+      s.thread.messages.at(s.message.index + 1)?.role === 'assistant'
+    )
+  })
+
+  if (!pending) return null
+
+  return (
+    <div
+      className="bg-primary/10 text-foreground col-start-2 flex w-fit items-center gap-2 rounded-full border border-primary/20 px-2.5 py-1 text-sm shadow-sm"
+      role="status"
+    >
+      <LoaderCircle className="text-primary size-4 animate-spin" />
+      <span>{t('threads.page.working')}</span>
+    </div>
   )
 }
 

@@ -9,6 +9,7 @@ import { cn } from '../../../lib/utils'
 import { getDesktopAppInfo, type DesktopAppInfo } from '../../../lib/desktop-features'
 import { useAutoUpdate } from '../auto-update/use-auto-update'
 import { SettingsContent } from './settings-content'
+import appIcon from '../../../../../../resources/icon.png'
 
 type AboutLinkItem = {
   title: string
@@ -202,9 +203,7 @@ export function AboutSettingsPage(): React.JSX.Element {
         <CardContent className="px-0 py-0">
           <div className="border-border/60 flex items-center justify-between gap-4 border-b px-6 py-5">
             <div className="flex min-w-0 items-center gap-4">
-              <div className="from-primary to-[#5f7cc4] grid size-20 shrink-0 place-items-center rounded-[1.25rem] bg-gradient-to-br text-2xl font-semibold text-primary-foreground shadow-lg">
-                TS
-              </div>
+              <img src={appIcon} alt="" className="size-20 shrink-0 rounded-[1.25rem] shadow-lg" />
               <div className="min-w-0 my-2">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <p className="font-editorial truncate text-3xl leading-tight tracking-[-0.03em]">

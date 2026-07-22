@@ -162,25 +162,27 @@ function healthStatus(
   server: McpServerRecord,
   health: McpServerHealth | undefined
 ): { label: string; message?: string; tone: 'active' | 'error' | 'muted' } {
-  if (!server.isActive) return { label: 'Disabled', tone: 'muted' }
-  if (!health) return { label: 'Waiting for a Pi thread', tone: 'muted' }
+  if (!server.isActive) return { label: i18n.t('settings.mcp.health.disabled'), tone: 'muted' }
+  if (!health) return { label: i18n.t('settings.mcp.health.waiting'), tone: 'muted' }
   if (health.state === 'connected') {
     return {
-      label: health.toolCount === undefined ? 'Connected' : `Connected · ${health.toolCount} tools`,
+      label:
+        health.toolCount === undefined
+          ? i18n.t('settings.mcp.health.connected')
+          : i18n.t('settings.mcp.health.connectedWithTools', { count: health.toolCount }),
       tone: 'active'
     }
   }
   if (health.state === 'unsupported') {
     return {
-      label: 'Action required',
-      message: 'This transport is not available in TIA yet. Use stdio or disable this server.',
+      label: i18n.t('settings.mcp.health.actionRequired'),
+      message: i18n.t('settings.mcp.health.unsupported'),
       tone: 'error'
     }
   }
   return {
-    label: 'Action required',
-    message:
-      'A connection or tool action failed. Review the command, arguments, and environment variables, then open a new thread to retry.',
+    label: i18n.t('settings.mcp.health.actionRequired'),
+    message: i18n.t('settings.mcp.health.connectionFailed'),
     tone: 'error'
   }
 }
@@ -282,11 +284,11 @@ export function McpServersSettingsPage({
     if (!settings || !formServer || !serverDialogMode) return
     const serverId = serverDialogMode === 'edit' ? activeServerId : formServerId.trim()
     if (!serverId) {
-      toast.error('Server ID is required')
+      toast.error(t('settings.mcp.validation.serverIdRequired'))
       return
     }
     if (serverDialogMode === 'create' && settings.mcpServers[serverId]) {
-      toast.error(`A server named ${serverId} already exists`)
+      toast.error(t('settings.mcp.validation.serverExists', { id: serverId }))
       return
     }
 
@@ -379,7 +381,7 @@ export function McpServersSettingsPage({
         <div className="flex shrink-0 items-center gap-2">
           <Button type="button" variant="outline" onClick={openJsonDialog} disabled={isLoading}>
             <Braces className="size-4" />
-            Edit JSON
+            {t('settings.mcp.buttons.editJson')}
           </Button>
           <Button type="button" onClick={openCreateDialog} disabled={isLoading}>
             <Plus className="size-4" />
@@ -389,9 +391,9 @@ export function McpServersSettingsPage({
       </header>
 
       <section className="rounded-xl border border-sky-400/30 bg-sky-400/5 px-5 py-4 text-sm">
-        <p className="font-semibold text-foreground">Authenticated remote MCPs</p>
+        <p className="font-semibold text-foreground">{t('settings.mcp.remote.title')}</p>
         <p className="mt-1 leading-6 text-muted-foreground">
-          For services such as Linear, prefer the{' '}
+          {t('settings.mcp.remote.descriptionPrefix')}{' '}
           <a
             className="font-medium text-foreground underline underline-offset-4"
             href="https://www.npmjs.com/package/mcp-remote"
@@ -400,14 +402,10 @@ export function McpServersSettingsPage({
           >
             mcp-remote
           </a>{' '}
-          stdio proxy: command <code>npx</code>; arguments <code>-y</code>, <code>mcp-remote</code>,
-          and the server URL. It opens browser OAuth when needed. Its user-level session may be
-          reused by other clients using the same mcp-remote profile and matching configuration, but
-          it does not guarantee sharing a Codex or Claude login.
+          {t('settings.mcp.remote.descriptionSuffix')}
         </p>
         <p className="mt-2 leading-6 text-muted-foreground">
-          If managed Bun is installed in Runtime Setup, TIA runs <code>npx</code> or{' '}
-          <code>bunx</code> through <code>bun x</code> automatically.
+          {t('settings.mcp.remote.managedRuntime')}
         </p>
       </section>
 
@@ -504,7 +502,9 @@ export function McpServersSettingsPage({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    aria-label={`Edit ${server.name || serverId}`}
+                    aria-label={t('settings.mcp.editAriaLabel', {
+                      name: server.name || serverId
+                    })}
                     onClick={() => openEditDialog(serverId)}
                   >
                     <Pencil className="size-4" />
@@ -635,7 +635,7 @@ export function McpServersSettingsPage({
 
                 {requiredRuntime ? (
                   <div className="rounded-md border border-amber-300/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
-                    Finish the {requiredRuntime} runtime setup before enabling this server.
+                    {t('settings.mcp.managedRuntimeSetup', { runtime: requiredRuntime })}
                   </div>
                 ) : null}
 
@@ -683,10 +683,12 @@ export function McpServersSettingsPage({
                   onClick={closeServerDialog}
                   disabled={isSaving}
                 >
-                  Cancel
+                  {t('settings.mcp.buttons.cancel')}
                 </Button>
                 <Button type="button" onClick={() => void saveServer()} disabled={isSaving}>
-                  {isSaving ? 'Saving…' : 'Save server'}
+                  {isSaving
+                    ? t('settings.mcp.buttons.saving')
+                    : t('settings.mcp.buttons.saveServer')}
                 </Button>
               </DialogFooter>
             </>

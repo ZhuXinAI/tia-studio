@@ -13,6 +13,7 @@ export type ConfiguredChannelRecord = {
   id: string
   type: string
   name: string
+  workspaceId: string | null
   groupRequireMention?: boolean
   status: 'connected' | 'disconnected' | 'error'
   errorMessage: string | null
@@ -25,6 +26,7 @@ export type CreateChannelInput =
   | {
       type: 'lark'
       name: string
+      workspaceId?: string | null
       appId: string
       appSecret: string
       groupRequireMention?: boolean
@@ -32,27 +34,32 @@ export type CreateChannelInput =
   | {
       type: 'telegram'
       name: string
+      workspaceId?: string | null
       botToken: string
       groupRequireMention?: boolean
     }
   | {
       type: 'discord'
       name: string
+      workspaceId?: string | null
       botToken: string
       groupRequireMention?: boolean
     }
   | {
       type: 'whatsapp'
       name: string
+      workspaceId?: string | null
       groupRequireMention?: boolean
     }
   | {
       type: 'wechat'
       name: string
+      workspaceId?: string | null
     }
   | {
       type: 'wecom'
       name: string
+      workspaceId?: string | null
       botId: string
       secret: string
       groupRequireMention?: boolean
@@ -62,6 +69,7 @@ export type UpdateChannelInput =
   | {
       type: 'lark'
       name: string
+      workspaceId?: string | null
       appId?: string
       appSecret?: string
       groupRequireMention?: boolean
@@ -69,27 +77,32 @@ export type UpdateChannelInput =
   | {
       type: 'telegram'
       name: string
+      workspaceId?: string | null
       botToken?: string
       groupRequireMention?: boolean
     }
   | {
       type: 'discord'
       name: string
+      workspaceId?: string | null
       botToken?: string
       groupRequireMention?: boolean
     }
   | {
       type: 'whatsapp'
       name: string
+      workspaceId?: string | null
       groupRequireMention?: boolean
     }
   | {
       type: 'wechat'
       name: string
+      workspaceId?: string | null
     }
   | {
       type: 'wecom'
       name: string
+      workspaceId?: string | null
       botId?: string
       secret?: string
       groupRequireMention?: boolean

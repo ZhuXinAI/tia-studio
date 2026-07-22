@@ -12,7 +12,6 @@ import {
 import { useShallow } from 'zustand/shallow'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { Dialog, DialogTitle, DialogContent, DialogTrigger } from '@renderer/components/ui/dialog'
-import { Avatar, AvatarImage, AvatarFallback } from '@renderer/components/ui/avatar'
 import { TooltipIconButton } from '@renderer/components/assistant-ui/tooltip-icon-button'
 import { cn } from '@renderer/lib/utils'
 import { useTranslation } from '../../i18n/use-app-translation'
@@ -40,9 +39,9 @@ const useFileSrc = (file: File | undefined) => {
 const useAttachmentSrc = () => {
   const { file, src } = useAuiState(
     useShallow((s): { file?: File; src?: string } => {
-      if (s.attachment.type !== 'image') return {}
-      if (s.attachment.file) return { file: s.attachment.file }
-      const src = s.attachment.content?.filter((c) => c.type === 'image')[0]?.image
+      const attachment = s.attachment
+      if (attachment.file?.type.startsWith('image/')) return { file: attachment.file }
+      const src = attachment.content?.find((content) => content.type === 'image')?.image
       if (!src) return {}
       return { src }
     })
@@ -100,18 +99,24 @@ const AttachmentPreviewDialog: FC<PropsWithChildren> = ({ children }) => {
 const AttachmentThumb: FC = () => {
   const { t } = useTranslation()
   const src = useAttachmentSrc()
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    setFailed(false)
+  }, [src])
+
+  if (!src || failed) {
+    return <FileText className="aui-attachment-tile-fallback-icon text-muted-foreground size-8" />
+  }
 
   return (
-    <Avatar className="aui-attachment-tile-avatar h-full w-full rounded-none">
-      <AvatarImage
-        src={src}
-        alt={t('threads.ui.attachmentPreview')}
-        className="aui-attachment-tile-image object-cover"
-      />
-      <AvatarFallback>
-        <FileText className="aui-attachment-tile-fallback-icon text-muted-foreground size-8" />
-      </AvatarFallback>
-    </Avatar>
+    <img
+      key={src}
+      src={src}
+      alt={t('threads.ui.attachmentPreview')}
+      className="aui-attachment-tile-image h-full w-full object-cover"
+      onError={() => setFailed(true)}
+    />
   )
 }
 
@@ -120,7 +125,15 @@ const AttachmentUI: FC = () => {
   const aui = useAui()
   const isComposer = aui.attachment.source !== 'message'
 
-  const isImage = useAuiState((s) => s.attachment.type === 'image')
+  const isImage = useAuiState((s) => {
+    const attachment = s.attachment
+    return (
+      attachment.type === 'image' ||
+      attachment.contentType?.startsWith('image/') ||
+      attachment.file?.type.startsWith('image/') ||
+      attachment.content?.some((content) => content.type === 'image') === true
+    )
+  })
   const attachmentType = useAuiState((s) => s.attachment.type)
   const typeLabel =
     attachmentType === 'image'
@@ -152,7 +165,7 @@ const AttachmentUI: FC = () => {
       <AttachmentPrimitive.Root
         className={cn(
           'aui-attachment-root relative',
-          isImage && !isComposer && 'aui-attachment-root-message only:*:first:size-24'
+          isImage && !isComposer && 'aui-attachment-root-message'
         )}
       >
         <AttachmentPreviewDialog>
@@ -160,6 +173,7 @@ const AttachmentUI: FC = () => {
             <div
               className={cn(
                 'aui-attachment-tile bg-muted relative size-14 cursor-pointer overflow-hidden rounded-[calc(var(--composer-radius)-var(--composer-padding))] border transition-opacity hover:opacity-75',
+                isImage && !isComposer && 'size-32 rounded-lg',
                 isError && 'border-destructive'
               )}
               role="button"
@@ -234,7 +248,7 @@ export const ComposerAttachments: FC = () => {
   )
 }
 
-export const ComposerAddAttachment: FC = () => {
+export const ComposerAddAttachment: FC<{ disabled?: boolean }> = ({ disabled = false }) => {
   const { t } = useTranslation()
   return (
     <ComposerPrimitive.AddAttachment asChild>
@@ -245,6 +259,7 @@ export const ComposerAddAttachment: FC = () => {
         size="icon"
         className="aui-composer-add-attachment hover:bg-muted-foreground/15 dark:border-muted-foreground/15 dark:hover:bg-muted-foreground/30 size-7 rounded-full p-1 text-xs font-semibold"
         aria-label={t('threads.ui.addAttachment')}
+        disabled={disabled}
       >
         <PlusIcon className="aui-attachment-add-icon size-4.5 stroke-[1.5px]" />
       </TooltipIconButton>

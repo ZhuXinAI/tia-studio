@@ -65,6 +65,7 @@ export type AppAgentMessage = {
   createdAt: string
   completedAt?: string
   status: 'streaming' | 'complete' | 'error'
+  error?: string
   upstreamId?: string
 }
 
@@ -309,6 +310,30 @@ export function reduceAgentEvent(view: AgentSessionView, event: AppAgentEvent): 
       break
     case 'run.failed':
       snapshot.status = 'error'
+      {
+        const latestStreamingAssistantIndex = messages.findLastIndex(
+          (message) => message.role === 'assistant' && message.status === 'streaming'
+        )
+        if (latestStreamingAssistantIndex >= 0) {
+          messages[latestStreamingAssistantIndex] = {
+            ...messages[latestStreamingAssistantIndex],
+            status: 'error',
+            error: event.error,
+            completedAt: event.timestamp
+          }
+        } else {
+          messages.push({
+            id: `run-failed-${event.eventId}`,
+            sessionId: event.sessionId,
+            role: 'assistant',
+            parts: [],
+            createdAt: event.timestamp,
+            completedAt: event.timestamp,
+            status: 'error',
+            error: event.error
+          })
+        }
+      }
       break
     case 'message.started':
       if (!messages.some((message) => message.id === event.message.id)) messages.push(event.message)

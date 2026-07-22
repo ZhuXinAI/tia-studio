@@ -27,7 +27,7 @@ const session: AgentSessionSnapshot = {
 }
 
 describe('ChannelMessageRouter', () => {
-  it('creates a Standard Access Pi session in Chats and returns streamed text', async () => {
+  it('uses the bound workspace and falls back to Chats when none is selected', async () => {
     const bus = new ChannelEventBus()
     const listeners = new Set<(event: AppAgentEvent) => void>()
     const createSession = vi.fn(async () => session)
@@ -75,6 +75,7 @@ describe('ChannelMessageRouter', () => {
       createdAt: string
     } | null = null
     const replies: string[] = []
+    let boundWorkspaceId: string | null = null
     bus.subscribe('channel.message.send-requested', (event) => {
       if (event.content) replies.push(event.content)
     })
@@ -86,6 +87,7 @@ describe('ChannelMessageRouter', () => {
           type: 'telegram',
           name: 'Channel',
           enabled: true,
+          workspaceId: boundWorkspaceId,
           config: {},
           lastError: null,
           createdAt: '',
@@ -123,6 +125,18 @@ describe('ChannelMessageRouter', () => {
         ]
       },
       workspacesRepo: {
+        getById: async (workspaceId) =>
+          workspaceId === 'project'
+            ? {
+                id: 'project',
+                name: 'Project',
+                rootPath: '/tmp/project',
+                createdAt: '',
+                updatedAt: '',
+                builtInKind: null,
+                isMissing: false
+              }
+            : null,
         ensureBuiltInChatsWorkspace: async () => ({
           id: 'chats',
           name: 'Chats',
@@ -151,5 +165,22 @@ describe('ChannelMessageRouter', () => {
       expect.objectContaining({ workspaceId: null, accessMode: 'standard' })
     )
     expect(replies).toEqual(['Done'])
+
+    boundWorkspaceId = 'project'
+    await router.handleInboundEvent({
+      eventId: 'new',
+      channelId: 'channel',
+      channelType: 'telegram',
+      message: {
+        id: 'new-message',
+        remoteChatId: 'room',
+        senderId: 'user',
+        content: '/new',
+        timestamp: new Date()
+      }
+    })
+    expect(createSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({ workspaceId: 'project', workspacePath: '/tmp/project' })
+    )
   })
 })

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Clock3, Pause, Play, Plus, Save, Trash2, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import type { SaveTiaAutomationInput, TiaAutomationRecord } from '../../../../../shared/automations'
 import { Button } from '../../../components/ui/button'
@@ -77,6 +78,7 @@ function formatTimestamp(value: string | null, locale: string, neverLabel: strin
 
 export function AutomationsPage(): React.JSX.Element {
   const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
   const { data: automations = [], isLoading } = useAutomations()
   const { data: workspaces = [] } = useWorkspaces()
   const { data: providers = [] } = useProviders()
@@ -151,6 +153,26 @@ export function AutomationsPage(): React.JSX.Element {
   }
 
   const mutationPending = createMutation.isPending || updateMutation.isPending
+  const suggestedSchedules = [
+    {
+      id: 'daily-brief',
+      title: t('automations.suggestions.dailyBrief.title'),
+      description: t('automations.suggestions.dailyBrief.description'),
+      prompt: t('automations.suggestions.dailyBrief.prompt')
+    },
+    {
+      id: 'weekly-review',
+      title: t('automations.suggestions.weeklyReview.title'),
+      description: t('automations.suggestions.weeklyReview.description'),
+      prompt: t('automations.suggestions.weeklyReview.prompt')
+    },
+    {
+      id: 'follow-up-monitor',
+      title: t('automations.suggestions.followUpMonitor.title'),
+      description: t('automations.suggestions.followUpMonitor.description'),
+      prompt: t('automations.suggestions.followUpMonitor.prompt')
+    }
+  ]
 
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden bg-[color:var(--surface-paper)]">
@@ -412,6 +434,44 @@ export function AutomationsPage(): React.JSX.Element {
                   <Trash2 className="size-4" />
                   {t('automations.delete')}
                 </Button>
+              </div>
+            </div>
+          ) : automations.length === 0 ? (
+            <div className="mx-auto flex h-full w-full max-w-xl items-center px-4 py-10">
+              <div className="w-full">
+                <div className="mb-6">
+                  <Clock3 className="mb-3 size-5 text-muted-foreground" />
+                  <h2 className="text-lg font-semibold text-foreground">
+                    {t('automations.suggestions.title')}
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {t('automations.suggestions.description')}
+                  </p>
+                </div>
+                <div className="divide-y divide-[color:var(--surface-border)] border-y border-[color:var(--surface-border)]">
+                  {suggestedSchedules.map((suggestion) => (
+                    <button
+                      key={suggestion.id}
+                      type="button"
+                      className="group flex w-full items-center justify-between gap-5 py-4 text-left outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                      onClick={() =>
+                        navigate(`/chat/new?prompt=${encodeURIComponent(suggestion.prompt)}`)
+                      }
+                    >
+                      <span>
+                        <span className="block text-sm font-medium text-foreground">
+                          {suggestion.title}
+                        </span>
+                        <span className="mt-1 block text-sm text-muted-foreground">
+                          {suggestion.description}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-sm text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground">
+                        →
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           ) : (

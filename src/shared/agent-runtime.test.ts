@@ -85,6 +85,36 @@ describe('reduceAgentEvent', () => {
     expect(view.snapshot.pendingInteraction).toBeUndefined()
   })
 
+  it('attaches the runtime error to the active assistant message', () => {
+    const started = reduceAgentEvent(
+      { snapshot, messages: [], seenEventIds: [], lastSequence: 0 },
+      event(
+        {
+          type: 'message.started',
+          message: {
+            id: 'assistant',
+            sessionId: 's',
+            role: 'assistant',
+            parts: [],
+            status: 'streaming',
+            createdAt: snapshot.createdAt
+          }
+        },
+        1
+      )
+    )
+    const failed = reduceAgentEvent(
+      started,
+      event({ type: 'run.failed', error: 'Vision request failed' }, 2)
+    )
+
+    expect(failed.messages[0]).toMatchObject({
+      id: 'assistant',
+      status: 'error',
+      error: 'Vision request failed'
+    })
+  })
+
   it('applies session metadata updates published by runtime tools', () => {
     const view: AgentSessionView = { snapshot, messages: [], seenEventIds: [], lastSequence: 0 }
     const updated = reduceAgentEvent(

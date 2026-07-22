@@ -1,4 +1,13 @@
-import { Bot, Check, ChevronDown, Circle, Folder, ListTodo, Search, Shield, ShieldCheck } from 'lucide-react'
+import {
+  Check,
+  ChevronDown,
+  Circle,
+  Folder,
+  ListTodo,
+  Search,
+  Shield,
+  ShieldCheck
+} from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
@@ -34,6 +43,8 @@ import {
   NewPiThreadRuntimeProvider,
   PiThreadRuntimeProvider
 } from '../../features/threads/components/pi-thread-runtime'
+import { ComposerMentions } from '../../features/threads/components/composer-mentions'
+import { ModelSelector } from '../../components/assistant-ui/model-selector'
 import { useProviders } from '../../features/settings/providers/providers-query'
 import { useWorkspaces } from '../../features/workspaces/workspaces-query'
 import type { WorkspaceRecord } from '../../features/workspaces/workspaces-query'
@@ -57,6 +68,7 @@ function ThreadComposerControls({
   settings,
   providers,
   behavior,
+  creating = false,
   onBehaviorChange,
   onModelChange,
   onAccessChange
@@ -64,68 +76,42 @@ function ThreadComposerControls({
   settings: ComposerSettings
   providers: ProviderRecord[]
   behavior: AgentSendBehavior
+  creating?: boolean
   onBehaviorChange: (behavior: AgentSendBehavior) => void
   onModelChange: (provider: ProviderRecord, modelId: string) => void
   onAccessChange: (full: boolean) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const enabledProviders = providers.filter((provider) => provider.enabled)
-  const activeProvider = enabledProviders.find((provider) => provider.id === settings.providerId)
-  const disabled = settings.status === 'running'
+  const disabled = settings.status === 'running' || creating
+  const modelOptions = enabledProviders.flatMap((provider) => {
+    const providerModels = provider.providerModels?.includes(provider.selectedModel)
+      ? provider.providerModels
+      : []
+    return Array.from(new Set([provider.selectedModel, ...providerModels].filter(Boolean))).map(
+      (modelId) => ({
+        id: `${provider.id}\u0000${modelId}`,
+        name: modelId,
+        group: provider.name,
+        provider,
+        modelId
+      })
+    )
+  })
+  const selectedModelOptionId = `${settings.providerId}\u0000${settings.modelId}`
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 max-w-44 gap-1.5 rounded-lg px-2 text-xs font-normal text-muted-foreground"
-            aria-label={t('threads.composer.selectModel')}
-            disabled={disabled}
-          >
-            <Bot className="size-3.5 shrink-0" />
-            <span className="truncate">
-              {activeProvider?.name ?? settings.provider} · {settings.modelId}
-            </span>
-            <ChevronDown className="size-3 shrink-0 opacity-60" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="start"
-          side="top"
-          className="max-h-[200px] w-64 overflow-y-auto"
-        >
-          {enabledProviders.map((provider, providerIndex) => {
-            const providerModels = provider.providerModels?.includes(provider.selectedModel)
-              ? provider.providerModels
-              : []
-            const models = Array.from(
-              new Set([provider.selectedModel, ...providerModels].filter(Boolean))
-            )
-            return (
-              <div key={provider.id}>
-                {providerIndex > 0 ? <DropdownMenuSeparator /> : null}
-                <DropdownMenuLabel className="px-2 text-xs text-muted-foreground">
-                  {provider.name}
-                </DropdownMenuLabel>
-                {models.map((modelId) => (
-                  <DropdownMenuItem
-                    key={`${provider.id}/${modelId}`}
-                    onSelect={() => onModelChange(provider, modelId)}
-                  >
-                    <span className="min-w-0 flex-1 truncate">{modelId}</span>
-                    {provider.id === settings.providerId && modelId === settings.modelId ? (
-                      <Check className="size-4" />
-                    ) : null}
-                  </DropdownMenuItem>
-                ))}
-              </div>
-            )
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <ModelSelector
+        options={modelOptions}
+        value={selectedModelOptionId}
+        disabled={disabled}
+        ariaLabel={t('threads.composer.selectModel')}
+        onValueChange={(selectedId) => {
+          const option = modelOptions.find((candidate) => candidate.id === selectedId)
+          if (option) onModelChange(option.provider, option.modelId)
+        }}
+      />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -484,6 +470,7 @@ export function ThreadPageV2(): React.JSX.Element {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const draftWorkspaceId = searchParams.get('pwd')
+  const initialComposerText = searchParams.get('prompt') ?? undefined
   const queryClient = useQueryClient()
   const createSession = useCreateAgentSession()
   const { data: workspaces = [], isLoading: workspacesLoading } = useWorkspaces()
@@ -500,29 +487,26 @@ export function ThreadPageV2(): React.JSX.Element {
   const [draftProviderId, setDraftProviderId] = useState<string | null>(null)
   const [draftModelId, setDraftModelId] = useState<string | null>(null)
   const [draftAccessMode, setDraftAccessMode] = useState<'standard' | 'full'>('standard')
+  const [isCreatingThread, setIsCreatingThread] = useState(false)
   const modelReconciliationRef = useRef<string | null>(null)
   const rightRail = useAppV2ShellRightRail()
   const { setTitle: setTitlebarTitle } = useAppV2Titlebar()
 
-  const workspace = useMemo(
-    () => {
-      const requestedWorkspace = draftWorkspaceId
-        ? (workspaces.find(
-            (item) => item.id === draftWorkspaceId && item.builtInKind === null
-          ) ?? null)
-        : null
-      const legacyWorkspace = params.workspaceId
-        ? (workspaces.find((item) => item.id === params.workspaceId) ?? null)
-        : null
-      return (
-        requestedWorkspace ??
-        legacyWorkspace ??
-        workspaces.find((item) => item.builtInKind === 'chats') ??
-        null
-      )
-    },
-    [draftWorkspaceId, params.workspaceId, workspaces]
-  )
+  const workspace = useMemo(() => {
+    const requestedWorkspace = draftWorkspaceId
+      ? (workspaces.find((item) => item.id === draftWorkspaceId && item.builtInKind === null) ??
+        null)
+      : null
+    const legacyWorkspace = params.workspaceId
+      ? (workspaces.find((item) => item.id === params.workspaceId) ?? null)
+      : null
+    return (
+      requestedWorkspace ??
+      legacyWorkspace ??
+      workspaces.find((item) => item.builtInKind === 'chats') ??
+      null
+    )
+  }, [draftWorkspaceId, params.workspaceId, workspaces])
   const provider = useMemo(
     () =>
       providers.find((item) => item.enabled && item.isDefault) ??
@@ -636,10 +620,13 @@ export function ThreadPageV2(): React.JSX.Element {
             accessMode: draftAccessMode
           })
         }
+        onCreatingChange={setIsCreatingThread}
         onCreated={(created) => navigate(sessionHref(created), { replace: true })}
         onError={(error) => toast.error(toErrorMessage(error))}
       >
         <Thread
+          composerDisabled={isCreatingThread}
+          composerInitialText={initialComposerText}
           components={{
             ComposerHeader: () => (
               <DraftWorkspacePicker
@@ -662,6 +649,7 @@ export function ThreadPageV2(): React.JSX.Element {
                 }}
                 providers={providers}
                 behavior={behavior}
+                creating={isCreatingThread}
                 onBehaviorChange={setBehavior}
                 onModelChange={(nextProvider, modelId) => {
                   setDraftProviderId(nextProvider.id)
@@ -669,7 +657,8 @@ export function ThreadPageV2(): React.JSX.Element {
                 }}
                 onAccessChange={(full) => setDraftAccessMode(full ? 'full' : 'standard')}
               />
-            )
+            ),
+            ComposerAddons: () => <ComposerMentions workspaceId={workspace.id} />
           }}
         />
       </NewPiThreadRuntimeProvider>
@@ -694,9 +683,6 @@ export function ThreadPageV2(): React.JSX.Element {
 
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden">
-      {session.pendingInteraction ? (
-        <InteractionCard sessionId={session.id} request={session.pendingInteraction} />
-      ) : null}
       <div className="min-h-0 flex-1">
         <PiThreadRuntimeProvider
           key={session.id}
@@ -711,7 +697,14 @@ export function ThreadPageV2(): React.JSX.Element {
         >
           <Thread
             components={{
-              ComposerHeader: () => <ThreadTodoPanel todos={session.todos ?? []} />,
+              ComposerHeader: () => (
+                <>
+                  <ThreadTodoPanel todos={session.todos ?? []} />
+                  {session.pendingInteraction ? (
+                    <InteractionCard sessionId={session.id} request={session.pendingInteraction} />
+                  ) : null}
+                </>
+              ),
               ComposerControls: () => (
                 <ThreadComposerControls
                   settings={session}
@@ -720,6 +713,14 @@ export function ThreadPageV2(): React.JSX.Element {
                   onBehaviorChange={setBehavior}
                   onModelChange={(nextProvider, modelId) => void changeModel(nextProvider, modelId)}
                   onAccessChange={(full) => void toggleAccess(full)}
+                />
+              ),
+              ComposerAddons: () => (
+                <ComposerMentions
+                  workspaceId={
+                    session.workspaceId ??
+                    workspaces.find((item) => item.builtInKind === 'chats')?.id
+                  }
                 />
               )
             }}

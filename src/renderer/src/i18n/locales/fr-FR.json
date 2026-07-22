@@ -94,6 +94,34 @@
         "reset": "Reset to Default"
       }
     },
+    "permissions": {
+      "title": "Command permissions",
+      "description": "Review command prefixes that TIA Studio may run without asking again. Approvals are scoped to one workspace and can be revoked at any time.",
+      "approvalsTitle": "Workspace approvals",
+      "approvalsDescription": "Credential hard blocks still apply, including when a command matches an approval.",
+      "loading": "Loading permissions…",
+      "empty": "No remembered command approvals.",
+      "workspaceFilter": "Workspace",
+      "allWorkspaces": "All workspaces",
+      "results": "Showing {{from}}–{{to}} of {{total}} approvals",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {{current}} of {{total}}",
+      "revokeAriaLabel": "Revoke {{command}}",
+      "revokeSuccess": "Permission rule revoked",
+      "never": "Never",
+      "fields": {
+        "scope": "Scope",
+        "source": "Source",
+        "lastUsed": "Last used",
+        "rationale": "Rationale"
+      },
+      "origins": {
+        "user-approval": "User approval",
+        "user-config": "User configuration",
+        "built-in": "Built-in"
+      }
+    },
     "about": {
       "title": "À propos et retours",
       "description": "Métadonnées de l'app, contrôles de mise à jour et liens utiles pour TIA Studio.",
@@ -331,8 +359,26 @@
         "editJson": "Modifier le JSON",
         "saving": "Enregistrement...",
         "save": "Enregistrer",
+        "saveServer": "Save server",
         "cancel": "Annuler",
         "applyJson": "Appliquer le JSON"
+      },
+      "editAriaLabel": "Edit {{name}}",
+      "managedRuntimeSetup": "Finish the {{runtime}} runtime setup before enabling this server.",
+      "remote": {
+        "title": "Authenticated remote MCPs",
+        "descriptionPrefix": "For services such as Linear, prefer the",
+        "descriptionSuffix": "stdio proxy: command npx; arguments -y, mcp-remote, and the server URL. It opens browser OAuth when needed. Its user-level session may be reused by other clients using the same mcp-remote profile and matching configuration, but it does not guarantee sharing a Codex or Claude login.",
+        "managedRuntime": "If managed Bun is installed in Runtime Setup, TIA runs npx or bunx through bun x automatically."
+      },
+      "health": {
+        "disabled": "Disabled",
+        "waiting": "Waiting for a TIA Studio session",
+        "connected": "Connected",
+        "connectedWithTools": "Connected · {{count}} tools",
+        "actionRequired": "Action required",
+        "unsupported": "This transport is not available in TIA Studio yet. Use stdio or disable this server.",
+        "connectionFailed": "A connection or tool action failed. Review the command, arguments, and environment variables, then open a new chat to retry."
       },
       "cardTitle": "Serveurs MCP",
       "cardDescription": "These servers are shared globally for local Pi sessions.",
@@ -372,7 +418,9 @@
         "invalidPayload": "Données de paramètres MCP invalides.",
         "rawJsonInvalid": "Le JSON brut est invalide.",
         "commandRequired": "command est requis lorsque le type est stdio",
-        "urlRequired": "url est requis pour les serveurs MCP non stdio sauf si command est fourni"
+        "urlRequired": "url est requis pour les serveurs MCP non stdio sauf si command est fourni",
+        "serverIdRequired": "Server ID is required",
+        "serverExists": "A server named {{id}} already exists"
       },
       "toasts": {
         "saved": "Paramètres du serveur MCP enregistrés."
@@ -383,7 +431,8 @@
       "description": "Gérez les canaux Telegram et Lark configurés au même endroit.",
       "activeCount": "Active Channels",
       "pairingQueues": "Pairing Queues",
-      "routeDescription": "Routes messages to TIA Studio in the built-in Chats workspace.",
+      "routeDescription": "Routes messages to a selected workspace, or to Chats when none is selected.",
+      "workspaceHint": "New conversations from this channel start in the selected workspace. Leave it on Chats for workspace-free conversations.",
       "configuredTitle": "Canaux configurés",
       "configuredDescription": "Modifiez les identifiants existants, vérifiez les liaisons ou supprimez les canaux inutilisés.",
       "channelTypes": {
@@ -538,13 +587,13 @@
   },
   "skills": {
     "title": "Skills and MCPs",
-    "description": "Extend Pi with owned skill bundles and shared MCP servers.",
+    "description": "Extend TIA Studio with skill bundles and shared MCP servers.",
     "extensionsLabel": "Extensions",
     "skillsTab": "Skills",
     "mcpsTab": "MCPs",
     "searchPlaceholder": "Search the top 20",
     "catalogLabel": "Top skills on skills.sh · all time",
-    "globalScope": "Installed skills are available to every Pi workspace",
+    "globalScope": "Installed skills are available to every workspace",
     "loading": "Loading catalog…",
     "installed": "Installed",
     "install": "Install",
@@ -600,6 +649,25 @@
     "resume": "Resume",
     "delete": "Delete",
     "selectPrompt": "Select a schedule or create one.",
+    "suggestions": {
+      "title": "Start with a schedule",
+      "description": "Choose a starter to prepare an editable request in a new chat.",
+      "dailyBrief": {
+        "title": "Daily brief",
+        "description": "Weekdays at 8:00 AM",
+        "prompt": "Create a weekday 8:00 AM schedule that prepares a concise daily brief from my current work and priorities."
+      },
+      "weeklyReview": {
+        "title": "Weekly review",
+        "description": "Fridays at 4:00 PM",
+        "prompt": "Create a Friday 4:00 PM schedule that turns my recent work into a concise weekly review."
+      },
+      "followUpMonitor": {
+        "title": "Follow-up monitor",
+        "description": "Weekdays at 9:00 AM",
+        "prompt": "Create a weekday 9:00 AM schedule that reviews my recent work and flags follow-ups I should handle."
+      }
+    },
     "schedule": {
       "everyDaysAt": "Every {{days}} at {{time}}",
       "everyDays": "Every {{days}}",

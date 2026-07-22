@@ -26,6 +26,10 @@ describe('v3 Pi migration', () => {
     expect(names).toContain('app_channel_session_bindings')
     expect(names).not.toContain('app_assistants')
     expect(names).not.toContain('app_threads')
+    const channelColumns = await db.execute("PRAGMA table_info('app_channels')")
+    expect(
+      channelColumns.rows.map((row) => String((row as Record<string, unknown>).name))
+    ).toContain('workspace_id')
     await db.close()
   })
 

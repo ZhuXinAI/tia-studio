@@ -54,7 +54,7 @@
         "general": "常规",
         "providers": "模型提供商",
         "channels": "频道",
-        "permissions": "Command Permissions",
+        "permissions": "命令权限",
         "mcpServers": "MCP 服务器",
         "display": "显示",
         "aboutFeedback": "关于与反馈"
@@ -92,6 +92,34 @@
         "foreground": "Foreground",
         "colorAriaLabel": "{{label}} color",
         "reset": "Reset to Default"
+      }
+    },
+    "permissions": {
+      "title": "命令权限",
+      "description": "查看 TIA Studio 可以无需再次询问而运行的命令前缀。审批仅适用于一个工作区，且可随时撤销。",
+      "approvalsTitle": "工作区审批",
+      "approvalsDescription": "即使命令匹配审批，凭据硬性拦截仍然生效。",
+      "loading": "正在加载权限…",
+      "empty": "没有已记住的命令审批。",
+      "workspaceFilter": "工作区",
+      "allWorkspaces": "全部工作区",
+      "results": "显示第 {{from}}–{{to}} 项，共 {{total}} 项审批",
+      "previous": "上一页",
+      "next": "下一页",
+      "page": "第 {{current}} / {{total}} 页",
+      "revokeAriaLabel": "撤销 {{command}}",
+      "revokeSuccess": "已撤销权限规则",
+      "never": "从未",
+      "fields": {
+        "scope": "范围",
+        "source": "来源",
+        "lastUsed": "最近使用",
+        "rationale": "原因"
+      },
+      "origins": {
+        "user-approval": "用户审批",
+        "user-config": "用户配置",
+        "built-in": "内置"
       }
     },
     "about": {
@@ -331,8 +359,26 @@
         "editJson": "编辑 JSON",
         "saving": "保存中...",
         "save": "保存",
+        "saveServer": "保存服务器",
         "cancel": "取消",
         "applyJson": "应用 JSON"
+      },
+      "editAriaLabel": "编辑 {{name}}",
+      "managedRuntimeSetup": "启用此服务器前，请先完成 {{runtime}} 运行时设置。",
+      "remote": {
+        "title": "需要认证的远程 MCP",
+        "descriptionPrefix": "对于 Linear 等服务，建议使用",
+        "descriptionSuffix": "stdio 代理：命令为 npx；参数为 -y、mcp-remote 和服务器 URL。它会在需要时打开浏览器 OAuth。其用户级会话可以被使用相同 mcp-remote 配置文件和匹配配置的其他客户端复用，但不保证共享 Codex 或 Claude 登录状态。",
+        "managedRuntime": "如果已在运行时设置中安装托管 Bun，TIA 会自动通过 bun x 运行 npx 或 bunx。"
+      },
+      "health": {
+        "disabled": "已禁用",
+        "waiting": "等待 TIA Studio 会话",
+        "connected": "已连接",
+        "connectedWithTools": "已连接 · {{count}} 个工具",
+        "actionRequired": "需要处理",
+        "unsupported": "TIA Studio 暂不支持此传输方式。请使用 stdio 或禁用此服务器。",
+        "connectionFailed": "连接或工具操作失败。请检查命令、参数和环境变量，然后在新聊天中重试。"
       },
       "cardTitle": "MCP 服务器",
       "cardDescription": "These servers are shared globally for local Pi sessions.",
@@ -372,7 +418,9 @@
         "invalidPayload": "MCP 设置数据无效。",
         "rawJsonInvalid": "原始 JSON 无效。",
         "commandRequired": "类型为 stdio 时必须提供 command",
-        "urlRequired": "非 stdio 的 MCP 服务器需要提供 url，除非已提供 command"
+        "urlRequired": "非 stdio 的 MCP 服务器需要提供 url，除非已提供 command",
+        "serverIdRequired": "必须填写服务器 ID",
+        "serverExists": "名为 {{id}} 的服务器已存在"
       },
       "toasts": {
         "saved": "MCP 服务器设置已保存。"
@@ -383,7 +431,8 @@
       "description": "在统一的全局设置中管理可复用的频道连接和凭证。",
       "activeCount": "Active Channels",
       "pairingQueues": "Pairing Queues",
-      "routeDescription": "Routes messages to TIA Studio in the built-in Chats workspace.",
+      "routeDescription": "消息会路由到已选工作区；未选择时会进入聊天。",
+      "workspaceHint": "此频道的新对话会在所选工作区创建。保留为“聊天”即可创建不关联工作区的对话。",
       "configuredTitle": "频道连接",
       "configuredDescription": "查看连接状态、更新凭证，或移除不再需要的频道。",
       "channelTypes": {
@@ -538,13 +587,13 @@
   },
   "skills": {
     "title": "技能与 MCP",
-    "description": "使用自有技能包和共享 MCP 服务器扩展 Pi。",
+    "description": "使用技能包和共享 MCP 服务器扩展 TIA Studio。",
     "extensionsLabel": "扩展",
     "skillsTab": "技能",
     "mcpsTab": "MCP",
     "searchPlaceholder": "搜索热门 20 项",
     "catalogLabel": "skills.sh 历史热门技能",
-    "globalScope": "已安装技能可用于所有 Pi 工作区",
+    "globalScope": "已安装技能可用于所有工作区",
     "loading": "正在加载目录…",
     "installed": "已安装",
     "install": "安装",
@@ -600,6 +649,25 @@
     "resume": "恢复",
     "delete": "删除",
     "selectPrompt": "请选择一个计划或新建计划。",
+    "suggestions": {
+      "title": "从计划模板开始",
+      "description": "选择一个模板，在新聊天中准备可编辑的请求。",
+      "dailyBrief": {
+        "title": "每日简报",
+        "description": "工作日早上 8:00",
+        "prompt": "创建一个工作日早上 8:00 的计划，根据我当前的工作和优先事项生成简洁的每日简报。"
+      },
+      "weeklyReview": {
+        "title": "每周回顾",
+        "description": "每周五下午 4:00",
+        "prompt": "创建一个每周五下午 4:00 的计划，将我近期的工作整理成简洁的每周回顾。"
+      },
+      "followUpMonitor": {
+        "title": "跟进提醒",
+        "description": "工作日早上 9:00",
+        "prompt": "创建一个工作日早上 9:00 的计划，审查我近期的工作并标记需要处理的后续事项。"
+      }
+    },
     "schedule": {
       "everyDaysAt": "每周 {{days}} {{time}}",
       "everyDays": "每周 {{days}}",

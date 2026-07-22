@@ -49,10 +49,12 @@ CREATE TABLE IF NOT EXISTS app_channels (
   type TEXT NOT NULL,
   name TEXT NOT NULL,
   enabled INTEGER NOT NULL DEFAULT 1,
+  workspace_id TEXT,
   config TEXT NOT NULL DEFAULT '{}',
   last_error TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (workspace_id) REFERENCES app_workspaces(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS app_channel_pairings (

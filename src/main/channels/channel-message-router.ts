@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { AppAgentRuntime, AppAgentEvent } from '../../shared/agent-runtime'
 import { logger } from '../utils/logger'
 import type { ChannelSessionBindingsRepository } from '../persistence/repos/channel-session-bindings-repo'
-import type { ChannelsRepository } from '../persistence/repos/channels-repo'
+import type { AppChannel, ChannelsRepository } from '../persistence/repos/channels-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { WorkspacesRepository } from '../persistence/repos/workspaces-repo'
 import type { ChannelEventBus } from './channel-event-bus'
@@ -16,7 +16,7 @@ type Options = {
     'getByChannelAndRemoteChat' | 'upsert' | 'delete'
   >
   providersRepo: Pick<ProvidersRepository, 'list'>
-  workspacesRepo: Pick<WorkspacesRepository, 'ensureBuiltInChatsWorkspace'>
+  workspacesRepo: Pick<WorkspacesRepository, 'ensureBuiltInChatsWorkspace' | 'getById'>
   agentRuntime: AppAgentRuntime
 }
 
@@ -74,7 +74,7 @@ export class ChannelMessageRouter {
     const previous = this.chains.get(key) ?? Promise.resolve()
     const next = previous
       .catch(() => undefined)
-      .then(() => this.processMessage(event, channel.name))
+      .then(() => this.processMessage(event, channel))
       .catch((error) => {
         logger.error('[ChannelMessageRouter] Pi message failed', error)
         return this.reply(
@@ -89,7 +89,7 @@ export class ChannelMessageRouter {
 
   private async processMessage(
     event: ChannelMessageReceivedEvent,
-    channelName: string
+    channel: AppChannel
   ): Promise<void> {
     const isNew = event.message.content.trim().toLowerCase() === '/new'
     if (isNew) {
@@ -99,19 +99,19 @@ export class ChannelMessageRouter {
       )
       if (existing) await this.options.agentRuntime.closeSession(existing.sessionId)
       await this.options.bindingsRepo.delete(event.channelId, event.message.remoteChatId)
-      await this.createBoundSession(event, channelName)
+      await this.createBoundSession(event, channel)
       await this.reply(event, 'Started a new Pi thread.')
       return
     }
 
-    const sessionId = await this.getOrCreateSessionId(event, channelName)
+    const sessionId = await this.getOrCreateSessionId(event, channel)
     const response = await this.sendAndCollect(sessionId, event.message.content)
     await this.reply(event, response || '[Error] Pi completed without a text response.')
   }
 
   private async getOrCreateSessionId(
     event: ChannelMessageReceivedEvent,
-    channelName: string
+    channel: AppChannel
   ): Promise<string> {
     const binding = await this.options.bindingsRepo.getByChannelAndRemoteChat(
       event.channelId,
@@ -123,25 +123,30 @@ export class ChannelMessageRouter {
         .catch(() => null)
       if (existing) return existing.id
     }
-    return this.createBoundSession(event, channelName)
+    return this.createBoundSession(event, channel)
   }
 
   private async createBoundSession(
     event: ChannelMessageReceivedEvent,
-    channelName: string
+    channel: AppChannel
   ): Promise<string> {
-    const [workspace, providers] = await Promise.all([
+    const [boundWorkspace, chatsWorkspace, providers] = await Promise.all([
+      channel.workspaceId ? this.options.workspacesRepo.getById(channel.workspaceId) : null,
       this.options.workspacesRepo.ensureBuiltInChatsWorkspace(),
       this.options.providersRepo.list()
     ])
+    const workspace =
+      boundWorkspace && !boundWorkspace.isMissing && boundWorkspace.builtInKind !== 'chats'
+        ? boundWorkspace
+        : chatsWorkspace
     const provider =
       providers.find((item) => item.enabled && item.isDefault) ??
       providers.find((item) => item.enabled)
     if (!provider) throw new Error('No enabled provider is configured')
     const session = await this.options.agentRuntime.createSession({
-      workspaceId: null,
+      workspaceId: boundWorkspace === workspace ? workspace.id : null,
       workspacePath: workspace.rootPath,
-      title: `${channelName} · ${event.message.remoteChatId}`,
+      title: `${channel.name} · ${event.message.remoteChatId}`,
       providerId: provider.id,
       provider: provider.type,
       modelId: provider.selectedModel,

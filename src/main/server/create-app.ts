@@ -31,6 +31,7 @@ import type {
 } from '../persistence/repos/managed-runtimes-repo'
 import type { RecommendedSkillId } from '../skills/skills-manager'
 import type { SkillMarketplaceRecord } from '../../shared/skill-marketplace'
+import type { ComposerMentions } from '../../shared/composer-mentions'
 import type { AgentSessionsRepository } from '../persistence/repos/agent-sessions-repo'
 import type { AppAgentRuntime } from '../../shared/agent-runtime'
 import { registerAgentRoute } from './routes/agent-route'
@@ -67,6 +68,9 @@ type CreateAppOptions = {
     listSkillMarketplace: () => Promise<SkillMarketplaceRecord[]>
     installMarketplaceSkill: (input: { skillId: string }) => Promise<void>
     pickDirectory: () => Promise<string | null>
+  }
+  composerMentions?: {
+    get(workspacePath: string): Promise<ComposerMentions>
   }
   repositories?: {
     providers: ProvidersRepository
@@ -160,11 +164,13 @@ export function createApp(options: CreateAppOptions): Hono {
       },
       channelSetupRecovery: options.channelSetupRecovery,
       whatsAppAuthStateStore: options.whatsAppAuthStateStore,
-      wechatAuthStateStore: options.wechatAuthStateStore
+      wechatAuthStateStore: options.wechatAuthStateStore,
+      workspacesRepo: options.repositories.workspaces
     })
     if (options.repositories.workspaces) {
       registerWorkspacesRoute(app, {
-        workspacesRepo: options.repositories.workspaces
+        workspacesRepo: options.repositories.workspaces,
+        getComposerMentions: options.composerMentions?.get
       })
     }
     registerWebSearchSettingsRoute(app, {

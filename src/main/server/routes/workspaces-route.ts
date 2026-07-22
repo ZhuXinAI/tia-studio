@@ -1,6 +1,7 @@
 import type { Hono } from 'hono'
 import { z } from 'zod'
 import type { WorkspacesRepository } from '../../persistence/repos/workspaces-repo'
+import type { ComposerMentions } from '../../../shared/composer-mentions'
 
 const nonEmptyString = z.string().trim().min(1)
 
@@ -15,6 +16,7 @@ const relocateWorkspaceSchema = z.object({
 
 type RegisterWorkspacesRouteOptions = {
   workspacesRepo: WorkspacesRepository
+  getComposerMentions?: (workspacePath: string) => Promise<ComposerMentions>
 }
 
 function invalidBodyResponse(): { ok: false; error: string } {
@@ -25,6 +27,19 @@ export function registerWorkspacesRoute(app: Hono, options: RegisterWorkspacesRo
   app.get('/v1/workspaces', async (context) => {
     const workspaces = await options.workspacesRepo.list()
     return context.json(workspaces)
+  })
+
+  app.get('/v1/workspaces/:workspaceId/composer-mentions', async (context) => {
+    if (!options.getComposerMentions) {
+      return context.json({ ok: false, error: 'Composer mentions are unavailable' }, 404)
+    }
+
+    const workspace = await options.workspacesRepo.getById(context.req.param('workspaceId'))
+    if (!workspace || workspace.isMissing) {
+      return context.json({ ok: false, error: 'Workspace not found' }, 404)
+    }
+
+    return context.json(await options.getComposerMentions(workspace.rootPath))
   })
 
   app.post('/v1/workspaces', async (context) => {

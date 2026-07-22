@@ -4,6 +4,7 @@ import type { WechatAuthStateStore } from '../../channels/wechat-auth-state-stor
 import { resolveGroupRequireMention } from '../../channels/channel-config'
 import type { ChannelPairingsRepository } from '../../persistence/repos/channel-pairings-repo'
 import type { AppChannel, ChannelsRepository } from '../../persistence/repos/channels-repo'
+import type { WorkspacesRepository } from '../../persistence/repos/workspaces-repo'
 import {
   createConfiguredChannelSchema,
   updateConfiguredChannelSchema
@@ -19,6 +20,7 @@ type Options = {
   channelSetupRecovery?: { recover(channel: Pick<AppChannel, 'id' | 'type'>): Promise<void> }
   whatsAppAuthStateStore?: Pick<WhatsAppAuthStateStore, 'get'>
   wechatAuthStateStore?: Pick<WechatAuthStateStore, 'get'>
+  workspacesRepo?: Pick<WorkspacesRepository, 'getById'>
 }
 
 function buildConfig(channel: Record<string, unknown> & { type: string }): Record<string, unknown> {
@@ -96,6 +98,7 @@ async function response(channel: AppChannel, options: Options) {
     id: channel.id,
     type: channel.type,
     name: channel.name,
+    workspaceId: channel.workspaceId,
     groupRequireMention: resolveGroupRequireMention(channel.config),
     status,
     errorMessage: channel.lastError,
@@ -103,6 +106,18 @@ async function response(channel: AppChannel, options: Options) {
     pendingPairingCount,
     authState: state
   }
+}
+
+async function resolveWorkspaceBinding(
+  workspaceId: string | null | undefined,
+  options: Options
+): Promise<string | null> {
+  if (!workspaceId) return null
+  const workspace = await options.workspacesRepo?.getById(workspaceId)
+  if (!workspace || workspace.isMissing || workspace.builtInKind === 'chats') {
+    throw new Error('Workspace is unavailable for channel routing')
+  }
+  return workspace.id
 }
 
 export function registerChannelsRoute(app: Hono, options: Options): void {
@@ -122,10 +137,20 @@ export function registerChannelsRoute(app: Hono, options: Options): void {
         { ok: false, error: parsed.error.issues[0]?.message ?? 'Validation error' },
         400
       )
+    let workspaceId: string | null
+    try {
+      workspaceId = await resolveWorkspaceBinding(parsed.data.workspaceId, options)
+    } catch (error) {
+      return context.json(
+        { ok: false, error: error instanceof Error ? error.message : 'Invalid workspace' },
+        400
+      )
+    }
     const created = await options.channelsRepo.create({
       type: parsed.data.type,
       name: parsed.data.name,
       enabled: true,
+      workspaceId,
       config: buildConfig(parsed.data)
     })
     await options.channelService.reload()
@@ -152,8 +177,21 @@ export function registerChannelsRoute(app: Hono, options: Options): void {
     if (!existing) return context.json({ ok: false, error: 'Channel not found' }, 404)
     if (existing.type !== parsed.data.type)
       return context.json({ ok: false, error: 'Channel type cannot be changed' }, 400)
+    let workspaceId: string | null | undefined
+    try {
+      workspaceId =
+        parsed.data.workspaceId === undefined
+          ? undefined
+          : await resolveWorkspaceBinding(parsed.data.workspaceId, options)
+    } catch (error) {
+      return context.json(
+        { ok: false, error: error instanceof Error ? error.message : 'Invalid workspace' },
+        400
+      )
+    }
     const updated = await options.channelsRepo.update(existing.id, {
       name: parsed.data.name,
+      ...(workspaceId === undefined ? {} : { workspaceId }),
       config: mergeConfig(existing, parsed.data)
     })
     await options.channelService.reload()

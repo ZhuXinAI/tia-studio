@@ -2,7 +2,8 @@ import {
   AssistantRuntimeProvider,
   SimpleImageAttachmentAdapter,
   useExternalStoreRuntime,
-  type AppendMessage
+  type AppendMessage,
+  type CompleteAttachment
 } from '@assistant-ui/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
@@ -87,6 +88,19 @@ function convertPart(part: AgentMessagePart) {
   }
 }
 
+function convertImageAttachment(
+  part: Extract<AgentMessagePart, { type: 'image' }>
+): CompleteAttachment {
+  return {
+    id: part.attachmentId,
+    type: 'image',
+    name: part.name,
+    contentType: part.mimeType,
+    status: { type: 'complete' },
+    content: [{ type: 'image', image: `data:${part.mimeType};base64,${part.data}` }]
+  }
+}
+
 function convertMessage(message: AppAgentMessage, session?: AgentSessionSnapshot) {
   const waitingOnUser = Boolean(session?.pendingInteraction) && message.status === 'streaming'
   const workStartedAtMs = new Date(message.createdAt).getTime()
@@ -96,7 +110,16 @@ function convertMessage(message: AppAgentMessage, session?: AgentSessionSnapshot
   return {
     id: message.id,
     role: message.role,
-    content: message.parts.map(convertPart),
+    content: message.parts
+      .filter((part) => message.role !== 'user' || part.type !== 'image')
+      .map(convertPart),
+    ...(message.role === 'user'
+      ? {
+          attachments: message.parts
+            .filter((part) => part.type === 'image')
+            .map(convertImageAttachment)
+        }
+      : {}),
     createdAt: new Date(message.createdAt),
     metadata: {
       custom: {
@@ -115,7 +138,7 @@ function convertMessage(message: AppAgentMessage, session?: AgentSessionSnapshot
             message.status === 'streaming'
               ? ({ type: 'running' } as const)
               : message.status === 'error'
-                ? ({ type: 'incomplete', reason: 'error' } as const)
+                ? ({ type: 'incomplete', reason: 'error', error: message.error } as const)
                 : ({ type: 'complete', reason: 'stop' } as const)
         }
       : {})
@@ -207,7 +230,22 @@ export function PiThreadRuntimeProvider({
         throw error
       }
     },
-    onCancel: async () => cancelAgentRun(session.id),
+    onCancel: async () => {
+      const previousStatus = view.snapshot.status
+      setView((current) => ({
+        ...current,
+        snapshot: { ...current.snapshot, status: 'idle' }
+      }))
+      try {
+        await cancelAgentRun(session.id)
+      } catch (error) {
+        setView((current) => ({
+          ...current,
+          snapshot: { ...current.snapshot, status: previousStatus }
+        }))
+        throw error
+      }
+    },
     unstable_capabilities: { copy: true }
   })
 
@@ -216,11 +254,13 @@ export function PiThreadRuntimeProvider({
 
 export function NewPiThreadRuntimeProvider({
   createSession,
+  onCreatingChange,
   onCreated,
   onError,
   children
 }: {
   createSession: () => Promise<AgentSessionSnapshot>
+  onCreatingChange?: (creating: boolean) => void
   onCreated: (session: AgentSessionSnapshot) => void
   onError: (error: unknown) => void
   children: React.ReactNode
@@ -234,6 +274,7 @@ export function NewPiThreadRuntimeProvider({
     convertMessage: (message) => convertMessage(message),
     adapters,
     onNew: async (message) => {
+      onCreatingChange?.(true)
       try {
         const session = await createSession()
         onCreated(session)
@@ -246,6 +287,8 @@ export function NewPiThreadRuntimeProvider({
       } catch (error) {
         onError(error)
         throw error
+      } finally {
+        onCreatingChange?.(false)
       }
     },
     onCancel: async () => undefined,

@@ -13,6 +13,7 @@ import {
 import { Input } from '../../../components/ui/input'
 import { Switch } from '../../../components/ui/switch'
 import { useTranslation } from '../../../i18n/use-app-translation'
+import { useWorkspaces } from '../../workspaces/workspaces-query'
 import { channelStatusLabel, channelTypeLabel } from '../channels/channel-labels'
 import type {
   ConfiguredChannelRecord,
@@ -52,6 +53,7 @@ type ChannelFormState = {
   botId: string
   secret: string
   groupRequireMention: boolean
+  workspaceId: string
 }
 
 function isSupportedChannelType(type: string): type is ChannelType {
@@ -86,7 +88,8 @@ function emptyFormState(): ChannelFormState {
     botToken: '',
     botId: '',
     secret: '',
-    groupRequireMention: true
+    groupRequireMention: true,
+    workspaceId: ''
   }
 }
 
@@ -101,7 +104,8 @@ function toEditFormState(channel: ConfiguredChannelRecord): ChannelFormState {
     botToken: '',
     botId: '',
     secret: '',
-    groupRequireMention: channel.groupRequireMention !== false
+    groupRequireMention: channel.groupRequireMention !== false,
+    workspaceId: channel.workspaceId ?? ''
   }
 }
 
@@ -111,6 +115,7 @@ function buildCreateInput(formState: ChannelFormState): CreateChannelInput {
       type: 'discord',
       name: formState.name.trim(),
       botToken: formState.botToken.trim(),
+      workspaceId: formState.workspaceId || null,
       groupRequireMention: formState.groupRequireMention
     }
   }
@@ -119,7 +124,8 @@ function buildCreateInput(formState: ChannelFormState): CreateChannelInput {
     return {
       type: 'telegram',
       name: formState.name.trim(),
-      botToken: formState.botToken.trim()
+      botToken: formState.botToken.trim(),
+      workspaceId: formState.workspaceId || null
     }
   }
 
@@ -127,14 +133,16 @@ function buildCreateInput(formState: ChannelFormState): CreateChannelInput {
     return {
       type: 'whatsapp',
       name: formState.name.trim(),
-      groupRequireMention: formState.groupRequireMention
+      groupRequireMention: formState.groupRequireMention,
+      workspaceId: formState.workspaceId || null
     }
   }
 
   if (formState.type === 'wechat') {
     return {
       type: 'wechat',
-      name: formState.name.trim()
+      name: formState.name.trim(),
+      workspaceId: formState.workspaceId || null
     }
   }
 
@@ -144,7 +152,8 @@ function buildCreateInput(formState: ChannelFormState): CreateChannelInput {
       name: formState.name.trim(),
       botId: formState.botId.trim(),
       secret: formState.secret.trim(),
-      groupRequireMention: formState.groupRequireMention
+      groupRequireMention: formState.groupRequireMention,
+      workspaceId: formState.workspaceId || null
     }
   }
 
@@ -153,7 +162,8 @@ function buildCreateInput(formState: ChannelFormState): CreateChannelInput {
     name: formState.name.trim(),
     appId: formState.appId.trim(),
     appSecret: formState.appSecret.trim(),
-    groupRequireMention: formState.groupRequireMention
+    groupRequireMention: formState.groupRequireMention,
+    workspaceId: formState.workspaceId || null
   }
 }
 
@@ -163,7 +173,8 @@ function buildUpdateInput(formState: ChannelFormState): UpdateChannelInput {
       type: 'discord',
       name: formState.name.trim(),
       ...(formState.botToken.trim().length > 0 ? { botToken: formState.botToken.trim() } : {}),
-      groupRequireMention: formState.groupRequireMention
+      groupRequireMention: formState.groupRequireMention,
+      workspaceId: formState.workspaceId || null
     }
   }
 
@@ -171,7 +182,8 @@ function buildUpdateInput(formState: ChannelFormState): UpdateChannelInput {
     return {
       type: 'telegram',
       name: formState.name.trim(),
-      ...(formState.botToken.trim().length > 0 ? { botToken: formState.botToken.trim() } : {})
+      ...(formState.botToken.trim().length > 0 ? { botToken: formState.botToken.trim() } : {}),
+      workspaceId: formState.workspaceId || null
     }
   }
 
@@ -179,14 +191,16 @@ function buildUpdateInput(formState: ChannelFormState): UpdateChannelInput {
     return {
       type: 'whatsapp',
       name: formState.name.trim(),
-      groupRequireMention: formState.groupRequireMention
+      groupRequireMention: formState.groupRequireMention,
+      workspaceId: formState.workspaceId || null
     }
   }
 
   if (formState.type === 'wechat') {
     return {
       type: 'wechat',
-      name: formState.name.trim()
+      name: formState.name.trim(),
+      workspaceId: formState.workspaceId || null
     }
   }
 
@@ -196,7 +210,8 @@ function buildUpdateInput(formState: ChannelFormState): UpdateChannelInput {
       name: formState.name.trim(),
       ...(formState.botId.trim().length > 0 ? { botId: formState.botId.trim() } : {}),
       ...(formState.secret.trim().length > 0 ? { secret: formState.secret.trim() } : {}),
-      groupRequireMention: formState.groupRequireMention
+      groupRequireMention: formState.groupRequireMention,
+      workspaceId: formState.workspaceId || null
     }
   }
 
@@ -205,7 +220,8 @@ function buildUpdateInput(formState: ChannelFormState): UpdateChannelInput {
     name: formState.name.trim(),
     ...(formState.appId.trim().length > 0 ? { appId: formState.appId.trim() } : {}),
     ...(formState.appSecret.trim().length > 0 ? { appSecret: formState.appSecret.trim() } : {}),
-    groupRequireMention: formState.groupRequireMention
+    groupRequireMention: formState.groupRequireMention,
+    workspaceId: formState.workspaceId || null
   }
 }
 
@@ -234,6 +250,11 @@ export function ChannelsSettingsPage(): React.JSX.Element {
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false)
   const [channelToRemove, setChannelToRemove] = useState<ConfiguredChannelRecord | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
+  const { data: workspaces = [] } = useWorkspaces()
+  const routableWorkspaces = useMemo(
+    () => workspaces.filter((workspace) => workspace.builtInKind === null && !workspace.isMissing),
+    [workspaces]
+  )
 
   const refreshChannels = useCallback(
     async (options?: { background?: boolean }): Promise<void> => {
@@ -673,6 +694,44 @@ export function ChannelsSettingsPage(): React.JSX.Element {
                   }))
                 }
               />
+            </div>
+
+            <div className="grid gap-2">
+              <label
+                htmlFor={
+                  formMode === 'create'
+                    ? 'settings-channel-create-workspace'
+                    : 'settings-channel-form-workspace'
+                }
+                className="text-sm font-medium"
+              >
+                {t('automations.fields.workspace')}
+              </label>
+              <select
+                id={
+                  formMode === 'create'
+                    ? 'settings-channel-create-workspace'
+                    : 'settings-channel-form-workspace'
+                }
+                className={settingsSelectClassName}
+                value={formState.workspaceId}
+                onChange={(event) =>
+                  setFormState((currentState) => ({
+                    ...currentState,
+                    workspaceId: event.target.value
+                  }))
+                }
+              >
+                <option value="">{t('threads.sidebar.chats')}</option>
+                {routableWorkspaces.map((workspace) => (
+                  <option key={workspace.id} value={workspace.id}>
+                    {workspace.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {t('settings.channels.workspaceHint')}
+              </p>
             </div>
 
             {formState.type === 'discord' || formState.type === 'telegram' ? (

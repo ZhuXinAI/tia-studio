@@ -34,6 +34,15 @@ async function ensureProviderColumns(db: AppDatabase): Promise<void> {
   await addColumn(db, 'app_providers', 'official_site', 'TEXT')
 }
 
+async function ensureChannelColumns(db: AppDatabase): Promise<void> {
+  await addColumn(
+    db,
+    'app_channels',
+    'workspace_id',
+    'TEXT REFERENCES app_workspaces(id) ON DELETE SET NULL'
+  )
+}
+
 async function runDestructiveV3Cutover(db: AppDatabase): Promise<void> {
   const marker = await db.execute('SELECT value FROM app_preferences WHERE key = ? LIMIT 1', [
     V3_MARKER
@@ -53,15 +62,17 @@ async function runDestructiveV3Cutover(db: AppDatabase): Promise<void> {
       type TEXT NOT NULL,
       name TEXT NOT NULL,
       enabled INTEGER NOT NULL DEFAULT 1,
+      workspace_id TEXT,
       config TEXT NOT NULL DEFAULT '{}',
       last_error TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (workspace_id) REFERENCES app_workspaces(id) ON DELETE SET NULL
     )
   `)
   await db.execute(`
-    INSERT INTO app_channels_v3 (id, type, name, enabled, config, last_error, created_at, updated_at)
-    SELECT id, type, name, enabled, config, last_error, created_at, updated_at FROM app_channels
+    INSERT INTO app_channels_v3 (id, type, name, enabled, workspace_id, config, last_error, created_at, updated_at)
+    SELECT id, type, name, enabled, workspace_id, config, last_error, created_at, updated_at FROM app_channels
   `)
   await db.execute('DROP TABLE app_channels')
   await db.execute('ALTER TABLE app_channels_v3 RENAME TO app_channels')
@@ -200,6 +211,7 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   }
   for (const statement of statements(sql)) await db.execute(statement)
   await ensureProviderColumns(db)
+  await ensureChannelColumns(db)
   await addColumn(db, 'app_agent_sessions', 'automation_id', 'TEXT')
   await addColumn(db, 'app_agent_sessions', 'pinned', 'INTEGER NOT NULL DEFAULT 0')
   await addColumn(db, 'app_agent_sessions', 'todos_json', "TEXT NOT NULL DEFAULT '[]'")

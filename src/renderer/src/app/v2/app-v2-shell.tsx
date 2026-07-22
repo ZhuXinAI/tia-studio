@@ -22,6 +22,7 @@ export function AppV2Shell(): React.JSX.Element {
   const [hasRightRailContent, setHasRightRailContent] = useState(false)
   const [rightRailSlotElement, setRightRailSlotElement] = useState<HTMLDivElement | null>(null)
   const [titlebarTitle, setTitlebarTitle] = useState<string | null>(null)
+  const titlebarSidebarWidth = shouldShowSidebar ? (isSidebarCollapsed ? '3rem' : '18rem') : '0px'
   const toggleRightRail = useCallback(() => {
     setIsRightRailOpen((current) => !current)
   }, [])
@@ -39,14 +40,19 @@ export function AppV2Shell(): React.JSX.Element {
   return (
     <AppV2TitlebarContext.Provider value={titlebarContextValue}>
       <AppV2ShellRightRailContext.Provider value={rightRailContextValue}>
-        <div className="app-v2-shell relative flex h-screen min-h-0 overflow-hidden bg-[color:var(--shell-canvas)] text-foreground">
+        <div
+          className="app-v2-shell relative flex h-screen min-h-0 overflow-hidden bg-[color:var(--shell-canvas)] text-foreground"
+          style={{ ['--app-v2-sidebar-width' as string]: titlebarSidebarWidth }}
+        >
           <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
             <div className="app-window-ambient absolute inset-0" />
           </div>
           {!isWindowsPlatform() ? (
-            <div className="drag-region fixed left-0 right-0 top-0 z-30 flex h-8 items-center justify-center border-b border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] px-24 pl-[80px]">
+            <div className="drag-region fixed left-0 right-0 top-0 z-30 grid h-8 grid-cols-[var(--app-v2-sidebar-width)_minmax(0,1fr)] overflow-hidden border-b border-[color:var(--surface-border)]">
+              <div className="app-shell-pane border-r border-[color:var(--chat-surface-border)]" />
+              <div className="bg-[color:var(--shell-canvas)]" />
               {titlebarTitle ? (
-                <span className="truncate text-xs font-medium text-muted-foreground">
+                <span className="pointer-events-none absolute inset-0 grid place-items-center px-24 text-xs font-medium text-muted-foreground">
                   {titlebarTitle}
                 </span>
               ) : null}

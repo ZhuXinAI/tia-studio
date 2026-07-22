@@ -127,17 +127,16 @@ export class AgentRuntimeManager implements AppAgentRuntime {
   async closeSession(sessionId: string): Promise<void> {
     const runtime = this.live.get(sessionId)
     if (!runtime) return
-    await runtime.session.abort()
+    await this.abortWithin(runtime.session.abort())
     runtime.unsubscribe()
     runtime.session.dispose()
     await runtime.mcpTools.close()
-    for (const [id, pending] of runtime.pendingInteractions) {
-      pending.cleanup?.()
-      pending.resolve({ id, cancelled: true })
-    }
-    runtime.pendingInteractions.clear()
+    this.cancelPendingInteractions(runtime)
     this.live.delete(sessionId)
-    await this.options.sessionsRepo.update(sessionId, { status: 'stopped' })
+    await this.options.sessionsRepo.update(sessionId, {
+      status: 'stopped',
+      pendingInteraction: null
+    })
   }
 
   async shutdown(): Promise<void> {
@@ -227,7 +226,52 @@ export class AgentRuntimeManager implements AppAgentRuntime {
   }
 
   async cancelRun(sessionId: string): Promise<void> {
-    await (await this.requireLive(sessionId)).session.abort()
+    const runtime = await this.requireLive(sessionId)
+    await this.resolvePendingInteractions(runtime)
+    await this.abortWithin(runtime.session.abort())
+    const updated = await this.options.sessionsRepo.update(sessionId, {
+      status: 'idle',
+      pendingInteraction: null
+    })
+    if (!updated) throw new Error('Session not found')
+    runtime.snapshot = updated
+    await this.publish(
+      runtime,
+      runtime.mapper.applicationEvent({ type: 'session.updated', snapshot: updated })
+    )
+  }
+
+  private async abortWithin(abort: Promise<unknown>): Promise<void> {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+    try {
+      await Promise.race([
+        abort.catch(() => undefined),
+        new Promise<void>((resolve) => {
+          timeoutId = setTimeout(resolve, 1_500)
+        })
+      ])
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }
+
+  private cancelPendingInteractions(runtime: LiveSession): void {
+    for (const [id, pending] of runtime.pendingInteractions) {
+      pending.cleanup?.()
+      pending.resolve({ id, cancelled: true })
+    }
+    runtime.pendingInteractions.clear()
+  }
+
+  private async resolvePendingInteractions(runtime: LiveSession): Promise<void> {
+    const pendingIds = [...runtime.pendingInteractions.keys()]
+    this.cancelPendingInteractions(runtime)
+    for (const interactionId of pendingIds) {
+      await this.publish(
+        runtime,
+        runtime.mapper.applicationEvent({ type: 'interaction.resolved', interactionId })
+      )
+    }
   }
 
   async setModel(

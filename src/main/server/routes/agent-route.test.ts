@@ -160,6 +160,25 @@ describe('agent route', () => {
     expect(runtime.setModel).toHaveBeenCalledWith('session-1', 'provider-1', 'openai', 'gpt-5')
   })
 
+  it('cancels an active run through the runtime', async () => {
+    const response = await app.request('http://localhost/v1/agent/sessions/session-1/cancel', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(runtime.cancelRun).toHaveBeenCalledWith('session-1')
+  })
+
+  it('closes a live thread before removing its persisted record', async () => {
+    const response = await app.request('http://localhost/v1/agent/sessions/session-1', {
+      method: 'DELETE'
+    })
+
+    expect(response.status).toBe(204)
+    expect(runtime.closeSession).toHaveBeenCalledWith('session-1')
+    expect(sessionsRepo.delete).toHaveBeenCalledWith('session-1')
+  })
+
   it('accepts a structured permission outcome', async () => {
     const response = await app.request(
       'http://localhost/v1/agent/sessions/session-1/interactions',
