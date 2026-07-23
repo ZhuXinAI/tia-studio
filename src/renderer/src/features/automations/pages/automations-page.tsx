@@ -153,6 +153,7 @@ export function AutomationsPage(): React.JSX.Element {
   }
 
   const mutationPending = createMutation.isPending || updateMutation.isPending
+  const showAside = automations.length > 0
   const suggestedSchedules = [
     {
       id: 'daily-brief',
@@ -186,45 +187,49 @@ export function AutomationsPage(): React.JSX.Element {
         </Button>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[18rem_minmax(0,1fr)]">
-        <aside className="chat-scrollbar overflow-y-auto border-r border-[color:var(--surface-border)] p-3">
-          {isLoading ? (
-            <p className="p-3 text-sm text-muted-foreground">{t('automations.loading')}</p>
-          ) : null}
-          {!isLoading && automations.length === 0 ? (
-            <div className="p-3 text-sm text-muted-foreground">{t('automations.empty')}</div>
-          ) : null}
-          <div className="space-y-1">
-            {automations.map((automation) => (
-              <button
-                key={automation.id}
-                onClick={() => {
-                  setSelectedId(automation.id)
-                  setEditingId(null)
-                }}
-                className={cn(
-                  'w-full rounded-lg px-3 py-2.5 text-left',
-                  selectedId === automation.id
-                    ? 'bg-[color:var(--surface-active)]'
-                    : 'hover:bg-[color:var(--surface-muted)]'
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      'size-2 rounded-full',
-                      automation.status === 'active' ? 'bg-emerald-500' : 'bg-muted-foreground'
-                    )}
-                  />
-                  <span className="truncate text-sm font-medium">{automation.name}</span>
-                </div>
-                <p className="mt-1 truncate pl-4 text-xs text-muted-foreground">
-                  {scheduleSummary(automation.rrule)}
-                </p>
-              </button>
-            ))}
-          </div>
-        </aside>
+      <div
+        className={cn(
+          'grid min-h-0 flex-1',
+          showAside ? 'grid-cols-[18rem_minmax(0,1fr)]' : 'grid-cols-1'
+        )}
+      >
+        {showAside ? (
+          <aside className="chat-scrollbar overflow-y-auto border-r border-[color:var(--surface-border)] p-3">
+            {isLoading ? (
+              <p className="p-3 text-sm text-muted-foreground">{t('automations.loading')}</p>
+            ) : null}
+            <div className="space-y-1">
+              {automations.map((automation) => (
+                <button
+                  key={automation.id}
+                  onClick={() => {
+                    setSelectedId(automation.id)
+                    setEditingId(null)
+                  }}
+                  className={cn(
+                    'w-full rounded-lg px-3 py-2.5 text-left',
+                    selectedId === automation.id
+                      ? 'bg-[color:var(--surface-active)]'
+                      : 'hover:bg-[color:var(--surface-muted)]'
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        'size-2 rounded-full',
+                        automation.status === 'active' ? 'bg-emerald-500' : 'bg-muted-foreground'
+                      )}
+                    />
+                    <span className="truncate text-sm font-medium">{automation.name}</span>
+                  </div>
+                  <p className="mt-1 truncate pl-4 text-xs text-muted-foreground">
+                    {scheduleSummary(automation.rrule)}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </aside>
+        ) : null}
 
         <main className="chat-scrollbar min-h-0 overflow-y-auto p-6">
           {editingId ? (
