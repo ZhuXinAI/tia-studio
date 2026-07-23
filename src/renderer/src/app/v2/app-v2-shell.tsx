@@ -16,6 +16,7 @@ export function AppV2Shell(): React.JSX.Element {
   const isChatRoute = location.pathname === '/chat' || location.pathname.startsWith('/chat/')
   const isSidebarToolRoute = location.pathname === '/skills' || location.pathname === '/automations'
   const isWorkspaceRoute = /^\/workspaces\/[^/]+(?:\/|$)/.test(location.pathname)
+  const isThreadChromeRoute = isChatRoute || isWorkspaceRoute
   const shouldShowSidebar = isChatRoute || isWorkspaceRoute || isSidebarToolRoute
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isRightRailOpen, setIsRightRailOpen] = useState(false)
@@ -47,12 +48,18 @@ export function AppV2Shell(): React.JSX.Element {
           {!isWindowsPlatform() ? (
             <div className="drag-region fixed left-0 right-0 top-0 z-30 grid h-8 grid-cols-[var(--app-v2-sidebar-width)_minmax(0,1fr)] overflow-hidden">
               <div className="border-r border-[color:var(--chat-surface-border)] bg-[color:var(--chat-surface-bg)]" />
-              <div className="bg-[color:var(--surface-paper)]" />
-              {titlebarTitle ? (
-                <span className="pointer-events-none absolute inset-0 grid place-items-center px-24 text-xs font-medium text-muted-foreground">
-                  {titlebarTitle}
-                </span>
-              ) : null}
+              <div
+                className={clsx(
+                  'flex min-w-0 items-center overflow-hidden px-3',
+                  !isThreadChromeRoute && 'bg-[color:var(--surface-paper)]'
+                )}
+              >
+                {titlebarTitle ? (
+                  <span className="pointer-events-none truncate text-xs font-medium text-muted-foreground">
+                    {titlebarTitle}
+                  </span>
+                ) : null}
+              </div>
             </div>
           ) : null}
           <div className="relative flex min-h-0 flex-1 overflow-hidden">
@@ -67,7 +74,10 @@ export function AppV2Shell(): React.JSX.Element {
                 <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
                   <main
                     className={clsx(
-                      'min-h-0 min-w-0 flex-1 bg-[color:var(--surface-paper)]',
+                      'min-h-0 min-w-0 flex-1',
+                      isThreadChromeRoute
+                        ? 'bg-background'
+                        : 'bg-[color:var(--surface-paper)]',
                       !isWindowsPlatform() && 'pt-8',
                       isSettingsRoute ? 'overflow-hidden' : 'overflow-hidden'
                     )}

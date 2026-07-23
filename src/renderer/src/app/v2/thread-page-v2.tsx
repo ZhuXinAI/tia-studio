@@ -198,7 +198,7 @@ function DraftWorkspacePicker({
   if (customWorkspaces.length === 0) return null
 
   return (
-    <div className="flex justify-center">
+    <div className="flex justify-start">
       <DropdownMenu onOpenChange={(open) => !open && setQuery('')}>
         <DropdownMenuTrigger asChild>
           <Button

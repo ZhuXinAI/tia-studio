@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   fallbackTopSkillDefinitions,
   getTopSkillMarketplaceDefinitions,
-  skillMarketplaceCacheMaxAgeMs
+  skillMarketplaceCacheMaxAgeMs,
+  skillMarketplaceCacheSkillLimit
 } from './skill-marketplace-catalog'
 
 const firstFetchedAt = Date.UTC(2026, 6, 23, 0, 0, 0)
@@ -78,6 +79,26 @@ describe('skill marketplace catalog', () => {
     await expect(readFile(cachePath, 'utf8')).resolves.toContain(
       '"fetchedAt":"2026-07-23T00:00:00.000Z"'
     )
+  })
+
+  it('retains the full first page of 200 skills in the cache', async () => {
+    const page = Array.from({ length: skillMarketplaceCacheSkillLimit + 1 }, (_, index) => ({
+      source: 'example-org/skill-library',
+      skillId: `skill-${index + 1}`,
+      name: `skill-${index + 1}`,
+      installs: skillMarketplaceCacheSkillLimit - index
+    }))
+
+    const skills = await getTopSkillMarketplaceDefinitions({
+      cachePath,
+      fetchImplementation: vi.fn(async () => skillsResponse(page)),
+      now: () => firstFetchedAt
+    })
+    const cache = JSON.parse(await readFile(cachePath, 'utf8')) as { skills: unknown[] }
+
+    expect(skills).toHaveLength(skillMarketplaceCacheSkillLimit)
+    expect(skills.at(-1)?.slug).toBe(`skill-${skillMarketplaceCacheSkillLimit}`)
+    expect(cache.skills).toHaveLength(skillMarketplaceCacheSkillLimit)
   })
 
   it('uses a fresh disk cache without requesting skills.sh again', async () => {

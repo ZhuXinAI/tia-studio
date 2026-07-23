@@ -456,124 +456,124 @@ export function ProvidersSettingsPage(): React.JSX.Element {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Provider</label>
                 <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex h-12 w-full items-center gap-3 rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 text-left outline-none transition-colors hover:bg-[color:var(--surface-muted)] focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {dialogProvider ? (
-                      <ProviderAvatar provider={dialogProvider} className="size-7" />
-                    ) : (
-                      <span className="grid size-7 place-items-center rounded-md border border-[color:var(--surface-border)]">
-                        <Plus className="size-4" />
-                      </span>
-                    )}
-                    <span className="flex-1 font-medium">
-                      {dialogMode === 'edit' ? activeProvider?.name : createSelection}
-                    </span>
-                    <ChevronDown className="size-4 text-muted-foreground" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="start"
-                  className="w-[var(--radix-dropdown-menu-trigger-width)]"
-                >
-                  {dialogMode === 'edit' ? (
-                    <>
-                      <DropdownMenuLabel className="text-xs text-muted-foreground">
-                        Saved providers
-                      </DropdownMenuLabel>
-                      {savedProviders.map((provider) => (
-                        <DropdownMenuItem
-                          key={provider.id}
-                          className="gap-3"
-                          onSelect={() => setActiveProviderId(provider.id)}
-                        >
-                          <ProviderAvatar provider={provider} className="size-7" />
-                          <span className="flex-1">{provider.name}</span>
-                          {provider.id === activeProviderId ? <Check className="size-4" /> : null}
-                        </DropdownMenuItem>
-                      ))}
-                    </>
-                  ) : (
-                    <>
-                      <DropdownMenuLabel className="text-xs text-muted-foreground">
-                        Provider presets
-                      </DropdownMenuLabel>
-                      {availablePresets.map((provider) => (
-                        <DropdownMenuItem
-                          key={provider.id}
-                          className="gap-3"
-                          onSelect={() => setSelectedPresetId(provider.id)}
-                        >
-                          <ProviderAvatar provider={provider} className="size-7" />
-                          <span className="flex-1">{provider.name}</span>
-                          {provider.id === selectedPresetId ? <Check className="size-4" /> : null}
-                        </DropdownMenuItem>
-                      ))}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="gap-3"
-                        onSelect={() => setSelectedPresetId(null)}
-                      >
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex h-12 w-full items-center gap-3 rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 text-left outline-none transition-colors hover:bg-[color:var(--surface-muted)] focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {dialogProvider ? (
+                        <ProviderAvatar provider={dialogProvider} className="size-7" />
+                      ) : (
                         <span className="grid size-7 place-items-center rounded-md border border-[color:var(--surface-border)]">
                           <Plus className="size-4" />
                         </span>
-                        <span className="flex-1">Custom provider</span>
-                        {!selectedPresetId ? <Check className="size-4" /> : null}
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              {dialogProvider?.isBuiltIn && dialogProvider.officialSite ? (
-                <a
-                  href={dialogProvider.officialSite}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  Provider website <ExternalLink className="size-3" />
-                </a>
-              ) : null}
-            </div>
+                      )}
+                      <span className="flex-1 font-medium">
+                        {dialogMode === 'edit' ? activeProvider?.name : createSelection}
+                      </span>
+                      <ChevronDown className="size-4 text-muted-foreground" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="start"
+                    className="w-[var(--radix-dropdown-menu-trigger-width)]"
+                  >
+                    {dialogMode === 'edit' ? (
+                      <>
+                        <DropdownMenuLabel className="text-xs text-muted-foreground">
+                          Saved providers
+                        </DropdownMenuLabel>
+                        {savedProviders.map((provider) => (
+                          <DropdownMenuItem
+                            key={provider.id}
+                            className="gap-3"
+                            onSelect={() => setActiveProviderId(provider.id)}
+                          >
+                            <ProviderAvatar provider={provider} className="size-7" />
+                            <span className="flex-1">{provider.name}</span>
+                            {provider.id === activeProviderId ? <Check className="size-4" /> : null}
+                          </DropdownMenuItem>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        <DropdownMenuLabel className="text-xs text-muted-foreground">
+                          Provider presets
+                        </DropdownMenuLabel>
+                        {availablePresets.map((provider) => (
+                          <DropdownMenuItem
+                            key={provider.id}
+                            className="gap-3"
+                            onSelect={() => setSelectedPresetId(provider.id)}
+                          >
+                            <ProviderAvatar provider={provider} className="size-7" />
+                            <span className="flex-1">{provider.name}</span>
+                            {provider.id === selectedPresetId ? <Check className="size-4" /> : null}
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="gap-3"
+                          onSelect={() => setSelectedPresetId(null)}
+                        >
+                          <span className="grid size-7 place-items-center rounded-md border border-[color:var(--surface-border)]">
+                            <Plus className="size-4" />
+                          </span>
+                          <span className="flex-1">Custom provider</span>
+                          {!selectedPresetId ? <Check className="size-4" /> : null}
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {dialogProvider?.isBuiltIn && dialogProvider.officialSite ? (
+                  <a
+                    href={dialogProvider.officialSite}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Provider website <ExternalLink className="size-3" />
+                  </a>
+                ) : null}
+              </div>
 
-            <div className="mt-5 border-t border-[color:var(--surface-border)]">
-              {dialogMode === 'edit' && activeProvider ? (
-                <ProvidersForm
-                  key={activeProvider.id}
-                  initialValue={toInitialFormValue(activeProvider)}
-                  isPrebuilt={Boolean(activeProvider.providerModels?.length)}
-                  isBuiltIn={activeProvider.isBuiltIn}
-                  isSubmitting={isSubmitting}
-                  isTestingConnection={isTestingConnection}
-                  onCancel={closeDialog}
-                  onSubmit={handleSaveEditedProvider}
-                  onTestConnection={handleTestConnection}
-                />
-              ) : dialogMode === 'create' && selectedPreset ? (
-                <ProvidersForm
-                  key={selectedPreset.id}
-                  initialValue={toPresetFormValue(selectedPreset)}
-                  isPrebuilt={Boolean(selectedPreset.providerModels?.length)}
-                  isBuiltIn
-                  isSubmitting={isSubmitting}
-                  isTestingConnection={isTestingConnection}
-                  onCancel={closeDialog}
-                  onSubmit={handleAddPreset}
-                  onTestConnection={handleTestConnection}
-                />
-              ) : dialogMode === 'create' ? (
-                <ProvidersForm
-                  key="custom-provider"
-                  isSubmitting={isSubmitting}
-                  isTestingConnection={isTestingConnection}
-                  onCancel={closeDialog}
-                  onSubmit={handleCreateProvider}
-                  onTestConnection={handleTestConnection}
-                />
-              ) : null}
-            </div>
+              <div className="mt-5 border-t border-[color:var(--surface-border)]">
+                {dialogMode === 'edit' && activeProvider ? (
+                  <ProvidersForm
+                    key={activeProvider.id}
+                    initialValue={toInitialFormValue(activeProvider)}
+                    isPrebuilt={Boolean(activeProvider.providerModels?.length)}
+                    isBuiltIn={activeProvider.isBuiltIn}
+                    isSubmitting={isSubmitting}
+                    isTestingConnection={isTestingConnection}
+                    onCancel={closeDialog}
+                    onSubmit={handleSaveEditedProvider}
+                    onTestConnection={handleTestConnection}
+                  />
+                ) : dialogMode === 'create' && selectedPreset ? (
+                  <ProvidersForm
+                    key={selectedPreset.id}
+                    initialValue={toPresetFormValue(selectedPreset)}
+                    isPrebuilt={Boolean(selectedPreset.providerModels?.length)}
+                    isBuiltIn
+                    isSubmitting={isSubmitting}
+                    isTestingConnection={isTestingConnection}
+                    onCancel={closeDialog}
+                    onSubmit={handleAddPreset}
+                    onTestConnection={handleTestConnection}
+                  />
+                ) : dialogMode === 'create' ? (
+                  <ProvidersForm
+                    key="custom-provider"
+                    isSubmitting={isSubmitting}
+                    isTestingConnection={isTestingConnection}
+                    onCancel={closeDialog}
+                    onSubmit={handleCreateProvider}
+                    onTestConnection={handleTestConnection}
+                  />
+                ) : null}
+              </div>
             </ScrollArea>
           </div>
         </DialogContent>

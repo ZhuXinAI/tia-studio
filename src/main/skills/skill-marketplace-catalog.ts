@@ -33,7 +33,7 @@ export type GetTopSkillMarketplaceDefinitionsInput = {
 }
 
 export const skillMarketplaceCacheMaxAgeMs = 24 * 60 * 60 * 1000
-export const skillMarketplaceTopLimit = 20
+export const skillMarketplaceCacheSkillLimit = 200
 
 const skillsShAllTimePageUrl = 'https://skills.sh/api/skills/all-time/0'
 const skillsShFetchTimeoutMs = 10_000
@@ -218,7 +218,7 @@ function toDefinitions(value: unknown, formatName = true): MarketplaceSkillDefin
     if (ids.has(id)) return null
     ids.add(id)
     definitions.push(definition)
-    if (definitions.length === skillMarketplaceTopLimit) break
+    if (definitions.length === skillMarketplaceCacheSkillLimit) break
   }
 
   return definitions.length > 0 ? definitions : null

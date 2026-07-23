@@ -7,6 +7,7 @@ import { Input } from '../../../components/ui/input'
 import { cn } from '../../../lib/utils'
 import { McpServersSettingsPage } from '../../settings/pages/mcp-servers-settings-page'
 import { useInstallMarketplaceSkill, useSkillMarketplace } from '../skills-query'
+import { getVisibleMarketplaceSkills } from '../marketplace-visibility'
 import { useTranslation } from '../../../i18n/use-app-translation'
 
 function formatInstalls(installs: number, locale: string): string {
@@ -22,14 +23,7 @@ export function SkillsPage(): React.JSX.Element {
   const [query, setQuery] = useState('')
   const { data: skills = [], isLoading } = useSkillMarketplace()
   const installMutation = useInstallMarketplaceSkill()
-  const visibleSkills = useMemo(() => {
-    const normalized = query.trim().toLowerCase()
-    return normalized
-      ? skills.filter((skill) =>
-          `${skill.name} ${skill.slug} ${skill.source}`.toLowerCase().includes(normalized)
-        )
-      : skills
-  }, [query, skills])
+  const visibleSkills = useMemo(() => getVisibleMarketplaceSkills(skills, query), [query, skills])
 
   async function install(skillId: string): Promise<void> {
     try {
