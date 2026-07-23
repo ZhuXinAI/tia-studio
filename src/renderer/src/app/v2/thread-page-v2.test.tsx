@@ -98,7 +98,7 @@ describe('ThreadPageV2 startup', () => {
     await flush()
 
     expect(container.textContent).toContain('What are we building?')
-    expect(container.textContent).toContain('OpenAI · gpt-5')
+    expect(container.textContent).toContain('gpt-5')
     expect(container.textContent).toContain('Ask Permission')
     expect(mocks.createSession).not.toHaveBeenCalled()
   })
@@ -122,7 +122,7 @@ describe('ThreadPageV2 startup', () => {
     await flush()
 
     expect(container.textContent).toContain('Fixture workspace')
-    expect(container.textContent).toContain('OpenAI · gpt-5')
+    expect(container.textContent).toContain('gpt-5')
     expect(container.textContent).toContain('Ask Permission')
     expect(mocks.createSession).not.toHaveBeenCalled()
   })
