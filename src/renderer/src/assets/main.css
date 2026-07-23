@@ -360,14 +360,7 @@ body {
 }
 
 .app-shell-pane {
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--chat-surface-bg) 82%, var(--shell-canvas)),
-      color-mix(in srgb, var(--chat-surface-bg-subtle) 70%, var(--shell-canvas))
-    ),
-    var(--shell-canvas);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--chat-surface-inset-highlight) 72%, transparent);
+  background: var(--chat-surface-bg);
 }
 
 .app-shell-statusbar {

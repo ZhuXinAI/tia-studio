@@ -111,6 +111,69 @@ describe('mcp servers settings route', () => {
     })
   })
 
+  it('returns only the OAuth status for saved MCP servers', async () => {
+    const app = new Hono()
+    const getStatus = vi.fn(async () => 'signed-in' as const)
+    registerMcpServersRoute(app, {
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({
+          mcpServers: {
+            linear: {
+              isActive: true,
+              name: 'Linear',
+              type: 'http',
+              args: [],
+              env: {},
+              installSource: 'direct',
+              url: 'https://mcp.linear.app/mcp'
+            }
+          }
+        })),
+        saveSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never,
+      mcpOAuthService: { getStatus } as never
+    })
+
+    const response = await app.request('http://localhost/v1/settings/mcp-servers/auth')
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ auth: { linear: 'signed-in' } })
+    expect(getStatus).toHaveBeenCalledWith('linear')
+  })
+
+  it('starts OAuth only for a saved MCP server and returns no credentials', async () => {
+    const server = {
+      isActive: true,
+      name: 'Linear',
+      type: 'http',
+      args: [],
+      env: {},
+      installSource: 'direct',
+      url: 'https://mcp.linear.app/mcp'
+    }
+    const login = vi.fn(async () => {})
+    const getStatus = vi.fn(async () => 'signed-in' as const)
+    const app = new Hono()
+    registerMcpServersRoute(app, {
+      mcpServersRepo: {
+        getSettings: vi.fn(async () => ({ mcpServers: { linear: server } })),
+        saveSettings: vi.fn(async () => ({ mcpServers: {} }))
+      } as never,
+      mcpOAuthService: { login, getStatus } as never
+    })
+
+    const response = await app.request(
+      'http://localhost/v1/settings/mcp-servers/linear/auth/login',
+      {
+        method: 'POST'
+      }
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ serverId: 'linear', auth: 'signed-in' })
+    expect(login).toHaveBeenCalledWith('linear', server)
+  })
+
   it('rejects invalid mcp settings payloads', async () => {
     const app = new Hono()
 

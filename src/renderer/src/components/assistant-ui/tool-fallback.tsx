@@ -18,6 +18,7 @@ import {
 } from '@renderer/components/ui/collapsible'
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/components/ui/button'
+import { DotMatrix } from './dot-matrix'
 
 const ANIMATION_DURATION = 200
 
@@ -126,7 +127,7 @@ function ToolFallbackTrigger({
   const isCancelled = status?.type === 'incomplete' && status.reason === 'cancelled'
 
   const Icon = statusIconMap[statusType]
-  const label = isCancelled ? 'Cancelled tool' : 'Used tool'
+  const label = isRunning ? 'Running' : isCancelled ? 'Cancelled tool' : 'Used tool'
 
   return (
     <CollapsibleTrigger
@@ -137,14 +138,22 @@ function ToolFallbackTrigger({
       )}
       {...props}
     >
-      <Icon
-        data-slot="tool-fallback-trigger-icon"
-        className={cn(
-          'aui-tool-fallback-trigger-icon size-4 shrink-0',
-          isCancelled && 'text-muted-foreground',
-          isRunning && 'animate-spin [animation-duration:0.6s]'
-        )}
-      />
+      {isRunning ? (
+        <DotMatrix
+          state="streaming"
+          label={`${label} ${toolName}`}
+          data-slot="tool-fallback-trigger-activity"
+          className="text-primary"
+        />
+      ) : (
+        <Icon
+          data-slot="tool-fallback-trigger-icon"
+          className={cn(
+            'aui-tool-fallback-trigger-icon size-4 shrink-0',
+            isCancelled && 'text-muted-foreground'
+          )}
+        />
+      )}
       <span
         data-slot="tool-fallback-trigger-label"
         className={cn(
@@ -289,6 +298,32 @@ function ToolFallbackError({
         {headerText}
       </p>
       <p className="aui-tool-fallback-error-reason text-muted-foreground">{errorText}</p>
+    </div>
+  )
+}
+
+function ToolFallbackActivity({
+  toolName,
+  status
+}: {
+  toolName: string
+  status?: ToolCallMessagePartStatus
+}) {
+  if (status?.type !== 'running') return null
+
+  return (
+    <div
+      data-slot="tool-fallback-activity"
+      role="status"
+      className="border-primary/20 bg-primary/5 flex items-start gap-2.5 rounded-md border px-2.5 py-2 text-sm"
+    >
+      <DotMatrix state="streaming" label={`Running ${toolName}`} className="text-primary mt-0.5" />
+      <div className="min-w-0">
+        <p className="text-foreground font-medium">Running {toolName}</p>
+        <p className="text-muted-foreground mt-0.5 text-xs">
+          This tool is still running. Output will appear here.
+        </p>
+      </div>
     </div>
   )
 }
@@ -492,20 +527,27 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({
   approval,
   respondToApproval
 }) => {
+  const isRunning = status?.type === 'running'
   const isCancelled = status?.type === 'incomplete' && status.reason === 'cancelled'
   const isRequiresAction = status?.type === 'requires-action'
 
-  const [open, setOpen] = useState(isRequiresAction)
+  const [open, setOpen] = useState(isRequiresAction || isRunning)
   const [prevRequiresAction, setPrevRequiresAction] = useState(isRequiresAction)
+  const [prevRunning, setPrevRunning] = useState(isRunning)
   if (isRequiresAction !== prevRequiresAction) {
     setPrevRequiresAction(isRequiresAction)
     if (isRequiresAction) setOpen(true)
+  }
+  if (isRunning !== prevRunning) {
+    setPrevRunning(isRunning)
+    if (isRunning) setOpen(true)
   }
 
   return (
     <ToolFallbackRoot open={open} onOpenChange={setOpen}>
       <ToolFallbackTrigger toolName={toolName} status={status} />
       <ToolFallbackContent>
+        <ToolFallbackActivity toolName={toolName} status={status} />
         <ToolFallbackError status={status} />
         <ToolFallbackArgs argsText={argsText} className={cn(isCancelled && 'opacity-60')} />
         {isRequiresAction && (

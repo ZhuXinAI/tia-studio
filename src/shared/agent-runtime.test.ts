@@ -63,6 +63,63 @@ describe('reduceAgentEvent', () => {
     expect(view.messages[0]?.parts).toEqual([{ type: 'text', text: 'Hi' }])
   })
 
+  it('keeps a tool visibly running until its completion event arrives', () => {
+    let view: AgentSessionView = {
+      snapshot,
+      messages: [
+        {
+          id: 'assistant',
+          sessionId: 's',
+          role: 'assistant',
+          parts: [],
+          status: 'streaming',
+          createdAt: snapshot.createdAt
+        }
+      ],
+      seenEventIds: [],
+      lastSequence: 0
+    }
+
+    view = reduceAgentEvent(
+      view,
+      event(
+        {
+          type: 'tool.started',
+          messageId: 'assistant',
+          toolCallId: 'bash-1',
+          toolName: 'bash',
+          input: { command: 'python slow-script.py' }
+        },
+        1
+      )
+    )
+    expect(view.messages[0]?.parts).toContainEqual(
+      expect.objectContaining({ toolCallId: 'bash-1', toolName: 'bash', status: 'running' })
+    )
+
+    view = reduceAgentEvent(
+      view,
+      event(
+        {
+          type: 'tool.completed',
+          toolCallId: 'bash-1',
+          toolName: 'bash',
+          output: { content: [] },
+          isError: false
+        },
+        2
+      )
+    )
+    expect(view.messages[0]?.parts).toContainEqual(
+      expect.objectContaining({
+        toolCallId: 'bash-1',
+        toolName: 'bash',
+        status: 'complete',
+        output: { content: [] }
+      })
+    )
+  })
+
   it('tracks and clears pending interactions', () => {
     let view: AgentSessionView = { snapshot, messages: [], seenEventIds: [], lastSequence: 0 }
     view = reduceAgentEvent(

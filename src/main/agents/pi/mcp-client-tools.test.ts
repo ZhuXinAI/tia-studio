@@ -109,12 +109,49 @@ describe('createMcpClientTools', () => {
 
     expect(mcp.tools).toEqual([])
     expect(mcp.notices).toEqual([
-      'MCP server Remote was skipped: TIA currently supports stdio transport.',
+      'MCP server Remote was skipped: TIA supports stdio, HTTP, and SSE transports.',
       'MCP server Broken was unavailable: tools/list failed'
     ])
     expect(close).toHaveBeenCalledTimes(1)
     expect(connect).toHaveBeenCalledTimes(1)
     expect(onStatus).toHaveBeenCalledWith({ serverId: 'remote', state: 'unsupported' })
     expect(onStatus).toHaveBeenCalledWith({ serverId: 'broken', state: 'error' })
+  })
+
+  it('connects direct HTTP MCP servers instead of treating them as unsupported', async () => {
+    const close = vi.fn(async () => {})
+    const connect = vi.fn(async () => ({
+      client: {
+        listTools: async () => ({ tools: [] }),
+        callTool: vi.fn(),
+        close
+      },
+      close
+    }))
+
+    const mcp = await createMcpClientTools(
+      {
+        mcpServers: {
+          linear: {
+            isActive: true,
+            name: 'Linear',
+            type: 'http',
+            args: [],
+            env: {},
+            installSource: 'direct',
+            url: 'https://mcp.linear.app/mcp'
+          }
+        }
+      },
+      { connect }
+    )
+
+    expect(connect).toHaveBeenCalledWith(
+      'linear',
+      expect.objectContaining({ type: 'http', url: 'https://mcp.linear.app/mcp' })
+    )
+    expect(mcp.notices).toEqual([])
+    await mcp.close()
+    expect(close).toHaveBeenCalledOnce()
   })
 })

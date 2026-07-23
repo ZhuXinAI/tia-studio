@@ -7,6 +7,7 @@ import type {
   AppAgentEvent,
   AppAgentMessage,
   CreateAgentSessionInput,
+  CreateTransientAgentSessionInput,
   SendAgentMessageInput
 } from '../../../../shared/agent-runtime'
 import { createApiClient } from '../../lib/api-client'
@@ -67,6 +68,30 @@ export function useCreateAgentSession() {
       client.invalidateQueries({ queryKey: agentSessionKeys.all })
     }
   })
+}
+
+export type CreateTransientAgentSessionRequest = Omit<
+  CreateTransientAgentSessionInput,
+  'workspacePath'
+>
+
+export async function createTransientAgentSession(
+  input: CreateTransientAgentSessionRequest
+): Promise<AgentSessionSnapshot> {
+  return api.post<AgentSessionSnapshot>('/v1/agent/transient-sessions', input)
+}
+
+export async function closeTransientAgentSession(sessionId: string): Promise<void> {
+  await api.delete(`/v1/agent/transient-sessions/${encodeURIComponent(sessionId)}`)
+}
+
+export async function promoteTransientAgentSession(
+  sessionId: string
+): Promise<AgentSessionSnapshot> {
+  const session = await api.post<AgentSessionSnapshot>(
+    `/v1/agent/transient-sessions/${encodeURIComponent(sessionId)}/promote`
+  )
+  return session
 }
 
 export function useDeleteAgentSession() {

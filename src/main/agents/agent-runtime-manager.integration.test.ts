@@ -87,4 +87,53 @@ describe('AgentRuntimeManager with embedded Pi SDK', () => {
     expect((await manager.getSession(created.id)).status).toBe('stopped')
     await db.close()
   }, 15_000)
+
+  it('keeps an MCP setup thread in memory until it is promoted into Chats', async () => {
+    directory = await mkdtemp(join(tmpdir(), 'tia-transient-pi-'))
+    const db = await migrateAppSchema(join(directory, 'app.db'))
+    const sessions = new AgentSessionsRepository(db)
+    const providers = new ProvidersRepository(db)
+    const provider = await providers.create({
+      name: 'Probe',
+      type: 'openai',
+      apiKey: 'not-used-for-state',
+      selectedModel: 'gpt-4o',
+      enabled: true
+    })
+    const chatsPath = join(directory, 'chats')
+    const manager = new AgentRuntimeManager({
+      sessionsRepo: sessions,
+      providersRepo: providers,
+      permissionRulesRepo: new PermissionRulesRepository(db),
+      agentDataRoot: join(directory, 'agent'),
+      sessionDataRoot: join(directory, 'sessions'),
+      credentialRoot: directory,
+      globalSkillsRoot: join(directory, 'skills')
+    })
+
+    const temporary = await manager.createTransientSession({
+      purpose: 'mcp-setup',
+      workspacePath: chatsPath,
+      providerId: provider.id,
+      provider: provider.type,
+      modelId: provider.selectedModel
+    })
+
+    expect(temporary.transient).toBe(true)
+    expect(temporary.upstreamSessionFile).toBeUndefined()
+    expect(await sessions.list()).toEqual([])
+
+    const promoted = await manager.promoteTransientSession({
+      sessionId: temporary.id,
+      workspaceId: null,
+      workspacePath: chatsPath
+    })
+
+    expect(promoted.transient).toBeUndefined()
+    expect(promoted.workspacePath).toBe(chatsPath)
+    expect(await sessions.list()).toHaveLength(1)
+    await expect(manager.getSession(temporary.id)).rejects.toThrow('Pi session not found')
+    await manager.shutdown()
+    await db.close()
+  }, 15_000)
 })

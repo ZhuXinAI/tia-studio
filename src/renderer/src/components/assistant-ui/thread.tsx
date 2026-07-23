@@ -17,6 +17,7 @@ import {
 } from '@renderer/components/assistant-ui/reasoning'
 import { ToolFallback } from '@renderer/components/assistant-ui/tool-fallback'
 import { WorkTrace } from '@renderer/components/assistant-ui/work-trace'
+import { DotMatrix } from '@renderer/components/assistant-ui/dot-matrix'
 import {
   ToolGroupContent,
   ToolGroupRoot,
@@ -74,6 +75,7 @@ export type ThreadComponents = {
   ToolFallback?: ToolCallMessagePartComponent | undefined
   ToolGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined
   ReasoningGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined
+  AssistantActionBar?: ComponentType | undefined
   ComposerControls?: ComponentType | undefined
   ComposerHeader?: ComponentType | undefined
   ComposerAddons?: ComponentType | undefined
@@ -192,13 +194,19 @@ const ThreadScrollToBottom: FC = () => {
   )
 }
 
-export const ThreadEmpty: FC = () => {
+export const ThreadEmpty: FC<{ title?: string; description?: string }> = ({
+  title,
+  description
+}) => {
   const { t } = useTranslation()
   return (
     <div className="aui-thread-welcome-root mb-6 flex flex-col items-center px-4 text-center">
       <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-2xl font-semibold duration-200">
-        {t('threads.page.emptyPrompt')}
+        {title ?? t('threads.page.emptyPrompt')}
       </h1>
+      {description ? (
+        <p className="mt-2 max-w-xl text-sm text-muted-foreground">{description}</p>
+      ) : null}
     </div>
   )
 }
@@ -451,23 +459,27 @@ const AssistantMessage: FC = () => {
 }
 
 const AssistantActionBar: FC = () => {
+  const { AssistantActionBar: AssistantActionBarAddon } = useContext(ThreadComponentsContext)
   return (
-    <ActionBarPrimitive.Root
-      hideWhenRunning
-      autohide="not-last"
-      className="aui-assistant-action-bar-root text-muted-foreground animate-in fade-in col-start-3 row-start-2 -ms-1 flex gap-1 duration-200"
-    >
-      <ActionBarPrimitive.Copy asChild>
-        <TooltipIconButton tooltip="Copy">
-          <AuiIf condition={(s) => s.message.isCopied}>
-            <CheckIcon className="animate-in zoom-in-50 fade-in duration-200 ease-out" />
-          </AuiIf>
-          <AuiIf condition={(s) => !s.message.isCopied}>
-            <CopyIcon className="animate-in zoom-in-75 fade-in duration-150" />
-          </AuiIf>
-        </TooltipIconButton>
-      </ActionBarPrimitive.Copy>
-    </ActionBarPrimitive.Root>
+    <div className="flex items-center gap-1">
+      <ActionBarPrimitive.Root
+        hideWhenRunning
+        autohide="not-last"
+        className="aui-assistant-action-bar-root text-muted-foreground animate-in fade-in col-start-3 row-start-2 -ms-1 flex gap-1 duration-200"
+      >
+        <ActionBarPrimitive.Copy asChild>
+          <TooltipIconButton tooltip="Copy">
+            <AuiIf condition={(s) => s.message.isCopied}>
+              <CheckIcon className="animate-in zoom-in-50 fade-in duration-200 ease-out" />
+            </AuiIf>
+            <AuiIf condition={(s) => !s.message.isCopied}>
+              <CopyIcon className="animate-in zoom-in-75 fade-in duration-150" />
+            </AuiIf>
+          </TooltipIconButton>
+        </ActionBarPrimitive.Copy>
+      </ActionBarPrimitive.Root>
+      {AssistantActionBarAddon ? <AssistantActionBarAddon /> : null}
+    </div>
   )
 }
 
@@ -512,7 +524,7 @@ const UserMessagePending: FC = () => {
       className="bg-primary/10 text-foreground col-start-2 flex w-fit items-center gap-2 rounded-full border border-primary/20 px-2.5 py-1 text-sm shadow-sm"
       role="status"
     >
-      <LoaderCircle className="text-primary size-4 animate-spin" />
+      <DotMatrix state="loading" label={t('threads.ui.working')} className="text-primary size-4" />
       <span>{t('threads.page.working')}</span>
     </div>
   )

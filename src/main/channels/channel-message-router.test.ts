@@ -33,6 +33,9 @@ describe('ChannelMessageRouter', () => {
     const createSession = vi.fn(async () => session)
     const runtime: AppAgentRuntime = {
       createSession,
+      createTransientSession: async () => ({ ...session, transient: true }),
+      closeTransientSession: async () => undefined,
+      promoteTransientSession: async () => session,
       resumeSession: async () => session,
       closeSession: async () => undefined,
       sendMessage: async (input) => {

@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import type { McpAuthRepository } from './mcp-auth-repo'
 
 export type AppMcpServer = {
   isActive: boolean
@@ -14,6 +15,10 @@ export type AppMcpServer = {
 
 export type AppMcpSettings = {
   mcpServers: Record<string, AppMcpServer>
+}
+
+type McpServersRepositoryOptions = {
+  authRepository?: McpAuthRepository
 }
 
 const defaultMcpSettings: AppMcpSettings = {
@@ -94,7 +99,7 @@ function normalizeServer(serverId: string, rawValue: unknown): AppMcpServer {
   const candidate =
     rawValue && typeof rawValue === 'object' && !Array.isArray(rawValue) ? rawValue : {}
 
-  const type = toNonEmptyString((candidate as { type?: unknown }).type) ?? 'stdio'
+  const type = (toNonEmptyString((candidate as { type?: unknown }).type) ?? 'stdio').toLowerCase()
 
   return {
     isActive: toBoolean((candidate as { isActive?: unknown }).isActive, true),
@@ -143,8 +148,24 @@ function normalizeSettings(value: unknown): AppMcpSettings {
   }
 }
 
+function mcpOAuthTarget(server: AppMcpServer | undefined): string | undefined {
+  if (!server) return undefined
+  const type = server.type.trim().toLowerCase()
+  if ((type !== 'http' && type !== 'sse') || !server.url) return undefined
+  try {
+    const url = new URL(server.url)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return undefined
+    return `${type}:${url.href}`
+  } catch {
+    return undefined
+  }
+}
+
 export class McpServersRepository {
-  constructor(private readonly filePath: string) {}
+  constructor(
+    private readonly filePath: string,
+    private readonly options: McpServersRepositoryOptions = {}
+  ) {}
 
   async getSettings(): Promise<AppMcpSettings> {
     const rawContent = await this.readFileContent()
@@ -166,9 +187,32 @@ export class McpServersRepository {
 
   async saveSettings(input: AppMcpSettings): Promise<AppMcpSettings> {
     const normalized = normalizeSettings(input)
+    const previous = await this.readPersistedSettings()
     await this.ensureParentDirectory()
     await writeFile(this.filePath, `${JSON.stringify(normalized, null, 2)}\n`, 'utf-8')
+    if (this.options.authRepository) {
+      await this.options.authRepository.retain(Object.keys(normalized.mcpServers))
+      const changedAuthTargets = Object.entries(normalized.mcpServers)
+        .filter(
+          ([serverId, server]) =>
+            mcpOAuthTarget(previous?.mcpServers[serverId]) !== mcpOAuthTarget(server)
+        )
+        .map(([serverId]) => serverId)
+      await Promise.all(
+        changedAuthTargets.map((serverId) => this.options.authRepository!.clearState(serverId))
+      )
+    }
     return normalized
+  }
+
+  private async readPersistedSettings(): Promise<AppMcpSettings | undefined> {
+    const rawContent = await this.readFileContent()
+    if (!rawContent) return undefined
+    try {
+      return normalizeSettings(JSON.parse(rawContent) as unknown)
+    } catch {
+      return undefined
+    }
   }
 
   private async readFileContent(): Promise<string | null> {

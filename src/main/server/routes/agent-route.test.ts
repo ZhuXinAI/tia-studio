@@ -30,6 +30,9 @@ const snapshot: AgentSessionSnapshot = {
 function createRuntime(): AppAgentRuntime {
   return {
     createSession: vi.fn(async () => snapshot),
+    createTransientSession: vi.fn(async () => ({ ...snapshot, transient: true })),
+    closeTransientSession: vi.fn(async () => undefined),
+    promoteTransientSession: vi.fn(async () => snapshot),
     resumeSession: vi.fn(async () => snapshot),
     closeSession: vi.fn(async () => undefined),
     sendMessage: vi.fn(async () => ({ commandId: 'command-1', accepted: true })),
@@ -111,6 +114,38 @@ describe('agent route', () => {
 
     expect(response.status).toBe(403)
     expect(runtime.createSession).not.toHaveBeenCalled()
+  })
+
+  it('creates a temporary MCP thread only in the built-in Chats workspace', async () => {
+    const response = await app.request('http://localhost/v1/agent/transient-sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        purpose: 'mcp-setup',
+        providerId: 'provider-1',
+        provider: 'openai',
+        modelId: 'gpt-4o'
+      })
+    })
+
+    expect(response.status).toBe(201)
+    expect(runtime.createTransientSession).toHaveBeenCalledWith(
+      expect.objectContaining({ purpose: 'mcp-setup', workspacePath: '/tmp/tia-chats' })
+    )
+  })
+
+  it('promotes a temporary thread into Chats', async () => {
+    const response = await app.request(
+      'http://localhost/v1/agent/transient-sessions/temporary-1/promote',
+      { method: 'POST' }
+    )
+
+    expect(response.status).toBe(201)
+    expect(runtime.promoteTransientSession).toHaveBeenCalledWith({
+      sessionId: 'temporary-1',
+      workspaceId: null,
+      workspacePath: '/tmp/tia-chats'
+    })
   })
 
   it('opens a backoff circuit after Pi startup fails', async () => {

@@ -1,5 +1,5 @@
 import { useAuiState } from '@assistant-ui/react'
-import { ChevronDownIcon, LoaderCircle } from 'lucide-react'
+import { ChevronDownIcon } from 'lucide-react'
 import { useEffect, useState, type FC, type PropsWithChildren } from 'react'
 import {
   Collapsible,
@@ -7,6 +7,7 @@ import {
   CollapsibleTrigger
 } from '@renderer/components/ui/collapsible'
 import { resolveWorkDuration } from './work-duration'
+import { DotMatrix } from './dot-matrix'
 import { useTranslation } from '../../i18n/use-app-translation'
 
 function formatWorkDuration(milliseconds: number): string {
@@ -59,7 +60,7 @@ const WorkTrace: FC<PropsWithChildren> = ({ children }) => {
     <Collapsible className="group/work-trace mb-3" open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger className="flex items-center gap-2 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
         {activelyWorking ? (
-          <LoaderCircle className="size-3.5 animate-spin" aria-label={t('threads.ui.working')} />
+          <DotMatrix state="thinking" label={t('threads.ui.working')} className="size-3.5" />
         ) : null}
         <span className="tabular-nums">{label}</span>
         <ChevronDownIcon className="size-4 transition-transform group-data-[state=open]/work-trace:rotate-180" />

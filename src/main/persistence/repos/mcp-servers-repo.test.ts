@@ -1,7 +1,8 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { McpAuthRepository } from './mcp-auth-repo'
 import { McpServersRepository } from './mcp-servers-repo'
 
 describe('McpServersRepository', () => {
@@ -71,5 +72,42 @@ describe('McpServersRepository', () => {
     })
 
     await expect(repo.getSettings()).resolves.toEqual(saved)
+  })
+
+  it('clears OAuth state when a direct MCP endpoint changes', async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), 'tia-mcp-test-'))
+    tempPaths.push(tempDir)
+    const retain = vi.fn(async () => {})
+    const clearState = vi.fn(async () => {})
+    const repo = new McpServersRepository(path.join(tempDir, 'mcp.json'), {
+      authRepository: { retain, clearState } as unknown as McpAuthRepository
+    })
+
+    const first = {
+      mcpServers: {
+        linear: {
+          isActive: true,
+          name: 'Linear',
+          type: 'http',
+          args: [],
+          env: {},
+          installSource: 'direct',
+          url: 'https://mcp.linear.app/mcp'
+        }
+      }
+    }
+    await repo.saveSettings(first)
+    clearState.mockClear()
+
+    await repo.saveSettings(first)
+    expect(clearState).not.toHaveBeenCalled()
+
+    await repo.saveSettings({
+      mcpServers: {
+        linear: { ...first.mcpServers.linear, url: 'https://other.example.test/mcp' }
+      }
+    })
+    expect(clearState).toHaveBeenCalledWith('linear')
+    expect(retain).toHaveBeenLastCalledWith(['linear'])
   })
 })

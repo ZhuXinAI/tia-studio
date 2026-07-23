@@ -1,12 +1,13 @@
 import { z } from 'zod'
 
 const nonEmptyString = z.string().trim().min(1)
+const mcpTransportTypeSchema = z.enum(['stdio', 'http', 'sse'])
 
 const mcpServerSchema = z
   .object({
     isActive: z.boolean(),
     name: nonEmptyString,
-    type: nonEmptyString,
+    type: z.string().trim().toLowerCase().pipe(mcpTransportTypeSchema),
     command: nonEmptyString.optional(),
     args: z.array(nonEmptyString).default([]),
     env: z.record(z.string(), z.string()).default({}),
@@ -23,10 +24,24 @@ const mcpServerSchema = z
       })
     }
 
-    if (transportType !== 'stdio' && !value.url && !value.command) {
+    if (transportType !== 'stdio' && !value.url) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'url is required for non-stdio MCP servers unless command is provided'
+        message: 'url is required when type is http or sse'
+      })
+    }
+
+    if (transportType !== 'stdio' && value.command) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'command is only supported when type is stdio'
+      })
+    }
+
+    if (transportType !== 'stdio' && Object.keys(value.env).length > 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'environment variables are only supported when type is stdio'
       })
     }
   })

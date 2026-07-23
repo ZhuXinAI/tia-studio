@@ -18,6 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '../../../components/ui/dropdown-menu'
+import { ScrollArea } from '../../../components/ui/scroll-area'
 import anthropicLogo from '../../../assets/providers/anthropic.png'
 import geminiLogo from '../../../assets/providers/gemini.png'
 import glmLogo from '../../../assets/providers/glm.png'
@@ -450,10 +451,11 @@ export function ProvidersSettingsPage(): React.JSX.Element {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Provider</label>
-              <DropdownMenu>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <ScrollArea className="h-full px-6 py-5">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Provider</label>
+                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
@@ -572,6 +574,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                 />
               ) : null}
             </div>
+            </ScrollArea>
           </div>
         </DialogContent>
       </Dialog>

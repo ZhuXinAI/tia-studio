@@ -30,6 +30,15 @@ const createSessionSchema = z.object({
   thinkingLevel: thinkingLevel.optional(),
   accessMode: accessMode.optional()
 })
+const createTransientSessionSchema = z.object({
+  purpose: z.literal('mcp-setup'),
+  title: z.string().trim().min(1).max(120).optional(),
+  providerId: z.string().min(1),
+  provider: z.string().min(1),
+  modelId: z.string().min(1),
+  thinkingLevel: thinkingLevel.optional(),
+  accessMode: accessMode.optional()
+})
 const sendMessageSchema = z
   .object({
     text: z.string().default(''),
@@ -129,6 +138,64 @@ export function registerAgentRoute(
       return context.json(
         { error: error instanceof Error ? error.message : 'Pi session failed' },
         500
+      )
+    }
+  })
+
+  app.post('/v1/agent/transient-sessions', async (context) => {
+    const parsed = createTransientSessionSchema.safeParse(await jsonBody(context))
+    if (!parsed.success) return context.json({ error: parsed.error.issues[0]?.message }, 400)
+    if (sessionCreationInFlight || Date.now() < sessionCreationBlockedUntil) {
+      return context.json({ error: 'Pi session startup is temporarily rate limited' }, 429)
+    }
+    try {
+      const workspace = await options.workspacesRepo.ensureBuiltInChatsWorkspace()
+      sessionCreationInFlight = true
+      const created = await options.runtime.createTransientSession({
+        ...parsed.data,
+        workspacePath: workspace.rootPath
+      })
+      consecutiveCreationFailures = 0
+      sessionCreationBlockedUntil = 0
+      return context.json(created, 201)
+    } catch (error) {
+      consecutiveCreationFailures += 1
+      sessionCreationBlockedUntil =
+        Date.now() + Math.min(60_000, 1_000 * 2 ** (consecutiveCreationFailures - 1))
+      return context.json(
+        { error: error instanceof Error ? error.message : 'Temporary Pi session failed' },
+        500
+      )
+    } finally {
+      sessionCreationInFlight = false
+    }
+  })
+
+  app.delete('/v1/agent/transient-sessions/:sessionId', async (context) => {
+    try {
+      await options.runtime.closeTransientSession(context.req.param('sessionId'))
+      return context.body(null, 204)
+    } catch (error) {
+      return context.json(
+        { error: error instanceof Error ? error.message : 'Temporary thread not found' },
+        404
+      )
+    }
+  })
+
+  app.post('/v1/agent/transient-sessions/:sessionId/promote', async (context) => {
+    try {
+      const workspace = await options.workspacesRepo.ensureBuiltInChatsWorkspace()
+      const promoted = await options.runtime.promoteTransientSession({
+        sessionId: context.req.param('sessionId'),
+        workspaceId: null,
+        workspacePath: workspace.rootPath
+      })
+      return context.json(promoted, 201)
+    } catch (error) {
+      return context.json(
+        { error: error instanceof Error ? error.message : 'Could not continue temporary thread' },
+        409
       )
     }
   })

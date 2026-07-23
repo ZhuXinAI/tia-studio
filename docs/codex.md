@@ -1248,53 +1248,31 @@ Prompt:
 
 ## 20.10 Settings > Integrations & MCP
 
-Docs say this page connects external tools via MCP, enables recommended servers, adds custom servers, starts OAuth when required, and stores MCP config in `config.toml`, shared with CLI and IDE extension. ([OpenAI 开发者][2])
+This page is a temporary setup conversation. It accepts an MCP URL, JSON configuration, or a Claude/Codex-style command; TIA interprets it, asks for confirmation before changing configuration, and starts browser OAuth when needed.
 
 Suggested UI:
 
 ```txt
 Integrations & MCP
 
-Recommended servers
+What MCP do you want to add?
 ┌──────────────────────────────────────────────┐
-│ GitHub MCP                         [Enable] │
-│ Linear MCP                         [Enable] │
-│ Figma MCP                          [Enable] │
+│                                                      │
+│                                                      │
+│                       Composer                       │
 └──────────────────────────────────────────────┘
 
-Custom MCP servers
+After TIA completes a response:
+[Continue in Chat]
+
+Saved servers
 ┌──────────────────────────────────────────────┐
-│ local-hermes-agent                           │
-│ Command: node ~/mcp/hermes.js                │
-│ Status: Connected                            │
-│ [Edit] [Disable]                             │
+│ Linear MCP                                    │
+│ HTTP · Connected · Signed in                  │
 └──────────────────────────────────────────────┘
-
-[Add MCP server]
-[Open config.toml]
 ```
 
-Add server modal:
-
-```txt
-Add MCP server
-
-Name
-[ linear-local ]
-
-Transport
-(●) stdio
-( ) HTTP
-( ) SSE
-
-Command / URL
-[ npx @modelcontextprotocol/server-linear ]
-
-Environment variables
-[ + Add variable ]
-
-[Cancel] [Save]
-```
+The setup conversation is in memory only. It becomes a normal Chats thread only when the user chooses **Continue in Chat**. OAuth state is stored separately in `~/.tia-studio/mcp-auth.json`, never in renderer-visible settings or the conversation transcript.
 
 ---
 

@@ -85,8 +85,8 @@ A complete reusable capability bundle installed from TIA Studio's curated skills
 _Avoid_: Codex skill import, pretend install, single-file skill copy
 
 **MCP Server**:
-An active stdio Model Context Protocol server configured in TIA Studio. Electron main owns its client and child process for the lifetime of each Pi Thread: it completes MCP initialization, discovers tools, exposes namespaced tools to Pi, and closes the client when the thread closes. URL/OAuth transports are not yet an executable capability.
-_Avoid_: Renderer-owned client, Pi built-in MCP, configured-but-unavailable server
+An active stdio, HTTP, or SSE Model Context Protocol server configured in TIA Studio. Electron main owns its client (and a stdio child process when applicable) for the lifetime of each Pi Thread: it completes MCP initialization, discovers tools, exposes namespaced tools to Pi, and closes the client when the thread closes. HTTP and SSE servers can use direct OAuth through `@ai-sdk/mcp`; loopback callback state and credentials stay in `~/.tia-studio/mcp-auth.json` and never cross the renderer/API boundary.
+_Avoid_: Renderer-owned client, Pi built-in MCP, configured-but-unavailable server, shared third-party credentials
 
 **Appearance Tokens**:
 The user-adjustable visual settings that control TIA Studio's base theme, accent color, background color, and foreground color. Appearance Tokens preserve the product's visual system while allowing personal tuning.

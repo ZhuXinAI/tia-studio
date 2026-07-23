@@ -25,6 +25,10 @@ import type {
   DesktopSkillSourceCounts
 } from '../../shared/desktop-discovery'
 import type { SkillMarketplaceRecord } from '../../shared/skill-marketplace'
+import {
+  getTopSkillMarketplaceDefinitions,
+  type MarketplaceSkillDefinition
+} from './skill-marketplace-catalog'
 
 type SkillSource = DesktopSkillSource
 export type RecommendedSkillId = 'agent-browser' | 'find-skills'
@@ -70,28 +74,6 @@ const execFileAsync = promisify(execFile)
 const gunzipAsync = promisify(gunzip)
 const maxSkillArchiveBytes = 50 * 1024 * 1024
 const maxExpandedSkillArchiveBytes = 250 * 1024 * 1024
-const topSkillDefinitions = [
-  ['find-skills', 'Find Skills', 'vercel-labs/skills', 2559128],
-  ['frontend-design', 'Frontend Design', 'anthropics/skills', 677536],
-  ['grill-me', 'Grill Me', 'mattpocock/skills', 589016],
-  ['vercel-react-best-practices', 'React Best Practices', 'vercel-labs/agent-skills', 560599],
-  ['agent-browser', 'Agent Browser', 'vercel-labs/agent-browser', 556072],
-  ['grill-with-docs', 'Grill with Docs', 'mattpocock/skills', 498165],
-  ['improve-codebase-architecture', 'Improve Codebase Architecture', 'mattpocock/skills', 486099],
-  ['web-design-guidelines', 'Web Design Guidelines', 'vercel-labs/agent-skills', 472135],
-  ['tdd', 'Test-Driven Development', 'mattpocock/skills', 466614],
-  ['microsoft-foundry', 'Microsoft Foundry', 'microsoft/azure-skills', 463543],
-  ['azure-ai', 'Azure AI', 'microsoft/azure-skills', 460067],
-  ['azure-deploy', 'Azure Deploy', 'microsoft/azure-skills', 459766],
-  ['azure-diagnostics', 'Azure Diagnostics', 'microsoft/azure-skills', 459616],
-  ['azure-prepare', 'Azure Prepare', 'microsoft/azure-skills', 459460],
-  ['azure-storage', 'Azure Storage', 'microsoft/azure-skills', 459148],
-  ['azure-validate', 'Azure Validate', 'microsoft/azure-skills', 458815],
-  ['entra-app-registration', 'Entra App Registration', 'microsoft/azure-skills', 458700],
-  ['appinsights-instrumentation', 'App Insights Instrumentation', 'microsoft/azure-skills', 458620],
-  ['azure-compliance', 'Azure Compliance', 'microsoft/azure-skills', 458541],
-  ['azure-resource-lookup', 'Azure Resource Lookup', 'microsoft/azure-skills', 458534]
-] as const
 const recommendedSkillDefinitions: RecommendedSkillDefinition[] = [
   {
     id: 'agent-browser',
@@ -741,18 +723,50 @@ async function hasInstalledSkill(rootPath: string | null, slug: string): Promise
   }
 }
 
+function resolveSkillMarketplaceCachePath(input: {
+  globalSkillsRoot: string
+  cachePath?: string
+}): string {
+  return (
+    input.cachePath ??
+    path.join(path.dirname(input.globalSkillsRoot), 'skills-marketplace-top.json')
+  )
+}
+
+async function getMarketplaceSkillDefinitions(input: {
+  globalSkillsRoot: string
+  cachePath?: string
+}): Promise<MarketplaceSkillDefinition[]> {
+  return getTopSkillMarketplaceDefinitions({
+    cachePath: resolveSkillMarketplaceCachePath(input)
+  })
+}
+
+async function findMarketplaceSkillDefinition(input: {
+  skillId: string
+  globalSkillsRoot: string
+  cachePath?: string
+}): Promise<MarketplaceSkillDefinition | undefined> {
+  const definitions = await getMarketplaceSkillDefinitions(input)
+  return definitions.find(
+    (definition) => `${definition.source}/${definition.slug}` === input.skillId
+  )
+}
+
 export async function listSkillMarketplace(input: {
   globalSkillsRoot: string
+  cachePath?: string
 }): Promise<SkillMarketplaceRecord[]> {
+  const definitions = await getMarketplaceSkillDefinitions(input)
   return Promise.all(
-    topSkillDefinitions.map(async ([slug, name, source, installs], index) => ({
-      id: `${source}/${slug}`,
+    definitions.map(async (definition, index) => ({
+      id: `${definition.source}/${definition.slug}`,
       rank: index + 1,
-      slug,
-      name,
-      source,
-      installs,
-      installedGlobal: await hasInstalledSkill(input.globalSkillsRoot, slug)
+      slug: definition.slug,
+      name: definition.name,
+      source: definition.source,
+      installs: definition.installs,
+      installedGlobal: await hasInstalledSkill(input.globalSkillsRoot, definition.slug)
     }))
   )
 }
@@ -760,12 +774,11 @@ export async function listSkillMarketplace(input: {
 export async function installMarketplaceSkill(input: {
   skillId: string
   globalSkillsRoot: string
+  cachePath?: string
 }): Promise<void> {
-  const definition = topSkillDefinitions.find(
-    ([slug, , source]) => `${source}/${slug}` === input.skillId
-  )
+  const definition = await findMarketplaceSkillDefinition(input)
   if (!definition) throw new Error('Skill is not in the TIA catalog')
-  const [slug, , source] = definition
+  const { slug, source } = definition
   const targetRoot = input.globalSkillsRoot
   if (await hasInstalledSkill(targetRoot, slug)) return
   await mkdir(targetRoot, { recursive: true })
@@ -811,12 +824,11 @@ export async function installMarketplaceSkill(input: {
 export async function removeMarketplaceSkill(input: {
   skillId: string
   globalSkillsRoot: string
+  cachePath?: string
 }): Promise<void> {
-  const definition = topSkillDefinitions.find(
-    ([slug, , source]) => `${source}/${slug}` === input.skillId
-  )
+  const definition = await findMarketplaceSkillDefinition(input)
   if (!definition) throw new Error('Skill is not in the TIA catalog')
-  const [slug] = definition
+  const { slug } = definition
   const target = path.resolve(input.globalSkillsRoot, slug)
   if (path.dirname(target) !== path.resolve(input.globalSkillsRoot)) {
     throw new Error('Skill path is invalid')

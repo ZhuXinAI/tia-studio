@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import type { ChannelsRepository } from '../persistence/repos/channels-repo'
 import type { ChannelPairingsRepository } from '../persistence/repos/channel-pairings-repo'
 import type { McpServersRepository } from '../persistence/repos/mcp-servers-repo'
+import type { McpOAuthService } from '../mcp/mcp-oauth'
 import type { McpServerHealthRegistry } from '../agents/pi/mcp-server-health'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { PermissionRulesRepository } from '../persistence/repos/permission-rules-repo'
@@ -39,6 +40,7 @@ import type { AutomationsRepository } from '../persistence/repos/automations-rep
 import type { AutomationService } from '../automations/automation-service'
 import { registerAutomationsRoute } from './routes/automations-route'
 import { registerPermissionRulesRoute } from './routes/permission-rules-route'
+import { registerSkillsRoute } from './routes/skills-route'
 
 type CreateAppOptions = {
   token: string
@@ -78,6 +80,7 @@ type CreateAppOptions = {
     workspaces?: WorkspacesRepository
     webSearchSettings: WebSearchSettingsRepository
     mcpServers: McpServersRepository
+    mcpOAuthService?: McpOAuthService
     mcpServerHealth?: McpServerHealthRegistry
     channels: ChannelsRepository
     pairings: ChannelPairingsRepository
@@ -119,6 +122,20 @@ export function createApp(options: CreateAppOptions): Hono {
     })
   )
   app.use(
+    '/api/*',
+    cors({
+      origin: (origin) => origin ?? '*',
+      allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowHeaders: ['Authorization', 'Content-Type']
+    })
+  )
+  app.use(
+    '/api/*',
+    createBearerAuthMiddlewareWithOptions(options.token, {
+      allowUnauthenticatedOrigins
+    })
+  )
+  app.use(
     '/chat',
     cors({
       origin: (origin) => origin ?? '*',
@@ -149,6 +166,9 @@ export function createApp(options: CreateAppOptions): Hono {
   registerHealthRoute(app)
 
   if (options.desktop) {
+    registerSkillsRoute(app, {
+      listTopSkills: options.desktop.listSkillMarketplace
+    })
     registerDesktopRoute(app, options.desktop)
   }
 
@@ -178,6 +198,7 @@ export function createApp(options: CreateAppOptions): Hono {
     })
     registerMcpServersRoute(app, {
       mcpServersRepo: options.repositories.mcpServers,
+      mcpOAuthService: options.repositories.mcpOAuthService,
       mcpServerHealth: options.repositories.mcpServerHealth
     })
     if (options.repositories.permissionRules) {

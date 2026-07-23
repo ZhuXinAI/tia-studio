@@ -59,7 +59,10 @@ function isChatsWorkspace(workspace: WorkspaceRecord): boolean {
   return workspace.builtInKind === 'chats'
 }
 
-const sidebarActionButtonClassName = 'h-10 justify-start rounded-xl px-3 text-sm'
+const sidebarPrimaryActionClassName =
+  'h-9 w-full justify-start rounded-lg border border-[color:var(--chat-surface-border-strong)] bg-[color:var(--surface-active)] px-3 text-sm font-medium text-foreground shadow-none hover:bg-[color:var(--surface-active-strong)]'
+const sidebarNavItemClassName =
+  'h-8 justify-start rounded-lg px-2.5 text-[13px] text-muted-foreground transition-[background-color,color] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[color:var(--surface-muted)] hover:text-foreground'
 const unreadThreadCompletionsStorageKey = 'tia-studio.unread-thread-completions'
 
 function readUnreadThreadCompletions(): Set<string> {
@@ -84,7 +87,7 @@ function writeUnreadThreadCompletions(threadIds: ReadonlySet<string>): void {
   }
 }
 
-function ThreadStatusIcon({ status }: { status: ThreadListStatus }): React.JSX.Element {
+function ThreadStatusIcon({ status }: { status: ThreadListStatus }): React.JSX.Element | null {
   const { t } = useTranslation()
 
   switch (status) {
@@ -111,7 +114,7 @@ function ThreadStatusIcon({ status }: { status: ThreadListStatus }): React.JSX.E
         />
       )
     default:
-      return <span className="size-1.5 shrink-0 rounded-full bg-current opacity-60" />
+      return null
   }
 }
 
@@ -142,13 +145,19 @@ function ThreadLink({
   return (
     <div
       className={cn(
-        'group/thread flex min-w-0 items-center gap-1 rounded-lg px-1.5 py-1 text-xs transition-colors',
+        'group/thread relative flex min-w-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[12.5px] transition-[background-color,color] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]',
         isActive
           ? 'bg-[color:var(--surface-active)] text-foreground'
           : 'text-muted-foreground hover:bg-[color:var(--surface-muted)] hover:text-foreground'
       )}
     >
-      <NavLink to={href} className="flex min-w-0 flex-1 items-center gap-2 px-1 py-0.5">
+      {isActive ? (
+        <span
+          aria-hidden
+          className="absolute inset-y-1 left-0 w-px rounded-full bg-foreground/45"
+        />
+      ) : null}
+      <NavLink to={href} className="flex min-w-0 flex-1 items-center gap-2 px-1.5 py-1">
         <ThreadStatusIcon status={status} />
         <span className="truncate">{displayTitle}</span>
       </NavLink>
@@ -211,18 +220,26 @@ function SidebarSection({
   children: React.ReactNode
 }): React.JSX.Element {
   return (
-    <section className="group/section space-y-2">
+    <section className="group/section space-y-1.5">
       <div className="flex items-center justify-between gap-2 px-1">
         <button
           type="button"
-          className="flex min-w-0 items-center gap-1.5 text-left section-kicker"
+          className="section-kicker flex min-w-0 items-center gap-1.5 text-left tracking-[0.14em]"
           onClick={onToggle}
           aria-expanded={isOpen}
         >
-          {isOpen ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+          {isOpen ? (
+            <ChevronDown className="size-3 opacity-70" />
+          ) : (
+            <ChevronRight className="size-3 opacity-70" />
+          )}
           <span className="truncate">{title}</span>
         </button>
-        {action ? <div>{action}</div> : null}
+        {action ? (
+          <div className="opacity-0 transition-opacity duration-150 group-hover/section:opacity-100 group-focus-within/section:opacity-100">
+            {action}
+          </div>
+        ) : null}
       </div>
       {isOpen ? children : null}
     </section>
@@ -298,7 +315,7 @@ function WorkspaceThreads({
   }
 
   return (
-    <div className="space-y-0.5 pl-4 pr-1 pt-1">
+    <div className="ml-5 space-y-0.5 border-l border-[color:var(--chat-surface-border)] py-0.5 pl-2.5 pr-1">
       {recentThreads.map((thread) => (
         <ThreadLink
           key={thread.id}
@@ -514,14 +531,14 @@ export function AppV2Sidebar({
         isWindowsPlatform() ? 'pt-0' : 'pt-9'
       )}
     >
-      <div className="space-y-3 border-b border-[color:var(--chat-surface-border)] px-3.5 pb-4 pt-3">
+      <div className="space-y-2.5 border-b border-[color:var(--chat-surface-border)] px-3 pb-3.5 pt-2.5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex shrink-0 items-center gap-1">
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="no-drag"
+              className="no-drag size-8"
               onClick={onToggleCollapsed}
               aria-label={t('appShell.nav.collapseSidebar')}
               title={t('appShell.nav.collapseSidebar')}
@@ -532,41 +549,33 @@ export function AppV2Sidebar({
         </div>
 
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             ref={workspaceSearchInputRef}
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder={t('threads.sidebar.searchWorkspaces')}
-            className="h-10 rounded-xl pl-8 text-sm"
+            className="h-8 rounded-lg border-[color:var(--chat-surface-border)] bg-[color:var(--surface-panel-soft)] pl-8 text-[13px] shadow-none"
           />
         </div>
 
-        <Button asChild className={cn('w-full', sidebarActionButtonClassName)}>
+        <Button asChild variant="ghost" className={sidebarPrimaryActionClassName}>
           <NavLink to={newChatHref}>
             <MessageSquarePlus className="size-4" />
             {t('appShell.nav.newChat')}
           </NavLink>
         </Button>
 
-        <div className="grid gap-1.5">
-          <Button
-            asChild
-            variant="ghost"
-            className={cn(sidebarActionButtonClassName, 'text-muted-foreground')}
-          >
+        <div className="grid gap-0.5">
+          <Button asChild variant="ghost" className={sidebarNavItemClassName}>
             <NavLink to="/skills">
-              <Sparkles className="size-4" />
+              <Sparkles className="size-3.5" />
               {t('appShell.nav.skills')}
             </NavLink>
           </Button>
-          <Button
-            asChild
-            variant="ghost"
-            className={cn(sidebarActionButtonClassName, 'text-muted-foreground')}
-          >
+          <Button asChild variant="ghost" className={sidebarNavItemClassName}>
             <NavLink to="/automations">
-              <Clock3 className="size-4" />
+              <Clock3 className="size-3.5" />
               {t('appShell.nav.schedules')}
             </NavLink>
           </Button>
@@ -722,7 +731,7 @@ export function AppV2Sidebar({
         </SidebarSection>
       </div>
 
-      <div className="border-t border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-3">
+      <div className="border-t border-[color:var(--chat-surface-border)] p-3">
         <Button asChild variant="ghost" className="w-full justify-start">
           <NavLink to="/settings/general" aria-label={t('appShell.nav.openSettings')}>
             <Settings className="size-4" />

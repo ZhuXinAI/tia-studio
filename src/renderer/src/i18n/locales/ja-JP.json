@@ -342,34 +342,13 @@
       }
     },
     "mcp": {
-      "title": "MCP Server Settings",
-      "description": "Manage your local mcp.json source-of-truth and control global MCP activation.",
-      "headerDescription": "Connect shared tools that TIA Studio can use across local sessions.",
       "savedServers": "Saved servers",
       "serverCount_one": "{{count}} server",
       "serverCount_other": "{{count}} servers",
-      "emptyTitle": "No MCP servers configured",
-      "emptyDescription": "Add a server to make its tools available to TIA Studio.",
-      "status": {
-        "enabled": "Enabled",
-        "disabled": "Disabled"
-      },
-      "buttons": {
-        "addServer": "Add MCP Server",
-        "editJson": "Edit JSON",
-        "saving": "Saving...",
-        "save": "Save",
-        "saveServer": "Save server",
-        "cancel": "Cancel",
-        "applyJson": "Apply JSON"
-      },
-      "editAriaLabel": "Edit {{name}}",
-      "managedRuntimeSetup": "Finish the {{runtime}} runtime setup before enabling this server.",
-      "remote": {
-        "title": "Authenticated remote MCPs",
-        "descriptionPrefix": "For services such as Linear, prefer the",
-        "descriptionSuffix": "stdio proxy: command npx; arguments -y, mcp-remote, and the server URL. It opens browser OAuth when needed. Its user-level session may be reused by other clients using the same mcp-remote profile and matching configuration, but it does not guarantee sharing a Codex or Claude login.",
-        "managedRuntime": "If managed Bun is installed in Runtime Setup, TIA runs npx or bunx through bun x automatically."
+      "auth": {
+        "signed-in": "Signed in",
+        "sign-in-incomplete": "Sign-in incomplete",
+        "not-signed-in": "Sign in required"
       },
       "health": {
         "disabled": "Disabled",
@@ -380,51 +359,7 @@
         "unsupported": "This transport is not available in TIA Studio yet. Use stdio or disable this server.",
         "connectionFailed": "A connection or tool action failed. Review the command, arguments, and environment variables, then open a new chat to retry."
       },
-      "cardTitle": "MCP Servers",
-      "cardDescription": "These servers are shared globally for local Pi sessions.",
-      "loading": "Loading MCP servers...",
-      "empty": "No MCP servers yet. Add one to create your local mcp.json list.",
-      "serverDescription": "Global status controls whether Pi sessions can use this server.",
-      "toggleAriaLabel": "Toggle {{id}}",
-      "deleteAriaLabel": "Delete {{id}}",
-      "managedRuntimeTitle": "This command can use TIA Studio managed runtimes.",
-      "managedRuntimeDescriptionPrefix": "Finish {{runtime}} setup in",
-      "fields": {
-        "displayName": "Display Name",
-        "transportType": "Transport Type",
-        "command": "Command",
-        "installSource": "Install Source",
-        "url": "URL (for HTTP/SSE servers)",
-        "arguments": "Arguments (one per line)",
-        "environmentVariables": "Environment Variables (KEY=VALUE)"
-      },
-      "jsonDialog": {
-        "title": "Edit MCP JSON",
-        "description": "This is a snapshot of your local MCP settings. Changes apply only after validation.",
-        "fieldLabel": "MCP Settings JSON",
-        "helper": "JSON parsing and MCP field rules are checked when you apply changes."
-      },
-      "dialog": {
-        "addTitle": "Add MCP server",
-        "editTitle": "Edit MCP server",
-        "description": "Configure how TIA Studio starts or connects to this tool server.",
-        "available": "Available to TIA Studio",
-        "enableDescription": "Enable this server for new sessions.",
-        "enableAriaLabel": "Enable MCP server",
-        "serverId": "Server ID"
-      },
-      "validation": {
-        "unexpectedError": "Unexpected request error",
-        "invalidPayload": "Invalid MCP settings payload.",
-        "rawJsonInvalid": "Raw JSON is invalid.",
-        "commandRequired": "command is required when type is stdio",
-        "urlRequired": "url is required for non-stdio MCP servers unless command is provided",
-        "serverIdRequired": "Server ID is required",
-        "serverExists": "A server named {{id}} already exists"
-      },
-      "toasts": {
-        "saved": "MCP server settings saved."
-      }
+      "loading": "Loading MCP servers..."
     },
     "channels": {
       "title": "チャンネル",

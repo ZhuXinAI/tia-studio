@@ -137,7 +137,7 @@ describe('TIA state management tools', () => {
     expect(confirm).toHaveBeenCalledOnce()
   })
 
-  it('creates authenticated remote MCPs through mcp-remote without returning env values', async () => {
+  it('creates direct authenticated remote MCPs without accepting environment secrets', async () => {
     const saveSettings = vi.fn(async (settings) => settings)
     const { tools, confirm } = createTools({
       mcpServers: {
@@ -147,12 +147,10 @@ describe('TIA state management tools', () => {
     })
 
     const output = await execute(tools, 'manage_tia_mcp_servers', {
-      action: 'create_remote',
+      action: 'create_http',
       id: 'linear',
       name: 'Linear',
-      url: 'https://mcp.linear.app/sse',
-      resource: 'https://acme.linear.app/',
-      env: { SHOULD_NOT_BE_RETURNED: 'secret' }
+      url: 'https://mcp.linear.app/mcp'
     })
 
     expect(confirm).toHaveBeenCalledOnce()
@@ -161,22 +159,69 @@ describe('TIA state management tools', () => {
         linear: {
           isActive: true,
           name: 'Linear',
-          type: 'stdio',
-          command: 'npx',
-          args: [
-            '-y',
-            'mcp-remote',
-            'https://mcp.linear.app/sse',
-            '--resource',
-            'https://acme.linear.app/'
-          ],
-          env: { SHOULD_NOT_BE_RETURNED: 'secret' },
-          installSource: 'mcp-remote',
-          url: 'https://mcp.linear.app/sse'
+          type: 'http',
+          args: [],
+          env: {},
+          installSource: 'direct',
+          url: 'https://mcp.linear.app/mcp'
         }
       }
     })
     expect(JSON.stringify(output)).not.toContain('secret')
-    expect(JSON.stringify(output)).toContain('SHOULD_NOT_BE_RETURNED')
+    expect(JSON.stringify(output)).toContain('MCP server')
+  })
+
+  it('rejects environment secrets for direct remote MCPs', async () => {
+    const { tools } = createTools({
+      mcpServers: {
+        getSettings: vi.fn(async () => ({ mcpServers: {} })),
+        saveSettings: vi.fn()
+      } as unknown as McpServersRepository
+    })
+
+    await expect(
+      execute(tools, 'manage_tia_mcp_servers', {
+        action: 'create_sse',
+        id: 'linear',
+        url: 'https://mcp.linear.app/sse',
+        env: { MCP_TOKEN: 'secret' }
+      })
+    ).rejects.toThrow('env is only supported for stdio')
+  })
+
+  it('starts direct OAuth sign-in from the MCP management tool', async () => {
+    const login = vi.fn(async () => undefined)
+    const getStatus = vi.fn(async () => 'signed-in')
+    const { tools, confirm } = createTools({
+      mcpServers: {
+        getSettings: vi.fn(async () => ({
+          mcpServers: {
+            linear: {
+              isActive: true,
+              name: 'Linear',
+              type: 'http',
+              args: [],
+              env: {},
+              installSource: 'direct',
+              url: 'https://mcp.linear.app/mcp'
+            }
+          }
+        })),
+        saveSettings: vi.fn()
+      } as unknown as McpServersRepository,
+      mcpOAuth: { login, logout: vi.fn(async () => undefined), getStatus }
+    })
+
+    const output = await execute(tools, 'manage_tia_mcp_servers', {
+      action: 'sign_in',
+      id: 'linear'
+    })
+
+    expect(confirm).toHaveBeenCalledOnce()
+    expect(login).toHaveBeenCalledWith(
+      'linear',
+      expect.objectContaining({ url: 'https://mcp.linear.app/mcp' })
+    )
+    expect(JSON.stringify(output)).toContain('signed-in')
   })
 })

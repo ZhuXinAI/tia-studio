@@ -30,6 +30,11 @@ export type TiaStateManagementToolsOptions = {
   reloadChannels: () => Promise<void>
   workspaces: WorkspacesRepository
   mcpServers: McpServersRepository
+  mcpOAuth?: {
+    login(serverId: string, server: AppMcpServer): Promise<void>
+    logout(serverId: string): Promise<void>
+    getStatus(serverId: string): Promise<string>
+  }
   workspaceRootPath: string
   globalSkillsRoot: string
   confirm: (request: ConfirmationRequest) => Promise<boolean>
@@ -143,24 +148,31 @@ function mcpServerView(serverId: string, server: AppMcpServer) {
   }
 }
 
-function mcpRemoteServer(serverId: string, params: Record<string, unknown>): AppMcpServer {
-  const url = requireText(params, 'url')
-  const resource = text(params.resource)
-  const additionalArgs = stringList(params.additionalArgs) ?? []
+function directRemoteMcpServer(
+  serverId: string,
+  params: Record<string, unknown>,
+  type: 'http' | 'sse'
+): AppMcpServer {
+  const rawUrl = requireText(params, 'url')
+  let url: string
+  try {
+    const parsed = new URL(rawUrl)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:')
+      throw new Error('unsupported protocol')
+    url = parsed.href
+  } catch {
+    throw new Error('url must use http:// or https://')
+  }
+  if (Object.keys(stringMap(params.env)).length > 0) {
+    throw new Error('env is only supported for stdio MCP servers')
+  }
   return {
     isActive: boolean(params.enabled) ?? true,
     name: text(params.name) ?? serverId,
-    type: 'stdio',
-    command: text(params.command) ?? 'npx',
-    args: [
-      '-y',
-      'mcp-remote',
-      url,
-      ...(resource ? ['--resource', resource] : []),
-      ...additionalArgs
-    ],
-    env: stringMap(params.env),
-    installSource: 'mcp-remote',
+    type,
+    args: [],
+    env: {},
+    installSource: 'direct',
     url
   }
 }
@@ -519,14 +531,14 @@ export function createTiaStateManagementTools(
     name: 'manage_tia_mcp_servers',
     label: 'Manage TIA MCP servers',
     description:
-      'Inspect and manage MCP servers used by TIA Pi threads. For authenticated remote MCPs such as Linear, prefer create_remote: it configures the local mcp-remote stdio proxy, which completes browser OAuth and stores its own user-level session.',
+      'Inspect and manage MCP servers used by TIA Pi threads. Interpret common MCP JSON and commands, including Claude CLI commands. For remote HTTP or SSE servers that require authentication, use the built-in sign_in action so TIA can open the browser OAuth flow.',
     promptSnippet: 'Manage TIA Studio MCP server configuration and authenticated remote MCPs.',
     promptGuidelines: [
       'Use list before changing an existing MCP server unless the user gave its exact ID.',
-      'For an authenticated remote URL, use create_remote rather than a direct URL transport. It creates npx -y mcp-remote <url>; mcp-remote handles browser OAuth locally.',
-      'mcp-remote sessions can be reused only by clients using the same mcp-remote profile and matching URL, resource, and headers. Never promise that Codex or Claude authentication will be shared.',
-      'TIA maps npx and bunx through its managed Bun runtime when Bun is installed. Tell the user to finish Runtime Setup if the proxy cannot launch.',
-      'Creating, updating, enabling, or deleting an MCP server runs or changes a local tool integration, so require the built-in confirmation.'
+      'For a remote URL, use create_http or create_sse. TIA Studio uses direct MCP OAuth and keeps credentials only in ~/.tia-studio/mcp-auth.json.',
+      'Never ask for, return, or promise to reuse credentials from another app. When a remote server needs OAuth, call sign_in after the server exists; TIA opens the browser and stores credentials only in its local authentication storage.',
+      'TIA maps npx and bunx through its managed Bun runtime for stdio servers when Bun is installed. Tell the user to finish Runtime Setup if a stdio server cannot launch.',
+      'Creating, updating, enabling, deleting, signing in, or signing out changes a local integration or credential state, so require the built-in confirmation.'
     ],
     parameters: baseParameters,
     execute: async (_toolCallId, rawParams) => {
@@ -534,11 +546,14 @@ export function createTiaStateManagementTools(
       const action = requireAction(params, [
         'list',
         'create_stdio',
-        'create_remote',
+        'create_http',
+        'create_sse',
         'update',
         'enable',
         'disable',
-        'delete'
+        'delete',
+        'sign_in',
+        'sign_out'
       ])
       const settings = await options.mcpServers.getSettings()
 
@@ -549,24 +564,24 @@ export function createTiaStateManagementTools(
         return result(`Found ${servers.length} MCP server${servers.length === 1 ? '' : 's'}.`, {
           servers,
           remoteAuthGuidance:
-            'For authenticated remote servers, use create_remote. It configures mcp-remote and opens the provider OAuth flow in the browser. Auth reuse is possible only when other apps use the same mcp-remote profile and matching server configuration.',
+            'For authenticated remote HTTP or SSE servers, create a direct server, then use sign_in. OAuth credentials are stored only in ~/.tia-studio/mcp-auth.json.',
           bunGuidance:
             'TIA automatically uses managed Bun as bun x for npx or bunx commands when Bun is installed in Runtime Setup.'
         })
       }
 
       const serverId = requireText(params, 'id')
-      if (action === 'create_stdio' || action === 'create_remote') {
+      if (action === 'create_stdio' || action === 'create_http' || action === 'create_sse') {
         if (settings.mcpServers[serverId]) throw new Error('An MCP server already uses this id')
         const server =
-          action === 'create_remote'
-            ? mcpRemoteServer(serverId, params)
+          action === 'create_http' || action === 'create_sse'
+            ? directRemoteMcpServer(serverId, params, action === 'create_http' ? 'http' : 'sse')
             : stdioMcpServer(serverId, params)
         await confirm(
           options,
           `Add MCP server ${server.name}?`,
-          action === 'create_remote'
-            ? 'TIA will launch the local mcp-remote proxy. It may open a browser for OAuth and stores its credentials in the user-level mcp-remote profile.'
+          action === 'create_http' || action === 'create_sse'
+            ? 'TIA will connect directly to this MCP server. If it requires OAuth, TIA can start browser sign-in and will keep credentials only in TIA Studio local authentication storage.'
             : `TIA will launch ${server.command} when a Pi thread starts. Review the command and environment variables before continuing.`
         )
         const saved = await options.mcpServers.saveSettings({
@@ -579,6 +594,35 @@ export function createTiaStateManagementTools(
 
       const existing = settings.mcpServers[serverId]
       if (!existing) throw new Error('MCP server not found')
+      if (action === 'sign_in' || action === 'sign_out') {
+        const transport = existing.type.trim().toLowerCase()
+        if ((transport !== 'http' && transport !== 'sse') || !existing.url) {
+          throw new Error('Only HTTP or SSE MCP servers support browser OAuth')
+        }
+        if (!options.mcpOAuth) throw new Error('MCP OAuth is not available')
+        if (action === 'sign_in') {
+          await confirm(
+            options,
+            `Sign in to ${existing.name}?`,
+            'TIA will open this server’s browser OAuth flow. Credentials are stored only in TIA Studio local authentication storage.'
+          )
+          await options.mcpOAuth.login(serverId, existing)
+          return result(`Signed in to MCP server “${existing.name}”.`, {
+            server: mcpServerView(serverId, existing),
+            auth: await options.mcpOAuth.getStatus(serverId)
+          })
+        }
+        await confirm(
+          options,
+          `Sign out of ${existing.name}?`,
+          'This clears the local OAuth credentials that TIA Studio stored for this MCP server.'
+        )
+        await options.mcpOAuth.logout(serverId)
+        return result(`Signed out of MCP server “${existing.name}”.`, {
+          server: mcpServerView(serverId, existing),
+          auth: await options.mcpOAuth.getStatus(serverId)
+        })
+      }
       if (action === 'delete') {
         await confirm(
           options,

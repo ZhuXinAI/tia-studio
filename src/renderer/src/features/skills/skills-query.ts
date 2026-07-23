@@ -13,8 +13,7 @@ export function useSkillMarketplace() {
   return useQuery({
     queryKey: skillMarketplaceKeys.list(),
     queryFn: async () => {
-      return (await api.get<{ skills: SkillMarketplaceRecord[] }>('/v1/desktop/skill-marketplace'))
-        .skills
+      return (await api.get<{ skills: SkillMarketplaceRecord[] }>('/api/skills/top')).skills
     }
   })
 }

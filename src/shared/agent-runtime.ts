@@ -11,6 +11,7 @@ export type AgentTodoItem = {
   status: 'pending' | 'in_progress' | 'completed'
 }
 export type AgentSendBehavior = 'normal' | 'steer' | 'follow-up'
+export type AgentTransientPurpose = 'mcp-setup'
 export type AgentSessionStatus =
   | 'starting'
   | 'idle'
@@ -119,6 +120,12 @@ export type AgentInteractionResponse =
 
 export type AgentSessionSnapshot = {
   id: AgentSessionId
+  /**
+   * Transient sessions are owned only by the running desktop process. They do
+   * not have database rows or Pi session files until they are promoted.
+   */
+  transient?: boolean
+  transientPurpose?: AgentTransientPurpose
   automationId?: string
   upstreamSessionId?: string
   upstreamSessionFile?: string
@@ -227,6 +234,24 @@ export type CreateAgentSessionInput = {
   accessMode?: AgentAccessMode
 }
 
+export type CreateTransientAgentSessionInput = {
+  purpose: AgentTransientPurpose
+  /** Internal, server-authorized working directory for the temporary flow. */
+  workspacePath: string
+  title?: string
+  providerId: string
+  provider: string
+  modelId: string
+  thinkingLevel?: AgentThinkingLevel
+  accessMode?: AgentAccessMode
+}
+
+export type PromoteTransientAgentSessionInput = {
+  sessionId: AgentSessionId
+  workspaceId: string | null
+  workspacePath: string
+}
+
 export type SendAgentMessageInput = {
   sessionId: AgentSessionId
   text: string
@@ -236,6 +261,9 @@ export type SendAgentMessageInput = {
 
 export interface AppAgentRuntime {
   createSession(input: CreateAgentSessionInput): Promise<AgentSessionSnapshot>
+  createTransientSession(input: CreateTransientAgentSessionInput): Promise<AgentSessionSnapshot>
+  closeTransientSession(sessionId: AgentSessionId): Promise<void>
+  promoteTransientSession(input: PromoteTransientAgentSessionInput): Promise<AgentSessionSnapshot>
   resumeSession(sessionId: AgentSessionId): Promise<AgentSessionSnapshot>
   closeSession(sessionId: AgentSessionId): Promise<void>
   sendMessage(input: SendAgentMessageInput): Promise<AgentCommandReceipt>

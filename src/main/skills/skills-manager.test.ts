@@ -14,6 +14,7 @@ import {
   listDiscoveredSkillsPage,
   removeWorkspaceSkill
 } from './skills-manager'
+import { fallbackTopSkillDefinitions } from './skill-marketplace-catalog'
 
 function tarFile(name: string, content: string): Buffer {
   const body = Buffer.from(content)
@@ -41,6 +42,17 @@ async function createSkill(
   const skillDirectory = path.join(baseDirectory, relativeDirectory)
   await mkdir(skillDirectory, { recursive: true })
   await writeFile(path.join(skillDirectory, 'SKILL.md'), content, 'utf8')
+}
+
+async function writeMarketplaceCache(globalSkillsRoot: string): Promise<void> {
+  await writeFile(
+    path.join(path.dirname(globalSkillsRoot), 'skills-marketplace-top.json'),
+    JSON.stringify({
+      fetchedAt: new Date().toISOString(),
+      skills: fallbackTopSkillDefinitions
+    }),
+    'utf8'
+  )
 }
 
 describe('skills manager', () => {
@@ -294,6 +306,7 @@ description: Keeps workspace linting rules.
 
   it('removes only an installed TIA marketplace skill', async () => {
     const globalSkillsRoot = path.join(tempRoot, 'tia-global-skills')
+    await writeMarketplaceCache(globalSkillsRoot)
     await createSkill(
       globalSkillsRoot,
       'find-skills',
@@ -401,6 +414,7 @@ description: Helper skill.
 
   it('returns only the top 20 marketplace skills with owned install state', async () => {
     const globalRoot = path.join(tempRoot, 'tia-global-skills')
+    await writeMarketplaceCache(globalRoot)
     await createSkill(
       globalRoot,
       'find-skills',
@@ -417,6 +431,7 @@ description: Helper skill.
 
   it('does not download a marketplace skill that is already installed', async () => {
     const globalRoot = path.join(tempRoot, 'tia-global-skills')
+    await writeMarketplaceCache(globalRoot)
     await createSkill(
       globalRoot,
       'find-skills',
@@ -433,6 +448,7 @@ description: Helper skill.
 
   it('downloads and extracts a GitHub skill archive without requiring git', async () => {
     const globalRoot = path.join(tempRoot, 'tia-global-skills')
+    await writeMarketplaceCache(globalRoot)
     const archive = gzipSync(
       tarFile(
         'repository-main/skills/find-skills/SKILL.md',

@@ -80,14 +80,14 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<'li'>): R
 }
 
 const sidebarMenuButtonVariants = cva(
-  'focus-visible:ring-ring/50 relative flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm outline-none transition-[background-color,color,box-shadow,border-color] focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50',
+  'focus-visible:ring-ring/50 relative flex w-full items-center gap-2 rounded-lg border border-transparent px-3 py-2.5 text-left text-sm outline-none transition-[background-color,color,border-color] focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
         default:
-          'border border-transparent text-muted-foreground hover:bg-[color:var(--surface-muted)] hover:text-foreground',
+          'text-muted-foreground hover:bg-[color:var(--surface-muted)] hover:text-foreground',
         active:
-          'border-[color:var(--surface-border-strong)] bg-[color:var(--surface-active)] text-foreground shadow-[inset_0_0_0_1px_var(--surface-active-strong)]'
+          'border-[color:var(--surface-border-strong)] bg-[color:var(--surface-active)] text-foreground'
       }
     },
     defaultVariants: {
@@ -135,13 +135,13 @@ function SidebarMenuSubItem({
 }
 
 const sidebarMenuSubButtonVariants = cva(
-  'focus-visible:ring-ring/50 flex w-full items-center justify-between rounded-md border border-transparent px-2.5 py-2 text-left text-xs text-muted-foreground outline-none transition-[background-color,color,box-shadow,border-color] focus-visible:ring-[3px] hover:bg-[color:var(--surface-muted)] hover:text-foreground',
+  'focus-visible:ring-ring/50 flex w-full items-center justify-between rounded-md border border-transparent px-2.5 py-2 text-left text-xs text-muted-foreground outline-none transition-[background-color,color,border-color] focus-visible:ring-[3px] hover:bg-[color:var(--surface-muted)] hover:text-foreground',
   {
     variants: {
       variant: {
         default: '',
         active:
-          'border-[color:var(--surface-border-strong)] bg-[color:var(--surface-active)] text-foreground shadow-[inset_0_0_0_1px_var(--surface-active-strong)]'
+          'border-[color:var(--surface-border-strong)] bg-[color:var(--surface-active)] text-foreground'
       }
     },
     defaultVariants: {

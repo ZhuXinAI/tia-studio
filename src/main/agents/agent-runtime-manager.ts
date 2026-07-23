@@ -10,7 +10,8 @@ import {
   type ToolDefinition
 } from '@earendil-works/pi-coding-agent'
 import { randomUUID } from 'node:crypto'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type {
   AgentCommandReceipt,
@@ -23,12 +24,15 @@ import type {
   AppAgentMessage,
   AppAgentRuntime,
   CreateAgentSessionInput,
+  CreateTransientAgentSessionInput,
+  PromoteTransientAgentSessionInput,
   SendAgentMessageInput
 } from '../../shared/agent-runtime'
 import { reduceAgentEvent } from '../../shared/agent-runtime'
 import type { AgentSessionsRepository } from '../persistence/repos/agent-sessions-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { PermissionRulesRepository } from '../persistence/repos/permission-rules-repo'
+import type { McpAuthRepository } from '../persistence/repos/mcp-auth-repo'
 import type { McpServersRepository } from '../persistence/repos/mcp-servers-repo'
 import { writePiModelConfig } from './pi/pi-model-config'
 import {
@@ -50,9 +54,12 @@ type PendingInteraction = {
 }
 
 type LiveSession = {
+  persistence: 'durable' | 'transient'
   session: AgentSession
   modelRuntime: ModelRuntime
   piProvider: string
+  agentDir: string
+  temporaryDirectory?: string
   mapper: PiSdkEventMapper
   snapshot: AgentSessionSnapshot
   messages: AppAgentMessage[]
@@ -70,6 +77,7 @@ export type AgentRuntimeManagerOptions = {
   credentialRoot: string
   globalSkillsRoot: string
   mcpServersRepo?: McpServersRepository
+  mcpAuthRepository?: McpAuthRepository
   mcpServerHealth?: McpServerHealthRegistry
   resolveMcpCommand?: McpClientToolsOptions['resolveCommand']
   stateManagement?: Omit<TiaStateManagementToolsOptions, 'workspaceRootPath' | 'confirm'>
@@ -82,6 +90,24 @@ function deterministicTitle(text: string): string {
 }
 
 const SESSION_STARTUP_TIMEOUT_MS = 20_000
+
+function transientTranscript(messages: AppAgentMessage[]): string {
+  const lines = messages.flatMap((message) => {
+    const content = message.parts
+      .flatMap((part) => {
+        if (part.type === 'text' || part.type === 'thinking' || part.type === 'notice') {
+          return part.text.trim() ? [part.text.trim()] : []
+        }
+        if (part.type === 'tool') return [`[Used ${part.toolName}: ${part.status}]`]
+        if (part.type === 'image') return [`[Attached image: ${part.name}]`]
+        return []
+      })
+      .join('\n')
+      .trim()
+    return content ? [`${message.role === 'assistant' ? 'Assistant' : 'User'}: ${content}`] : []
+  })
+  return lines.join('\n\n').slice(0, 60_000)
+}
 
 function withStartupTimeout<T>(promise: Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -118,6 +144,94 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     }
   }
 
+  async createTransientSession(
+    input: CreateTransientAgentSessionInput
+  ): Promise<AgentSessionSnapshot> {
+    const now = new Date().toISOString()
+    const record: AgentSessionSnapshot = {
+      id: randomUUID(),
+      transient: true,
+      transientPurpose: input.purpose,
+      workspaceId: null,
+      workspacePath: input.workspacePath,
+      title: input.title?.trim() || 'New thread',
+      providerId: input.providerId,
+      provider: input.provider,
+      modelId: input.modelId,
+      thinkingLevel: input.thinkingLevel ?? 'medium',
+      accessMode: input.accessMode ?? 'standard',
+      pinned: false,
+      status: 'starting',
+      isCompacting: false,
+      queue: { steering: [], followUps: [] },
+      todos: [],
+      createdAt: now,
+      updatedAt: now
+    }
+    return withStartupTimeout(this.startSession(record, { transient: true }))
+  }
+
+  async closeTransientSession(sessionId: string): Promise<void> {
+    const runtime = this.live.get(sessionId)
+    if (!runtime || runtime.persistence !== 'transient') {
+      throw new Error('Temporary thread not found')
+    }
+    await this.disposeRuntime(runtime)
+  }
+
+  async promoteTransientSession(
+    input: PromoteTransientAgentSessionInput
+  ): Promise<AgentSessionSnapshot> {
+    const transient = this.live.get(input.sessionId)
+    if (!transient || transient.persistence !== 'transient') {
+      throw new Error('Temporary thread not found')
+    }
+    if (transient.snapshot.status !== 'idle' || transient.snapshot.pendingInteraction) {
+      throw new Error('Wait for the assistant to finish before continuing in Chat')
+    }
+
+    const record = await this.options.sessionsRepo.create({
+      workspaceId: input.workspaceId,
+      workspacePath: input.workspacePath,
+      title: transient.snapshot.title,
+      providerId: transient.snapshot.providerId,
+      provider: transient.snapshot.provider,
+      modelId: transient.snapshot.modelId,
+      thinkingLevel: transient.snapshot.thinkingLevel,
+      accessMode: transient.snapshot.accessMode
+    })
+
+    let promoted: AgentSessionSnapshot | undefined
+    try {
+      const created = await withStartupTimeout(this.startSession(record))
+      promoted = created
+      const durable = await this.requireLive(created.id)
+      const movedMessages = transient.messages.map((message) => ({
+        ...message,
+        sessionId: created.id
+      }))
+      await Promise.all(
+        movedMessages.map((message) => this.options.sessionsRepo.appendMessage(message))
+      )
+      durable.messages = movedMessages
+      const transcript = transientTranscript(transient.messages)
+      if (transcript) {
+        durable.session.sessionManager.appendCustomMessageEntry(
+          'tia-studio-transient-handoff',
+          `This conversation began as a temporary TIA Studio flow. Continue with this context:\n\n${transcript}`,
+          false,
+          { source: transient.snapshot.transientPurpose ?? 'temporary-thread' }
+        )
+      }
+      await this.closeTransientSession(input.sessionId)
+      return durable.snapshot
+    } catch (error) {
+      if (promoted) await this.closeSession(promoted.id).catch(() => undefined)
+      await this.options.sessionsRepo.delete(record.id)
+      throw error
+    }
+  }
+
   async resumeSession(sessionId: string): Promise<AgentSessionSnapshot> {
     const existing = this.live.get(sessionId)
     if (existing) return existing.snapshot
@@ -127,12 +241,11 @@ export class AgentRuntimeManager implements AppAgentRuntime {
   async closeSession(sessionId: string): Promise<void> {
     const runtime = this.live.get(sessionId)
     if (!runtime) return
-    await this.abortWithin(runtime.session.abort())
-    runtime.unsubscribe()
-    runtime.session.dispose()
-    await runtime.mcpTools.close()
-    this.cancelPendingInteractions(runtime)
-    this.live.delete(sessionId)
+    if (runtime.persistence === 'transient') {
+      await this.closeTransientSession(sessionId)
+      return
+    }
+    await this.disposeRuntime(runtime)
     await this.options.sessionsRepo.update(sessionId, {
       status: 'stopped',
       pendingInteraction: null
@@ -141,6 +254,63 @@ export class AgentRuntimeManager implements AppAgentRuntime {
 
   async shutdown(): Promise<void> {
     await Promise.allSettled([...this.live.keys()].map((sessionId) => this.closeSession(sessionId)))
+  }
+
+  private async disposeRuntime(runtime: LiveSession): Promise<void> {
+    await this.abortWithin(runtime.session.abort())
+    runtime.unsubscribe()
+    runtime.session.dispose()
+    await runtime.mcpTools.close()
+    this.cancelPendingInteractions(runtime)
+    this.live.delete(runtime.snapshot.id)
+    this.listeners.delete(runtime.snapshot.id)
+    if (runtime.temporaryDirectory) {
+      await rm(runtime.temporaryDirectory, { recursive: true, force: true }).catch(() => undefined)
+    }
+  }
+
+  private async updateRuntimeSnapshot(
+    runtime: LiveSession,
+    input: Partial<
+      Pick<
+        AgentSessionSnapshot,
+        | 'upstreamSessionId'
+        | 'upstreamSessionFile'
+        | 'title'
+        | 'providerId'
+        | 'provider'
+        | 'modelId'
+        | 'thinkingLevel'
+        | 'accessMode'
+        | 'pinned'
+        | 'status'
+        | 'isCompacting'
+        | 'queue'
+        | 'todos'
+      >
+    > & { pendingInteraction?: AgentInteractionRequest | null }
+  ): Promise<AgentSessionSnapshot> {
+    if (runtime.persistence === 'transient') {
+      const snapshotInput: Omit<typeof input, 'pendingInteraction'> = Object.fromEntries(
+        Object.entries(input).filter(([key]) => key !== 'pendingInteraction')
+      )
+      const next: AgentSessionSnapshot = {
+        ...runtime.snapshot,
+        ...snapshotInput,
+        updatedAt: new Date().toISOString()
+      }
+      if ('pendingInteraction' in input) {
+        if (input.pendingInteraction) next.pendingInteraction = input.pendingInteraction
+        else delete next.pendingInteraction
+      }
+      runtime.snapshot = next
+      return next
+    }
+
+    const updated = await this.options.sessionsRepo.update(runtime.snapshot.id, input)
+    if (!updated) throw new Error('Session not found')
+    runtime.snapshot = updated
+    return updated
   }
 
   async sendMessage(input: SendAgentMessageInput): Promise<AgentCommandReceipt> {
@@ -154,14 +324,11 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     if (runtime.snapshot.title === 'New thread' && trimmed) {
       const title = deterministicTitle(trimmed)
       runtime.session.setSessionName(title)
-      const updated = await this.options.sessionsRepo.update(input.sessionId, { title })
-      if (updated) {
-        runtime.snapshot = updated
-        await this.publish(
-          runtime,
-          runtime.mapper.applicationEvent({ type: 'session.updated', snapshot: updated })
-        )
-      }
+      const updated = await this.updateRuntimeSnapshot(runtime, { title })
+      await this.publish(
+        runtime,
+        runtime.mapper.applicationEvent({ type: 'session.updated', snapshot: updated })
+      )
     }
 
     const message: AppAgentMessage = {
@@ -181,7 +348,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       createdAt: new Date().toISOString(),
       status: 'complete'
     }
-    await this.options.sessionsRepo.appendMessage(message)
+    if (runtime.persistence === 'durable') await this.options.sessionsRepo.appendMessage(message)
     await this.publish(
       runtime,
       runtime.mapper.applicationEvent({ type: 'message.started', message })
@@ -229,12 +396,10 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     const runtime = await this.requireLive(sessionId)
     await this.resolvePendingInteractions(runtime)
     await this.abortWithin(runtime.session.abort())
-    const updated = await this.options.sessionsRepo.update(sessionId, {
+    const updated = await this.updateRuntimeSnapshot(runtime, {
       status: 'idle',
       pendingInteraction: null
     })
-    if (!updated) throw new Error('Session not found')
-    runtime.snapshot = updated
     await this.publish(
       runtime,
       runtime.mapper.applicationEvent({ type: 'session.updated', snapshot: updated })
@@ -283,8 +448,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     const runtime = await this.requireLive(sessionId)
     const provider = await this.options.providersRepo.getById(providerId)
     if (!provider || !provider.enabled) throw new Error('The selected provider is unavailable')
-    const agentDir = join(this.options.agentDataRoot, sessionId)
-    const { piProvider } = await writePiModelConfig(agentDir, {
+    const { piProvider } = await writePiModelConfig(runtime.agentDir, {
       ...provider,
       selectedModel: modelId
     })
@@ -294,28 +458,28 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     const model = runtime.modelRuntime.getModel(piProvider, modelId)
     if (!model) throw new Error(`Pi model is unavailable: ${piProvider}/${modelId}`)
     await runtime.session.setModel(model)
-    const updated = await this.options.sessionsRepo.update(sessionId, {
+    await this.updateRuntimeSnapshot(runtime, {
       providerId,
       provider: providerType,
       modelId
     })
-    if (updated) {
-      runtime.piProvider = piProvider
-      runtime.snapshot = updated
-    }
+    runtime.piProvider = piProvider
   }
 
   async setThinkingLevel(sessionId: string, level: AgentThinkingLevel): Promise<void> {
     const runtime = await this.requireLive(sessionId)
     runtime.session.setThinkingLevel(level)
-    const updated = await this.options.sessionsRepo.update(sessionId, { thinkingLevel: level })
-    if (updated) runtime.snapshot = updated
+    await this.updateRuntimeSnapshot(runtime, { thinkingLevel: level })
   }
 
   async setAccessMode(sessionId: string, mode: 'standard' | 'full'): Promise<void> {
     const current = await this.requireSession(sessionId)
     if (current.status === 'running')
       throw new Error('Access mode cannot change during an active run')
+    const currentRuntime = this.live.get(sessionId)
+    if (currentRuntime?.persistence === 'transient') {
+      throw new Error('Access mode cannot change in a temporary thread')
+    }
     const wasLive = this.live.has(sessionId)
     if (wasLive) await this.closeSession(sessionId)
     const updated = await this.options.sessionsRepo.update(sessionId, { accessMode: mode })
@@ -327,8 +491,12 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     const normalized = deterministicTitle(title)
     const runtime = this.live.get(sessionId)
     runtime?.session.setSessionName(normalized)
+    if (runtime) {
+      await this.updateRuntimeSnapshot(runtime, { title: normalized })
+      return
+    }
     const updated = await this.options.sessionsRepo.update(sessionId, { title: normalized })
-    if (runtime && updated) runtime.snapshot = updated
+    if (!updated) throw new Error('Session not found')
   }
 
   async getSession(sessionId: string): Promise<AgentSessionSnapshot> {
@@ -365,16 +533,27 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     }
   }
 
-  private async startSession(record: AgentSessionSnapshot): Promise<AgentSessionSnapshot> {
+  private async startSession(
+    record: AgentSessionSnapshot,
+    options: { transient?: boolean } = {}
+  ): Promise<AgentSessionSnapshot> {
+    const transient = options.transient ?? record.transient === true
+    const temporaryDirectory = transient
+      ? await mkdtemp(join(tmpdir(), 'tia-studio-transient-thread-'))
+      : undefined
     const provider = await this.options.providersRepo.getById(record.providerId)
     if (!provider || !provider.enabled) throw new Error('The selected provider is unavailable')
-    await Promise.all([
-      mkdir(this.options.agentDataRoot, { recursive: true }),
-      mkdir(this.options.sessionDataRoot, { recursive: true }),
-      mkdir(this.options.globalSkillsRoot, { recursive: true }),
-      mkdir(record.workspacePath, { recursive: true })
-    ])
-    const agentDir = join(this.options.agentDataRoot, record.id)
+    if (transient) {
+      await mkdir(record.workspacePath, { recursive: true })
+    } else {
+      await Promise.all([
+        mkdir(this.options.agentDataRoot, { recursive: true }),
+        mkdir(this.options.sessionDataRoot, { recursive: true }),
+        mkdir(this.options.globalSkillsRoot, { recursive: true }),
+        mkdir(record.workspacePath, { recursive: true })
+      ])
+    }
+    const agentDir = temporaryDirectory ?? join(this.options.agentDataRoot, record.id)
     const { piProvider } = await writePiModelConfig(agentDir, provider)
     const settingsManager = SettingsManager.inMemory({
       defaultProvider: piProvider,
@@ -393,15 +572,21 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     if (apiKey) await modelRuntime.setRuntimeApiKey(piProvider, apiKey)
     const model = modelRuntime.getModel(piProvider, record.modelId)
     if (!model) throw new Error(`Pi model is unavailable: ${piProvider}/${record.modelId}`)
-    const sessionManager = record.upstreamSessionFile
-      ? SessionManager.open(
-          record.upstreamSessionFile,
-          this.options.sessionDataRoot,
-          record.workspacePath
-        )
-      : SessionManager.create(record.workspacePath, this.options.sessionDataRoot, { id: record.id })
+    const sessionManager = transient
+      ? SessionManager.inMemory(record.workspacePath, { id: record.id })
+      : record.upstreamSessionFile
+        ? SessionManager.open(
+            record.upstreamSessionFile,
+            this.options.sessionDataRoot,
+            record.workspacePath
+          )
+        : SessionManager.create(record.workspacePath, this.options.sessionDataRoot, {
+            id: record.id
+          })
     const runtimeRef: { current?: LiveSession } = {}
-    const mcpTools = await this.loadMcpClientTools()
+    const mcpTools = transient
+      ? await createMcpClientTools({ mcpServers: {} })
+      : await this.loadMcpClientTools()
     const resourceLoader = new DefaultResourceLoader({
       cwd: record.workspacePath,
       agentDir,
@@ -473,9 +658,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
         if (!runtime) throw new Error('The session is not ready to be named')
         const title = deterministicTitle(String((params as { title: unknown }).title))
         runtime.session.setSessionName(title)
-        const updated = await this.options.sessionsRepo.update(record.id, { title })
-        if (!updated) throw new Error('Session not found')
-        runtime.snapshot = updated
+        const updated = await this.updateRuntimeSnapshot(runtime, { title })
         await this.publish(
           runtime,
           runtime.mapper.applicationEvent({ type: 'session.updated', snapshot: updated })
@@ -544,9 +727,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
               })
               .filter((item) => item.title.length > 0)
           : []
-        const updated = await this.options.sessionsRepo.update(record.id, { todos })
-        if (!updated) throw new Error('Session not found')
-        runtime.snapshot = updated
+        const updated = await this.updateRuntimeSnapshot(runtime, { todos })
         await this.publish(
           runtime,
           runtime.mapper.applicationEvent({ type: 'session.updated', snapshot: updated })
@@ -562,7 +743,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
         }
       }
     }
-    const stateManagementTools = this.options.stateManagement
+    const allStateManagementTools = this.options.stateManagement
       ? createTiaStateManagementTools({
           ...this.options.stateManagement,
           workspaceRootPath: record.workspacePath,
@@ -579,6 +760,10 @@ export class AgentRuntimeManager implements AppAgentRuntime {
           }
         })
       : []
+    const stateManagementTools =
+      transient && record.transientPurpose === 'mcp-setup'
+        ? allStateManagementTools.filter((tool) => tool.name === 'manage_tia_mcp_servers')
+        : allStateManagementTools
     const { session } = await createAgentSession({
       cwd: record.workspacePath,
       agentDir,
@@ -590,15 +775,18 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       resourceLoader,
       customTools: [nameTheThread, updateTodoList, ...stateManagementTools, ...mcpTools.tools]
     })
-    const lastSequence = await this.options.sessionsRepo.getLastSequence(record.id)
+    const lastSequence = transient ? 0 : await this.options.sessionsRepo.getLastSequence(record.id)
     const mapper = new PiSdkEventMapper(record.id, () => new Date(), lastSequence)
     const runtime: LiveSession = {
+      persistence: transient ? 'transient' : 'durable',
       session,
       modelRuntime,
       piProvider,
+      agentDir,
+      ...(temporaryDirectory ? { temporaryDirectory } : {}),
       mapper,
       snapshot: record,
-      messages: await this.options.sessionsRepo.listMessages(record.id),
+      messages: transient ? [] : await this.options.sessionsRepo.listMessages(record.id),
       unsubscribe: () => {},
       pendingInteractions: new Map(),
       mcpTools
@@ -612,13 +800,11 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       await session.bindExtensions({
         uiContext: this.createExtensionUi(runtime)
       })
-      const updated = await this.options.sessionsRepo.update(record.id, {
+      const updated = await this.updateRuntimeSnapshot(runtime, {
         upstreamSessionId: session.sessionId,
         upstreamSessionFile: session.sessionFile,
         status: session.isStreaming ? 'running' : 'idle'
       })
-      if (!updated) throw new Error('Pi session record disappeared during startup')
-      runtime.snapshot = updated
       if (updated.title !== 'New thread') session.setSessionName(updated.title)
       for (const notice of mcpTools.notices) {
         await this.publish(
@@ -637,6 +823,9 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       await session.abort().catch(() => {})
       session.dispose()
       await mcpTools.close()
+      if (temporaryDirectory) {
+        await rm(temporaryDirectory, { recursive: true, force: true }).catch(() => undefined)
+      }
       throw error
     }
   }
@@ -649,6 +838,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     try {
       return await createMcpClientTools(await this.options.mcpServersRepo.getSettings(), {
         resolveCommand: this.options.resolveMcpCommand,
+        mcpAuthRepository: this.options.mcpAuthRepository,
         onStatus: (update) => {
           if (update.state === 'connected') {
             this.options.mcpServerHealth?.connected(update.serverId, update.toolCount)
@@ -770,7 +960,12 @@ export class AgentRuntimeManager implements AppAgentRuntime {
   }
 
   private async publish(runtime: LiveSession, event: AppAgentEvent): Promise<void> {
-    if (!(await this.options.sessionsRepo.appendEvent(event))) return
+    if (
+      runtime.persistence === 'durable' &&
+      !(await this.options.sessionsRepo.appendEvent(event))
+    ) {
+      return
+    }
     const view = reduceAgentEvent(
       {
         snapshot: runtime.snapshot,
@@ -782,15 +977,19 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     )
     runtime.snapshot = view.snapshot
     runtime.messages = view.messages
-    await this.options.sessionsRepo.update(event.sessionId, {
-      status: view.snapshot.status,
-      isCompacting: view.snapshot.isCompacting,
-      queue: view.snapshot.queue,
-      pendingInteraction: view.snapshot.pendingInteraction ?? null
-    })
-    await Promise.all(
-      view.messages.map((message) => this.options.sessionsRepo.appendMessage(message))
-    )
+    if (runtime.persistence === 'transient') {
+      runtime.snapshot = { ...view.snapshot, updatedAt: event.timestamp }
+    } else {
+      await this.options.sessionsRepo.update(event.sessionId, {
+        status: view.snapshot.status,
+        isCompacting: view.snapshot.isCompacting,
+        queue: view.snapshot.queue,
+        pendingInteraction: view.snapshot.pendingInteraction ?? null
+      })
+      await Promise.all(
+        view.messages.map((message) => this.options.sessionsRepo.appendMessage(message))
+      )
+    }
     for (const listener of this.listeners.get(event.sessionId) ?? []) listener(event)
   }
 
@@ -804,6 +1003,8 @@ export class AgentRuntimeManager implements AppAgentRuntime {
   }
 
   private async requireSession(sessionId: string): Promise<AgentSessionSnapshot> {
+    const live = this.live.get(sessionId)
+    if (live) return live.snapshot
     const session = await this.options.sessionsRepo.getById(sessionId)
     if (!session) throw new Error('Pi session not found')
     return session

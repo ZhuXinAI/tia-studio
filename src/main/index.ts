@@ -10,6 +10,7 @@ import {
   nativeImage
 } from 'electron'
 import { rm } from 'node:fs/promises'
+import { homedir } from 'node:os'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { serve, type ServerType } from '@hono/node-server'
@@ -39,6 +40,7 @@ import {
   ManagedRuntimesRepository
 } from './persistence/repos/managed-runtimes-repo'
 import { McpServersRepository } from './persistence/repos/mcp-servers-repo'
+import { McpAuthRepository } from './persistence/repos/mcp-auth-repo'
 import { ProvidersRepository } from './persistence/repos/providers-repo'
 import { PermissionRulesRepository } from './persistence/repos/permission-rules-repo'
 import { WebSearchSettingsRepository } from './persistence/repos/web-search-settings-repo'
@@ -68,6 +70,7 @@ import { McpServerHealthRegistry } from './agents/pi/mcp-server-health'
 import { AutomationsRepository } from './persistence/repos/automations-repo'
 import { AutomationService } from './automations/automation-service'
 import { listWorkspaceFiles } from './workspaces/workspace-file-search'
+import { McpOAuthService } from './mcp/mcp-oauth'
 
 const hasSingleInstanceLock = registerSingleInstanceApp({
   app,
@@ -307,7 +310,13 @@ async function startLocalApiServer(): Promise<void> {
   const channelPairingsRepo = new ChannelPairingsRepository(db)
   const channelSessionBindingsRepo = new ChannelSessionBindingsRepository(db)
   const webSearchSettingsRepo = new WebSearchSettingsRepository(db)
-  const mcpServersRepo = new McpServersRepository(join(app.getPath('userData'), 'mcp.json'))
+  const mcpAuthRepository = new McpAuthRepository(join(homedir(), '.tia-studio', 'mcp-auth.json'))
+  const mcpServersRepo = new McpServersRepository(join(app.getPath('userData'), 'mcp.json'), {
+    authRepository: mcpAuthRepository
+  })
+  const mcpOAuthService = new McpOAuthService(mcpAuthRepository, {
+    openAuthorizationUrl: (url) => shell.openExternal(url.href)
+  })
   const mcpServerHealth = new McpServerHealthRegistry()
   const managedRuntimesRepo = new ManagedRuntimesRepository(
     join(app.getPath('userData'), 'managed-runtimes.json')
@@ -331,6 +340,7 @@ async function startLocalApiServer(): Promise<void> {
     credentialRoot: app.getPath('userData'),
     globalSkillsRoot: join(app.getPath('userData'), 'skills'),
     mcpServersRepo,
+    mcpAuthRepository,
     mcpServerHealth,
     resolveMcpCommand: (command, args, env) =>
       resolveManagedRuntimeService().resolveManagedCommand(command, args, env),
@@ -350,6 +360,11 @@ async function startLocalApiServer(): Promise<void> {
       },
       workspaces: workspacesRepo,
       mcpServers: mcpServersRepo,
+      mcpOAuth: {
+        login: (serverId, server) => mcpOAuthService.login(serverId, server),
+        logout: (serverId) => mcpOAuthService.logout(serverId),
+        getStatus: (serverId) => mcpOAuthService.getStatus(serverId)
+      },
       globalSkillsRoot: join(app.getPath('userData'), 'skills')
     }
   })
@@ -524,6 +539,7 @@ async function startLocalApiServer(): Promise<void> {
       pairings: channelPairingsRepo,
       webSearchSettings: webSearchSettingsRepo,
       mcpServers: mcpServersRepo,
+      mcpOAuthService,
       mcpServerHealth,
       agentSessions: agentSessionsRepo
     },

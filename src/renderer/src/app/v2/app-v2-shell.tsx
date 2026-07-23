@@ -44,13 +44,10 @@ export function AppV2Shell(): React.JSX.Element {
           className="app-v2-shell relative flex h-screen min-h-0 overflow-hidden bg-[color:var(--shell-canvas)] text-foreground"
           style={{ ['--app-v2-sidebar-width' as string]: titlebarSidebarWidth }}
         >
-          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="app-window-ambient absolute inset-0" />
-          </div>
           {!isWindowsPlatform() ? (
-            <div className="drag-region fixed left-0 right-0 top-0 z-30 grid h-8 grid-cols-[var(--app-v2-sidebar-width)_minmax(0,1fr)] overflow-hidden border-b border-[color:var(--surface-border)]">
-              <div className="app-shell-pane border-r border-[color:var(--chat-surface-border)]" />
-              <div className="bg-[color:var(--shell-canvas)]" />
+            <div className="drag-region fixed left-0 right-0 top-0 z-30 grid h-8 grid-cols-[var(--app-v2-sidebar-width)_minmax(0,1fr)] overflow-hidden">
+              <div className="border-r border-[color:var(--chat-surface-border)] bg-[color:var(--chat-surface-bg)]" />
+              <div className="bg-[color:var(--surface-paper)]" />
               {titlebarTitle ? (
                 <span className="pointer-events-none absolute inset-0 grid place-items-center px-24 text-xs font-medium text-muted-foreground">
                   {titlebarTitle}
@@ -70,7 +67,7 @@ export function AppV2Shell(): React.JSX.Element {
                 <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
                   <main
                     className={clsx(
-                      'min-h-0 min-w-0 flex-1 bg-transparent',
+                      'min-h-0 min-w-0 flex-1 bg-[color:var(--surface-paper)]',
                       !isWindowsPlatform() && 'pt-8',
                       isSettingsRoute ? 'overflow-hidden' : 'overflow-hidden'
                     )}

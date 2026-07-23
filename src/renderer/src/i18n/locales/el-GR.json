@@ -342,34 +342,13 @@
       }
     },
     "mcp": {
-      "title": "Ρυθμίσεις διακομιστή MCP",
-      "description": "Διαχειριστείτε το τοπικό mcp.json και ελέγξτε την παγκόσμια ενεργοποίηση MCP.",
-      "headerDescription": "Connect shared tools that TIA Studio can use across local sessions.",
       "savedServers": "Saved servers",
       "serverCount_one": "{{count}} server",
       "serverCount_other": "{{count}} servers",
-      "emptyTitle": "No MCP servers configured",
-      "emptyDescription": "Add a server to make its tools available to TIA Studio.",
-      "status": {
-        "enabled": "Enabled",
-        "disabled": "Disabled"
-      },
-      "buttons": {
-        "addServer": "Προσθήκη διακομιστή MCP",
-        "editJson": "Επεξεργασία JSON",
-        "saving": "Αποθήκευση...",
-        "save": "Αποθήκευση",
-        "saveServer": "Save server",
-        "cancel": "Ακύρωση",
-        "applyJson": "Εφαρμογή JSON"
-      },
-      "editAriaLabel": "Edit {{name}}",
-      "managedRuntimeSetup": "Finish the {{runtime}} runtime setup before enabling this server.",
-      "remote": {
-        "title": "Authenticated remote MCPs",
-        "descriptionPrefix": "For services such as Linear, prefer the",
-        "descriptionSuffix": "stdio proxy: command npx; arguments -y, mcp-remote, and the server URL. It opens browser OAuth when needed. Its user-level session may be reused by other clients using the same mcp-remote profile and matching configuration, but it does not guarantee sharing a Codex or Claude login.",
-        "managedRuntime": "If managed Bun is installed in Runtime Setup, TIA runs npx or bunx through bun x automatically."
+      "auth": {
+        "signed-in": "Signed in",
+        "sign-in-incomplete": "Sign-in incomplete",
+        "not-signed-in": "Sign in required"
       },
       "health": {
         "disabled": "Disabled",
@@ -380,51 +359,7 @@
         "unsupported": "This transport is not available in TIA Studio yet. Use stdio or disable this server.",
         "connectionFailed": "A connection or tool action failed. Review the command, arguments, and environment variables, then open a new chat to retry."
       },
-      "cardTitle": "Διακομιστές MCP",
-      "cardDescription": "These servers are shared globally for local Pi sessions.",
-      "loading": "Φόρτωση διακομιστών MCP...",
-      "empty": "Δεν υπάρχουν ακόμα διακομιστές MCP. Προσθέστε έναν για να δημιουργήσετε τη λίστα mcp.json.",
-      "serverDescription": "Global status controls whether Pi sessions can use this server.",
-      "toggleAriaLabel": "Εναλλαγή {{id}}",
-      "deleteAriaLabel": "Διαγραφή {{id}}",
-      "managedRuntimeTitle": "Αυτή η εντολή μπορεί να χρησιμοποιήσει διαχειριζόμενα περιβάλλοντα TIA Studio.",
-      "managedRuntimeDescriptionPrefix": "Ολοκληρώστε τη ρύθμιση {{runtime}} στο",
-      "fields": {
-        "displayName": "Όνομα εμφάνισης",
-        "transportType": "Τύπος μεταφοράς",
-        "command": "Εντολή",
-        "installSource": "Πηγή εγκατάστασης",
-        "url": "URL (για διακομιστές HTTP/SSE)",
-        "arguments": "Ορίσματα (ένα ανά γραμμή)",
-        "environmentVariables": "Μεταβλητές περιβάλλοντος (KEY=VALUE)"
-      },
-      "jsonDialog": {
-        "title": "Επεξεργασία MCP JSON",
-        "description": "Αυτό είναι ένα στιγμιότυπο των τοπικών ρυθμίσεων MCP. Οι αλλαγές ισχύουν μόνο μετά την επικύρωση.",
-        "fieldLabel": "JSON ρυθμίσεων MCP",
-        "helper": "Η ανάλυση JSON και οι κανόνες πεδίων MCP ελέγχονται όταν εφαρμόζετε αλλαγές."
-      },
-      "dialog": {
-        "addTitle": "Add MCP server",
-        "editTitle": "Edit MCP server",
-        "description": "Configure how TIA Studio starts or connects to this tool server.",
-        "available": "Available to TIA Studio",
-        "enableDescription": "Enable this server for new sessions.",
-        "enableAriaLabel": "Enable MCP server",
-        "serverId": "Server ID"
-      },
-      "validation": {
-        "unexpectedError": "Απροσδόκητο σφάλμα αιτήματος",
-        "invalidPayload": "Μη έγκυρα δεδομένα ρυθμίσεων MCP.",
-        "rawJsonInvalid": "Το ακατέργαστο JSON δεν είναι έγκυρο.",
-        "commandRequired": "απαιτείται command όταν ο τύπος είναι stdio",
-        "urlRequired": "απαιτείται url για διακομιστές MCP μη-stdio εκτός αν παρέχεται command",
-        "serverIdRequired": "Server ID is required",
-        "serverExists": "A server named {{id}} already exists"
-      },
-      "toasts": {
-        "saved": "Οι ρυθμίσεις διακομιστή MCP αποθηκεύτηκαν."
-      }
+      "loading": "Φόρτωση διακομιστών MCP..."
     },
     "channels": {
       "title": "Κανάλια",

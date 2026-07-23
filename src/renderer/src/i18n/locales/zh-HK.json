@@ -342,34 +342,13 @@
       }
     },
     "mcp": {
-      "title": "MCP 伺服器設定",
-      "description": "管理本機 mcp.json 並控制全域 MCP 啟用狀態。",
-      "headerDescription": "Connect shared tools that TIA Studio can use across local sessions.",
       "savedServers": "Saved servers",
       "serverCount_one": "{{count}} server",
       "serverCount_other": "{{count}} servers",
-      "emptyTitle": "No MCP servers configured",
-      "emptyDescription": "Add a server to make its tools available to TIA Studio.",
-      "status": {
-        "enabled": "Enabled",
-        "disabled": "Disabled"
-      },
-      "buttons": {
-        "addServer": "新增 MCP 伺服器",
-        "editJson": "編輯 JSON",
-        "saving": "儲存中...",
-        "save": "儲存",
-        "saveServer": "Save server",
-        "cancel": "取消",
-        "applyJson": "套用 JSON"
-      },
-      "editAriaLabel": "Edit {{name}}",
-      "managedRuntimeSetup": "Finish the {{runtime}} runtime setup before enabling this server.",
-      "remote": {
-        "title": "Authenticated remote MCPs",
-        "descriptionPrefix": "For services such as Linear, prefer the",
-        "descriptionSuffix": "stdio proxy: command npx; arguments -y, mcp-remote, and the server URL. It opens browser OAuth when needed. Its user-level session may be reused by other clients using the same mcp-remote profile and matching configuration, but it does not guarantee sharing a Codex or Claude login.",
-        "managedRuntime": "If managed Bun is installed in Runtime Setup, TIA runs npx or bunx through bun x automatically."
+      "auth": {
+        "signed-in": "Signed in",
+        "sign-in-incomplete": "Sign-in incomplete",
+        "not-signed-in": "Sign in required"
       },
       "health": {
         "disabled": "Disabled",
@@ -380,51 +359,7 @@
         "unsupported": "This transport is not available in TIA Studio yet. Use stdio or disable this server.",
         "connectionFailed": "A connection or tool action failed. Review the command, arguments, and environment variables, then open a new chat to retry."
       },
-      "cardTitle": "MCP 伺服器",
-      "cardDescription": "These servers are shared globally for local Pi sessions.",
-      "loading": "正在載入 MCP 伺服器...",
-      "empty": "尚無 MCP 伺服器。新增一個以建立本機 mcp.json 清單。",
-      "serverDescription": "Global status controls whether Pi sessions can use this server.",
-      "toggleAriaLabel": "切換 {{id}}",
-      "deleteAriaLabel": "刪除 {{id}}",
-      "managedRuntimeTitle": "此命令可使用 TIA Studio 託管的執行環境。",
-      "managedRuntimeDescriptionPrefix": "請在以下位置完成 {{runtime}} 設定：",
-      "fields": {
-        "displayName": "顯示名稱",
-        "transportType": "傳輸類型",
-        "command": "命令",
-        "installSource": "安裝來源",
-        "url": "URL（用於 HTTP/SSE 伺服器）",
-        "arguments": "參數（每行一個）",
-        "environmentVariables": "環境變數（KEY=VALUE）"
-      },
-      "jsonDialog": {
-        "title": "編輯 MCP JSON",
-        "description": "這是您本機 MCP 設定的快照。變更僅在驗證後生效。",
-        "fieldLabel": "MCP 設定 JSON",
-        "helper": "套用變更時會驗證 JSON 解析與 MCP 欄位規則。"
-      },
-      "dialog": {
-        "addTitle": "Add MCP server",
-        "editTitle": "Edit MCP server",
-        "description": "Configure how TIA Studio starts or connects to this tool server.",
-        "available": "Available to TIA Studio",
-        "enableDescription": "Enable this server for new sessions.",
-        "enableAriaLabel": "Enable MCP server",
-        "serverId": "Server ID"
-      },
-      "validation": {
-        "unexpectedError": "要求發生未預期錯誤",
-        "invalidPayload": "MCP 設定資料無效。",
-        "rawJsonInvalid": "原始 JSON 無效。",
-        "commandRequired": "類型為 stdio 時必須提供 command",
-        "urlRequired": "非 stdio 的 MCP 伺服器需要提供 url，除非已提供 command",
-        "serverIdRequired": "Server ID is required",
-        "serverExists": "A server named {{id}} already exists"
-      },
-      "toasts": {
-        "saved": "MCP 伺服器設定已儲存。"
-      }
+      "loading": "正在載入 MCP 伺服器..."
     },
     "channels": {
       "title": "頻道",
