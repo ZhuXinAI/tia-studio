@@ -20,6 +20,12 @@ function createProviderRecord(id: string) {
     selectedModel: 'gpt-5',
     providerModels: null,
     enabled: true,
+    supportsVision: false,
+    supportsThinking: true,
+    thinkingOnly: false,
+    allowsThinkingOff: true,
+    defaultThinkingLevel: 'medium',
+    supportedThinkingLevels: ['minimal', 'low', 'medium', 'high', 'xhigh', 'max'],
     createdAt: '2026-03-02T00:00:00.000Z',
     updatedAt: '2026-03-02T00:00:00.000Z'
   }

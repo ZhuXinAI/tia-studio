@@ -2,6 +2,7 @@ import { mkdtemp } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it } from 'vitest'
+import type { AppAgentMessage } from '../../shared/agent-runtime'
 import { migrateAppSchema } from '../persistence/migrate'
 import { AgentSessionsRepository } from '../persistence/repos/agent-sessions-repo'
 import { ProvidersRepository } from '../persistence/repos/providers-repo'
@@ -83,6 +84,16 @@ describe('AgentRuntimeManager with embedded Pi SDK', () => {
     expect(created.upstreamSessionId).toMatch(/[0-9a-f-]{20,}/)
     expect(created.upstreamSessionFile).toContain(join(directory, 'sessions'))
     expect(created.status).toBe('idle')
+    const runtime = (
+      manager as unknown as { live: Map<string, { session: { systemPrompt: string } }> }
+    ).live.get(created.id)
+    expect(runtime?.session.systemPrompt).toContain('## TIA capability routing')
+    expect(runtime?.session.systemPrompt).toContain(
+      'A request to use or connect to a browser is a task request'
+    )
+    expect(runtime?.session.systemPrompt).toContain(
+      'Never list MCP servers or skills merely because another tool is missing or failed'
+    )
     await manager.shutdown()
     expect((await manager.getSession(created.id)).status).toBe('stopped')
     await db.close()
@@ -123,6 +134,33 @@ describe('AgentRuntimeManager with embedded Pi SDK', () => {
     expect(temporary.upstreamSessionFile).toBeUndefined()
     expect(await sessions.list()).toEqual([])
 
+    const transientRuntime = (
+      manager as unknown as {
+        live: Map<string, { messages: AppAgentMessage[] }>
+      }
+    ).live.get(temporary.id)
+    expect(transientRuntime).toBeDefined()
+    transientRuntime!.messages = [
+      {
+        id: 'user-context',
+        sessionId: temporary.id,
+        role: 'user',
+        parts: [{ type: 'text', text: 'Add the Linear MCP' }],
+        status: 'complete',
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString()
+      },
+      {
+        id: 'assistant-context',
+        sessionId: temporary.id,
+        role: 'assistant',
+        parts: [{ type: 'text', text: 'Linear was added and is waiting for OAuth.' }],
+        status: 'complete',
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString()
+      }
+    ]
+
     const promoted = await manager.promoteTransientSession({
       sessionId: temporary.id,
       workspaceId: null,
@@ -132,6 +170,17 @@ describe('AgentRuntimeManager with embedded Pi SDK', () => {
     expect(promoted.transient).toBeUndefined()
     expect(promoted.workspacePath).toBe(chatsPath)
     expect(await sessions.list()).toHaveLength(1)
+    const promotedRuntime = (
+      manager as unknown as {
+        live: Map<string, { session: { messages: Array<{ role: string; content?: unknown }> } }>
+      }
+    ).live.get(promoted.id)
+    expect(promotedRuntime?.session.messages).toContainEqual(
+      expect.objectContaining({
+        role: 'custom',
+        content: expect.stringContaining('Linear was added and is waiting for OAuth.')
+      })
+    )
     await expect(manager.getSession(temporary.id)).rejects.toThrow('Pi session not found')
     await manager.shutdown()
     await db.close()

@@ -48,15 +48,17 @@ const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
 >(({ className, children, ...props }, ref) => (
-  <DropdownMenuPrimitive.SubContent
-    ref={ref}
-    className={cn(dropdownMenuContentClassName, className, 'overflow-hidden p-0')}
-    {...props}
-  >
-    <ScrollArea className={dropdownMenuScrollAreaClassName}>
-      <div className="p-1.5">{children}</div>
-    </ScrollArea>
-  </DropdownMenuPrimitive.SubContent>
+  <DropdownMenuPortal>
+    <DropdownMenuPrimitive.SubContent
+      ref={ref}
+      className={cn(dropdownMenuContentClassName, className, 'overflow-hidden p-0')}
+      {...props}
+    >
+      <ScrollArea className={dropdownMenuScrollAreaClassName}>
+        <div className="p-1.5">{children}</div>
+      </ScrollArea>
+    </DropdownMenuPrimitive.SubContent>
+  </DropdownMenuPortal>
 ))
 DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayName
 

@@ -288,11 +288,36 @@
         "closeAriaLabel": "关闭提供商对话框",
         "closeButtonAriaLabel": "关闭对话框"
       },
+      "page": {
+        "title": "模型",
+        "description": "连接模型提供商，并为每个提供商选择要使用的模型。",
+        "addModel": "添加模型",
+        "savedModels": "已保存的模型",
+        "modelCount_one": "{{count}} 个模型",
+        "modelCount_other": "{{count}} 个模型",
+        "emptyTitle": "还没有配置模型",
+        "emptyDescription": "添加一个提供商，就可以使用你偏好的模型开始聊天。",
+        "default": "默认",
+        "enabled": "已启用",
+        "disabled": "已禁用",
+        "editAriaLabel": "编辑 {{name}}"
+      },
+      "dialog": {
+        "addTitle": "添加模型",
+        "editTitle": "编辑模型",
+        "description": "配置 API 端点和模型。凭证只会保存在此设备上。",
+        "providerLabel": "提供商",
+        "savedProviders": "已保存的提供商",
+        "providerPresets": "提供商预设",
+        "customProvider": "自定义提供商",
+        "providerWebsite": "提供商网站"
+      },
       "toasts": {
         "providerNotFound": "未找到提供商。",
         "providerSaved": "提供商已保存到本地。",
         "providerCreated": "提供商已在本地创建。",
-        "connectionSuccess": "{{type}} ({{model}}) 连接成功。",
+        "connectionSuccess": "{{type}}（{{model}}）连接成功。测试回复：{{reply}}",
+        "providerRemoved": "提供商已从已保存列表中移除。",
         "builtInDeleteBlocked": "无法删除内置提供商。",
         "providerDeleted": "提供商已删除。",
         "unexpectedError": "请求发生意外错误"
@@ -303,7 +328,8 @@
         "openrouter": "OpenRouter",
         "gemini": "Gemini",
         "anthropic": "Anthropic",
-        "ollama": "Ollama"
+        "ollama": "Ollama",
+        "codex-acp": "Codex ACP"
       },
       "typeDescriptions": {
         "openai": "适用于 OpenAI API 及兼容服务（DeepSeek、Groq 等）。需要 API 密钥，支持自定义端点。",
@@ -327,17 +353,35 @@
         "type": "类型",
         "apiKey": "API 密钥",
         "apiHost": "API 主机",
+        "apiProtocol": "API 协议",
         "selectedModel": "已选模型",
+        "contextWindow": "模型上下文窗口（可选）",
+        "contextWindowDescription": "当应用无法从提供商元数据中推断准确上限时，用于显示线程上下文用量。",
         "includeModelPresets": "包含可选的提供商模型预设",
+        "includeModelPresetsDescription": "保存可复用的模型列表，方便快速配置工作区。",
         "providerModels": "提供商模型（可选）",
         "providerModelsDescription": "输入模型名称，用逗号或换行分隔",
         "supportsVision": "支持视觉",
         "supportsVisionDescription": "为此提供商启用图片附件",
+        "supportsThinking": "支持思考模式",
+        "supportsThinkingDescription": "为此提供商的模型显示思考模式控制项。",
+        "thinkingOnly": "始终开启思考",
+        "thinkingOnlyDescription": "不提供关闭思考模式的选项。",
+        "allowsThinkingOff": "允许关闭思考",
+        "allowsThinkingOffDescription": "允许每个线程单独关闭此提供商的思考模式。",
+        "defaultThinkingLevel": "默认思考强度",
+        "supportedThinkingLevels": "支持的思考强度",
+        "supportedThinkingLevelsDescription": "选择在模型选择器中显示的思考强度。",
+        "defaultProvider": "设为默认提供商",
+        "defaultProviderDescription": "除非工作区或线程选择其他模型，否则新聊天会从这里开始。",
+        "showApiKey": "显示 API 密钥",
+        "hideApiKey": "隐藏 API 密钥",
         "buttons": {
           "testing": "测试中...",
           "testConnection": "测试连接",
           "saving": "保存中...",
-          "saveProvider": "保存提供商"
+          "saveProvider": "保存提供商",
+          "cancel": "取消"
         }
       }
     },
@@ -437,6 +481,12 @@
     }
   },
   "threads": {
+    "errors": {
+      "title": "模型请求失败",
+      "detailFallback": "提供商没有返回可用的响应。",
+      "providerHint": "请检查所选模型、API 主机和 API 密钥，然后点击“测试连接”。",
+      "openProviderSettings": "打开提供商设置"
+    },
     "sidebar": {
       "untitledThread": "未命名线程",
       "scheduled": "由计划任务创建",
@@ -461,6 +511,18 @@
     "composer": {
       "selectModel": "选择模型",
       "selectPermission": "选择权限模式",
+      "searchModels": "搜索模型",
+      "noModels": "没有找到模型。",
+      "thinkingMode": "思考模式",
+      "thinkingOff": "关闭思考",
+      "thinkingLevels": {
+        "minimal": "最小",
+        "low": "低",
+        "medium": "中",
+        "high": "高",
+        "xhigh": "超高",
+        "max": "最大"
+      },
       "askPermission": "请求权限",
       "fullAccess": "完全访问",
       "permissionLocked": "Pi 运行期间无法更改权限模式。",

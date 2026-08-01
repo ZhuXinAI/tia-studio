@@ -29,6 +29,7 @@ import type {
   SendAgentMessageInput
 } from '../../shared/agent-runtime'
 import { reduceAgentEvent } from '../../shared/agent-runtime'
+import { normalizeThinkingLevelForProvider } from '../../shared/thinking'
 import type { AgentSessionsRepository } from '../persistence/repos/agent-sessions-repo'
 import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { PermissionRulesRepository } from '../persistence/repos/permission-rules-repo'
@@ -91,6 +92,13 @@ function deterministicTitle(text: string): string {
 
 const SESSION_STARTUP_TIMEOUT_MS = 20_000
 
+const TIA_CAPABILITY_ROUTING_PROMPT = `## TIA capability routing
+- Work from the capabilities already exposed in this session. Do not use administrative tools as discovery probes before attempting an applicable direct action.
+- \`manage_tia_mcp_servers\` and \`manage_tia_skills\` are only for an explicit request to configure, inspect, list, install, remove, sign in to, or troubleshoot a TIA extension. Do not call them to perform or prepare an ordinary task, including browser, web, research, navigation, or coding requests.
+- A request to use or connect to a browser is a task request, not a request to configure an MCP or inspect skills. Use an already available browser or web tool directly. If none is available, use another suitable tool already in the session; otherwise say so plainly and ask whether the user wants to configure an integration for a future thread.
+- Never list MCP servers or skills merely because another tool is missing or failed. MCP servers and skills are loaded when a thread starts, so changing or inspecting them cannot add a capability to the current turn.
+- Do not narrate tool or catalog discovery to the user before taking an applicable direct action.`
+
 function transientTranscript(messages: AppAgentMessage[]): string {
   const lines = messages.flatMap((message) => {
     const content = message.parts
@@ -135,7 +143,23 @@ export class AgentRuntimeManager implements AppAgentRuntime {
   constructor(private readonly options: AgentRuntimeManagerOptions) {}
 
   async createSession(input: CreateAgentSessionInput): Promise<AgentSessionSnapshot> {
-    const record = await this.options.sessionsRepo.create(input)
+    const provider = await this.options.providersRepo.getById(input.providerId)
+    const record = await this.options.sessionsRepo.create({
+      ...input,
+      ...(provider
+        ? {
+            thinkingLevel: normalizeThinkingLevelForProvider({
+              modelId: input.modelId,
+              supportsThinking: provider.supportsThinking,
+              thinkingOnly: provider.thinkingOnly,
+              allowsThinkingOff: provider.allowsThinkingOff,
+              defaultThinkingLevel: provider.defaultThinkingLevel,
+              supportedThinkingLevels: provider.supportedThinkingLevels,
+              preferred: input.thinkingLevel
+            })
+          }
+        : {})
+    })
     try {
       return await withStartupTimeout(this.startSession(record))
     } catch (error) {
@@ -148,6 +172,7 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     input: CreateTransientAgentSessionInput
   ): Promise<AgentSessionSnapshot> {
     const now = new Date().toISOString()
+    const provider = await this.options.providersRepo.getById(input.providerId)
     const record: AgentSessionSnapshot = {
       id: randomUUID(),
       transient: true,
@@ -158,7 +183,17 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       providerId: input.providerId,
       provider: input.provider,
       modelId: input.modelId,
-      thinkingLevel: input.thinkingLevel ?? 'medium',
+      thinkingLevel: provider
+        ? normalizeThinkingLevelForProvider({
+            modelId: input.modelId,
+            supportsThinking: provider.supportsThinking,
+            thinkingOnly: provider.thinkingOnly,
+            allowsThinkingOff: provider.allowsThinkingOff,
+            defaultThinkingLevel: provider.defaultThinkingLevel,
+            supportedThinkingLevels: provider.supportedThinkingLevels,
+            preferred: input.thinkingLevel
+          })
+        : (input.thinkingLevel ?? 'medium'),
       accessMode: input.accessMode ?? 'standard',
       pinned: false,
       status: 'starting',
@@ -203,7 +238,19 @@ export class AgentRuntimeManager implements AppAgentRuntime {
 
     let promoted: AgentSessionSnapshot | undefined
     try {
-      const created = await withStartupTimeout(this.startSession(record))
+      const transcript = transientTranscript(transient.messages)
+      const created = await withStartupTimeout(
+        this.startSession(record, {
+          ...(transcript
+            ? {
+                initialContext: {
+                  content: `This conversation began as a temporary TIA Studio flow. Continue with this context:\n\n${transcript}`,
+                  source: transient.snapshot.transientPurpose ?? 'temporary-thread'
+                }
+              }
+            : {})
+        })
+      )
       promoted = created
       const durable = await this.requireLive(created.id)
       const movedMessages = transient.messages.map((message) => ({
@@ -214,15 +261,6 @@ export class AgentRuntimeManager implements AppAgentRuntime {
         movedMessages.map((message) => this.options.sessionsRepo.appendMessage(message))
       )
       durable.messages = movedMessages
-      const transcript = transientTranscript(transient.messages)
-      if (transcript) {
-        durable.session.sessionManager.appendCustomMessageEntry(
-          'tia-studio-transient-handoff',
-          `This conversation began as a temporary TIA Studio flow. Continue with this context:\n\n${transcript}`,
-          false,
-          { source: transient.snapshot.transientPurpose ?? 'temporary-thread' }
-        )
-      }
       await this.closeTransientSession(input.sessionId)
       return durable.snapshot
     } catch (error) {
@@ -458,16 +496,40 @@ export class AgentRuntimeManager implements AppAgentRuntime {
     const model = runtime.modelRuntime.getModel(piProvider, modelId)
     if (!model) throw new Error(`Pi model is unavailable: ${piProvider}/${modelId}`)
     await runtime.session.setModel(model)
+    const thinkingLevel = normalizeThinkingLevelForProvider({
+      modelId,
+      supportsThinking: provider.supportsThinking,
+      thinkingOnly: provider.thinkingOnly,
+      allowsThinkingOff: provider.allowsThinkingOff,
+      defaultThinkingLevel: provider.defaultThinkingLevel,
+      supportedThinkingLevels: provider.supportedThinkingLevels,
+      preferred: runtime.snapshot.thinkingLevel
+    })
+    runtime.session.setThinkingLevel(thinkingLevel)
     await this.updateRuntimeSnapshot(runtime, {
       providerId,
       provider: providerType,
-      modelId
+      modelId,
+      thinkingLevel
     })
     runtime.piProvider = piProvider
   }
 
   async setThinkingLevel(sessionId: string, level: AgentThinkingLevel): Promise<void> {
     const runtime = await this.requireLive(sessionId)
+    const provider = await this.options.providersRepo.getById(runtime.snapshot.providerId)
+    if (provider) {
+      const normalized = normalizeThinkingLevelForProvider({
+        modelId: runtime.snapshot.modelId,
+        supportsThinking: provider.supportsThinking,
+        thinkingOnly: provider.thinkingOnly,
+        allowsThinkingOff: provider.allowsThinkingOff,
+        defaultThinkingLevel: provider.defaultThinkingLevel,
+        supportedThinkingLevels: provider.supportedThinkingLevels,
+        preferred: level
+      })
+      if (normalized !== level) throw new Error('The selected thinking level is not supported')
+    }
     runtime.session.setThinkingLevel(level)
     await this.updateRuntimeSnapshot(runtime, { thinkingLevel: level })
   }
@@ -535,7 +597,10 @@ export class AgentRuntimeManager implements AppAgentRuntime {
 
   private async startSession(
     record: AgentSessionSnapshot,
-    options: { transient?: boolean } = {}
+    options: {
+      transient?: boolean
+      initialContext?: { content: string; source: string }
+    } = {}
   ): Promise<AgentSessionSnapshot> {
     const transient = options.transient ?? record.transient === true
     const temporaryDirectory = transient
@@ -583,6 +648,14 @@ export class AgentRuntimeManager implements AppAgentRuntime {
         : SessionManager.create(record.workspacePath, this.options.sessionDataRoot, {
             id: record.id
           })
+    if (options.initialContext) {
+      sessionManager.appendCustomMessageEntry(
+        'tia-studio-transient-handoff',
+        options.initialContext.content,
+        false,
+        { source: options.initialContext.source }
+      )
+    }
     const runtimeRef: { current?: LiveSession } = {}
     const mcpTools = transient
       ? await createMcpClientTools({ mcpServers: {} })
@@ -627,7 +700,8 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       noSkills: true,
       additionalSkillPaths: [this.options.globalSkillsRoot, join(record.workspacePath, 'skills')],
       noPromptTemplates: true,
-      noThemes: true
+      noThemes: true,
+      appendSystemPromptOverride: (base) => [...base, TIA_CAPABILITY_ROUTING_PROMPT]
     })
     await resourceLoader.reload()
     const nameTheThread: ToolDefinition = {
@@ -747,14 +821,15 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       ? createTiaStateManagementTools({
           ...this.options.stateManagement,
           workspaceRootPath: record.workspacePath,
-          confirm: async ({ title, message }) => {
+          confirm: async ({ title, message, action }) => {
             const runtime = runtimeRef.current
             if (!runtime) throw new Error('The session is not ready to confirm this change')
             const response = await this.requestInteraction(runtime, {
               id: randomUUID(),
               method: 'confirm',
               title,
-              message
+              message,
+              ...(action ? { action } : {})
             })
             return 'confirmed' in response && response.confirmed
           }

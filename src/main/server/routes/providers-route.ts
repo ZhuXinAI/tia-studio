@@ -120,11 +120,11 @@ export function registerProvidersRoute(app: Hono, options: RegisterProvidersRout
       const savedProvider = parsed.data.providerId
         ? await options.providersRepo.getById(parsed.data.providerId)
         : null
-      await testProviderConnection({
+      const result = await testProviderConnection({
         ...parsed.data,
         apiKey: parsed.data.apiKey.trim() || savedProvider?.apiKey || ''
       })
-      return context.json({ ok: true })
+      return context.json({ ok: true, reply: result.reply })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Connection check failed'
       return context.json({ ok: false, error: message })

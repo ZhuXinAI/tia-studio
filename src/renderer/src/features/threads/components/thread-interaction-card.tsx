@@ -9,6 +9,7 @@ import { Input } from '../../../components/ui/input'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { toErrorMessage } from '../thread-page-routing'
 import { respondToAgentInteraction } from '../agent-sessions-query'
+import { loginToMcpServer } from '../../settings/mcp-servers/mcp-servers-query'
 
 /** A session-agnostic renderer for an agent confirmation or input request. */
 export function ThreadInteractionCard({
@@ -25,6 +26,15 @@ export function ThreadInteractionCard({
   async function respond(response: AgentInteractionResponse): Promise<void> {
     setIsPending(true)
     try {
+      if (
+        request.method === 'confirm' &&
+        response.id === request.id &&
+        'confirmed' in response &&
+        response.confirmed &&
+        request.action?.type === 'mcp-oauth'
+      ) {
+        await loginToMcpServer(request.action.serverId)
+      }
       await respondToAgentInteraction(sessionId, response)
     } catch (error) {
       toast.error(toErrorMessage(error))

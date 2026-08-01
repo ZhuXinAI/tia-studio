@@ -65,6 +65,14 @@ const sidebarNavItemClassName =
   'h-8 justify-start rounded-lg px-2.5 text-[13px] text-muted-foreground transition-[background-color,color] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[color:var(--surface-muted)] hover:text-foreground'
 const unreadThreadCompletionsStorageKey = 'tia-studio.unread-thread-completions'
 
+function sameStringSet(left: ReadonlySet<string>, right: ReadonlySet<string>): boolean {
+  if (left.size !== right.size) return false
+  for (const value of left) {
+    if (!right.has(value)) return false
+  }
+  return true
+}
+
 function readUnreadThreadCompletions(): Set<string> {
   if (typeof window === 'undefined') return new Set()
   try {
@@ -404,17 +412,20 @@ export function AppV2Sidebar({
     params.workspaceId ?? new URLSearchParams(location.search).get('pwd') ?? null
   const activeThreadId = params.threadId ?? null
   const isChatsActive = location.pathname === '/chat' || location.pathname.startsWith('/chat/')
-  const newChatHref = activeWorkspaceId ? `/chat/new?pwd=${encodeURIComponent(activeWorkspaceId)}` : '/chat/new'
+  const newChatHref = activeWorkspaceId
+    ? `/chat/new?pwd=${encodeURIComponent(activeWorkspaceId)}`
+    : '/chat/new'
 
   useEffect(() => {
-    setUnreadCompletionThreadIds((current) =>
-      getUnreadCompletionThreadIds({
+    setUnreadCompletionThreadIds((current) => {
+      const next = getUnreadCompletionThreadIds({
         currentUnreadThreadIds: current,
         previousThreads: previousThreadsRef.current,
         threads,
         activeThreadId
       })
-    )
+      return sameStringSet(current, next) ? current : next
+    })
     previousThreadsRef.current = new Map(threads.map((thread) => [thread.id, thread]))
   }, [activeThreadId, threads])
 

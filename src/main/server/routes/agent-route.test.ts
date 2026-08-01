@@ -195,6 +195,17 @@ describe('agent route', () => {
     expect(runtime.setModel).toHaveBeenCalledWith('session-1', 'provider-1', 'openai', 'gpt-5')
   })
 
+  it('changes the thinking level through the runtime', async () => {
+    const response = await app.request('http://localhost/v1/agent/sessions/session-1/thinking', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ level: 'high' })
+    })
+
+    expect(response.status).toBe(200)
+    expect(runtime.setThinkingLevel).toHaveBeenCalledWith('session-1', 'high')
+  })
+
   it('cancels an active run through the runtime', async () => {
     const response = await app.request('http://localhost/v1/agent/sessions/session-1/cancel', {
       method: 'POST'

@@ -13,9 +13,8 @@ import { NavLink, useNavigate, useParams, useSearchParams } from 'react-router-d
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type {
-  AgentInteractionRequest,
-  AgentInteractionResponse,
   AgentSendBehavior,
+  AgentSessionStatus,
   AgentSessionSnapshot,
   AgentTodoItem
 } from '../../../../shared/agent-runtime'
@@ -32,9 +31,9 @@ import {
 } from '../../components/ui/dropdown-menu'
 import {
   agentSessionKeys,
-  respondToAgentInteraction,
   setAgentAccessMode,
   setAgentModel,
+  setAgentThinkingLevel,
   useAgentMessages,
   useAgentSession,
   useCreateAgentSession
@@ -44,6 +43,8 @@ import {
   PiThreadRuntimeProvider
 } from '../../features/threads/components/pi-thread-runtime'
 import { ComposerMentions } from '../../features/threads/components/composer-mentions'
+import { ThreadInteractionCard } from '../../features/threads/components/thread-interaction-card'
+import { ThreadQueuePanel } from '../../features/threads/components/thread-queue-panel'
 import { ModelSelector } from '../../components/assistant-ui/model-selector'
 import { useProviders } from '../../features/settings/providers/providers-query'
 import { useWorkspaces } from '../../features/workspaces/workspaces-query'
@@ -58,27 +59,41 @@ import {
 } from '../../components/ui/collapsible'
 import type { ProviderRecord } from '../../features/settings/providers/providers-query'
 import { useTranslation } from '../../i18n/use-app-translation'
+import { normalizeThinkingLevelForProvider } from '../../../../shared/thinking'
 
 type ComposerSettings = Pick<
   AgentSessionSnapshot,
-  'providerId' | 'provider' | 'modelId' | 'accessMode' | 'status'
+  'providerId' | 'provider' | 'modelId' | 'thinkingLevel' | 'accessMode' | 'status'
 >
+
+function resolveProviderThinkingLevel(
+  provider: ProviderRecord,
+  preferred?: AgentSessionSnapshot['thinkingLevel']
+): AgentSessionSnapshot['thinkingLevel'] {
+  return normalizeThinkingLevelForProvider({
+    modelId: provider.selectedModel,
+    supportsThinking: provider.supportsThinking,
+    thinkingOnly: provider.thinkingOnly,
+    allowsThinkingOff: provider.allowsThinkingOff,
+    defaultThinkingLevel: provider.defaultThinkingLevel,
+    supportedThinkingLevels: provider.supportedThinkingLevels,
+    preferred
+  })
+}
 
 function ThreadComposerControls({
   settings,
   providers,
-  behavior,
   creating = false,
-  onBehaviorChange,
   onModelChange,
+  onThinkingLevelChange,
   onAccessChange
 }: {
   settings: ComposerSettings
   providers: ProviderRecord[]
-  behavior: AgentSendBehavior
   creating?: boolean
-  onBehaviorChange: (behavior: AgentSendBehavior) => void
   onModelChange: (provider: ProviderRecord, modelId: string) => void
+  onThinkingLevelChange: (level: AgentSessionSnapshot['thinkingLevel']) => void
   onAccessChange: (full: boolean) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
@@ -94,7 +109,14 @@ function ThreadComposerControls({
         name: modelId,
         group: provider.name,
         provider,
-        modelId
+        modelId,
+        thinking: {
+          supportsThinking: provider.supportsThinking,
+          thinkingOnly: provider.thinkingOnly,
+          allowsThinkingOff: provider.allowsThinkingOff,
+          defaultThinkingLevel: provider.defaultThinkingLevel,
+          supportedThinkingLevels: provider.supportedThinkingLevels
+        }
       })
     )
   })
@@ -110,6 +132,12 @@ function ThreadComposerControls({
         onValueChange={(selectedId) => {
           const option = modelOptions.find((candidate) => candidate.id === selectedId)
           if (option) onModelChange(option.provider, option.modelId)
+        }}
+        thinkingLevel={settings.thinkingLevel}
+        onThinkingLevelChange={(option, level) => {
+          const candidate = modelOptions.find((item) => item.id === option.id)
+          if (candidate) onModelChange(candidate.provider, candidate.modelId)
+          onThinkingLevelChange(level)
         }}
       />
 
@@ -159,19 +187,35 @@ function ThreadComposerControls({
           ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {settings.status === 'running' ? (
-        <select
-          value={behavior}
-          onChange={(event) => onBehaviorChange(event.target.value as AgentSendBehavior)}
-          className="h-7 max-w-36 rounded-lg border-0 bg-transparent px-2 text-xs text-muted-foreground outline-none hover:bg-muted"
-          aria-label={t('threads.composer.runningBehavior')}
-        >
-          <option value="steer">{t('threads.composer.steer')}</option>
-          <option value="follow-up">{t('threads.composer.followUp')}</option>
-        </select>
-      ) : null}
     </>
+  )
+}
+
+function ThreadComposerBehavior({
+  status,
+  behavior,
+  onBehaviorChange
+}: {
+  status: AgentSessionStatus
+  behavior: AgentSendBehavior
+  onBehaviorChange: (behavior: AgentSendBehavior) => void
+}): React.JSX.Element | null {
+  const { t } = useTranslation()
+  if (status !== 'running') return null
+
+  return (
+    <div className="flex items-center justify-end gap-2 px-1">
+      <span className="text-xs text-muted-foreground">{t('threads.composer.runningBehavior')}</span>
+      <select
+        value={behavior === 'steer' ? 'steer' : 'follow-up'}
+        onChange={(event) => onBehaviorChange(event.target.value as AgentSendBehavior)}
+        className="h-7 max-w-44 rounded-lg border border-border/60 bg-muted/35 px-2 text-xs text-muted-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label={t('threads.composer.runningBehavior')}
+      >
+        <option value="follow-up">{t('threads.composer.followUp')}</option>
+        <option value="steer">{t('threads.composer.steer')}</option>
+      </select>
+    </div>
   )
 }
 
@@ -323,147 +367,6 @@ function sessionHref(session: AgentSessionSnapshot): string {
     : `/chat/${session.id}`
 }
 
-function InteractionCard({
-  sessionId,
-  request
-}: {
-  sessionId: string
-  request: AgentInteractionRequest
-}): React.JSX.Element {
-  const { t } = useTranslation()
-  const [value, setValue] = useState(request.method === 'editor' ? (request.prefill ?? '') : '')
-  const [isPending, setIsPending] = useState(false)
-
-  async function respond(response: AgentInteractionResponse): Promise<void> {
-    setIsPending(true)
-    try {
-      await respondToAgentInteraction(sessionId, response)
-    } catch (error) {
-      toast.error(toErrorMessage(error))
-      setIsPending(false)
-    }
-  }
-
-  return (
-    <div className="border-border bg-muted/40 mx-4 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm">
-      <div className="min-w-0 flex-1">
-        <p className="font-medium">
-          {request.method === 'permission' ? t('threads.page.allowCommand') : request.title}
-        </p>
-        {request.method === 'confirm' || request.method === 'permission' ? (
-          <p className="text-muted-foreground mt-0.5 text-xs">
-            {request.method === 'permission'
-              ? t('threads.page.runCommand', { command: request.command })
-              : request.message}
-          </p>
-        ) : null}
-        {request.method === 'permission' && request.proposedPrefixes.length > 0 ? (
-          <div className="mt-2 space-y-1 text-xs">
-            <p className="text-muted-foreground">{t('threads.page.rememberedPrefix')}</p>
-            {request.proposedPrefixes.map((prefix) => (
-              <code key={prefix} className="bg-background block w-fit rounded px-1.5 py-0.5">
-                {prefix}
-              </code>
-            ))}
-          </div>
-        ) : null}
-        {request.method === 'permission' && !request.reusable ? (
-          <p className="text-muted-foreground mt-2 text-xs">
-            {t('threads.page.onceOnly', { reason: request.nonReusableReason ?? '' })}
-          </p>
-        ) : null}
-      </div>
-      {request.method === 'permission' ? (
-        <>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={isPending}
-            onClick={() => void respond({ id: request.id, permissionOutcome: 'deny' })}
-          >
-            {t('threads.page.deny')}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={isPending}
-            onClick={() => void respond({ id: request.id, permissionOutcome: 'allow-once' })}
-          >
-            {t('threads.page.allowOnce')}
-          </Button>
-          {request.reusable ? (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={isPending}
-                onClick={() => void respond({ id: request.id, permissionOutcome: 'allow-session' })}
-              >
-                {t('threads.page.allowSession')}
-              </Button>
-              <Button
-                size="sm"
-                disabled={isPending}
-                onClick={() =>
-                  void respond({ id: request.id, permissionOutcome: 'allow-workspace' })
-                }
-              >
-                {t('threads.page.allowWorkspace')}
-              </Button>
-            </>
-          ) : null}
-        </>
-      ) : request.method === 'confirm' ? (
-        <>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={isPending}
-            onClick={() => void respond({ id: request.id, confirmed: false })}
-          >
-            {t('threads.page.deny')}
-          </Button>
-          <Button
-            size="sm"
-            disabled={isPending}
-            onClick={() => void respond({ id: request.id, confirmed: true })}
-          >
-            {t('threads.page.allowOnce')}
-          </Button>
-        </>
-      ) : request.method === 'select' ? (
-        request.options.map((option) => (
-          <Button
-            key={option}
-            size="sm"
-            variant="outline"
-            disabled={isPending}
-            onClick={() => void respond({ id: request.id, value: option })}
-          >
-            {option}
-          </Button>
-        ))
-      ) : (
-        <>
-          <Input
-            value={value}
-            placeholder={request.method === 'input' ? request.placeholder : undefined}
-            className="h-8 min-w-48 flex-1"
-            onChange={(event) => setValue(event.target.value)}
-          />
-          <Button
-            size="sm"
-            disabled={isPending}
-            onClick={() => void respond({ id: request.id, value })}
-          >
-            {t('threads.page.submit')}
-          </Button>
-        </>
-      )}
-    </div>
-  )
-}
-
 export function ThreadPageV2(): React.JSX.Element {
   const { t } = useTranslation()
   const params = useParams<{ workspaceId?: string; threadId?: string }>()
@@ -483,9 +386,11 @@ export function ThreadPageV2(): React.JSX.Element {
   const { data: messages = [], isLoading: messagesLoading } = useAgentMessages(
     params.threadId ?? null
   )
-  const [behavior, setBehavior] = useState<AgentSendBehavior>('steer')
+  const [behavior, setBehavior] = useState<AgentSendBehavior>('follow-up')
   const [draftProviderId, setDraftProviderId] = useState<string | null>(null)
   const [draftModelId, setDraftModelId] = useState<string | null>(null)
+  const [draftThinkingLevel, setDraftThinkingLevel] =
+    useState<AgentSessionSnapshot['thinkingLevel']>('medium')
   const [draftAccessMode, setDraftAccessMode] = useState<'standard' | 'full'>('standard')
   const [isCreatingThread, setIsCreatingThread] = useState(false)
   const modelReconciliationRef = useRef<string | null>(null)
@@ -524,6 +429,7 @@ export function ThreadPageV2(): React.JSX.Element {
     if (draftProvider.id !== draftProviderId) {
       setDraftProviderId(draftProvider.id)
       setDraftModelId(draftProvider.selectedModel)
+      setDraftThinkingLevel(resolveProviderThinkingLevel(draftProvider))
       return
     }
     const availableModels = new Set([
@@ -533,6 +439,7 @@ export function ThreadPageV2(): React.JSX.Element {
     if (!draftModelId || !availableModels.has(draftModelId)) {
       setDraftModelId(draftProvider.selectedModel)
     }
+    setDraftThinkingLevel((current) => resolveProviderThinkingLevel(draftProvider, current))
   }, [draftModelId, draftProvider, draftProviderId])
 
   useEffect(() => {
@@ -543,6 +450,10 @@ export function ThreadPageV2(): React.JSX.Element {
     setTitlebarTitle(session?.title ?? null)
     return () => setTitlebarTitle(null)
   }, [session?.title, setTitlebarTitle])
+
+  useEffect(() => {
+    if (session?.status !== 'running') setBehavior('follow-up')
+  }, [session?.status])
 
   async function toggleAccess(full: boolean): Promise<void> {
     if (!session) return
@@ -561,6 +472,20 @@ export function ThreadPageV2(): React.JSX.Element {
         return
       try {
         const updated = await setAgentModel(session.id, nextProvider.id, nextProvider.type, modelId)
+        queryClient.setQueryData(agentSessionKeys.detail(session.id), updated)
+        await queryClient.invalidateQueries({ queryKey: agentSessionKeys.all })
+      } catch (error) {
+        toast.error(toErrorMessage(error))
+      }
+    },
+    [queryClient, session]
+  )
+
+  const changeThinkingLevel = useCallback(
+    async (level: AgentSessionSnapshot['thinkingLevel']): Promise<void> => {
+      if (!session || level === session.thinkingLevel) return
+      try {
+        const updated = await setAgentThinkingLevel(session.id, level)
         queryClient.setQueryData(agentSessionKeys.detail(session.id), updated)
         await queryClient.invalidateQueries({ queryKey: agentSessionKeys.all })
       } catch (error) {
@@ -617,6 +542,7 @@ export function ThreadPageV2(): React.JSX.Element {
             providerId: draftProvider.id,
             provider: draftProvider.type,
             modelId: draftModel,
+            thinkingLevel: draftThinkingLevel,
             accessMode: draftAccessMode
           })
         }
@@ -644,17 +570,20 @@ export function ThreadPageV2(): React.JSX.Element {
                   providerId: draftProvider.id,
                   provider: draftProvider.type,
                   modelId: draftModel,
+                  thinkingLevel: draftThinkingLevel,
                   accessMode: draftAccessMode,
                   status: 'idle'
                 }}
                 providers={providers}
-                behavior={behavior}
                 creating={isCreatingThread}
-                onBehaviorChange={setBehavior}
                 onModelChange={(nextProvider, modelId) => {
                   setDraftProviderId(nextProvider.id)
                   setDraftModelId(modelId)
+                  setDraftThinkingLevel((current) =>
+                    resolveProviderThinkingLevel(nextProvider, current)
+                  )
                 }}
+                onThinkingLevelChange={setDraftThinkingLevel}
                 onAccessChange={(full) => setDraftAccessMode(full ? 'full' : 'standard')}
               />
             ),
@@ -699,9 +628,18 @@ export function ThreadPageV2(): React.JSX.Element {
             components={{
               ComposerHeader: () => (
                 <>
+                  <ThreadComposerBehavior
+                    status={session.status}
+                    behavior={behavior}
+                    onBehaviorChange={setBehavior}
+                  />
                   <ThreadTodoPanel todos={session.todos ?? []} />
+                  <ThreadQueuePanel queue={session.queue} />
                   {session.pendingInteraction ? (
-                    <InteractionCard sessionId={session.id} request={session.pendingInteraction} />
+                    <ThreadInteractionCard
+                      sessionId={session.id}
+                      request={session.pendingInteraction}
+                    />
                   ) : null}
                 </>
               ),
@@ -709,9 +647,8 @@ export function ThreadPageV2(): React.JSX.Element {
                 <ThreadComposerControls
                   settings={session}
                   providers={providers}
-                  behavior={behavior}
-                  onBehaviorChange={setBehavior}
                   onModelChange={(nextProvider, modelId) => void changeModel(nextProvider, modelId)}
+                  onThinkingLevelChange={(level) => void changeThinkingLevel(level)}
                   onAccessChange={(full) => void toggleAccess(full)}
                 />
               ),

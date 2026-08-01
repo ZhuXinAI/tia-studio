@@ -8,6 +8,14 @@ import { Field, FieldLabel, FieldDescription, FieldError } from '../../../compon
 import { Switch } from '../../../components/ui/switch'
 import { getVisibleProviderTypeOptions } from './provider-type-options'
 import type { ProviderType, SaveProviderInput } from './providers-query'
+import type { AgentThinkingLevel } from '../../../../../shared/agent-runtime'
+import {
+  AGENT_THINKING_STRENGTHS,
+  defaultThinkingLevelForModel,
+  defaultThinkingStrengthsForModel,
+  normalizeThinkingLevelForProvider,
+  type AgentThinkingStrength
+} from '../../../../../shared/thinking'
 
 const providerSelectClassName =
   'h-11 w-full rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 py-2 text-sm shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_44%,transparent)]'
@@ -30,6 +38,11 @@ export type ProviderFormValues = {
   selectedModelContextWindowTokensText: string
   providerModelsText: string
   supportsVision: boolean
+  supportsThinking: boolean
+  thinkingOnly: boolean
+  allowsThinkingOff: boolean
+  defaultThinkingLevel: AgentThinkingLevel
+  supportedThinkingLevels: AgentThinkingStrength[]
   enabled: boolean
   isDefault?: boolean
 }
@@ -40,6 +53,20 @@ export type ProviderFormErrors = {
 
 function getDefaultModelForProviderType(type: ProviderType): string {
   return defaultModelByProviderType[type]
+}
+
+function normalizeFormThinkingLevel(values: {
+  selectedModel: string
+  supportsThinking: boolean
+  thinkingOnly: boolean
+  allowsThinkingOff: boolean
+  defaultThinkingLevel: AgentThinkingLevel
+  supportedThinkingLevels: AgentThinkingStrength[]
+}): AgentThinkingLevel {
+  return normalizeThinkingLevelForProvider({
+    ...values,
+    modelId: values.selectedModel
+  })
 }
 
 export function validateProviderForm(
@@ -107,6 +134,11 @@ function toProviderPayload(
     ),
     providerModels: showProviderModels ? parseProviderModelsInput(values.providerModelsText) : [],
     supportsVision: values.supportsVision,
+    supportsThinking: values.supportsThinking,
+    thinkingOnly: values.thinkingOnly,
+    allowsThinkingOff: values.allowsThinkingOff,
+    defaultThinkingLevel: normalizeFormThinkingLevel(values),
+    supportedThinkingLevels: values.supportedThinkingLevels,
     enabled: values.enabled,
     isDefault: values.isDefault ?? false
   }
@@ -135,6 +167,15 @@ export function ProvidersForm({
     selectedModelContextWindowTokensText: initialValue?.selectedModelContextWindowTokensText ?? '',
     providerModelsText: initialValue?.providerModelsText ?? '',
     supportsVision: initialValue?.supportsVision ?? false,
+    supportsThinking: initialValue?.supportsThinking ?? true,
+    thinkingOnly: initialValue?.thinkingOnly ?? false,
+    allowsThinkingOff: initialValue?.allowsThinkingOff ?? true,
+    defaultThinkingLevel:
+      initialValue?.defaultThinkingLevel ??
+      defaultThinkingLevelForModel(initialValue?.selectedModel ?? ''),
+    supportedThinkingLevels:
+      initialValue?.supportedThinkingLevels ??
+      defaultThinkingStrengthsForModel(initialValue?.selectedModel ?? ''),
     enabled: initialValue?.enabled ?? true,
     isDefault: initialValue?.isDefault ?? false
   })
@@ -159,6 +200,21 @@ export function ProvidersForm({
           ...prev,
           type: nextType,
           selectedModel: getDefaultModelForProviderType(nextType)
+        }
+      }
+
+      if (key === 'selectedModel') {
+        const selectedModel = value
+        const supportedThinkingLevels = defaultThinkingStrengthsForModel(selectedModel)
+        return {
+          ...prev,
+          selectedModel,
+          supportedThinkingLevels,
+          defaultThinkingLevel: normalizeFormThinkingLevel({
+            ...prev,
+            selectedModel,
+            supportedThinkingLevels
+          })
         }
       }
 
@@ -254,7 +310,9 @@ export function ProvidersForm({
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="provider-type">API protocol</FieldLabel>
+              <FieldLabel htmlFor="provider-type">
+                {t('settings.providers.form.apiProtocol')}
+              </FieldLabel>
               <select
                 id="provider-type"
                 className={providerSelectClassName}
@@ -300,7 +358,11 @@ export function ProvidersForm({
               <button
                 type="button"
                 className="absolute right-3 top-1/2 -translate-y-1/2 rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={isApiKeyVisible ? 'Hide API key' : 'Show API key'}
+                aria-label={
+                  isApiKeyVisible
+                    ? t('settings.providers.form.hideApiKey')
+                    : t('settings.providers.form.showApiKey')
+                }
                 onClick={() => setIsApiKeyVisible((visible) => !visible)}
               >
                 {isApiKeyVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -323,11 +385,10 @@ export function ProvidersForm({
 
           <Field>
             <FieldLabel htmlFor="provider-context-window">
-              Model context window (optional)
+              {t('settings.providers.form.contextWindow')}
             </FieldLabel>
             <FieldDescription>
-              Used for the thread context usage indicator when the app cannot infer an exact limit
-              from provider metadata.
+              {t('settings.providers.form.contextWindowDescription')}
             </FieldDescription>
             <Input
               id="provider-context-window"
@@ -351,7 +412,7 @@ export function ProvidersForm({
                 {t('settings.providers.form.includeModelPresets')}
               </FieldLabel>
               <FieldDescription>
-                Save a reusable model list for faster workspace setup.
+                {t('settings.providers.form.includeModelPresetsDescription')}
               </FieldDescription>
             </div>
             <Switch
@@ -402,9 +463,166 @@ export function ProvidersForm({
         <Field>
           <div className="flex items-center justify-between gap-6 py-1">
             <div className="space-y-0.5">
-              <FieldLabel htmlFor="provider-is-default">Make this the default provider</FieldLabel>
+              <FieldLabel htmlFor="supports-thinking">
+                {t('settings.providers.form.supportsThinking')}
+              </FieldLabel>
               <FieldDescription>
-                New chats start here unless a workspace or thread chooses a different model.
+                {t('settings.providers.form.supportsThinkingDescription')}
+              </FieldDescription>
+            </div>
+            <Switch
+              id="supports-thinking"
+              checked={values.supportsThinking}
+              onCheckedChange={(checked) =>
+                setValues((prev) => ({
+                  ...prev,
+                  supportsThinking: checked,
+                  defaultThinkingLevel: normalizeFormThinkingLevel({
+                    ...prev,
+                    supportsThinking: checked
+                  })
+                }))
+              }
+            />
+          </div>
+        </Field>
+
+        {values.supportsThinking ? (
+          <div className="space-y-4 rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-muted)]/35 p-4">
+            <Field>
+              <div className="flex items-center justify-between gap-6 py-1">
+                <div className="space-y-0.5">
+                  <FieldLabel htmlFor="thinking-only">
+                    {t('settings.providers.form.thinkingOnly')}
+                  </FieldLabel>
+                  <FieldDescription>
+                    {t('settings.providers.form.thinkingOnlyDescription')}
+                  </FieldDescription>
+                </div>
+                <Switch
+                  id="thinking-only"
+                  checked={values.thinkingOnly}
+                  onCheckedChange={(checked) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      thinkingOnly: checked,
+                      allowsThinkingOff: checked ? false : prev.allowsThinkingOff,
+                      defaultThinkingLevel: normalizeFormThinkingLevel({
+                        ...prev,
+                        thinkingOnly: checked,
+                        allowsThinkingOff: checked ? false : prev.allowsThinkingOff
+                      })
+                    }))
+                  }
+                />
+              </div>
+            </Field>
+
+            <Field>
+              <div className="flex items-center justify-between gap-6 py-1">
+                <div className="space-y-0.5">
+                  <FieldLabel htmlFor="allows-thinking-off">
+                    {t('settings.providers.form.allowsThinkingOff')}
+                  </FieldLabel>
+                  <FieldDescription>
+                    {t('settings.providers.form.allowsThinkingOffDescription')}
+                  </FieldDescription>
+                </div>
+                <Switch
+                  id="allows-thinking-off"
+                  checked={values.allowsThinkingOff && !values.thinkingOnly}
+                  disabled={values.thinkingOnly}
+                  onCheckedChange={(checked) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      allowsThinkingOff: checked,
+                      defaultThinkingLevel: normalizeFormThinkingLevel({
+                        ...prev,
+                        allowsThinkingOff: checked
+                      })
+                    }))
+                  }
+                />
+              </div>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="default-thinking-level">
+                {t('settings.providers.form.defaultThinkingLevel')}
+              </FieldLabel>
+              <select
+                id="default-thinking-level"
+                className={providerSelectClassName}
+                value={normalizeFormThinkingLevel(values)}
+                onChange={(event) =>
+                  setValues((prev) => ({
+                    ...prev,
+                    defaultThinkingLevel: event.target.value as AgentThinkingLevel
+                  }))
+                }
+              >
+                {!values.thinkingOnly && values.allowsThinkingOff ? (
+                  <option value="off">{t('threads.composer.thinkingOff')}</option>
+                ) : null}
+                {AGENT_THINKING_STRENGTHS.filter((level) =>
+                  values.supportedThinkingLevels.includes(level)
+                ).map((level) => (
+                  <option key={level} value={level}>
+                    {t(`threads.composer.thinkingLevels.${level}`)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field>
+              <FieldLabel>{t('settings.providers.form.supportedThinkingLevels')}</FieldLabel>
+              <FieldDescription>
+                {t('settings.providers.form.supportedThinkingLevelsDescription')}
+              </FieldDescription>
+              <div className="grid grid-cols-2 gap-2 pt-1 sm:grid-cols-3">
+                {AGENT_THINKING_STRENGTHS.map((level) => {
+                  const checked = values.supportedThinkingLevels.includes(level)
+                  return (
+                    <label
+                      key={level}
+                      className="flex cursor-pointer items-center gap-2 rounded-md border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-2.5 py-2 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) => {
+                          const next = event.target.checked
+                            ? [...values.supportedThinkingLevels, level]
+                            : values.supportedThinkingLevels.filter((item) => item !== level)
+                          if (next.length === 0) return
+                          setValues((prev) => ({
+                            ...prev,
+                            supportedThinkingLevels: next,
+                            defaultThinkingLevel: normalizeFormThinkingLevel({
+                              ...prev,
+                              supportedThinkingLevels: next
+                            })
+                          }))
+                        }}
+                        className="size-3.5 accent-primary"
+                      />
+                      <span>{t(`threads.composer.thinkingLevels.${level}`)}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </Field>
+          </div>
+        ) : null}
+
+        <Field>
+          <div className="flex items-center justify-between gap-6 py-1">
+            <div className="space-y-0.5">
+              <FieldLabel htmlFor="provider-is-default">
+                {t('settings.providers.form.defaultProvider')}
+              </FieldLabel>
+              <FieldDescription>
+                {t('settings.providers.form.defaultProviderDescription')}
               </FieldDescription>
             </div>
             <Switch
@@ -431,7 +649,7 @@ export function ProvidersForm({
             onClick={onCancel}
             disabled={isSubmitting || isTestingConnection}
           >
-            Cancel
+            {t('settings.providers.form.buttons.cancel')}
           </Button>
         ) : null}
         {onTestConnection ? (

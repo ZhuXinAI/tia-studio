@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AppAgentMessage } from '../../../../../shared/agent-runtime'
 import { mergeAssistantRunMessages } from './pi-thread-message-groups'
+import { resolveActiveSendBehavior } from './pi-thread-send-behavior'
 
 function message(
   id: string,
@@ -52,5 +53,17 @@ describe('mergeAssistantRunMessages', () => {
     const second = message('assistant-2', 'assistant', 'Two', '2026-07-18T00:00:03Z')
 
     expect(mergeAssistantRunMessages([first, user, second])).toHaveLength(3)
+  })
+})
+
+describe('resolveActiveSendBehavior', () => {
+  it('queues a normal message as a follow-up when Pi is already running', () => {
+    expect(resolveActiveSendBehavior('running', 'normal')).toBe('follow-up')
+    expect(resolveActiveSendBehavior('running', 'follow-up')).toBe('follow-up')
+  })
+
+  it('keeps an explicit steer and idle messages unchanged', () => {
+    expect(resolveActiveSendBehavior('running', 'steer')).toBe('steer')
+    expect(resolveActiveSendBehavior('idle', 'follow-up')).toBe('normal')
   })
 })

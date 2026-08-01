@@ -47,6 +47,25 @@ describe('AgentSessionsRepository', () => {
     expect(pending?.pendingInteraction?.id).toBe('i')
     const cleared = await repo.update(session.id, { pendingInteraction: null })
     expect(cleared?.pendingInteraction).toBeUndefined()
+
+    await repo.appendMessage({
+      id: 'assistant-error',
+      sessionId: session.id,
+      role: 'assistant',
+      parts: [],
+      status: 'error',
+      error: 'HTTP 400: invalid thinking parameter',
+      createdAt: '2026-08-01T00:00:00.000Z',
+      completedAt: '2026-08-01T00:00:01.000Z'
+    })
+    await expect(repo.listMessages(session.id)).resolves.toEqual([
+      expect.objectContaining({
+        id: 'assistant-error',
+        status: 'error',
+        error: 'HTTP 400: invalid thinking parameter'
+      })
+    ])
+
     await db.close()
   })
 })

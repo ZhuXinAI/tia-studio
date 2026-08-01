@@ -31,7 +31,6 @@ import {
   AuiIf,
   type AssistantState,
   ComposerPrimitive,
-  ErrorPrimitive,
   groupPartByType,
   MessagePrimitive,
   SuggestionPrimitive,
@@ -58,7 +57,9 @@ import {
   type FC,
   type PropsWithChildren
 } from 'react'
+import { NavLink } from 'react-router-dom'
 import { useTranslation } from '../../i18n/use-app-translation'
+import { describeRequestError } from '../../lib/request-errors'
 
 export type ThreadGroupPart = MessagePrimitive.GroupedParts.GroupPart
 
@@ -324,7 +325,7 @@ const ComposerAction: FC<{ disabled: boolean }> = ({ disabled }) => {
             <LoaderCircle className="size-3.5 animate-spin" />
           </Button>
         ) : null}
-        <AuiIf condition={(s) => !disabled && !s.thread.isRunning}>
+        <AuiIf condition={() => !disabled}>
           <ComposerPrimitive.Send asChild>
             <TooltipIconButton
               tooltip={t('threads.composer.send')}
@@ -358,12 +359,29 @@ const ComposerAction: FC<{ disabled: boolean }> = ({ disabled }) => {
 }
 
 const MessageError: FC = () => {
+  const { t } = useTranslation()
+  const status = useAuiState((s) => s.message.status)
+
+  if (!status || status.type !== 'incomplete' || status.reason !== 'error') return null
+
+  const detail = describeRequestError(status.error, t('threads.errors.detailFallback'))
+
   return (
-    <MessagePrimitive.Error>
-      <ErrorPrimitive.Root className="aui-message-error-root border-destructive bg-destructive/10 text-destructive dark:bg-destructive/5 mt-2 rounded-md border p-3 text-sm dark:text-red-200">
-        <ErrorPrimitive.Message className="aui-message-error-message line-clamp-2" />
-      </ErrorPrimitive.Root>
-    </MessagePrimitive.Error>
+    <div
+      role="alert"
+      className="aui-message-error-root border-destructive bg-destructive/10 text-destructive dark:bg-destructive/5 mt-2 rounded-md border p-3 text-sm dark:text-red-200"
+    >
+      <p className="font-medium">{t('threads.errors.title')}</p>
+      <p className="aui-message-error-message mt-1 max-h-24 overflow-y-auto break-words whitespace-pre-wrap">
+        {detail}
+      </p>
+      <p className="mt-2 text-xs text-destructive/80 dark:text-red-200/80">
+        {t('threads.errors.providerHint')}
+      </p>
+      <Button asChild size="sm" variant="outline" className="mt-3">
+        <NavLink to="/settings/providers">{t('threads.errors.openProviderSettings')}</NavLink>
+      </Button>
+    </div>
   )
 }
 

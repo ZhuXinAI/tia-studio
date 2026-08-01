@@ -50,6 +50,11 @@ type ProviderFormInitialValue = {
   selectedModelContextWindowTokensText: string
   providerModelsText: string
   supportsVision: boolean
+  supportsThinking: boolean
+  thinkingOnly: boolean
+  allowsThinkingOff: boolean
+  defaultThinkingLevel: ProviderRecord['defaultThinkingLevel']
+  supportedThinkingLevels: ProviderRecord['supportedThinkingLevels']
   enabled: boolean
   isDefault: boolean
 }
@@ -101,6 +106,11 @@ function toInitialFormValue(provider: ProviderRecord | null): ProviderFormInitia
       provider.selectedModelContextWindowTokens?.toString() ?? '',
     providerModelsText: provider.providerModels?.join('\n') ?? '',
     supportsVision: provider.supportsVision,
+    supportsThinking: provider.supportsThinking,
+    thinkingOnly: provider.thinkingOnly,
+    allowsThinkingOff: provider.allowsThinkingOff,
+    defaultThinkingLevel: provider.defaultThinkingLevel,
+    supportedThinkingLevels: provider.supportedThinkingLevels,
     enabled: provider.enabled,
     isDefault: provider.isDefault === true
   }
@@ -165,9 +175,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
       sortProviders(
         providers.filter(
           (provider) =>
-            provider.isBuiltIn &&
-            !provider.isAdded &&
-            String(provider.type).toLowerCase() !== 'acp'
+            provider.isBuiltIn && !provider.isAdded && String(provider.type).toLowerCase() !== 'acp'
         )
       ),
     [providers]
@@ -279,11 +287,15 @@ export function ProvidersSettingsPage(): React.JSX.Element {
   const handleTestConnection = async (values: SaveProviderInput): Promise<void> => {
     setIsTestingConnection(true)
     try {
-      await testProviderConnection(values, dialogMode === 'edit' ? activeProvider?.id : undefined)
+      const result = await testProviderConnection(
+        values,
+        dialogMode === 'edit' ? activeProvider?.id : undefined
+      )
       toast.success(
         t('settings.providers.toasts.connectionSuccess', {
-          type: values.type,
-          model: values.selectedModel
+          type: toProviderTypeLabel(values.type, t),
+          model: values.selectedModel,
+          reply: result.reply
         })
       )
     } catch (error) {
@@ -307,7 +319,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
       syncProviders(next)
       toast.success(
         provider.isBuiltIn
-          ? 'Provider removed from saved providers.'
+          ? t('settings.providers.toasts.providerRemoved')
           : t('settings.providers.toasts.providerDeleted')
       )
     } catch (error) {
@@ -317,7 +329,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
     }
   }
 
-  const createSelection = selectedPreset?.name ?? 'Custom provider'
+  const createSelection = selectedPreset?.name ?? t('settings.providers.dialog.customProvider')
   const dialogProvider = dialogMode === 'edit' ? activeProvider : selectedPreset
 
   return (
@@ -325,25 +337,27 @@ export function ProvidersSettingsPage(): React.JSX.Element {
       <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 py-8 pb-12">
         <header className="flex items-end justify-between gap-6 border-b border-[color:var(--surface-border)] pb-5">
           <div className="space-y-2">
-            <h1 className="font-editorial text-[2rem] leading-none tracking-[-0.035em]">Models</h1>
+            <h1 className="font-editorial text-[2rem] leading-none tracking-[-0.035em]">
+              {t('settings.providers.page.title')}
+            </h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              Connect model providers and choose the model each one uses.
+              {t('settings.providers.page.description')}
             </p>
           </div>
           <Button type="button" onClick={openCreateDialog} className="shrink-0">
             <Plus className="size-4" />
-            Add model
+            {t('settings.providers.page.addModel')}
           </Button>
         </header>
 
         <section aria-labelledby="saved-models-title" className="space-y-3">
           <div className="flex items-center justify-between gap-4">
             <h2 id="saved-models-title" className="text-sm font-semibold">
-              Saved models
+              {t('settings.providers.page.savedModels')}
             </h2>
             {!isLoading ? (
               <span className="text-xs tabular-nums text-muted-foreground">
-                {savedProviders.length} {savedProviders.length === 1 ? 'model' : 'models'}
+                {t('settings.providers.page.modelCount', { count: savedProviders.length })}
               </span>
             ) : null}
           </div>
@@ -358,14 +372,14 @@ export function ProvidersSettingsPage(): React.JSX.Element {
             {!isLoading && savedProviders.length === 0 ? (
               <div className="flex items-center justify-between gap-6 px-5 py-6">
                 <div className="space-y-1">
-                  <p className="font-medium">No models configured</p>
+                  <p className="font-medium">{t('settings.providers.page.emptyTitle')}</p>
                   <p className="text-sm text-muted-foreground">
-                    Add a provider to start a chat with your preferred model.
+                    {t('settings.providers.page.emptyDescription')}
                   </p>
                 </div>
                 <Button type="button" variant="outline" onClick={openCreateDialog}>
                   <Plus className="size-4" />
-                  Add model
+                  {t('settings.providers.page.addModel')}
                 </Button>
               </div>
             ) : null}
@@ -390,7 +404,8 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                       <span className="font-semibold text-foreground">{provider.name}</span>
                       {provider.isDefault ? (
                         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <Star className="size-3 fill-current" /> Default
+                          <Star className="size-3 fill-current" />
+                          {t('settings.providers.page.default')}
                         </span>
                       ) : null}
                     </span>
@@ -410,7 +425,9 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                         provider.enabled ? 'bg-emerald-500' : 'bg-muted-foreground/50'
                       )}
                     />
-                    {provider.enabled ? 'Enabled' : 'Disabled'}
+                    {provider.enabled
+                      ? t('settings.providers.page.enabled')
+                      : t('settings.providers.page.disabled')}
                   </span>
                 </button>
 
@@ -419,7 +436,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    aria-label={`Edit ${provider.name}`}
+                    aria-label={t('settings.providers.page.editAriaLabel', { name: provider.name })}
                     onClick={() => openEditDialog(provider.id)}
                   >
                     <Pencil className="size-4" />
@@ -443,18 +460,22 @@ export function ProvidersSettingsPage(): React.JSX.Element {
       </main>
 
       <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent className="flex max-h-[88vh] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+        <DialogContent className="flex h-[88vh] max-h-[88vh] min-h-0 max-w-2xl flex-col gap-0 overflow-hidden p-0">
           <DialogHeader className="border-b border-[color:var(--surface-border)] px-6 py-5 pr-14">
-            <DialogTitle>{dialogMode === 'edit' ? 'Edit model' : 'Add model'}</DialogTitle>
-            <DialogDescription>
-              Configure an OpenAI-compatible endpoint and model. Credentials stay on this device.
-            </DialogDescription>
+            <DialogTitle>
+              {dialogMode === 'edit'
+                ? t('settings.providers.dialog.editTitle')
+                : t('settings.providers.dialog.addTitle')}
+            </DialogTitle>
+            <DialogDescription>{t('settings.providers.dialog.description')}</DialogDescription>
           </DialogHeader>
 
           <div className="min-h-0 flex-1 overflow-hidden">
             <ScrollArea className="h-full px-6 py-5">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Provider</label>
+                <label className="text-sm font-medium">
+                  {t('settings.providers.dialog.providerLabel')}
+                </label>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
@@ -481,7 +502,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                     {dialogMode === 'edit' ? (
                       <>
                         <DropdownMenuLabel className="text-xs text-muted-foreground">
-                          Saved providers
+                          {t('settings.providers.dialog.savedProviders')}
                         </DropdownMenuLabel>
                         {savedProviders.map((provider) => (
                           <DropdownMenuItem
@@ -498,7 +519,7 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                     ) : (
                       <>
                         <DropdownMenuLabel className="text-xs text-muted-foreground">
-                          Provider presets
+                          {t('settings.providers.dialog.providerPresets')}
                         </DropdownMenuLabel>
                         {availablePresets.map((provider) => (
                           <DropdownMenuItem
@@ -519,7 +540,9 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                           <span className="grid size-7 place-items-center rounded-md border border-[color:var(--surface-border)]">
                             <Plus className="size-4" />
                           </span>
-                          <span className="flex-1">Custom provider</span>
+                          <span className="flex-1">
+                            {t('settings.providers.dialog.customProvider')}
+                          </span>
                           {!selectedPresetId ? <Check className="size-4" /> : null}
                         </DropdownMenuItem>
                       </>
@@ -533,7 +556,8 @@ export function ProvidersSettingsPage(): React.JSX.Element {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                   >
-                    Provider website <ExternalLink className="size-3" />
+                    {t('settings.providers.dialog.providerWebsite')}{' '}
+                    <ExternalLink className="size-3" />
                   </a>
                 ) : null}
               </div>

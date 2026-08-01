@@ -6,7 +6,7 @@ import type { WorkspacesRepository } from '../../persistence/repos/workspaces-re
 import { logger } from '../../utils/logger'
 import { resolve } from 'node:path'
 
-const thinkingLevel = z.enum(['off', 'minimal', 'low', 'medium', 'high', 'xhigh'])
+const thinkingLevel = z.enum(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])
 const accessMode = z.enum(['standard', 'full'])
 const imageAttachment = z.object({
   id: z.string().min(1),
@@ -282,6 +282,20 @@ export function registerAgentRoute(
     } catch (error) {
       return context.json(
         { error: error instanceof Error ? error.message : 'Model update failed' },
+        409
+      )
+    }
+  })
+
+  app.patch('/v1/agent/sessions/:sessionId/thinking', async (context) => {
+    const parsed = z.object({ level: thinkingLevel }).safeParse(await jsonBody(context))
+    if (!parsed.success) return context.json({ error: parsed.error.issues[0]?.message }, 400)
+    try {
+      await options.runtime.setThinkingLevel(context.req.param('sessionId'), parsed.data.level)
+      return context.json(await options.runtime.getSession(context.req.param('sessionId')))
+    } catch (error) {
+      return context.json(
+        { error: error instanceof Error ? error.message : 'Thinking level update failed' },
         409
       )
     }

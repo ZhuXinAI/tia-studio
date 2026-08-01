@@ -1,5 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createApiClient } from '../../../lib/api-client'
+import type { AgentThinkingLevel } from '../../../../../shared/agent-runtime'
+import {
+  defaultThinkingLevelForModel,
+  defaultThinkingStrengthsForModel,
+  normalizeThinkingLevelForProvider,
+  type AgentThinkingStrength
+} from '../../../../../shared/thinking'
 
 export type ProviderType =
   | 'openai'
@@ -22,6 +29,11 @@ export type ProviderRecord = {
   providerModels: string[] | null
   enabled: boolean
   supportsVision: boolean
+  supportsThinking: boolean
+  thinkingOnly: boolean
+  allowsThinkingOff: boolean
+  defaultThinkingLevel: AgentThinkingLevel
+  supportedThinkingLevels: AgentThinkingStrength[]
   isBuiltIn: boolean
   isAdded?: boolean
   isDefault?: boolean
@@ -41,12 +53,18 @@ export type SaveProviderInput = {
   providerModels?: string[]
   enabled?: boolean
   supportsVision?: boolean
+  supportsThinking?: boolean
+  thinkingOnly?: boolean
+  allowsThinkingOff?: boolean
+  defaultThinkingLevel?: AgentThinkingLevel
+  supportedThinkingLevels?: AgentThinkingStrength[]
   isAdded?: boolean
   isDefault?: boolean
 }
 
-type ProviderConnectionTestResult = {
+export type ProviderConnectionTestResult = {
   ok: boolean
+  reply?: string
   error?: string
 }
 
@@ -82,6 +100,34 @@ function normalizeSaveInput(input: SaveProviderInput): SaveProviderInput {
         ? Math.round(input.selectedModelContextWindowTokens)
         : undefined,
     providerModels: normalizeProviderModels(input.providerModels) ?? undefined
+  }
+}
+
+function normalizeProviderRecord(provider: ProviderRecord): ProviderRecord {
+  const supportsThinking = provider.supportsThinking !== false
+  const thinkingOnly = supportsThinking && provider.thinkingOnly === true
+  const allowsThinkingOff =
+    supportsThinking && !thinkingOnly && provider.allowsThinkingOff !== false
+  const supportedThinkingLevels =
+    provider.supportedThinkingLevels?.length > 0
+      ? provider.supportedThinkingLevels
+      : defaultThinkingStrengthsForModel(provider.selectedModel)
+
+  return {
+    ...provider,
+    supportsThinking,
+    thinkingOnly,
+    allowsThinkingOff,
+    supportedThinkingLevels,
+    defaultThinkingLevel: normalizeThinkingLevelForProvider({
+      modelId: provider.selectedModel,
+      supportsThinking,
+      thinkingOnly,
+      allowsThinkingOff,
+      defaultThinkingLevel:
+        provider.defaultThinkingLevel ?? defaultThinkingLevelForModel(provider.selectedModel),
+      supportedThinkingLevels
+    })
   }
 }
 
@@ -128,7 +174,12 @@ async function migrateLegacyProvidersIfNeeded(
       selectedModel: provider.selectedModel,
       selectedModelContextWindowTokens: provider.selectedModelContextWindowTokens ?? undefined,
       providerModels: provider.providerModels ?? undefined,
-      enabled: provider.enabled
+      enabled: provider.enabled,
+      supportsThinking: provider.supportsThinking,
+      thinkingOnly: provider.thinkingOnly,
+      allowsThinkingOff: provider.allowsThinkingOff,
+      defaultThinkingLevel: provider.defaultThinkingLevel,
+      supportedThinkingLevels: provider.supportedThinkingLevels
     })
   }
 
@@ -138,17 +189,21 @@ async function migrateLegacyProvidersIfNeeded(
 
 // Legacy functions (kept for backward compatibility during migration)
 export async function listProviders(): Promise<ProviderRecord[]> {
-  const providers = await apiClient.get<ProviderRecord[]>('/v1/providers')
+  const providers = (await apiClient.get<ProviderRecord[]>('/v1/providers')).map(
+    normalizeProviderRecord
+  )
   const migrated = await migrateLegacyProvidersIfNeeded(providers)
   if (!migrated) {
     return providers
   }
 
-  return apiClient.get<ProviderRecord[]>('/v1/providers')
+  return (await apiClient.get<ProviderRecord[]>('/v1/providers')).map(normalizeProviderRecord)
 }
 
 export async function createProvider(input: SaveProviderInput): Promise<ProviderRecord> {
-  return apiClient.post<ProviderRecord>('/v1/providers', normalizeSaveInput(input))
+  return normalizeProviderRecord(
+    await apiClient.post<ProviderRecord>('/v1/providers', normalizeSaveInput(input))
+  )
 }
 
 export async function updateProvider(
@@ -171,10 +226,16 @@ export async function updateProvider(
     providerModels:
       input.providerModels === undefined
         ? undefined
-        : (normalizeProviderModels(input.providerModels) ?? [])
+        : (normalizeProviderModels(input.providerModels) ?? []),
+    supportedThinkingLevels:
+      input.supportedThinkingLevels === undefined
+        ? undefined
+        : Array.from(new Set(input.supportedThinkingLevels))
   }
 
-  return apiClient.patch<ProviderRecord>(`/v1/providers/${providerId}`, normalizedInput)
+  return normalizeProviderRecord(
+    await apiClient.patch<ProviderRecord>(`/v1/providers/${providerId}`, normalizedInput)
+  )
 }
 
 export async function deleteProvider(providerId: string): Promise<void> {
@@ -184,7 +245,7 @@ export async function deleteProvider(providerId: string): Promise<void> {
 export async function testProviderConnection(
   input: SaveProviderInput,
   providerId?: string
-): Promise<void> {
+): Promise<ProviderConnectionTestResult> {
   window.dispatchEvent(
     new CustomEvent(providerConnectionEventName, {
       detail: {
@@ -210,6 +271,8 @@ export async function testProviderConnection(
   if (!result.ok) {
     throw new Error(result.error ?? 'Connection check failed')
   }
+
+  return result
 }
 
 // TanStack Query hooks

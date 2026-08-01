@@ -172,6 +172,44 @@ describe('reduceAgentEvent', () => {
     })
   })
 
+  it('attaches a provider error from message completion to the assistant message', () => {
+    const started = reduceAgentEvent(
+      { snapshot, messages: [], seenEventIds: [], lastSequence: 0 },
+      event(
+        {
+          type: 'message.started',
+          message: {
+            id: 'assistant',
+            sessionId: 's',
+            role: 'assistant',
+            parts: [],
+            createdAt: '2026-01-01T00:00:00.000Z',
+            status: 'streaming'
+          }
+        },
+        1
+      )
+    )
+    const completed = reduceAgentEvent(
+      started,
+      event(
+        {
+          type: 'message.completed',
+          messageId: 'assistant',
+          status: 'error',
+          error: 'HTTP 400: invalid thinking parameter'
+        },
+        2
+      )
+    )
+
+    expect(completed.messages[0]).toMatchObject({
+      id: 'assistant',
+      status: 'error',
+      error: 'HTTP 400: invalid thinking parameter'
+    })
+  })
+
   it('applies session metadata updates published by runtime tools', () => {
     const view: AgentSessionView = { snapshot, messages: [], seenEventIds: [], lastSequence: 0 }
     const updated = reduceAgentEvent(

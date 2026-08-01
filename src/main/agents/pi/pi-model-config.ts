@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { AppProvider } from '../../persistence/repos/providers-repo'
+import { AGENT_THINKING_STRENGTHS, type AgentThinkingStrength } from '../../../shared/thinking'
 
 function builtInProvider(type: string): string {
   if (type === 'gemini') return 'google'
@@ -23,13 +24,72 @@ function apiKeyEnvironment(type: string): string {
   return 'OPENAI_API_KEY'
 }
 
+function modelCompat(provider: AppProvider): Record<string, unknown> | undefined {
+  const modelId = provider.selectedModel.toLowerCase()
+  const isDeepSeekModel = provider.type === 'openai' && modelId.includes('deepseek')
+  if (!isDeepSeekModel) return undefined
+  const isDeepSeekV4 = modelId.includes('deepseek-v4')
+
+  // Custom gateways do not get Pi's DeepSeek URL detection. Keep this aligned
+  // with Pi's built-in DeepSeek compatibility, including the V4 token field.
+  return {
+    supportsStore: false,
+    thinkingFormat: 'deepseek',
+    supportsDeveloperRole: false,
+    requiresReasoningContentOnAssistantMessages: true,
+    ...(isDeepSeekV4 ? { maxTokensField: 'max_tokens' } : {})
+  }
+}
+
+function providerThinkingValue(provider: AppProvider, level: AgentThinkingStrength): string {
+  const modelId = provider.selectedModel.toLowerCase()
+  if (provider.type === 'openai' && modelId.includes('deepseek-v4')) {
+    if (level === 'high') return 'high'
+    if (level === 'xhigh' || level === 'max') return 'max'
+  }
+
+  return level
+}
+
+function modelThinkingLevelMap(provider: AppProvider): Record<string, string | null> | undefined {
+  if (!provider.supportsThinking) return undefined
+
+  const supported = new Set(provider.supportedThinkingLevels)
+  const map: Record<string, string | null> = {}
+  if (provider.thinkingOnly || !provider.allowsThinkingOff) {
+    map.off = null
+  }
+  for (const level of AGENT_THINKING_STRENGTHS) {
+    map[level] = supported.has(level) ? providerThinkingValue(provider, level) : null
+  }
+
+  return map
+}
+
+function modelThinkingConfig(provider: AppProvider): Record<string, unknown> {
+  const thinkingLevelMap = modelThinkingLevelMap(provider)
+  return {
+    reasoning: provider.supportsThinking,
+    ...(thinkingLevelMap ? { thinkingLevelMap } : {})
+  }
+}
+
 export async function writePiModelConfig(
   agentDir: string,
   provider: AppProvider
 ): Promise<{ piProvider: string }> {
   await mkdir(agentDir, { recursive: true })
   if (!provider.apiHost && provider.type !== 'ollama') {
-    await writeFile(join(agentDir, 'models.json'), '{"providers":{}}\n', 'utf8')
+    const config = {
+      providers: {
+        [builtInProvider(provider.type)]: {
+          modelOverrides: {
+            [provider.selectedModel]: modelThinkingConfig(provider)
+          }
+        }
+      }
+    }
+    await writeFile(join(agentDir, 'models.json'), `${JSON.stringify(config, null, 2)}\n`, 'utf8')
     return { piProvider: builtInProvider(provider.type) }
   }
 
@@ -37,10 +97,14 @@ export async function writePiModelConfig(
   const model = {
     id: provider.selectedModel,
     name: provider.selectedModel,
-    reasoning: true,
+    ...modelThinkingConfig(provider),
     input: provider.supportsVision ? ['text', 'image'] : ['text'],
     ...(provider.selectedModelContextWindowTokens
       ? { contextWindow: provider.selectedModelContextWindowTokens }
+      : {}),
+    ...(modelCompat(provider) ? { compat: modelCompat(provider) } : {}),
+    ...(modelThinkingLevelMap(provider)
+      ? { thinkingLevelMap: modelThinkingLevelMap(provider) }
       : {})
   }
   const config = {

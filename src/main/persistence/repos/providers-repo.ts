@@ -1,5 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import type { AppDatabase } from '../client'
+import type { AgentThinkingLevel } from '../../../shared/agent-runtime'
+import {
+  AGENT_THINKING_STRENGTHS,
+  defaultThinkingLevelForModel,
+  defaultThinkingStrengthsForModel,
+  normalizeThinkingLevelForProvider,
+  type AgentThinkingStrength
+} from '../../../shared/thinking'
 import {
   deriveModelContextWindowTokensByModel,
   inferKnownModelContextWindowTokens,
@@ -21,6 +29,11 @@ export type AppProvider = {
   providerModels: string[] | null
   enabled: boolean
   supportsVision: boolean
+  supportsThinking: boolean
+  thinkingOnly: boolean
+  allowsThinkingOff: boolean
+  defaultThinkingLevel: AgentThinkingLevel
+  supportedThinkingLevels: AgentThinkingStrength[]
   isBuiltIn: boolean
   isAdded: boolean
   isDefault: boolean
@@ -41,6 +54,11 @@ export type CreateProviderInput = {
   providerModels?: string[] | null
   enabled?: boolean
   supportsVision?: boolean
+  supportsThinking?: boolean
+  thinkingOnly?: boolean
+  allowsThinkingOff?: boolean
+  defaultThinkingLevel?: AgentThinkingLevel
+  supportedThinkingLevels?: AgentThinkingStrength[] | null
   isBuiltIn?: boolean
   isAdded?: boolean
   isDefault?: boolean
@@ -71,12 +89,78 @@ function parseProviderModels(value: unknown): string[] | null {
   }
 }
 
+function parseSupportedThinkingLevels(value: unknown, modelId: string): AgentThinkingStrength[] {
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as unknown
+      if (Array.isArray(parsed)) {
+        const supported = Array.from(
+          new Set(
+            parsed.filter((entry): entry is AgentThinkingStrength =>
+              AGENT_THINKING_STRENGTHS.includes(entry as AgentThinkingStrength)
+            )
+          )
+        )
+        if (supported.length > 0) return supported
+      }
+    } catch {
+      // Fall through to model-aware defaults for older provider rows.
+    }
+  }
+
+  return defaultThinkingStrengthsForModel(modelId)
+}
+
+function normalizeSupportedThinkingLevels(
+  value: readonly AgentThinkingStrength[] | null | undefined,
+  modelId: string
+): AgentThinkingStrength[] {
+  const supported = Array.from(
+    new Set(
+      (value ?? []).filter((entry): entry is AgentThinkingStrength =>
+        AGENT_THINKING_STRENGTHS.includes(entry as AgentThinkingStrength)
+      )
+    )
+  )
+  return supported.length > 0 ? supported : defaultThinkingStrengthsForModel(modelId)
+}
+
+function parseThinkingLevel(value: unknown): AgentThinkingLevel | undefined {
+  return value === 'off' ||
+    value === 'minimal' ||
+    value === 'low' ||
+    value === 'medium' ||
+    value === 'high' ||
+    value === 'xhigh' ||
+    value === 'max'
+    ? value
+    : undefined
+}
+
 function parseProviderRow(row: Record<string, unknown>): AppProvider {
   const selectedModel = String(row.selected_model)
   const selectedModelContextWindowTokens = normalizeModelContextWindowTokens(
     row.selected_model_context_window_tokens
   )
   const providerModels = parseProviderModels(row.provider_models)
+  const supportsThinking =
+    row.supports_thinking === undefined || Number(row.supports_thinking) === 1
+  const thinkingOnly = supportsThinking && Number(row.thinking_only) === 1
+  const allowsThinkingOff =
+    supportsThinking && !thinkingOnly && Number(row.allows_thinking_off) !== 0
+  const supportedThinkingLevels = parseSupportedThinkingLevels(
+    row.supported_thinking_levels,
+    selectedModel
+  )
+  const defaultThinkingLevel = normalizeThinkingLevelForProvider({
+    modelId: selectedModel,
+    supportsThinking,
+    thinkingOnly,
+    allowsThinkingOff,
+    defaultThinkingLevel:
+      parseThinkingLevel(row.default_thinking_level) ?? defaultThinkingLevelForModel(selectedModel),
+    supportedThinkingLevels
+  })
 
   return {
     id: String(row.id),
@@ -94,6 +178,11 @@ function parseProviderRow(row: Record<string, unknown>): AppProvider {
     providerModels,
     enabled: Number(row.enabled) === 1,
     supportsVision: Number(row.supports_vision) === 1,
+    supportsThinking,
+    thinkingOnly,
+    allowsThinkingOff,
+    defaultThinkingLevel,
+    supportedThinkingLevels,
     isBuiltIn: Number(row.is_built_in) === 1,
     isAdded: Number(row.is_added) === 1,
     isDefault: Number(row.is_default) === 1,
@@ -109,7 +198,7 @@ export class ProvidersRepository {
 
   async list(): Promise<AppProvider[]> {
     const result = await this.db.execute(
-      'SELECT id, name, type, api_key, api_host, selected_model, selected_model_context_window_tokens, provider_models, enabled, supports_vision, is_built_in, is_added, is_default, icon, official_site, created_at, updated_at FROM app_providers ORDER BY is_default DESC, is_added DESC, is_built_in DESC, created_at DESC'
+      'SELECT id, name, type, api_key, api_host, selected_model, selected_model_context_window_tokens, provider_models, enabled, supports_vision, supports_thinking, thinking_only, allows_thinking_off, default_thinking_level, supported_thinking_levels, is_built_in, is_added, is_default, icon, official_site, created_at, updated_at FROM app_providers ORDER BY is_default DESC, is_added DESC, is_built_in DESC, created_at DESC'
     )
 
     return result.rows.map((row) => parseProviderRow(row as Record<string, unknown>))
@@ -117,7 +206,7 @@ export class ProvidersRepository {
 
   async getById(id: string): Promise<AppProvider | null> {
     const result = await this.db.execute(
-      'SELECT id, name, type, api_key, api_host, selected_model, selected_model_context_window_tokens, provider_models, enabled, supports_vision, is_built_in, is_added, is_default, icon, official_site, created_at, updated_at FROM app_providers WHERE id = ? LIMIT 1',
+      'SELECT id, name, type, api_key, api_host, selected_model, selected_model_context_window_tokens, provider_models, enabled, supports_vision, supports_thinking, thinking_only, allows_thinking_off, default_thinking_level, supported_thinking_levels, is_built_in, is_added, is_default, icon, official_site, created_at, updated_at FROM app_providers WHERE id = ? LIMIT 1',
       [id]
     )
     const row = result.rows.at(0)
@@ -134,6 +223,22 @@ export class ProvidersRepository {
     const selectedModelContextWindowTokens =
       normalizeModelContextWindowTokens(input.selectedModelContextWindowTokens) ??
       inferKnownModelContextWindowTokens(input.selectedModel)
+    const supportsThinking = input.supportsThinking !== false
+    const thinkingOnly = supportsThinking && input.thinkingOnly === true
+    const allowsThinkingOff = supportsThinking && !thinkingOnly && input.allowsThinkingOff !== false
+    const supportedThinkingLevels = normalizeSupportedThinkingLevels(
+      input.supportedThinkingLevels,
+      input.selectedModel
+    )
+    const defaultThinkingLevel = normalizeThinkingLevelForProvider({
+      modelId: input.selectedModel,
+      supportsThinking,
+      thinkingOnly,
+      allowsThinkingOff,
+      defaultThinkingLevel:
+        input.defaultThinkingLevel ?? defaultThinkingLevelForModel(input.selectedModel),
+      supportedThinkingLevels
+    })
     const isDefault = input.isDefault === true
 
     if (isDefault) {
@@ -141,7 +246,7 @@ export class ProvidersRepository {
     }
 
     await this.db.execute(
-      'INSERT INTO app_providers (id, name, type, api_key, api_host, selected_model, selected_model_context_window_tokens, provider_models, enabled, supports_vision, is_built_in, is_added, is_default, icon, official_site) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO app_providers (id, name, type, api_key, api_host, selected_model, selected_model_context_window_tokens, provider_models, enabled, supports_vision, supports_thinking, thinking_only, allows_thinking_off, default_thinking_level, supported_thinking_levels, is_built_in, is_added, is_default, icon, official_site) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
         input.name,
@@ -153,6 +258,11 @@ export class ProvidersRepository {
         input.providerModels ? JSON.stringify(input.providerModels) : null,
         input.enabled === false ? 0 : 1,
         input.supportsVision === true ? 1 : 0,
+        supportsThinking ? 1 : 0,
+        thinkingOnly ? 1 : 0,
+        allowsThinkingOff ? 1 : 0,
+        defaultThinkingLevel,
+        JSON.stringify(supportedThinkingLevels),
         input.isBuiltIn === true ? 1 : 0,
         input.isAdded === false ? 0 : 1,
         isDefault ? 1 : 0,
@@ -183,13 +293,35 @@ export class ProvidersRepository {
         : (inferKnownModelContextWindowTokens(nextSelectedModel) ??
           (modelSelectionChanged ? null : existing.selectedModelContextWindowTokens))
     const nextIsDefault = input.isDefault === undefined ? existing.isDefault : input.isDefault
+    const supportsThinking = input.supportsThinking ?? existing.supportsThinking
+    const thinkingOnly = supportsThinking && (input.thinkingOnly ?? existing.thinkingOnly)
+    const allowsThinkingOff =
+      supportsThinking && !thinkingOnly && (input.allowsThinkingOff ?? existing.allowsThinkingOff)
+    const supportedThinkingLevels =
+      input.supportedThinkingLevels !== undefined
+        ? normalizeSupportedThinkingLevels(input.supportedThinkingLevels, nextSelectedModel)
+        : modelSelectionChanged
+          ? defaultThinkingStrengthsForModel(nextSelectedModel)
+          : existing.supportedThinkingLevels
+    const defaultThinkingLevel = normalizeThinkingLevelForProvider({
+      modelId: nextSelectedModel,
+      supportsThinking,
+      thinkingOnly,
+      allowsThinkingOff,
+      defaultThinkingLevel:
+        input.defaultThinkingLevel ??
+        (modelSelectionChanged
+          ? defaultThinkingLevelForModel(nextSelectedModel)
+          : existing.defaultThinkingLevel),
+      supportedThinkingLevels
+    })
 
     if (nextIsDefault) {
       await this.db.execute('UPDATE app_providers SET is_default = 0 WHERE id <> ?', [id])
     }
 
     await this.db.execute(
-      'UPDATE app_providers SET name = ?, type = ?, api_key = ?, api_host = ?, selected_model = ?, selected_model_context_window_tokens = ?, provider_models = ?, enabled = ?, supports_vision = ?, is_added = ?, is_default = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE app_providers SET name = ?, type = ?, api_key = ?, api_host = ?, selected_model = ?, selected_model_context_window_tokens = ?, provider_models = ?, enabled = ?, supports_vision = ?, supports_thinking = ?, thinking_only = ?, allows_thinking_off = ?, default_thinking_level = ?, supported_thinking_levels = ?, is_added = ?, is_default = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [
         input.name ?? existing.name,
         input.type ?? existing.type,
@@ -210,6 +342,11 @@ export class ProvidersRepository {
           : input.supportsVision
             ? 1
             : 0,
+        supportsThinking ? 1 : 0,
+        thinkingOnly ? 1 : 0,
+        allowsThinkingOff ? 1 : 0,
+        defaultThinkingLevel,
+        JSON.stringify(supportedThinkingLevels),
         input.isAdded === undefined ? (existing.isAdded ? 1 : 0) : input.isAdded ? 1 : 0,
         nextIsDefault ? 1 : 0,
         id

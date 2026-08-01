@@ -20,6 +20,7 @@ import {
 type ConfirmationRequest = {
   title: string
   message: string
+  action?: { type: 'mcp-oauth'; serverId: string }
 }
 
 export type TiaStateManagementToolsOptions = {
@@ -235,8 +236,13 @@ function saveScheduleInput(params: Record<string, unknown>, current?: Record<str
   } as const
 }
 
-async function confirm(options: TiaStateManagementToolsOptions, title: string, message: string) {
-  if (!(await options.confirm({ title, message }))) {
+async function confirm(
+  options: TiaStateManagementToolsOptions,
+  title: string,
+  message: string,
+  action?: ConfirmationRequest['action']
+) {
+  if (!(await options.confirm({ title, message, ...(action ? { action } : {}) }))) {
     throw new Error('The user did not confirm this change')
   }
 }
@@ -531,10 +537,14 @@ export function createTiaStateManagementTools(
     name: 'manage_tia_mcp_servers',
     label: 'Manage TIA MCP servers',
     description:
-      'Inspect and manage MCP servers used by TIA Pi threads. Interpret common MCP JSON and commands, including Claude CLI commands. For remote HTTP or SSE servers that require authentication, use the built-in sign_in action so TIA can open the browser OAuth flow.',
-    promptSnippet: 'Manage TIA Studio MCP server configuration and authenticated remote MCPs.',
+      'Inspect and manage MCP servers used by TIA Pi threads only when the user explicitly asks to configure or inspect an MCP integration. Interpret common MCP JSON and commands, including Claude CLI commands. For remote HTTP or SSE servers that require authentication, use the built-in sign_in action so TIA can open the browser OAuth flow.',
+    promptSnippet:
+      'Manage TIA Studio MCP server configuration only for an explicit MCP setup or inspection request.',
     promptGuidelines: [
+      'Use this tool only for an explicit request to configure, inspect, list, or troubleshoot a TIA MCP server. Do not use it to discover a capability for an ordinary task.',
+      'Do not call list to look for a browser, web, coding, or other task tool. MCP changes take effect in a future thread and cannot supply a new tool during the current turn.',
       'Use list before changing an existing MCP server unless the user gave its exact ID.',
+      'Translate `codex mcp add <id> --url <url>` directly into create_http with that ID and URL. For example, `codex mcp add linear --url https://mcp.linear.app/mcp` means create_http with id linear, then sign_in if OAuth is required. Do not web-search or ask for an API key before using this direct flow.',
       'For a remote URL, use create_http or create_sse. TIA Studio uses direct MCP OAuth and keeps credentials only in ~/.tia-studio/mcp-auth.json.',
       'Never ask for, return, or promise to reuse credentials from another app. When a remote server needs OAuth, call sign_in after the server exists; TIA opens the browser and stores credentials only in its local authentication storage.',
       'TIA maps npx and bunx through its managed Bun runtime for stdio servers when Bun is installed. Tell the user to finish Runtime Setup if a stdio server cannot launch.',
@@ -604,7 +614,8 @@ export function createTiaStateManagementTools(
           await confirm(
             options,
             `Sign in to ${existing.name}?`,
-            'TIA will open this server’s browser OAuth flow. Credentials are stored only in TIA Studio local authentication storage.'
+            'TIA will open this server’s browser OAuth flow. Credentials are stored only in TIA Studio local authentication storage.',
+            { type: 'mcp-oauth', serverId }
           )
           await options.mcpOAuth.login(serverId, existing)
           return result(`Signed in to MCP server “${existing.name}”.`, {
@@ -673,9 +684,11 @@ export function createTiaStateManagementTools(
     name: 'manage_tia_skills',
     label: 'Manage TIA skills',
     description:
-      'List installed TIA skills, browse the curated skills catalog, install a catalog skill globally, or remove a TIA-owned global catalog skill. Skills are code/instructions from third parties, so installation and removal require confirmation.',
-    promptSnippet: 'Manage TIA Studio skills and the curated skill catalog.',
+      'List installed TIA skills, browse the curated skills catalog, install a catalog skill globally, or remove a TIA-owned global catalog skill only when the user explicitly asks to manage skills. Skills are code/instructions from third parties, so installation and removal require confirmation.',
+    promptSnippet: 'Manage TIA Studio skills only for an explicit skill-management request.',
     promptGuidelines: [
+      'Use this tool only for an explicit request to inspect, list, install, or remove TIA skills. Do not browse skills to discover a capability for an ordinary task.',
+      'Listing or installing a skill cannot make a new capability available during the current turn. Do not use this tool as a fallback after another tool is missing or fails.',
       'Use list_installed or list_catalog before installing a skill.',
       'Only catalog skills can be installed by this tool; do not invent package names or URLs.',
       'Explain what a skill does and require the built-in confirmation before installation or removal.'

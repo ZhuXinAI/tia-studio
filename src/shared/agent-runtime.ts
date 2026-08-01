@@ -2,7 +2,7 @@ export type AgentSessionId = string
 export type AgentMessageId = string
 export type AgentToolCallId = string
 
-export type AgentThinkingLevel = 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
+export type AgentThinkingLevel = 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 export type AgentAccessMode = 'standard' | 'full'
 export type AgentTodoItem = {
   id: string
@@ -77,6 +77,7 @@ export type AgentInteractionRequest =
       title: string
       message: string
       timeout?: number
+      action?: { type: 'mcp-oauth'; serverId: string }
     }
   | {
       id: string
@@ -181,6 +182,7 @@ export type AppAgentEvent =
       type: 'message.completed'
       messageId: AgentMessageId
       status: 'complete' | 'error'
+      error?: string
     })
   | (AgentEventBase & {
       type: 'tool.started'
@@ -382,6 +384,7 @@ export function reduceAgentEvent(view: AgentSessionView, event: AppAgentEvent): 
       updateMessage(event.messageId, (message) => ({
         ...message,
         status: event.status,
+        error: event.status === 'error' ? (event.error ?? message.error) : undefined,
         completedAt: event.timestamp
       }))
       break

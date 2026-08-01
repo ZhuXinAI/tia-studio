@@ -17,6 +17,13 @@ import type {
 import { reduceAgentEvent } from '../../../../../shared/agent-runtime'
 import { cancelAgentRun, sendAgentMessage, subscribeToAgentSession } from '../agent-sessions-query'
 import { mergeAssistantRunMessages } from './pi-thread-message-groups'
+import {
+  createOptimisticUserMessage,
+  reconcileOptimisticUserMessages,
+  settleOptimisticUserMessage,
+  type OptimisticUserMessage
+} from './pi-thread-optimistic-messages'
+import { resolveActiveSendBehavior } from './pi-thread-send-behavior'
 
 function dataUrlToAttachment(input: {
   id: string
@@ -166,6 +173,7 @@ export function PiThreadRuntimeProvider({
     seenEventIds: [],
     lastSequence: 0
   })
+  const pendingOptimisticMessagesRef = useRef<OptimisticUserMessage[]>([])
   const onSessionChangeRef = useRef(onSessionChange)
   const onErrorRef = useRef(onError)
 
@@ -179,15 +187,43 @@ export function PiThreadRuntimeProvider({
   }, [session])
 
   useEffect(() => {
-    setView((current) => ({ ...current, messages: initialMessages }))
+    const reconciled = reconcileOptimisticUserMessages(
+      initialMessages,
+      pendingOptimisticMessagesRef.current
+    )
+    pendingOptimisticMessagesRef.current = reconciled.pending
+    setView((current) => ({
+      ...current,
+      messages: [...reconciled.messages, ...reconciled.pending.map((item) => item.message)]
+    }))
   }, [initialMessages])
 
   useEffect(() => {
     return subscribeToAgentSession({
       sessionId: session.id,
       onEvent: (event) => {
+        let settledOptimisticMessageId: string | null = null
+        if (event.type === 'message.started' && event.message.role === 'user') {
+          const settled = settleOptimisticUserMessage(
+            [],
+            pendingOptimisticMessagesRef.current,
+            event.message
+          )
+          if (settled.pending.length !== pendingOptimisticMessagesRef.current.length) {
+            settledOptimisticMessageId =
+              pendingOptimisticMessagesRef.current.find(
+                (item) => !settled.pending.some((pending) => pending.message.id === item.message.id)
+              )?.message.id ?? null
+            pendingOptimisticMessagesRef.current = settled.pending
+          }
+        }
         setView((current) => {
           const next = reduceAgentEvent(current, event)
+          if (settledOptimisticMessageId) {
+            next.messages = next.messages.filter(
+              (message) => message.id !== settledOptimisticMessageId
+            )
+          }
           onSessionChangeRef.current(next.snapshot)
           return next
         })
@@ -210,21 +246,28 @@ export function PiThreadRuntimeProvider({
     adapters,
     onNew: async (message) => {
       const content = extractAppendMessage(message)
+      const optimistic = createOptimisticUserMessage(session.id, content)
+      pendingOptimisticMessagesRef.current = [...pendingOptimisticMessagesRef.current, optimistic]
       const previousStatus = view.snapshot.status
       setView((current) => ({
         ...current,
+        messages: [...current.messages, optimistic.message],
         snapshot: { ...current.snapshot, status: 'running' }
       }))
       try {
         const receipt = await sendAgentMessage({
           sessionId: session.id,
-          behavior: previousStatus === 'running' ? behavior : 'normal',
+          behavior: resolveActiveSendBehavior(previousStatus, behavior),
           ...content
         })
         if (!receipt.accepted) throw new Error(receipt.error ?? 'Pi rejected the message')
       } catch (error) {
+        pendingOptimisticMessagesRef.current = pendingOptimisticMessagesRef.current.filter(
+          (item) => item.message.id !== optimistic.message.id
+        )
         setView((current) => ({
           ...current,
+          messages: current.messages.filter((item) => item.id !== optimistic.message.id),
           snapshot: { ...current.snapshot, status: previousStatus }
         }))
         throw error

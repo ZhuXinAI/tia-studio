@@ -178,11 +178,12 @@ export class AgentSessionsRepository {
   async appendMessage(message: AppAgentMessage): Promise<void> {
     await this.db.execute(
       `
-        INSERT INTO app_agent_messages (id, session_id, role, parts_json, status, upstream_id, created_at, completed_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO app_agent_messages (id, session_id, role, parts_json, status, error, upstream_id, created_at, completed_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           parts_json = excluded.parts_json,
           status = excluded.status,
+          error = excluded.error,
           upstream_id = excluded.upstream_id,
           completed_at = excluded.completed_at
       `,
@@ -192,6 +193,7 @@ export class AgentSessionsRepository {
         message.role,
         JSON.stringify(message.parts),
         message.status,
+        message.error ?? null,
         message.upstreamId ?? null,
         message.createdAt,
         message.completedAt ?? null
@@ -202,7 +204,7 @@ export class AgentSessionsRepository {
   async listMessages(sessionId: string): Promise<AppAgentMessage[]> {
     const result = await this.db.execute(
       `
-        SELECT id, session_id, role, parts_json, status, upstream_id, created_at, completed_at
+        SELECT id, session_id, role, parts_json, status, error, upstream_id, created_at, completed_at
         FROM app_agent_messages WHERE session_id = ? ORDER BY created_at ASC, rowid ASC
       `,
       [sessionId]
@@ -215,6 +217,7 @@ export class AgentSessionsRepository {
         role: String(record.role) as AppAgentMessage['role'],
         parts: json(String(record.parts_json), []),
         status: String(record.status) as AppAgentMessage['status'],
+        error: record.error ? String(record.error) : undefined,
         upstreamId: record.upstream_id ? String(record.upstream_id) : undefined,
         createdAt: String(record.created_at),
         completedAt: record.completed_at ? String(record.completed_at) : undefined

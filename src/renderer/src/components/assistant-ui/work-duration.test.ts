@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveWorkDuration } from './work-duration'
+import { isWorkTraceActive, resolveWorkDuration } from './work-duration'
 
 describe('resolveWorkDuration', () => {
   it('uses live elapsed time while a run is active', () => {
@@ -10,5 +10,16 @@ describe('resolveWorkDuration', () => {
     expect(resolveWorkDuration({ elapsed: 9_000, running: false, storedDuration: 4_200 })).toBe(
       4_200
     )
+  })
+
+  it('keeps a latest work trace live while the thread waits for a tool update', () => {
+    expect(
+      isWorkTraceActive({
+        messageRunning: false,
+        threadRunning: true,
+        isLastMessage: true,
+        waitingOnUser: false
+      })
+    ).toBe(true)
   })
 })

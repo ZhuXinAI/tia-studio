@@ -288,11 +288,36 @@
         "closeAriaLabel": "Fermer le dialogue fournisseur",
         "closeButtonAriaLabel": "Fermer le dialogue"
       },
+      "page": {
+        "title": "Models",
+        "description": "Connect model providers and choose the model each one uses.",
+        "addModel": "Add model",
+        "savedModels": "Saved models",
+        "modelCount_one": "{{count}} model",
+        "modelCount_other": "{{count}} models",
+        "emptyTitle": "No models configured",
+        "emptyDescription": "Add a provider to start a chat with your preferred model.",
+        "default": "Default",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "editAriaLabel": "Edit {{name}}"
+      },
+      "dialog": {
+        "addTitle": "Add model",
+        "editTitle": "Edit model",
+        "description": "Configure an API endpoint and model. Credentials stay on this device.",
+        "providerLabel": "Provider",
+        "savedProviders": "Saved providers",
+        "providerPresets": "Provider presets",
+        "customProvider": "Custom provider",
+        "providerWebsite": "Provider website"
+      },
       "toasts": {
         "providerNotFound": "Fournisseur introuvable.",
         "providerSaved": "Fournisseur enregistré localement.",
         "providerCreated": "Fournisseur créé localement.",
         "connectionSuccess": "Connexion réussie pour {{type}} ({{model}}).",
+        "providerRemoved": "Provider removed from saved providers.",
         "builtInDeleteBlocked": "Impossible de supprimer le fournisseur intégré.",
         "providerDeleted": "Fournisseur supprimé.",
         "unexpectedError": "Erreur de requête inattendue"
@@ -303,7 +328,8 @@
         "openrouter": "OpenRouter",
         "gemini": "Gemini",
         "anthropic": "Anthropic",
-        "ollama": "Ollama"
+        "ollama": "Ollama",
+        "codex-acp": "Codex ACP"
       },
       "typeDescriptions": {
         "openai": "For OpenAI API and compatible services (DeepSeek, Groq, etc.). Requires API key and supports custom endpoints.",
@@ -327,17 +353,35 @@
         "type": "Type",
         "apiKey": "Clé API",
         "apiHost": "Hôte API",
+        "apiProtocol": "API protocol",
         "selectedModel": "Modèle sélectionné",
+        "contextWindow": "Model context window (optional)",
+        "contextWindowDescription": "Used for the thread context usage indicator when the app cannot infer an exact limit from provider metadata.",
         "includeModelPresets": "Inclure les préréglages de modèles optionnels",
+        "includeModelPresetsDescription": "Save a reusable model list for faster workspace setup.",
         "providerModels": "Modèles du fournisseur (optionnel)",
         "providerModelsDescription": "Saisir les noms de modèles séparés par des virgules ou des retours à la ligne",
         "supportsVision": "Prend en charge la vision",
         "supportsVisionDescription": "Activer les pièces jointes image pour ce fournisseur",
+        "supportsThinking": "Supports thinking",
+        "supportsThinkingDescription": "Show thinking controls for models from this provider.",
+        "thinkingOnly": "Thinking is always on",
+        "thinkingOnlyDescription": "Do not offer an option to turn thinking off.",
+        "allowsThinkingOff": "Allow thinking off",
+        "allowsThinkingOffDescription": "Let each thread turn thinking off for this provider.",
+        "defaultThinkingLevel": "Default thinking strength",
+        "supportedThinkingLevels": "Supported thinking strengths",
+        "supportedThinkingLevelsDescription": "Choose the strengths shown in the model selector.",
+        "defaultProvider": "Make this the default provider",
+        "defaultProviderDescription": "New chats start here unless a workspace or thread chooses a different model.",
+        "showApiKey": "Show API key",
+        "hideApiKey": "Hide API key",
         "buttons": {
           "testing": "Test en cours...",
           "testConnection": "Tester la connexion",
           "saving": "Enregistrement...",
-          "saveProvider": "Enregistrer le fournisseur"
+          "saveProvider": "Enregistrer le fournisseur",
+          "cancel": "Cancel"
         }
       }
     },
@@ -437,6 +481,12 @@
     }
   },
   "threads": {
+    "errors": {
+      "title": "Model request failed",
+      "detailFallback": "The provider did not return a usable response.",
+      "providerHint": "Check the selected model, API host, and API key, then use Test connection.",
+      "openProviderSettings": "Open provider settings"
+    },
     "sidebar": {
       "untitledThread": "Fil sans titre",
       "scheduled": "Created by a schedule",
@@ -461,6 +511,18 @@
     "composer": {
       "selectModel": "Select model",
       "selectPermission": "Select permission mode",
+      "searchModels": "Search models",
+      "noModels": "No models found.",
+      "thinkingMode": "Thinking mode",
+      "thinkingOff": "Thinking off",
+      "thinkingLevels": {
+        "minimal": "Minimal",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "xhigh": "Extra high",
+        "max": "Maximum"
+      },
       "askPermission": "Ask Permission",
       "fullAccess": "Full Access",
       "permissionLocked": "Permission mode is locked while Pi is running.",

@@ -45,6 +45,15 @@ const providerFieldsSchema = z.object({
   providerModels: z.array(z.string().min(1)).optional(),
   enabled: z.boolean().optional(),
   supportsVision: z.boolean().optional(),
+  supportsThinking: z.boolean().optional(),
+  thinkingOnly: z.boolean().optional(),
+  allowsThinkingOff: z.boolean().optional(),
+  defaultThinkingLevel: z
+    .enum(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])
+    .optional(),
+  supportedThinkingLevels: z
+    .array(z.enum(['minimal', 'low', 'medium', 'high', 'xhigh', 'max']))
+    .optional(),
   isAdded: z.boolean().optional(),
   isDefault: z.boolean().optional()
 })

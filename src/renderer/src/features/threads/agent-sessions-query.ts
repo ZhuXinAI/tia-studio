@@ -3,6 +3,7 @@ import type {
   AgentAccessMode,
   AgentCommandReceipt,
   AgentInteractionResponse,
+  AgentThinkingLevel,
   AgentSessionSnapshot,
   AppAgentEvent,
   AppAgentMessage,
@@ -144,6 +145,13 @@ export async function setAgentModel(
     provider,
     modelId
   })
+}
+
+export async function setAgentThinkingLevel(
+  sessionId: string,
+  level: AgentThinkingLevel
+): Promise<AgentSessionSnapshot> {
+  return api.patch<AgentSessionSnapshot>(`/v1/agent/sessions/${sessionId}/thinking`, { level })
 }
 
 export async function renameAgentSession(

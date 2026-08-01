@@ -53,4 +53,25 @@ describe('PiSdkEventMapper', () => {
       type: 'run.settled'
     })
   })
+
+  it('preserves the provider error from the finalized assistant message', () => {
+    const mapper = new PiSdkEventMapper('session-1')
+    mapper.map({ type: 'message_start', message: { role: 'assistant', id: 'm1' } } as never)
+
+    expect(
+      mapper.map({
+        type: 'message_end',
+        message: {
+          role: 'assistant',
+          stopReason: 'error',
+          errorMessage: 'Invalid model configuration'
+        }
+      } as never)[0]
+    ).toMatchObject({
+      type: 'message.completed',
+      messageId: 'm1',
+      status: 'error',
+      error: 'Invalid model configuration'
+    })
+  })
 })

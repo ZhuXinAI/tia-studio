@@ -78,7 +78,14 @@ export class PiSdkEventMapper {
         } else if (delta.type === 'thinking_delta' && typeof delta.delta === 'string') {
           emit({ type: 'message.thinking.delta', messageId, contentIndex, delta: delta.delta })
         } else if (delta.type === 'error') {
-          emit({ type: 'message.completed', messageId, status: 'error' })
+          const errorMessage =
+            text(delta.errorMessage) ?? text(object(delta.partial)?.errorMessage) ?? undefined
+          emit({
+            type: 'message.completed',
+            messageId,
+            status: 'error',
+            ...(errorMessage ? { error: errorMessage } : {})
+          })
         }
         break
       }
@@ -86,7 +93,13 @@ export class PiSdkEventMapper {
         if (this.state.currentMessageId) {
           const message = object(input.message)
           const status = message?.stopReason === 'error' ? 'error' : 'complete'
-          emit({ type: 'message.completed', messageId: this.state.currentMessageId, status })
+          const errorMessage = text(message?.errorMessage)
+          emit({
+            type: 'message.completed',
+            messageId: this.state.currentMessageId,
+            status,
+            ...(errorMessage ? { error: errorMessage } : {})
+          })
           this.state.currentMessageId = undefined
         }
         break

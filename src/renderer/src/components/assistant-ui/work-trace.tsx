@@ -6,7 +6,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger
 } from '@renderer/components/ui/collapsible'
-import { resolveWorkDuration } from './work-duration'
+import { isWorkTraceActive, resolveWorkDuration } from './work-duration'
 import { DotMatrix } from './dot-matrix'
 import { useTranslation } from '../../i18n/use-app-translation'
 
@@ -19,6 +19,8 @@ function formatWorkDuration(milliseconds: number): string {
 const WorkTrace: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
   const running = useAuiState((state) => state.message.status?.type === 'running')
+  const threadRunning = useAuiState((state) => state.thread.isRunning)
+  const isLastMessage = useAuiState((state) => state.message.isLast)
   const waitingOnUser = useAuiState(
     (state) => state.message.metadata?.custom?.waitingOnUser === true
   )
@@ -34,7 +36,12 @@ const WorkTrace: FC<PropsWithChildren> = ({ children }) => {
   const startedAt = workStartedAt ?? messageCreatedAt
   const [open, setOpen] = useState(false)
   const [elapsed, setElapsed] = useState(() => (startedAt ? Date.now() - startedAt : 0))
-  const activelyWorking = running && !waitingOnUser
+  const activelyWorking = isWorkTraceActive({
+    messageRunning: running,
+    threadRunning,
+    isLastMessage,
+    waitingOnUser
+  })
 
   useEffect(() => {
     if (!activelyWorking || !startedAt) return

@@ -32,7 +32,9 @@ async function renderApp(): Promise<void> {
               <Toaster />
             </TooltipProvider>
           </ThemeProvider>
-          <ReactQueryDevtools initialIsOpen={false} />
+          {import.meta.env.DEV ? (
+            <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+          ) : null}
         </QueryClientProvider>
       </ErrorBoundary>
     </StrictMode>

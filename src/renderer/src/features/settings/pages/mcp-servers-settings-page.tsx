@@ -1,5 +1,5 @@
 import { useAuiState } from '@assistant-ui/react'
-import { Cable } from 'lucide-react'
+import { Cable, LogIn, LogOut } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -7,6 +7,7 @@ import { ThreadEmpty } from '../../../components/assistant-ui/thread'
 import { Button } from '../../../components/ui/button'
 import { cn } from '../../../lib/utils'
 import { ThreadInteractionCard } from '../../threads/components/thread-interaction-card'
+import { ThreadQueuePanel } from '../../threads/components/thread-queue-panel'
 import { TransientPiThread } from '../../threads/components/transient-pi-thread'
 import { toErrorMessage } from '../../threads/thread-page-routing'
 import { useProviders } from '../providers/providers-query'
@@ -14,6 +15,8 @@ import {
   getMcpServersAuth,
   getMcpServersHealth,
   getMcpServersSettings,
+  loginToMcpServer,
+  logoutFromMcpServer,
   type McpServerAuthStatus,
   type McpServerHealth,
   type McpServerRecord,
@@ -119,15 +122,31 @@ function McpSetupThread({ onMcpChanged }: { onMcpChanged: () => void }): React.J
       purpose="mcp-setup"
       provider={provider}
       onSessionSettled={onMcpChanged}
+      presentation={{
+        type: 'modal',
+        title: 'MCP assistant',
+        description: 'Add, authenticate, and troubleshoot servers',
+        triggerLabel: 'Add MCP'
+      }}
       getComponents={({ session, hasAssistantResponse, isPromoting, continueInChat }) => ({
         Welcome: McpThreadEmpty,
         ComposerHeader: () =>
-          session?.pendingInteraction ? (
-            <ThreadInteractionCard sessionId={session.id} request={session.pendingInteraction} />
+          session ? (
+            <>
+              <ThreadQueuePanel queue={session.queue} />
+              {session.pendingInteraction ? (
+                <ThreadInteractionCard
+                  sessionId={session.id}
+                  request={session.pendingInteraction}
+                />
+              ) : null}
+            </>
           ) : null,
         AssistantActionBar: () => (
           <ContinueInChatAction
-            canContinue={session?.status === 'idle' && hasAssistantResponse}
+            canContinue={
+              session?.status === 'idle' && !session.pendingInteraction && hasAssistantResponse
+            }
             isPromoting={isPromoting}
             onContinue={continueInChat}
           />
@@ -145,9 +164,10 @@ export function McpServersSettingsPage({
   const [serverHealth, setServerHealth] = useState<Record<string, McpServerHealth>>({})
   const [serverAuth, setServerAuth] = useState<Record<string, McpServerAuthStatus>>({})
   const [isLoading, setIsLoading] = useState(true)
+  const [pendingAuthServerId, setPendingAuthServerId] = useState<string | null>(null)
 
-  const loadSettings = useCallback(async () => {
-    setIsLoading(true)
+  const loadSettings = useCallback(async (showLoading = false) => {
+    if (showLoading) setIsLoading(true)
     try {
       const [nextSettings, auth] = await Promise.all([getMcpServersSettings(), getMcpServersAuth()])
       setSettings(nextSettings)
@@ -155,12 +175,12 @@ export function McpServersSettingsPage({
     } catch (error) {
       toast.error(toErrorMessage(error))
     } finally {
-      setIsLoading(false)
+      if (showLoading) setIsLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    void loadSettings()
+    void loadSettings(true)
   }, [loadSettings])
 
   useEffect(() => {
@@ -189,15 +209,28 @@ export function McpServersSettingsPage({
     [settings]
   )
 
+  const changeAuthentication = useCallback(
+    async (serverId: string, action: 'sign-in' | 'sign-out') => {
+      if (pendingAuthServerId) return
+      setPendingAuthServerId(serverId)
+      try {
+        const auth =
+          action === 'sign-in'
+            ? await loginToMcpServer(serverId)
+            : await logoutFromMcpServer(serverId)
+        setServerAuth((current) => ({ ...current, [serverId]: auth }))
+        await loadSettings(false)
+      } catch (error) {
+        toast.error(toErrorMessage(error))
+      } finally {
+        setPendingAuthServerId(null)
+      }
+    },
+    [loadSettings, pendingAuthServerId]
+  )
+
   const content = (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 pb-12">
-      <section
-        aria-label="Add an MCP with TIA"
-        className="h-[34rem] min-h-[28rem] overflow-hidden rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)]"
-      >
-        <McpSetupThread onMcpChanged={() => void loadSettings()} />
-      </section>
-
       <section aria-labelledby="saved-mcp-servers-title" className="space-y-3">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -205,14 +238,17 @@ export function McpServersSettingsPage({
               {t('settings.mcp.savedServers')}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              TIA manages these servers through the temporary setup conversation above.
+              Add, authenticate, or troubleshoot a server with the MCP assistant.
             </p>
           </div>
-          {!isLoading ? (
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {t('settings.mcp.serverCount', { count: serverEntries.length })}
-            </span>
-          ) : null}
+          <div className="flex items-center gap-3">
+            {!isLoading ? (
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {t('settings.mcp.serverCount', { count: serverEntries.length })}
+              </span>
+            ) : null}
+            <McpSetupThread onMcpChanged={() => void loadSettings(false)} />
+          </div>
         </div>
 
         <div className="overflow-hidden rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)]">
@@ -287,6 +323,33 @@ export function McpServersSettingsPage({
                   />
                   {status.label}
                 </span>
+                {authentication ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={pendingAuthServerId !== null}
+                    onClick={() =>
+                      void changeAuthentication(
+                        serverId,
+                        authentication === 'signed-in' ? 'sign-out' : 'sign-in'
+                      )
+                    }
+                  >
+                    {authentication === 'signed-in' ? (
+                      <LogOut className="size-3.5" />
+                    ) : (
+                      <LogIn className="size-3.5" />
+                    )}
+                    {pendingAuthServerId === serverId
+                      ? authentication === 'signed-in'
+                        ? 'Signing out…'
+                        : 'Waiting for browser…'
+                      : authentication === 'signed-in'
+                        ? 'Sign out'
+                        : 'Sign in'}
+                  </Button>
+                ) : null}
               </article>
             )
           })}

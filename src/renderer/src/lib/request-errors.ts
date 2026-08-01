@@ -3,6 +3,15 @@ type RequestErrorDetails = {
   statusCode: number | null
 }
 
+const maxRequestErrorMessageLength = 480
+
+function compactRequestErrorMessage(value: string): string | null {
+  const normalized = value.trim()
+  if (normalized.length === 0) return null
+  if (normalized.length <= maxRequestErrorMessageLength) return normalized
+  return `${normalized.slice(0, maxRequestErrorMessageLength - 1).trimEnd()}…`
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -33,7 +42,9 @@ function sanitizeMessage(value: string): string | null {
     return null
   }
 
-  return firstLine.replace(/^(?:Error|TypeError|ReferenceError):\s*/, '').trim() || null
+  return compactRequestErrorMessage(
+    firstLine.replace(/^(?:Error|TypeError|ReferenceError):\s*/, '')
+  )
 }
 
 function readStatusCode(record: Record<string, unknown>): number | null {
@@ -82,10 +93,7 @@ function extractMessage(record: Record<string, unknown>, depth: number): string 
   return null
 }
 
-export function extractRequestErrorDetails(
-  error: unknown,
-  depth = 0
-): RequestErrorDetails {
+export function extractRequestErrorDetails(error: unknown, depth = 0): RequestErrorDetails {
   if (depth > 4) {
     return {
       message: null,

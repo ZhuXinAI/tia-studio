@@ -17,6 +17,11 @@ const provider: AppProvider = {
   providerModels: ['gpt-5.4'],
   enabled: true,
   supportsVision: true,
+  supportsThinking: true,
+  thinkingOnly: false,
+  allowsThinkingOff: true,
+  defaultThinkingLevel: 'medium',
+  supportedThinkingLevels: ['minimal', 'low', 'medium', 'high', 'xhigh', 'max'],
   isBuiltIn: false,
   isAdded: true,
   isDefault: true,
@@ -217,11 +222,43 @@ describe('TIA state management tools', () => {
       id: 'linear'
     })
 
-    expect(confirm).toHaveBeenCalledOnce()
+    expect(confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: { type: 'mcp-oauth', serverId: 'linear' }
+      })
+    )
     expect(login).toHaveBeenCalledWith(
       'linear',
       expect.objectContaining({ url: 'https://mcp.linear.app/mcp' })
     )
     expect(JSON.stringify(output)).toContain('signed-in')
+  })
+
+  it('teaches the MCP setup agent to translate codex remote add commands directly', () => {
+    const { tools } = createTools()
+    const tool = tools.find((candidate) => candidate.name === 'manage_tia_mcp_servers')
+
+    expect(tool?.promptGuidelines?.join('\n')).toContain(
+      'codex mcp add linear --url https://mcp.linear.app/mcp'
+    )
+    expect(tool?.promptGuidelines?.join('\n')).toContain('create_http')
+    expect(tool?.promptGuidelines?.join('\n')).toContain('Do not web-search')
+  })
+
+  it('keeps extension-management tools out of ordinary task routing', () => {
+    const { tools } = createTools()
+    const mcp = tools.find((candidate) => candidate.name === 'manage_tia_mcp_servers')
+    const skills = tools.find((candidate) => candidate.name === 'manage_tia_skills')
+
+    expect(mcp?.promptGuidelines?.join('\n')).toContain(
+      'Do not use it to discover a capability for an ordinary task.'
+    )
+    expect(mcp?.promptGuidelines?.join('\n')).toContain('look for a browser')
+    expect(skills?.promptGuidelines?.join('\n')).toContain(
+      'Do not browse skills to discover a capability for an ordinary task.'
+    )
+    expect(skills?.promptGuidelines?.join('\n')).toContain(
+      'cannot make a new capability available during the current turn'
+    )
   })
 })
