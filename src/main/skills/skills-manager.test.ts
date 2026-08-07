@@ -412,7 +412,7 @@ description: Helper skill.
     expect(installed).toEqual(['agent-browser', 'find-skills'])
   })
 
-  it('returns only the top 20 marketplace skills with owned install state', async () => {
+  it('returns first-party and live marketplace skills with owned install state', async () => {
     const globalRoot = path.join(tempRoot, 'tia-global-skills')
     await writeMarketplaceCache(globalRoot)
     await createSkill(
@@ -424,9 +424,17 @@ description: Helper skill.
       globalSkillsRoot: globalRoot
     })
 
-    expect(catalog).toHaveLength(20)
-    expect(catalog[0]).toMatchObject({ slug: 'find-skills', installedGlobal: true })
-    expect(catalog[1]).toMatchObject({ slug: 'frontend-design', installedGlobal: false })
+    expect(catalog).toHaveLength(fallbackTopSkillDefinitions.length)
+    expect(catalog.find((skill) => skill.slug === 'prelaunch-guide')).toMatchObject({
+      source: 'windht/app-prelaunch-skills',
+      installedGlobal: false
+    })
+    expect(catalog.find((skill) => skill.slug === 'find-skills')).toMatchObject({
+      installedGlobal: true
+    })
+    expect(catalog.find((skill) => skill.slug === 'frontend-design')).toMatchObject({
+      installedGlobal: false
+    })
   })
 
   it('does not download a marketplace skill that is already installed', async () => {

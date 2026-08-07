@@ -39,7 +39,42 @@ const skillsShAllTimePageUrl = 'https://skills.sh/api/skills/all-time/0'
 const skillsShFetchTimeoutMs = 10_000
 const githubPathSegmentPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
 
+/** First-party skills that must remain discoverable even when the live catalog changes. */
+export const firstPartySkillDefinitions: readonly MarketplaceSkillDefinition[] = [
+  {
+    slug: 'prelaunch-guide',
+    name: 'App Prelaunch Guide',
+    source: 'windht/app-prelaunch-skills',
+    installs: 0
+  },
+  {
+    slug: 'beautiful-app-icon',
+    name: 'Beautiful App Icon',
+    source: 'windht/app-prelaunch-skills',
+    installs: 0
+  },
+  {
+    slug: 'promotion-video',
+    name: 'Promotion Video',
+    source: 'windht/app-prelaunch-skills',
+    installs: 0
+  },
+  {
+    slug: 'collect-sota-evidence',
+    name: 'Collect SOTA Evidence',
+    source: 'windht/app-prelaunch-skills',
+    installs: 0
+  },
+  {
+    slug: 'compare-with-sota',
+    name: 'Compare With SOTA',
+    source: 'windht/app-prelaunch-skills',
+    installs: 0
+  }
+]
+
 export const fallbackTopSkillDefinitions: readonly MarketplaceSkillDefinition[] = [
+  ...firstPartySkillDefinitions,
   { slug: 'find-skills', name: 'Find Skills', source: 'vercel-labs/skills', installs: 2559128 },
   {
     slug: 'frontend-design',
@@ -224,6 +259,18 @@ function toDefinitions(value: unknown, formatName = true): MarketplaceSkillDefin
   return definitions.length > 0 ? definitions : null
 }
 
+function mergeFirstPartySkillDefinitions(
+  skills: readonly MarketplaceSkillDefinition[]
+): MarketplaceSkillDefinition[] {
+  const firstPartyIds = new Set(
+    firstPartySkillDefinitions.map((definition) => `${definition.source}/${definition.slug}`)
+  )
+  const remoteSkills = skills.filter(
+    (definition) => !firstPartyIds.has(`${definition.source}/${definition.slug}`)
+  )
+  return [...firstPartySkillDefinitions, ...remoteSkills].slice(0, skillMarketplaceCacheSkillLimit)
+}
+
 function toCachedTopSkills(value: unknown): CachedTopSkills | null {
   if (!isRecord(value)) return null
   const checkedAt = typeof value.checkedAt === 'string' ? value.checkedAt : value.fetchedAt
@@ -302,7 +349,7 @@ async function fetchTopSkills(
 }
 
 function fallbackDefinitions(): MarketplaceSkillDefinition[] {
-  return fallbackTopSkillDefinitions.map((definition) => ({ ...definition }))
+  return mergeFirstPartySkillDefinitions(fallbackTopSkillDefinitions)
 }
 
 export async function getTopSkillMarketplaceDefinitions(
@@ -311,22 +358,22 @@ export async function getTopSkillMarketplaceDefinitions(
   const now = input.now?.() ?? Date.now()
   const cached = await readTopSkillsCache(input.cachePath)
   if (cached && isFresh(cached, now)) {
-    return cached.skills
+    return mergeFirstPartySkillDefinitions(cached.skills)
   }
 
   const pendingRefresh = pendingRefreshes.get(input.cachePath)
   if (pendingRefresh) {
     try {
-      return await pendingRefresh
+      return mergeFirstPartySkillDefinitions(await pendingRefresh)
     } catch {
-      return cached?.skills ?? fallbackDefinitions()
+      return mergeFirstPartySkillDefinitions(cached?.skills ?? fallbackDefinitions())
     }
   }
 
   const refresh = fetchTopSkills(input.fetchImplementation ?? fetch)
   pendingRefreshes.set(input.cachePath, refresh)
   try {
-    const skills = await refresh
+    const skills = mergeFirstPartySkillDefinitions(await refresh)
     const checkedAt = new Date(now).toISOString()
     try {
       await writeTopSkillsCache({
@@ -340,7 +387,7 @@ export async function getTopSkillMarketplaceDefinitions(
     }
     return skills
   } catch {
-    const skills = cached?.skills ?? fallbackDefinitions()
+    const skills = mergeFirstPartySkillDefinitions(cached?.skills ?? fallbackDefinitions())
     try {
       await writeTopSkillsCache({
         cachePath: input.cachePath,

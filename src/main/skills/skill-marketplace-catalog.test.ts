@@ -4,6 +4,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   fallbackTopSkillDefinitions,
+  firstPartySkillDefinitions,
   getTopSkillMarketplaceDefinitions,
   skillMarketplaceCacheMaxAgeMs,
   skillMarketplaceCacheSkillLimit
@@ -63,6 +64,7 @@ describe('skill marketplace catalog', () => {
       expect.objectContaining({ signal: expect.any(AbortSignal) })
     )
     expect(skills).toEqual([
+      ...firstPartySkillDefinitions,
       {
         source: 'example-org/skill-library',
         slug: 'design-review',
@@ -81,7 +83,7 @@ describe('skill marketplace catalog', () => {
     )
   })
 
-  it('retains the full first page of 200 skills in the cache', async () => {
+  it('retains 200 skills while reserving space for first-party skills', async () => {
     const page = Array.from({ length: skillMarketplaceCacheSkillLimit + 1 }, (_, index) => ({
       source: 'example-org/skill-library',
       skillId: `skill-${index + 1}`,
@@ -97,7 +99,9 @@ describe('skill marketplace catalog', () => {
     const cache = JSON.parse(await readFile(cachePath, 'utf8')) as { skills: unknown[] }
 
     expect(skills).toHaveLength(skillMarketplaceCacheSkillLimit)
-    expect(skills.at(-1)?.slug).toBe(`skill-${skillMarketplaceCacheSkillLimit}`)
+    expect(skills.at(-1)?.slug).toBe(
+      `skill-${skillMarketplaceCacheSkillLimit - firstPartySkillDefinitions.length}`
+    )
     expect(cache.skills).toHaveLength(skillMarketplaceCacheSkillLimit)
   })
 
@@ -116,7 +120,12 @@ describe('skill marketplace catalog', () => {
     })
 
     expect(fetchImplementation).not.toHaveBeenCalled()
-    expect(skills[0]).toMatchObject({ slug: 'design-review', installs: 42 })
+    expect(skills).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ slug: 'prelaunch-guide', source: 'windht/app-prelaunch-skills' }),
+        expect.objectContaining({ slug: 'design-review', installs: 42 })
+      ])
+    )
   })
 
   it('refreshes a cache once it reaches 24 hours', async () => {
@@ -143,6 +152,7 @@ describe('skill marketplace catalog', () => {
 
     expect(fetchImplementation).toHaveBeenCalledTimes(1)
     expect(skills).toEqual([
+      ...firstPartySkillDefinitions,
       {
         source: 'example-org/skill-library',
         slug: 'new-top-skill',
@@ -177,7 +187,9 @@ describe('skill marketplace catalog', () => {
       now: () => firstFetchedAt + 1
     })
 
-    expect(staleSkills[0]).toMatchObject({ slug: 'design-review', installs: 42 })
+    expect(staleSkills).toEqual(
+      expect.arrayContaining([expect.objectContaining({ slug: 'design-review', installs: 42 })])
+    )
     expect(fallbackSkills).toEqual(fallbackTopSkillDefinitions)
     expect(cachedFallbackSkills).toEqual(fallbackTopSkillDefinitions)
     expect(unavailable).toHaveBeenCalledTimes(2)
