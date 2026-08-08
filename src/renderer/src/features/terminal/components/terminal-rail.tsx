@@ -1,5 +1,12 @@
-import { CheckCircle2, CircleAlert, LoaderCircle, Square, Terminal as TerminalIcon, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import {
+  CheckCircle2,
+  CircleAlert,
+  LoaderCircle,
+  Square,
+  Terminal as TerminalIcon,
+  X
+} from 'lucide-react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { TerminalEvent, TerminalRun } from '../../../../../shared/terminal'
 import { Button } from '../../../components/ui/button'
@@ -12,6 +19,10 @@ import {
   useStopTerminal,
   useTerminalRuns
 } from '../terminal-query'
+
+const XtermOutput = lazy(() =>
+  import('./xterm-output').then((module) => ({ default: module.XtermOutput }))
+)
 
 function StatusIcon({ status }: { status: TerminalRun['status'] }): React.JSX.Element {
   if (status === 'running') return <LoaderCircle className="size-3.5 animate-spin text-blue-500" />
@@ -39,7 +50,10 @@ export function TerminalRail({
   const [liveRun, setLiveRun] = useState<TerminalRun | null>(null)
   const [streamError, setStreamError] = useState<string | null>(null)
   const selected = useMemo(
-    () => runs.find((run) => run.id === selectedId) ?? runs.find((run) => run.status === 'running') ?? runs[0],
+    () =>
+      runs.find((run) => run.id === selectedId) ??
+      runs.find((run) => run.status === 'running') ??
+      runs[0],
     [runs, selectedId]
   )
 
@@ -75,7 +89,14 @@ export function TerminalRail({
           </h2>
           <p className="text-[11px] text-muted-foreground">{t('terminalRail.description')}</p>
         </div>
-        <Button type="button" variant="ghost" size="icon" className="size-7" onClick={onClose} aria-label={t('terminalRail.close')}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          onClick={onClose}
+          aria-label={t('terminalRail.close')}
+        >
           <X className="size-4" />
         </Button>
       </header>
@@ -98,11 +119,22 @@ export function TerminalRail({
             aria-label={t('terminalRail.commandLabel')}
             className="h-8 font-mono text-xs"
           />
-          <Button type="submit" size="sm" className="h-8" disabled={!command.trim() || startMutation.isPending}>
+          <Button
+            type="submit"
+            size="sm"
+            className="h-8"
+            disabled={!command.trim() || startMutation.isPending}
+          >
             {t('terminalRail.run')}
           </Button>
         </form>
-        {startMutation.error ? <p className="mt-2 text-xs text-destructive">{startMutation.error instanceof Error ? startMutation.error.message : t('terminalRail.startFailed')}</p> : null}
+        {startMutation.error ? (
+          <p className="mt-2 text-xs text-destructive">
+            {startMutation.error instanceof Error
+              ? startMutation.error.message
+              : t('terminalRail.startFailed')}
+          </p>
+        ) : null}
       </div>
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex min-h-full flex-col gap-3 p-3">
@@ -125,15 +157,48 @@ export function TerminalRail({
           {selected ? (
             <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border/60 bg-black/90">
               <div className="flex items-center justify-between border-b border-white/10 px-3 py-2 text-[10px] text-white/60">
-                <span className="truncate font-mono">{selected.cwd} · {liveRun?.status ?? selected.status}</span>
+                <span className="truncate font-mono">
+                  {selected.cwd} · {liveRun?.status ?? selected.status}
+                </span>
                 {liveRun?.status === 'running' ? (
-                  <Button type="button" variant="ghost" size="icon" className="size-6 text-white/70 hover:text-white" onClick={() => void stopMutation.mutateAsync(selected.id)} aria-label={t('terminalRail.stop')}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 text-white/70 hover:text-white"
+                    onClick={() => void stopMutation.mutateAsync(selected.id)}
+                    aria-label={t('terminalRail.stop')}
+                  >
                     <Square className="size-3" />
                   </Button>
                 ) : null}
               </div>
-              {streamError ? <p role="alert" className="border-b border-red-300/20 bg-red-500/10 px-3 py-2 text-[10px] text-red-200">{streamError}</p> : null}
-              <pre aria-live="polite" className="max-h-[28rem] min-h-48 overflow-auto whitespace-pre-wrap p-3 font-mono text-[11px] leading-relaxed text-white/85">{output || t('terminalRail.waiting')}</pre>
+              {streamError ? (
+                <p
+                  role="alert"
+                  className="border-b border-red-300/20 bg-red-500/10 px-3 py-2 text-[10px] text-red-200"
+                >
+                  {streamError}
+                </p>
+              ) : null}
+              {output ? (
+                <Suspense
+                  fallback={
+                    <pre
+                      aria-live="polite"
+                      className="max-h-[28rem] min-h-48 overflow-auto whitespace-pre-wrap p-3 font-mono text-[11px] leading-relaxed text-white/85"
+                    >
+                      {output}
+                    </pre>
+                  }
+                >
+                  <XtermOutput output={output} ariaLabel={t('terminalRail.outputLabel')} />
+                </Suspense>
+              ) : (
+                <p className="min-h-48 p-3 font-mono text-[11px] leading-relaxed text-white/60">
+                  {t('terminalRail.waiting')}
+                </p>
+              )}
             </div>
           ) : (
             <div className="grid min-h-48 place-items-center rounded-xl border border-dashed border-border/70 p-4 text-center text-xs text-muted-foreground">

@@ -52,6 +52,8 @@ import { registerGitRoute } from './routes/git-route'
 import type { PythonToolingService } from '../python/python-tooling-service'
 import { registerPythonRoute } from './routes/python-route'
 import { registerMemoriesRoute } from './routes/memories-route'
+import { registerWorkspaceFilesRoute } from './routes/workspace-files-route'
+import type { WorkspaceFileService } from '../workspaces/workspace-file-service'
 
 type CreateAppOptions = {
   token: string
@@ -106,6 +108,7 @@ type CreateAppOptions = {
   }
   agentRuntime?: AppAgentRuntime
   terminal?: TerminalService
+  files?: WorkspaceFileService
   git?: GitReviewService
   python?: PythonToolingService
   automations?: {
@@ -250,6 +253,12 @@ export function createApp(options: CreateAppOptions): Hono {
       registerTerminalRoute(app, {
         runtime: options.agentRuntime,
         terminal: options.terminal
+      })
+    }
+    if (options.files) {
+      registerWorkspaceFilesRoute(app, {
+        runtime: options.agentRuntime,
+        files: options.files
       })
     }
     if (options.git) {

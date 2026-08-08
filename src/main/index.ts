@@ -78,6 +78,8 @@ import { McpOAuthService } from './mcp/mcp-oauth'
 import { TerminalService } from './terminal/terminal-service'
 import { GitReviewService } from './git/git-review-service'
 import { PythonToolingService } from './python/python-tooling-service'
+import { BrowserTabManager } from './browser/browser-tab-manager'
+import { WorkspaceFileService } from './workspaces/workspace-file-service'
 import type { HealthDependencies } from '../shared/health'
 
 const hasSingleInstanceLock = registerSingleInstanceApp({
@@ -109,6 +111,7 @@ let automationService: AutomationService | null = null
 let terminalService: TerminalService | null = null
 let gitReviewService: GitReviewService | null = null
 let pythonToolingService: PythonToolingService | null = null
+let browserTabManager: BrowserTabManager | null = null
 let gracefulQuitStarted = false
 
 function logAppLifecycle(eventName: string, data?: Record<string, unknown>): void {
@@ -654,6 +657,7 @@ async function startLocalApiServer(): Promise<void> {
     },
     agentRuntime: agentRuntimeManager,
     terminal: terminalService,
+    files: new WorkspaceFileService(),
     git: gitReviewService,
     python: pythonToolingService,
     automations: {
@@ -751,11 +755,14 @@ function createMainWindow(): BrowserWindow {
       sandbox: false
     }
   })
+  browserTabManager = new BrowserTabManager(browserWindow)
 
   browserWindow.on('ready-to-show', () => {
     browserWindow.show()
   })
   browserWindow.on('closed', () => {
+    browserTabManager?.dispose()
+    browserTabManager = null
     if (mainWindow === browserWindow) {
       mainWindow = null
     }
@@ -896,6 +903,8 @@ app.on('before-quit', (event) => {
     appTray.destroy()
     appTray = null
   }
+  browserTabManager?.dispose()
+  browserTabManager = null
   void (async () => {
     automationService?.stop()
     automationService = null

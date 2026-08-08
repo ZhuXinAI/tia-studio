@@ -14,6 +14,8 @@ import {
   ShieldCheck
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense } from 'react'
+import { createPortal } from 'react-dom'
 import { NavLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -71,6 +73,12 @@ import { GitRail } from '../../features/git/components/git-rail'
 import { PythonRail } from '../../features/python/components/python-rail'
 import { BrowserRail } from '../../features/browser/components/browser-rail'
 import { useAppV2ShellRightRail } from './app-v2-shell-right-rail'
+
+const FilesRail = lazy(() =>
+  import('../../features/files/components/files-rail').then((module) => ({
+    default: module.FilesRail
+  }))
+)
 
 type ComposerSettings = Pick<
   AgentSessionSnapshot,
@@ -234,7 +242,9 @@ function ThreadWorkspaceTools({ sessionId }: { sessionId: string }): React.JSX.E
   const { t } = useTranslation()
   const { data: artifacts = [] } = useAgentArtifacts(sessionId)
   const { isOpen, setIsOpen, setHasContent, slotElement } = useAppV2ShellRightRail()
-  const [activeTool, setActiveTool] = useState<'artifacts' | 'terminal' | 'git' | 'python' | 'browser'>('artifacts')
+  const [activeTool, setActiveTool] = useState<
+    'artifacts' | 'terminal' | 'files' | 'git' | 'python' | 'browser'
+  >('artifacts')
 
   useEffect(() => {
     setHasContent(true)
@@ -263,6 +273,20 @@ function ThreadWorkspaceTools({ sessionId }: { sessionId: string }): React.JSX.E
               {artifacts.length}
             </span>
           ) : null}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground"
+          aria-label={t('threads.tools.openFiles')}
+          aria-pressed={isOpen && activeTool === 'files'}
+          onClick={() => {
+            setActiveTool('files')
+            setIsOpen(true)
+          }}
+        >
+          <Folder className="size-3.5" /> {t('threads.tools.files')}
         </Button>
         <Button
           type="button"
@@ -335,6 +359,15 @@ function ThreadWorkspaceTools({ sessionId }: { sessionId: string }): React.JSX.E
           onClose={() => setIsOpen(false)}
         />
       ) : null}
+      {isOpen && activeTool === 'files' ? (
+        <Suspense fallback={<FilesRailLoading slotElement={slotElement} />}>
+          <FilesRail
+            sessionId={sessionId}
+            slotElement={slotElement}
+            onClose={() => setIsOpen(false)}
+          />
+        </Suspense>
+      ) : null}
       {isOpen && activeTool === 'git' ? (
         <GitRail sessionId={sessionId} slotElement={slotElement} onClose={() => setIsOpen(false)} />
       ) : null}
@@ -349,6 +382,21 @@ function ThreadWorkspaceTools({ sessionId }: { sessionId: string }): React.JSX.E
         <BrowserRail slotElement={slotElement} onClose={() => setIsOpen(false)} />
       ) : null}
     </>
+  )
+}
+
+function FilesRailLoading({
+  slotElement
+}: {
+  slotElement: HTMLDivElement | null
+}): React.JSX.Element | null {
+  const { t } = useTranslation()
+  if (!slotElement) return null
+  return createPortal(
+    <div className="grid h-full place-items-center bg-background/95 text-xs text-muted-foreground">
+      {t('filesRail.loading')}
+    </div>,
+    slotElement
   )
 }
 
