@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { AutomationRunRecord } from '../../../../shared/automation-runs'
 import type { SaveTiaAutomationInput, TiaAutomationRecord } from '../../../../shared/automations'
 import { createApiClient } from '../../lib/api-client'
 
@@ -14,6 +15,31 @@ export function useAutomations() {
     queryKey: automationKeys.list(),
     queryFn: () => api.get<TiaAutomationRecord[]>('/v1/automations'),
     refetchInterval: 30_000
+  })
+}
+
+export function useAutomationRuns(automationId: string | null) {
+  return useQuery({
+    queryKey: [...automationKeys.all, 'runs', automationId ?? ''] as const,
+    queryFn: () => api.get<AutomationRunRecord[]>(`/v1/automations/${automationId}/runs`),
+    enabled: Boolean(automationId),
+    refetchInterval: 5_000
+  })
+}
+
+export function useAutomationReviewQueue() {
+  return useQuery({
+    queryKey: [...automationKeys.all, 'review'] as const,
+    queryFn: () => api.get<AutomationRunRecord[]>('/v1/automation-runs/review'),
+    refetchInterval: 5_000
+  })
+}
+
+export function useReviewAutomationRun() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (runId: string) => api.patch<AutomationRunRecord>(`/v1/automation-runs/${runId}/review`),
+    onSuccess: () => client.invalidateQueries({ queryKey: automationKeys.all })
   })
 }
 

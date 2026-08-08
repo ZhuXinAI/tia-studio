@@ -55,6 +55,9 @@ async function runDestructiveV3Cutover(db: AppDatabase): Promise<void> {
   if (marker.rows.length > 0) return
 
   await db.execute('PRAGMA foreign_keys = OFF')
+  await db.execute('DELETE FROM app_automation_runs')
+  await db.execute('DELETE FROM app_artifacts')
+  await db.execute('DELETE FROM app_memories')
   await db.execute('DELETE FROM app_agent_events')
   await db.execute('DELETE FROM app_agent_messages')
   await db.execute('DELETE FROM app_agent_sessions')
@@ -205,6 +208,71 @@ async function ensurePermissionRulesTable(db: AppDatabase): Promise<void> {
   )
 }
 
+async function ensureArtifactsTable(db: AppDatabase): Promise<void> {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_artifacts (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      mime_type TEXT,
+      relative_path TEXT,
+      url TEXT,
+      size_bytes INTEGER,
+      preview_text TEXT,
+      source_message_id TEXT,
+      source_tool_call_id TEXT,
+      source_tool_name TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (session_id) REFERENCES app_agent_sessions(id) ON DELETE CASCADE
+    )
+  `)
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_artifacts_session ON app_artifacts(session_id, created_at DESC)'
+  )
+}
+
+async function ensureAutomationRunsTable(db: AppDatabase): Promise<void> {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_automation_runs (
+      id TEXT PRIMARY KEY,
+      automation_id TEXT NOT NULL,
+      session_id TEXT,
+      status TEXT NOT NULL DEFAULT 'running',
+      started_at TEXT NOT NULL,
+      completed_at TEXT,
+      summary TEXT,
+      error TEXT,
+      FOREIGN KEY (automation_id) REFERENCES app_automations(id) ON DELETE CASCADE,
+      FOREIGN KEY (session_id) REFERENCES app_agent_sessions(id) ON DELETE SET NULL
+    )
+  `)
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_automation_runs_automation ON app_automation_runs(automation_id, started_at DESC)'
+  )
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_automation_runs_review ON app_automation_runs(status, started_at DESC)'
+  )
+}
+
+async function ensureMemoriesTable(db: AppDatabase): Promise<void> {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS app_memories (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (workspace_id) REFERENCES app_workspaces(id) ON DELETE CASCADE
+    )
+  `)
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_app_memories_workspace ON app_memories(workspace_id, enabled, updated_at DESC)'
+  )
+}
+
 export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> {
   const db = createAppDatabase(pathOrUrl)
   await db.execute('PRAGMA foreign_keys = ON')
@@ -223,7 +291,10 @@ export async function migrateAppSchema(pathOrUrl: string): Promise<AppDatabase> 
   await addColumn(db, 'app_agent_messages', 'completed_at', 'TEXT')
   await addColumn(db, 'app_agent_messages', 'error', 'TEXT')
   await ensureAutomationsTable(db)
+  await ensureAutomationRunsTable(db)
+  await ensureMemoriesTable(db)
   await ensurePermissionRulesTable(db)
+  await ensureArtifactsTable(db)
   await runDestructiveV3Cutover(db)
   for (const statement of statements(sql)) await db.execute(statement)
   await backfillKnownContextWindows(db)

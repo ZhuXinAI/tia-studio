@@ -59,18 +59,26 @@ import {
   listDiscoveredSkills,
   listDiscoveredSkillsPage,
   listSkillMarketplace,
+  removeMarketplaceSkill,
   type RecommendedSkillId
 } from './skills/skills-manager'
 import { bringWindowToFront, buildTrayMenuTemplate } from './tray'
 import { UiConfigStore } from './ui-config'
 import { desktopBootstrapQueryParam, type DesktopBootstrap } from '../shared/desktop-bootstrap'
 import { AgentSessionsRepository } from './persistence/repos/agent-sessions-repo'
+import { AgentArtifactsRepository } from './persistence/repos/artifacts-repo'
+import { MemoriesRepository } from './persistence/repos/memories-repo'
 import { AgentRuntimeManager } from './agents/agent-runtime-manager'
 import { McpServerHealthRegistry } from './agents/pi/mcp-server-health'
 import { AutomationsRepository } from './persistence/repos/automations-repo'
+import { AutomationRunsRepository } from './persistence/repos/automation-runs-repo'
 import { AutomationService } from './automations/automation-service'
 import { listWorkspaceFiles } from './workspaces/workspace-file-search'
 import { McpOAuthService } from './mcp/mcp-oauth'
+import { TerminalService } from './terminal/terminal-service'
+import { GitReviewService } from './git/git-review-service'
+import { PythonToolingService } from './python/python-tooling-service'
+import type { HealthDependencies } from '../shared/health'
 
 const hasSingleInstanceLock = registerSingleInstanceApp({
   app,
@@ -98,6 +106,9 @@ let channelMessageRouter: ChannelMessageRouter | null = null
 let uiConfigStore: UiConfigStore | null = null
 let agentRuntimeManager: AgentRuntimeManager | null = null
 let automationService: AutomationService | null = null
+let terminalService: TerminalService | null = null
+let gitReviewService: GitReviewService | null = null
+let pythonToolingService: PythonToolingService | null = null
 let gracefulQuitStarted = false
 
 function logAppLifecycle(eventName: string, data?: Record<string, unknown>): void {
@@ -297,14 +308,22 @@ async function startLocalApiServer(): Promise<void> {
   }
   persistenceDatabasePath = join(app.getPath('userData'), 'tia-studio.db')
   const db = await migrateAppSchema(persistenceDatabasePath)
+  terminalService = new TerminalService()
+  gitReviewService = new GitReviewService()
+  pythonToolingService = new PythonToolingService()
   const providersRepo = new ProvidersRepository(db)
   const permissionRulesRepo = new PermissionRulesRepository(db)
   const agentSessionsRepo = new AgentSessionsRepository(db)
+  const artifactsRepo = new AgentArtifactsRepository(db)
+  const memoriesRepo = new MemoriesRepository(db)
   const automationsRepo = new AutomationsRepository(db)
+  const automationRunsRepo = new AutomationRunsRepository(db)
   const workspaceRecordsRepo = new WorkspaceRecordsRepository(db)
   const workspacesRepo = new WorkspacesRepository({
     workspaceRecordsRepo,
-    builtInChatsRootPath: resolveBuiltInChatsWorkspacePath(app.getPath('userData'))
+    builtInChatsRootPath: resolveBuiltInChatsWorkspacePath(app.getPath('userData')),
+    hasAgentSessions: async (workspaceId) =>
+      (await agentSessionsRepo.listByWorkspace(workspaceId)).length > 0
   })
   const channelsRepo = new ChannelsRepository(db)
   const channelPairingsRepo = new ChannelPairingsRepository(db)
@@ -342,6 +361,7 @@ async function startLocalApiServer(): Promise<void> {
     mcpServersRepo,
     mcpAuthRepository,
     mcpServerHealth,
+    artifactsRepo,
     resolveMcpCommand: (command, args, env) =>
       resolveManagedRuntimeService().resolveManagedCommand(command, args, env),
     stateManagement: {
@@ -370,6 +390,7 @@ async function startLocalApiServer(): Promise<void> {
   })
   automationService = new AutomationService({
     repository: automationsRepo,
+    runsRepository: automationRunsRepo,
     runtime: agentRuntimeManager,
     providers: providersRepo,
     workspaces: workspacesRepo
@@ -478,8 +499,63 @@ async function startLocalApiServer(): Promise<void> {
     agentRuntime: agentRuntimeManager
   })
 
+  const getHealthDependencies = async (): Promise<HealthDependencies> => {
+    const [providers, mcpSettings, channels] = await Promise.all([
+      providersRepo.list(),
+      mcpServersRepo.getSettings(),
+      channelsRepo.list()
+    ])
+    const enabledProviders = providers.filter((provider) => provider.enabled)
+    const activeMcpServers = Object.entries(mcpSettings.mcpServers).filter(
+      ([, server]) => server.isActive
+    )
+    const mcpHealth = mcpServerHealth.list()
+    const connectedMcpServers = activeMcpServers.filter(
+      ([id]) => mcpHealth[id]?.state === 'connected'
+    ).length
+    const erroredMcpServers = activeMcpServers.filter(
+      ([id]) => mcpHealth[id]?.state === 'error' || mcpHealth[id]?.state === 'unsupported'
+    ).length
+    const enabledChannels = channels.filter((channel) => channel.enabled)
+    const erroredChannels = enabledChannels.filter((channel) => Boolean(channel.lastError)).length
+
+    return {
+      providers: {
+        state: enabledProviders.length > 0 ? 'configured' : 'not-configured',
+        configuredCount: enabledProviders.length,
+        healthyCount: 0,
+        errorCount: 0
+      },
+      mcp: {
+        state:
+          activeMcpServers.length === 0
+            ? 'not-configured'
+            : erroredMcpServers > 0
+              ? 'degraded'
+              : connectedMcpServers === activeMcpServers.length
+                ? 'healthy'
+                : 'unknown',
+        configuredCount: activeMcpServers.length,
+        healthyCount: connectedMcpServers,
+        errorCount: erroredMcpServers
+      },
+      channels: {
+        state:
+          enabledChannels.length === 0
+            ? 'not-configured'
+            : erroredChannels > 0
+              ? 'degraded'
+              : 'configured',
+        configuredCount: enabledChannels.length,
+        healthyCount: 0,
+        errorCount: erroredChannels
+      }
+    }
+  }
+
   const apiApp = createApp({
     token: serverConfig.token,
+    health: { getDependencies: getHealthDependencies },
     annotationMode: {
       enabled: isBrowserAnnotationModeEnabled,
       allowedOrigins: annotationAllowedOrigins
@@ -529,6 +605,19 @@ async function startLocalApiServer(): Promise<void> {
           globalSkillsRoot: join(app.getPath('userData'), 'skills')
         })
       },
+      updateMarketplaceSkill: async (input) => {
+        await installMarketplaceSkill({
+          skillId: input.skillId,
+          globalSkillsRoot: join(app.getPath('userData'), 'skills'),
+          force: true
+        })
+      },
+      removeMarketplaceSkill: async (input) => {
+        await removeMarketplaceSkill({
+          skillId: input.skillId,
+          globalSkillsRoot: join(app.getPath('userData'), 'skills')
+        })
+      },
       pickDirectory: async () => pickDirectory()
     },
     repositories: {
@@ -541,7 +630,9 @@ async function startLocalApiServer(): Promise<void> {
       mcpServers: mcpServersRepo,
       mcpOAuthService,
       mcpServerHealth,
-      agentSessions: agentSessionsRepo
+      agentSessions: agentSessionsRepo,
+      artifacts: artifactsRepo,
+      memories: memoriesRepo
     },
     composerMentions: {
       async get(workspacePath) {
@@ -562,8 +653,12 @@ async function startLocalApiServer(): Promise<void> {
       }
     },
     agentRuntime: agentRuntimeManager,
+    terminal: terminalService,
+    git: gitReviewService,
+    python: pythonToolingService,
     automations: {
       repository: automationsRepo,
+      runsRepository: automationRunsRepo,
       service: automationService
     },
     channelService,
@@ -804,6 +899,10 @@ app.on('before-quit', (event) => {
   void (async () => {
     automationService?.stop()
     automationService = null
+    await terminalService?.stopAll()
+    terminalService = null
+    gitReviewService = null
+    pythonToolingService = null
     await agentRuntimeManager?.shutdown()
     agentRuntimeManager = null
     stopLocalApiServer()

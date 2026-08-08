@@ -1,4 +1,7 @@
 import { Hono } from 'hono'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join, relative } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   AgentSessionSnapshot,
@@ -76,6 +79,17 @@ describe('agent route', () => {
           isMissing: false
         })),
         getById: vi.fn(async () => null)
+      },
+      artifactsRepo: {
+        listBySession: vi.fn(async () => [
+          {
+            id: 'artifact-1',
+            sessionId: 'session-1',
+            name: 'report.md',
+            kind: 'text' as const,
+            createdAt: ''
+          }
+        ])
       }
     })
   })
@@ -182,6 +196,108 @@ describe('agent route', () => {
 
     expect(response.status).toBe(400)
     expect(runtime.sendMessage).not.toHaveBeenCalled()
+  })
+
+  it('lists artifacts for an existing session', async () => {
+    const response = await app.request('http://localhost/v1/agent/sessions/session-1/artifacts')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual([
+      expect.objectContaining({ id: 'artifact-1', name: 'report.md' })
+    ])
+  })
+
+  it('downloads an artifact only when it resolves inside the session workspace', async () => {
+    const workspacePath = await mkdtemp(join(tmpdir(), 'tia-artifact-route-'))
+    try {
+      const artifactPath = join(workspacePath, 'report.md')
+      await writeFile(artifactPath, '# Report\n', 'utf8')
+      const artifactRepo = {
+        listBySession: vi.fn(async () => [
+          {
+            id: 'artifact-file',
+            sessionId: 'session-1',
+            name: 'report.md',
+            kind: 'text' as const,
+            mimeType: 'text/markdown',
+            relativePath: 'report.md',
+            createdAt: ''
+          }
+        ])
+      }
+      vi.mocked(runtime.getSession).mockResolvedValue({ ...snapshot, workspacePath })
+      const artifactApp = new Hono()
+      registerAgentRoute(artifactApp, {
+        runtime,
+        sessionsRepo,
+        artifactsRepo: artifactRepo,
+        workspacesRepo: {
+          ensureBuiltInChatsWorkspace: vi.fn(async () => ({
+            ...snapshot,
+            name: 'Chats',
+            rootPath: workspacePath,
+            builtInKind: 'chats' as const,
+            isMissing: false
+          })),
+          getById: vi.fn(async () => null)
+        }
+      })
+
+      const response = await artifactApp.request(
+        'http://localhost/v1/agent/sessions/session-1/artifacts/artifact-file/content'
+      )
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('Content-Disposition')).toContain('attachment')
+      await expect(response.text()).resolves.toBe('# Report\n')
+    } finally {
+      await rm(workspacePath, { recursive: true, force: true })
+    }
+  })
+
+  it('rejects an artifact path that escapes the session workspace', async () => {
+    const workspacePath = await mkdtemp(join(tmpdir(), 'tia-artifact-route-'))
+    const outsidePath = await mkdtemp(join(tmpdir(), 'tia-artifact-outside-'))
+    try {
+      await writeFile(join(outsidePath, 'secret.txt'), 'secret', 'utf8')
+      vi.mocked(runtime.getSession).mockResolvedValue({ ...snapshot, workspacePath })
+      const artifactApp = new Hono()
+      registerAgentRoute(artifactApp, {
+        runtime,
+        sessionsRepo,
+        artifactsRepo: {
+          listBySession: vi.fn(async () => [
+            {
+              id: 'artifact-outside',
+              sessionId: 'session-1',
+              name: 'secret.txt',
+              kind: 'text' as const,
+              relativePath: relative(workspacePath, join(outsidePath, 'secret.txt')),
+              createdAt: ''
+            }
+          ])
+        },
+        workspacesRepo: {
+          ensureBuiltInChatsWorkspace: vi.fn(async () => ({
+            ...snapshot,
+            name: 'Chats',
+            rootPath: workspacePath,
+            builtInKind: 'chats' as const,
+            isMissing: false
+          })),
+          getById: vi.fn(async () => null)
+        }
+      })
+
+      const response = await artifactApp.request(
+        'http://localhost/v1/agent/sessions/session-1/artifacts/artifact-outside/content'
+      )
+
+      expect(response.status).toBe(404)
+    } finally {
+      await rm(outsidePath, { recursive: true, force: true })
+      await rm(workspacePath, { recursive: true, force: true })
+    }
   })
 
   it('changes the active model through the runtime', async () => {

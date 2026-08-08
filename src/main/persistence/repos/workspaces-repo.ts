@@ -1,4 +1,4 @@
-import { access } from 'node:fs/promises'
+import { stat } from 'node:fs/promises'
 import path from 'node:path'
 import type {
   AppStoredWorkspace,
@@ -21,6 +21,7 @@ export type AppWorkspace = {
 }
 
 export type CreateWorkspaceInput = CreateWorkspaceRecordInput
+export type UpdateWorkspaceInput = { name?: string; rootPath?: string }
 export type RelocateWorkspaceInput = { rootPath: string }
 
 type WorkspacesRepositoryOptions = {
@@ -37,6 +38,12 @@ type WorkspacesRepositoryOptions = {
     | 'update'
   >
   builtInChatsRootPath: string
+  /**
+   * Root path changes are rejected while a workspace has persisted threads. Existing
+   * runtimes keep their original cwd, so silently changing the record would break the
+   * workspace boundary for those threads.
+   */
+  hasAgentSessions?: (workspaceId: string) => Promise<boolean>
 }
 
 async function toWorkspace(
@@ -46,7 +53,7 @@ async function toWorkspace(
   let isMissing = false
   if (workspace.id !== builtInWorkspaceId) {
     try {
-      await access(workspace.rootPath)
+      isMissing = !(await stat(workspace.rootPath)).isDirectory()
     } catch {
       isMissing = true
     }
@@ -115,10 +122,31 @@ export class WorkspacesRepository {
 
   async create(input: CreateWorkspaceInput): Promise<AppWorkspace> {
     const builtIn = await this.ensureBuiltInChatsWorkspace()
+    if (await this.options.workspaceRecordsRepo.findByRootPath(input.rootPath)) {
+      throw new Error('A workspace already uses this root path')
+    }
     return toWorkspace(await this.options.workspaceRecordsRepo.create(input), builtIn.id)
   }
 
   async relocate(id: string, input: RelocateWorkspaceInput): Promise<AppWorkspace | null> {
+    return this.update(id, input)
+  }
+
+  async update(id: string, input: UpdateWorkspaceInput): Promise<AppWorkspace | null> {
+    if (input.rootPath) {
+      const existing = await this.options.workspaceRecordsRepo.getById(id)
+      if (!existing) return null
+      if (
+        existing.rootPath !== input.rootPath &&
+        (await this.options.hasAgentSessions?.(id))
+      ) {
+        throw new Error('Close or remove existing threads before changing the workspace root path')
+      }
+      const duplicate = await this.options.workspaceRecordsRepo.findByRootPath(input.rootPath)
+      if (duplicate && duplicate.id !== id) {
+        throw new Error('A workspace already uses this root path')
+      }
+    }
     const updated = await this.options.workspaceRecordsRepo.update(id, input)
     if (!updated) return null
     return toWorkspace(

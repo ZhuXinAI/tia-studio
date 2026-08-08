@@ -3,6 +3,9 @@ import {
   ChevronRight,
   CircleHelp,
   Clock3,
+  Command,
+  Cable,
+  BookOpen,
   Folder,
   FolderPlus,
   LoaderCircle,
@@ -356,11 +359,13 @@ function WorkspaceThreads({
 type AppV2SidebarProps = {
   isCollapsed: boolean
   onToggleCollapsed: () => void
+  onOpenCommandPalette: () => void
 }
 
 export function AppV2Sidebar({
   isCollapsed,
-  onToggleCollapsed
+  onToggleCollapsed,
+  onOpenCommandPalette
 }: AppV2SidebarProps): React.JSX.Element {
   const { t } = useTranslation()
   const location = useLocation()
@@ -504,6 +509,22 @@ export function AppV2Sidebar({
             <MessageSquarePlus className="size-4" />
           </NavLink>
         </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-8"
+          onClick={onOpenCommandPalette}
+          aria-label={t('commandPalette.title')}
+          title="Command palette (Ctrl/⌘K)"
+        >
+          <Search className="size-4" />
+        </Button>
+        <Button asChild variant="ghost" size="icon" className="size-8">
+          <NavLink to="/integrations" aria-label={t('appShell.nav.integrations')} title={t('appShell.nav.integrations')}>
+            <Cable className="size-4" />
+          </NavLink>
+        </Button>
         <Button asChild variant="ghost" size="icon" className="size-8">
           <NavLink
             to="/skills"
@@ -520,6 +541,16 @@ export function AppV2Sidebar({
             title={t('appShell.nav.schedules')}
           >
             <Clock3 className="size-4" />
+          </NavLink>
+        </Button>
+        <Button asChild variant="ghost" size="icon" className="size-8">
+          <NavLink to="/command-center" aria-label={t('appShell.nav.commandCenter')} title={t('appShell.nav.commandCenter')}>
+            <Command className="size-4" />
+          </NavLink>
+        </Button>
+        <Button asChild variant="ghost" size="icon" className="size-8">
+          <NavLink to="/memories" aria-label={t('appShell.nav.memoryVault')} title={t('appShell.nav.memoryVault')}>
+            <BookOpen className="size-4" />
           </NavLink>
         </Button>
         <Button asChild variant="ghost" size="icon" className="mt-auto size-8">
@@ -585,9 +616,27 @@ export function AppV2Sidebar({
             </NavLink>
           </Button>
           <Button asChild variant="ghost" className={sidebarNavItemClassName}>
+            <NavLink to="/integrations">
+              <Cable className="size-3.5" />
+              {t('appShell.nav.integrations')}
+            </NavLink>
+          </Button>
+          <Button asChild variant="ghost" className={sidebarNavItemClassName}>
             <NavLink to="/automations">
               <Clock3 className="size-3.5" />
               {t('appShell.nav.schedules')}
+            </NavLink>
+          </Button>
+          <Button asChild variant="ghost" className={sidebarNavItemClassName}>
+            <NavLink to="/command-center">
+              <Command className="size-3.5" />
+              {t('appShell.nav.commandCenter')}
+            </NavLink>
+          </Button>
+          <Button asChild variant="ghost" className={sidebarNavItemClassName}>
+            <NavLink to="/memories">
+              <BookOpen className="size-3.5" />
+              {t('appShell.nav.memoryVault')}
             </NavLink>
           </Button>
         </div>
@@ -709,6 +758,21 @@ export function AppV2Sidebar({
                 )
               })}
             </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="no-drag h-8 gap-1.5 px-2 text-xs text-muted-foreground"
+              onClick={onOpenCommandPalette}
+              aria-label={t('commandPalette.title')}
+              title="Command palette (Ctrl/⌘K)"
+            >
+              <Search className="size-3.5" />
+              <span>Search</span>
+              <kbd className="rounded border border-[color:var(--chat-surface-border)] px-1 py-0.5 text-[10px]">
+                Ctrl/⌘K
+              </kbd>
+            </Button>
           </div>
         </SidebarSection>
         {errorMessage ? <p className="mt-2 px-2 text-xs text-destructive">{errorMessage}</p> : null}

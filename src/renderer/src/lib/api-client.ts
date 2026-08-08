@@ -43,9 +43,31 @@ async function request<T>(
   return (await response.json()) as T
 }
 
+async function requestBlob(path: string): Promise<Blob> {
+  const bootstrap = await getDesktopBootstrap()
+  const headers: Record<string, string> = {}
+
+  if (bootstrap.authMode === 'bearer' && bootstrap.authToken?.trim()) {
+    headers.Authorization = `Bearer ${bootstrap.authToken}`
+  }
+
+  const response = await fetch(joinUrl(bootstrap.apiBaseUrl, path), {
+    method: 'GET',
+    headers
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw createHttpError(response.status, errorText)
+  }
+
+  return response.blob()
+}
+
 export function createApiClient() {
   return {
     get: <T>(path: string): Promise<T> => request<T>('GET', path),
+    getBlob: (path: string): Promise<Blob> => requestBlob(path),
     post: <T>(path: string, body?: Record<string, unknown>): Promise<T> =>
       request<T>('POST', path, body),
     patch: <T>(path: string, body?: Record<string, unknown>): Promise<T> =>

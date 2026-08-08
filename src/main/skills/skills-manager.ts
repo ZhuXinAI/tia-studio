@@ -774,13 +774,14 @@ export async function listSkillMarketplace(input: {
 export async function installMarketplaceSkill(input: {
   skillId: string
   globalSkillsRoot: string
+  force?: boolean
   cachePath?: string
 }): Promise<void> {
   const definition = await findMarketplaceSkillDefinition(input)
   if (!definition) throw new Error('Skill is not in the TIA catalog')
   const { slug, source } = definition
   const targetRoot = input.globalSkillsRoot
-  if (await hasInstalledSkill(targetRoot, slug)) return
+  if (!input.force && (await hasInstalledSkill(targetRoot, slug))) return
   await mkdir(targetRoot, { recursive: true })
 
   const cloneRoot = await mkdtemp(path.join(os.tmpdir(), 'tia-skill-install-'))

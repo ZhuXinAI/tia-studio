@@ -48,3 +48,66 @@ describe('workspace composer mentions route', () => {
     })
   })
 })
+
+describe('workspace administration route', () => {
+  it('requires an absolute root path and normalizes it before creation', async () => {
+    const create = vi.fn(async (input: { name: string; rootPath: string }) => ({
+      id: 'workspace-1',
+      ...input,
+      builtInKind: null,
+      isMissing: false
+    }))
+    const app = new Hono()
+    registerWorkspacesRoute(app, {
+      workspacesRepo: {
+        create,
+        getById: vi.fn(),
+        list: vi.fn()
+      } as never
+    })
+
+    const relativeResponse = await app.request('http://localhost/v1/workspaces', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Project', rootPath: 'relative/project' })
+    })
+    const validResponse = await app.request('http://localhost/v1/workspaces', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Project', rootPath: '/tmp/project/../project' })
+    })
+
+    expect(relativeResponse.status).toBe(400)
+    expect(validResponse.status).toBe(201)
+    expect(create).toHaveBeenCalledWith({ name: 'Project', rootPath: '/tmp/project' })
+  })
+
+  it('returns a conflict when a workspace root path is already in use', async () => {
+    const app = new Hono()
+    registerWorkspacesRoute(app, {
+      workspacesRepo: {
+        getById: vi.fn(async () => ({
+          id: 'workspace-1',
+          name: 'Project',
+          rootPath: '/tmp/project',
+          builtInKind: null,
+          isMissing: false
+        })),
+        update: vi.fn(async () => {
+          throw new Error('A workspace already uses this root path')
+        })
+      } as never
+    })
+
+    const response = await app.request('http://localhost/v1/workspaces/workspace-1', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rootPath: '/tmp/other' })
+    })
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'A workspace already uses this root path'
+    })
+  })
+})

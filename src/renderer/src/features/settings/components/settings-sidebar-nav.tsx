@@ -1,6 +1,8 @@
 import {
+  Activity,
   ArrowLeft,
   Cloud,
+  FolderCog,
   Info,
   Languages,
   MessageCircleMore,
@@ -43,6 +45,11 @@ const configurationItems: SettingsNavItem[] = [
     titleKey: 'settings.sidebar.items.permissions',
     icon: ShieldCheck,
     to: '/settings/permissions'
+  },
+  {
+    titleKey: 'settings.sidebar.items.workspaces',
+    icon: FolderCog,
+    to: '/settings/workspaces'
   }
 ]
 
@@ -61,6 +68,11 @@ const preferenceItems: SettingsNavItem[] = [
     titleKey: 'settings.sidebar.items.aboutFeedback',
     icon: Info,
     to: '/settings/about'
+  },
+  {
+    titleKey: 'settings.sidebar.items.diagnostics',
+    icon: Activity,
+    to: '/settings/diagnostics'
   }
 ]
 

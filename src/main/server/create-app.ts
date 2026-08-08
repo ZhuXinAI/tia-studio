@@ -34,16 +34,30 @@ import type { RecommendedSkillId } from '../skills/skills-manager'
 import type { SkillMarketplaceRecord } from '../../shared/skill-marketplace'
 import type { ComposerMentions } from '../../shared/composer-mentions'
 import type { AgentSessionsRepository } from '../persistence/repos/agent-sessions-repo'
+import type { AgentArtifactsRepository } from '../persistence/repos/artifacts-repo'
+import type { MemoriesRepository } from '../persistence/repos/memories-repo'
+import type { HealthDependencies } from '../../shared/health'
 import type { AppAgentRuntime } from '../../shared/agent-runtime'
 import { registerAgentRoute } from './routes/agent-route'
 import type { AutomationsRepository } from '../persistence/repos/automations-repo'
+import type { AutomationRunsRepository } from '../persistence/repos/automation-runs-repo'
 import type { AutomationService } from '../automations/automation-service'
 import { registerAutomationsRoute } from './routes/automations-route'
 import { registerPermissionRulesRoute } from './routes/permission-rules-route'
 import { registerSkillsRoute } from './routes/skills-route'
+import type { TerminalService } from '../terminal/terminal-service'
+import { registerTerminalRoute } from './routes/terminal-route'
+import type { GitReviewService } from '../git/git-review-service'
+import { registerGitRoute } from './routes/git-route'
+import type { PythonToolingService } from '../python/python-tooling-service'
+import { registerPythonRoute } from './routes/python-route'
+import { registerMemoriesRoute } from './routes/memories-route'
 
 type CreateAppOptions = {
   token: string
+  health?: {
+    getDependencies: () => Promise<HealthDependencies>
+  }
   annotationMode?: {
     enabled: boolean
     allowedOrigins: string[]
@@ -69,6 +83,8 @@ type CreateAppOptions = {
     listSkillsCatalogPage: (query: DesktopSkillCatalogQuery) => Promise<DesktopSkillCatalogPage>
     listSkillMarketplace: () => Promise<SkillMarketplaceRecord[]>
     installMarketplaceSkill: (input: { skillId: string }) => Promise<void>
+    updateMarketplaceSkill: (input: { skillId: string }) => Promise<void>
+    removeMarketplaceSkill: (input: { skillId: string }) => Promise<void>
     pickDirectory: () => Promise<string | null>
   }
   composerMentions?: {
@@ -85,10 +101,16 @@ type CreateAppOptions = {
     channels: ChannelsRepository
     pairings: ChannelPairingsRepository
     agentSessions?: AgentSessionsRepository
+    artifacts?: AgentArtifactsRepository
+    memories?: MemoriesRepository
   }
   agentRuntime?: AppAgentRuntime
+  terminal?: TerminalService
+  git?: GitReviewService
+  python?: PythonToolingService
   automations?: {
     repository: AutomationsRepository
+    runsRepository: AutomationRunsRepository
     service: AutomationService
   }
   channelService?: {
@@ -163,7 +185,7 @@ export function createApp(options: CreateAppOptions): Hono {
       allowUnauthenticatedOrigins
     })
   )
-  registerHealthRoute(app)
+  registerHealthRoute(app, options.health)
 
   if (options.desktop) {
     registerSkillsRoute(app, {
@@ -206,6 +228,11 @@ export function createApp(options: CreateAppOptions): Hono {
         permissionRulesRepo: options.repositories.permissionRules
       })
     }
+    if (options.repositories.memories) {
+      registerMemoriesRoute(app, {
+        memoriesRepo: options.repositories.memories
+      })
+    }
   }
 
   if (
@@ -216,8 +243,27 @@ export function createApp(options: CreateAppOptions): Hono {
     registerAgentRoute(app, {
       runtime: options.agentRuntime,
       sessionsRepo: options.repositories.agentSessions,
+      artifactsRepo: options.repositories.artifacts,
       workspacesRepo: options.repositories.workspaces
     })
+    if (options.terminal) {
+      registerTerminalRoute(app, {
+        runtime: options.agentRuntime,
+        terminal: options.terminal
+      })
+    }
+    if (options.git) {
+      registerGitRoute(app, {
+        runtime: options.agentRuntime,
+        git: options.git
+      })
+    }
+    if (options.python) {
+      registerPythonRoute(app, {
+        runtime: options.agentRuntime,
+        python: options.python
+      })
+    }
   }
 
   if (options.automations) {

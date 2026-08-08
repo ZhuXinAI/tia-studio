@@ -67,6 +67,8 @@ type RegisterDesktopRouteOptions = {
   listSkillsCatalogPage: (query: DesktopSkillCatalogQuery) => Promise<DesktopSkillCatalogPage>
   listSkillMarketplace: () => Promise<SkillMarketplaceRecord[]>
   installMarketplaceSkill: (input: { skillId: string }) => Promise<void>
+  updateMarketplaceSkill: (input: { skillId: string }) => Promise<void>
+  removeMarketplaceSkill: (input: { skillId: string }) => Promise<void>
   pickDirectory: () => Promise<string | null>
 }
 
@@ -270,6 +272,30 @@ export function registerDesktopRoute(app: Hono, options: RegisterDesktopRouteOpt
         { ok: false as const, error: `Skill installation failed: ${message}` },
         502
       )
+    }
+  })
+
+  app.post('/v1/desktop/skill-marketplace/update', async (context) => {
+    const parsed = await readValidatedJsonBody(context, marketplaceInstallSchema)
+    if (!parsed.ok) return parsed.response
+    try {
+      await options.updateMarketplaceSkill(parsed.data)
+      return context.json({ ok: true as const })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown update error'
+      return context.json({ ok: false as const, error: `Skill update failed: ${message}` }, 502)
+    }
+  })
+
+  app.post('/v1/desktop/skill-marketplace/remove', async (context) => {
+    const parsed = await readValidatedJsonBody(context, marketplaceInstallSchema)
+    if (!parsed.ok) return parsed.response
+    try {
+      await options.removeMarketplaceSkill(parsed.data)
+      return context.body(null, 204)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown removal error'
+      return context.json({ ok: false as const, error: `Skill removal failed: ${message}` }, 502)
     }
   })
 

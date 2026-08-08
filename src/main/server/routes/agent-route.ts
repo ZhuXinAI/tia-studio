@@ -2,9 +2,13 @@ import type { Hono } from 'hono'
 import { z } from 'zod'
 import type { AppAgentRuntime } from '../../../shared/agent-runtime'
 import type { AgentSessionsRepository } from '../../persistence/repos/agent-sessions-repo'
+import type { AgentArtifactsRepository } from '../../persistence/repos/artifacts-repo'
 import type { WorkspacesRepository } from '../../persistence/repos/workspaces-repo'
 import { logger } from '../../utils/logger'
-import { resolve } from 'node:path'
+import { createReadStream } from 'node:fs'
+import { realpath, stat } from 'node:fs/promises'
+import { Readable } from 'node:stream'
+import { basename, isAbsolute, relative, resolve, sep } from 'node:path'
 
 const thinkingLevel = z.enum(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])
 const accessMode = z.enum(['standard', 'full'])
@@ -66,11 +70,39 @@ async function jsonBody(context: { req: { json(): Promise<unknown> } }): Promise
   }
 }
 
+function insideWorkspace(rootPath: string, candidatePath: string): boolean {
+  const pathRelative = relative(resolve(rootPath), resolve(candidatePath))
+  return (
+    pathRelative === '' ||
+    (!pathRelative.startsWith(`..${sep}`) && pathRelative !== '..' && !isAbsolute(pathRelative))
+  )
+}
+
+async function resolveArtifactFile(workspacePath: string, relativePath: string): Promise<string | null> {
+  if (isAbsolute(relativePath)) return null
+  const rootRealPath = await realpath(workspacePath).catch(() => null)
+  if (!rootRealPath) return null
+  const candidatePath = resolve(rootRealPath, relativePath)
+  const candidateRealPath = await realpath(candidatePath).catch(() => null)
+  if (!candidateRealPath || !insideWorkspace(rootRealPath, candidateRealPath)) return null
+  const file = await stat(candidateRealPath).catch(() => null)
+  return file?.isFile() ? candidateRealPath : null
+}
+
+function contentDispositionName(name: string): string {
+  const fallback = basename(name).replace(/[\r\n"]/g, '_') || 'artifact'
+  const encoded = encodeURIComponent(fallback).replace(/['()*]/g, (character) =>
+    `%${character.charCodeAt(0).toString(16).toUpperCase()}`
+  )
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`
+}
+
 export function registerAgentRoute(
   app: Hono,
   options: {
     runtime: AppAgentRuntime
     sessionsRepo: AgentSessionsRepository
+    artifactsRepo?: Pick<AgentArtifactsRepository, 'listBySession'>
     workspacesRepo: Pick<WorkspacesRepository, 'ensureBuiltInChatsWorkspace' | 'getById'>
   }
 ): void {
@@ -224,6 +256,57 @@ export function registerAgentRoute(
     } catch (error) {
       return context.json(
         { error: error instanceof Error ? error.message : 'Session not found' },
+        404
+      )
+    }
+  })
+
+  app.get('/v1/agent/sessions/:sessionId/artifacts', async (context) => {
+    if (!options.artifactsRepo) return context.json([])
+    try {
+      await options.runtime.getSession(context.req.param('sessionId'))
+      return context.json(await options.artifactsRepo.listBySession(context.req.param('sessionId')))
+    } catch (error) {
+      return context.json(
+        { error: error instanceof Error ? error.message : 'Session not found' },
+        404
+      )
+    }
+  })
+
+  app.get('/v1/agent/sessions/:sessionId/artifacts/:artifactId/content', async (context) => {
+    if (!options.artifactsRepo) {
+      return context.json({ error: 'Artifact downloads are unavailable' }, 404)
+    }
+
+    try {
+      const session = await options.runtime.getSession(context.req.param('sessionId'))
+      const artifact = (await options.artifactsRepo.listBySession(session.id)).find(
+        (candidate) => candidate.id === context.req.param('artifactId')
+      )
+      if (!artifact?.relativePath) {
+        return context.json({ error: 'Artifact file not found' }, 404)
+      }
+
+      const filePath = await resolveArtifactFile(session.workspacePath, artifact.relativePath)
+      if (!filePath) {
+        return context.json({ error: 'Artifact file is outside the workspace or unavailable' }, 404)
+      }
+
+      const file = await stat(filePath)
+      const stream = Readable.toWeb(createReadStream(filePath)) as unknown as ReadableStream<Uint8Array>
+      return new Response(stream, {
+        headers: {
+          'Content-Type': artifact.mimeType ?? 'application/octet-stream',
+          'Content-Length': String(file.size),
+          'Content-Disposition': contentDispositionName(artifact.name),
+          'X-Content-Type-Options': 'nosniff',
+          'Cache-Control': 'no-store'
+        }
+      })
+    } catch (error) {
+      return context.json(
+        { error: error instanceof Error ? error.message : 'Artifact file not found' },
         404
       )
     }

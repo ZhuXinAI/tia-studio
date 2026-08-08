@@ -1,10 +1,11 @@
 import clsx from 'clsx'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { AppV2Sidebar } from './app-v2-sidebar'
 import { AppV2ShellRightRail, AppV2ShellRightRailContext } from './app-v2-shell-right-rail'
 import { isDesktopWindowsPlatform } from '../../lib/desktop-bootstrap'
 import { AppV2TitlebarContext } from './app-v2-titlebar'
+import { CommandPalette } from '../../features/navigation/components/command-palette'
 
 function isWindowsPlatform(): boolean {
   return isDesktopWindowsPlatform()
@@ -14,7 +15,12 @@ export function AppV2Shell(): React.JSX.Element {
   const location = useLocation()
   const isSettingsRoute = location.pathname.startsWith('/settings')
   const isChatRoute = location.pathname === '/chat' || location.pathname.startsWith('/chat/')
-  const isSidebarToolRoute = location.pathname === '/skills' || location.pathname === '/automations'
+  const isSidebarToolRoute =
+    location.pathname === '/skills' ||
+    location.pathname === '/automations' ||
+    location.pathname === '/command-center' ||
+    location.pathname === '/integrations' ||
+    location.pathname === '/memories'
   const isWorkspaceRoute = /^\/workspaces\/[^/]+(?:\/|$)/.test(location.pathname)
   const isThreadChromeRoute = isChatRoute || isWorkspaceRoute
   const shouldShowSidebar = isChatRoute || isWorkspaceRoute || isSidebarToolRoute
@@ -23,6 +29,7 @@ export function AppV2Shell(): React.JSX.Element {
   const [hasRightRailContent, setHasRightRailContent] = useState(false)
   const [rightRailSlotElement, setRightRailSlotElement] = useState<HTMLDivElement | null>(null)
   const [titlebarTitle, setTitlebarTitle] = useState<string | null>(null)
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
   const titlebarSidebarWidth = shouldShowSidebar ? (isSidebarCollapsed ? '3rem' : '18rem') : '0px'
   const toggleRightRail = useCallback(() => {
     setIsRightRailOpen((current) => !current)
@@ -38,6 +45,16 @@ export function AppV2Shell(): React.JSX.Element {
     [isRightRailOpen, rightRailSlotElement, toggleRightRail]
   )
   const titlebarContextValue = useMemo(() => ({ setTitle: setTitlebarTitle }), [])
+  useEffect(() => {
+    function handleGlobalKeyDown(event: KeyboardEvent): void {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setIsCommandPaletteOpen((current) => !current)
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [])
   return (
     <AppV2TitlebarContext.Provider value={titlebarContextValue}>
       <AppV2ShellRightRailContext.Provider value={rightRailContextValue}>
@@ -68,6 +85,7 @@ export function AppV2Shell(): React.JSX.Element {
                 <AppV2Sidebar
                   isCollapsed={isSidebarCollapsed}
                   onToggleCollapsed={() => setIsSidebarCollapsed((current) => !current)}
+                  onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
                 />
               ) : null}
               <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -75,9 +93,7 @@ export function AppV2Shell(): React.JSX.Element {
                   <main
                     className={clsx(
                       'min-h-0 min-w-0 flex-1',
-                      isThreadChromeRoute
-                        ? 'bg-background'
-                        : 'bg-[color:var(--surface-paper)]',
+                      isThreadChromeRoute ? 'bg-background' : 'bg-[color:var(--surface-paper)]',
                       !isWindowsPlatform() && 'pt-8',
                       isSettingsRoute ? 'overflow-hidden' : 'overflow-hidden'
                     )}
@@ -92,6 +108,9 @@ export function AppV2Shell(): React.JSX.Element {
             </div>
           </div>
         </div>
+        {isCommandPaletteOpen ? (
+          <CommandPalette open={isCommandPaletteOpen} onOpenChange={setIsCommandPaletteOpen} />
+        ) : null}
       </AppV2ShellRightRailContext.Provider>
     </AppV2TitlebarContext.Provider>
   )

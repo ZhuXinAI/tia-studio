@@ -2,8 +2,13 @@ import {
   Check,
   ChevronDown,
   Circle,
+  Code2,
   Folder,
+  GitBranch,
+  Globe2,
   ListTodo,
+  PackageOpen,
+  Terminal as TerminalIcon,
   Search,
   Shield,
   ShieldCheck
@@ -50,7 +55,6 @@ import { useProviders } from '../../features/settings/providers/providers-query'
 import { useWorkspaces } from '../../features/workspaces/workspaces-query'
 import type { WorkspaceRecord } from '../../features/workspaces/workspaces-query'
 import { toErrorMessage } from '../../features/threads/thread-page-routing'
-import { useAppV2ShellRightRail } from './app-v2-shell-right-rail'
 import { useAppV2Titlebar } from './app-v2-titlebar'
 import {
   Collapsible,
@@ -60,6 +64,13 @@ import {
 import type { ProviderRecord } from '../../features/settings/providers/providers-query'
 import { useTranslation } from '../../i18n/use-app-translation'
 import { normalizeThinkingLevelForProvider } from '../../../../shared/thinking'
+import { ArtifactRail } from '../../features/artifacts/components/artifact-rail'
+import { useAgentArtifacts } from '../../features/artifacts/artifacts-query'
+import { TerminalRail } from '../../features/terminal/components/terminal-rail'
+import { GitRail } from '../../features/git/components/git-rail'
+import { PythonRail } from '../../features/python/components/python-rail'
+import { BrowserRail } from '../../features/browser/components/browser-rail'
+import { useAppV2ShellRightRail } from './app-v2-shell-right-rail'
 
 type ComposerSettings = Pick<
   AgentSessionSnapshot,
@@ -216,6 +227,128 @@ function ThreadComposerBehavior({
         <option value="steer">{t('threads.composer.steer')}</option>
       </select>
     </div>
+  )
+}
+
+function ThreadWorkspaceTools({ sessionId }: { sessionId: string }): React.JSX.Element {
+  const { t } = useTranslation()
+  const { data: artifacts = [] } = useAgentArtifacts(sessionId)
+  const { isOpen, setIsOpen, setHasContent, slotElement } = useAppV2ShellRightRail()
+  const [activeTool, setActiveTool] = useState<'artifacts' | 'terminal' | 'git' | 'python' | 'browser'>('artifacts')
+
+  useEffect(() => {
+    setHasContent(true)
+    return () => setHasContent(false)
+  }, [setHasContent])
+
+  return (
+    <>
+      <div className="flex items-center gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground"
+          aria-label={t('threads.tools.openArtifacts')}
+          aria-pressed={isOpen && activeTool === 'artifacts'}
+          onClick={() => {
+            setActiveTool('artifacts')
+            setIsOpen(true)
+          }}
+        >
+          <PackageOpen className="size-3.5" />
+          {t('threads.tools.artifacts')}
+          {artifacts.length ? (
+            <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
+              {artifacts.length}
+            </span>
+          ) : null}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground"
+          aria-label={t('threads.tools.openTerminal')}
+          aria-pressed={isOpen && activeTool === 'terminal'}
+          onClick={() => {
+            setActiveTool('terminal')
+            setIsOpen(true)
+          }}
+        >
+          <TerminalIcon className="size-3.5" /> {t('threads.tools.terminal')}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground"
+          aria-label={t('threads.tools.openGit')}
+          aria-pressed={isOpen && activeTool === 'git'}
+          onClick={() => {
+            setActiveTool('git')
+            setIsOpen(true)
+          }}
+        >
+          <GitBranch className="size-3.5" /> {t('threads.tools.git')}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground"
+          aria-label={t('threads.tools.openPython')}
+          aria-pressed={isOpen && activeTool === 'python'}
+          onClick={() => {
+            setActiveTool('python')
+            setIsOpen(true)
+          }}
+        >
+          <Code2 className="size-3.5" /> {t('threads.tools.python')}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground"
+          aria-label={t('threads.tools.openBrowser')}
+          aria-pressed={isOpen && activeTool === 'browser'}
+          onClick={() => {
+            setActiveTool('browser')
+            setIsOpen(true)
+          }}
+        >
+          <Globe2 className="size-3.5" /> {t('threads.tools.preview')}
+        </Button>
+      </div>
+      {isOpen && activeTool === 'artifacts' ? (
+        <ArtifactRail
+          sessionId={sessionId}
+          slotElement={slotElement}
+          onClose={() => setIsOpen(false)}
+        />
+      ) : null}
+      {isOpen && activeTool === 'terminal' ? (
+        <TerminalRail
+          sessionId={sessionId}
+          slotElement={slotElement}
+          onClose={() => setIsOpen(false)}
+        />
+      ) : null}
+      {isOpen && activeTool === 'git' ? (
+        <GitRail sessionId={sessionId} slotElement={slotElement} onClose={() => setIsOpen(false)} />
+      ) : null}
+      {isOpen && activeTool === 'python' ? (
+        <PythonRail
+          sessionId={sessionId}
+          slotElement={slotElement}
+          onClose={() => setIsOpen(false)}
+        />
+      ) : null}
+      {isOpen && activeTool === 'browser' ? (
+        <BrowserRail slotElement={slotElement} onClose={() => setIsOpen(false)} />
+      ) : null}
+    </>
   )
 }
 
@@ -394,7 +527,6 @@ export function ThreadPageV2(): React.JSX.Element {
   const [draftAccessMode, setDraftAccessMode] = useState<'standard' | 'full'>('standard')
   const [isCreatingThread, setIsCreatingThread] = useState(false)
   const modelReconciliationRef = useRef<string | null>(null)
-  const rightRail = useAppV2ShellRightRail()
   const { setTitle: setTitlebarTitle } = useAppV2Titlebar()
 
   const workspace = useMemo(() => {
@@ -441,10 +573,6 @@ export function ThreadPageV2(): React.JSX.Element {
     }
     setDraftThinkingLevel((current) => resolveProviderThinkingLevel(draftProvider, current))
   }, [draftModelId, draftProvider, draftProviderId])
-
-  useEffect(() => {
-    rightRail.setHasContent(false)
-  }, [rightRail])
 
   useEffect(() => {
     setTitlebarTitle(session?.title ?? null)
@@ -633,6 +761,7 @@ export function ThreadPageV2(): React.JSX.Element {
                     behavior={behavior}
                     onBehaviorChange={setBehavior}
                   />
+                  <ThreadWorkspaceTools sessionId={session.id} />
                   <ThreadTodoPanel todos={session.todos ?? []} />
                   <ThreadQueuePanel queue={session.queue} />
                   {session.pendingInteraction ? (

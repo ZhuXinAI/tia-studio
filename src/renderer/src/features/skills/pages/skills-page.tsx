@@ -1,12 +1,17 @@
 import { useMemo, useState } from 'react'
-import { Cable, Check, Download, Search, Sparkles } from 'lucide-react'
+import { Cable, Check, Download, RefreshCw, Search, Sparkles, Trash2, Upload } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { cn } from '../../../lib/utils'
 import { McpServersSettingsPage } from '../../settings/pages/mcp-servers-settings-page'
-import { useInstallMarketplaceSkill, useSkillMarketplace } from '../skills-query'
+import {
+  useInstallMarketplaceSkill,
+  useRemoveMarketplaceSkill,
+  useSkillMarketplace,
+  useUpdateMarketplaceSkill
+} from '../skills-query'
 import { getVisibleMarketplaceSkills } from '../marketplace-visibility'
 import { useTranslation } from '../../../i18n/use-app-translation'
 
@@ -21,8 +26,10 @@ export function SkillsPage(): React.JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') === 'mcps' ? 'mcps' : 'skills'
   const [query, setQuery] = useState('')
-  const { data: skills = [], isLoading } = useSkillMarketplace()
+  const { data: skills = [], isLoading, isFetching, refetch } = useSkillMarketplace()
   const installMutation = useInstallMarketplaceSkill()
+  const updateMutation = useUpdateMarketplaceSkill()
+  const removeMutation = useRemoveMarketplaceSkill()
   const visibleSkills = useMemo(() => getVisibleMarketplaceSkills(skills, query), [query, skills])
 
   async function install(skillId: string): Promise<void> {
@@ -34,6 +41,28 @@ export function SkillsPage(): React.JSX.Element {
     }
   }
 
+  async function update(skillId: string): Promise<void> {
+    try {
+      await updateMutation.mutateAsync({ skillId })
+      toast.success('Skill updated')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Skill update failed')
+    }
+  }
+
+  async function remove(skillId: string, name: string): Promise<void> {
+    if (!window.confirm(`Remove “${name}” from TIA Studio?`)) return
+    try {
+      await removeMutation.mutateAsync({ skillId })
+      toast.success('Skill removed')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Skill removal failed')
+    }
+  }
+
+  const mutationPending =
+    installMutation.isPending || updateMutation.isPending || removeMutation.isPending
+
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden bg-[color:var(--surface-paper)]">
       <header className="border-b border-[color:var(--surface-border)] px-7 pt-5">
@@ -42,6 +71,9 @@ export function SkillsPage(): React.JSX.Element {
             <h1 className="text-2xl font-semibold tracking-tight">{t('skills.title')}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{t('skills.description')}</p>
           </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
+            <RefreshCw className={cn('size-3.5', isFetching && 'animate-spin')} /> Refresh
+          </Button>
         </div>
         <nav className="flex gap-6" aria-label={t('skills.extensionsLabel')}>
           {[
@@ -86,8 +118,13 @@ export function SkillsPage(): React.JSX.Element {
           <div className="chat-scrollbar min-h-0 flex-1 overflow-y-auto px-7 py-5">
             <div className="mx-auto max-w-5xl">
               <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
-                <span>{t('skills.catalogLabel')}</span>
-                <span>{t('skills.globalScope')}</span>
+                <span>
+                  {t('skills.catalogLabel')} · {visibleSkills.length} shown
+                </span>
+                <span>
+                  {skills.filter((skill) => skill.installedGlobal).length} installed ·{' '}
+                  {t('skills.globalScope')}
+                </span>
               </div>
               {isLoading ? (
                 <p className="py-8 text-sm text-muted-foreground">{t('skills.loading')}</p>
@@ -121,7 +158,7 @@ export function SkillsPage(): React.JSX.Element {
                       variant="ghost"
                       size="sm"
                       className="shrink-0"
-                      disabled={installMutation.isPending || skill.installedGlobal}
+                      disabled={mutationPending || skill.installedGlobal}
                       onClick={() => void install(skill.id)}
                     >
                       {skill.installedGlobal ? (
@@ -131,6 +168,30 @@ export function SkillsPage(): React.JSX.Element {
                       )}{' '}
                       {skill.installedGlobal ? t('skills.installed') : t('skills.install')}
                     </Button>
+                    {skill.installedGlobal ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="shrink-0"
+                          disabled={mutationPending}
+                          onClick={() => void update(skill.id)}
+                        >
+                          <Upload className="size-3.5" /> Update
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 text-muted-foreground hover:text-destructive"
+                          disabled={mutationPending}
+                          onClick={() => void remove(skill.id, skill.name)}
+                          aria-label={`Remove ${skill.name}`}
+                          title={`Remove ${skill.name}`}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </>
+                    ) : null}
                   </article>
                 ))}
               </div>

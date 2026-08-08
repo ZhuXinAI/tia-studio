@@ -2,6 +2,7 @@ import type { Hono } from 'hono'
 import { z } from 'zod'
 import type { AutomationService } from '../../automations/automation-service'
 import type { AutomationsRepository } from '../../persistence/repos/automations-repo'
+import type { AutomationRunsRepository } from '../../persistence/repos/automation-runs-repo'
 
 const saveAutomationSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -26,7 +27,14 @@ async function body(context: { req: { json(): Promise<unknown> } }): Promise<unk
 
 export function registerAutomationsRoute(
   app: Hono,
-  options: { repository: AutomationsRepository; service: AutomationService }
+  options: {
+    repository: AutomationsRepository
+    runsRepository: Pick<
+      AutomationRunsRepository,
+      'listByAutomation' | 'listNeedsReview' | 'markReviewed'
+    >
+    service: AutomationService
+  }
 ): void {
   app.get('/v1/automations', async (context) => context.json(await options.repository.list()))
 
@@ -55,6 +63,28 @@ export function registerAutomationsRoute(
       return context.json(
         { error: error instanceof Error ? error.message : 'Automation execution failed' },
         404
+      )
+    }
+  })
+
+  app.get('/v1/automations/:automationId/runs', async (context) => {
+    return context.json(await options.runsRepository.listByAutomation(context.req.param('automationId')))
+  })
+
+  app.get('/v1/automation-runs/review', async (context) => {
+    return context.json(await options.runsRepository.listNeedsReview())
+  })
+
+  app.patch('/v1/automation-runs/:runId/review', async (context) => {
+    try {
+      const reviewed = await options.runsRepository.markReviewed(context.req.param('runId'))
+      return reviewed
+        ? context.json(reviewed)
+        : context.json({ error: 'Automation run not found' }, 404)
+    } catch (error) {
+      return context.json(
+        { error: error instanceof Error ? error.message : 'Automation run cannot be reviewed' },
+        409
       )
     }
   })

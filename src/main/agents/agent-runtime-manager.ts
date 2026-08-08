@@ -35,6 +35,9 @@ import type { ProvidersRepository } from '../persistence/repos/providers-repo'
 import type { PermissionRulesRepository } from '../persistence/repos/permission-rules-repo'
 import type { McpAuthRepository } from '../persistence/repos/mcp-auth-repo'
 import type { McpServersRepository } from '../persistence/repos/mcp-servers-repo'
+import type { AgentArtifactsRepository } from '../persistence/repos/artifacts-repo'
+import { extractArtifactsFromToolCompleted } from '../artifacts/artifact-extractor'
+import { logger } from '../utils/logger'
 import { writePiModelConfig } from './pi/pi-model-config'
 import {
   createMcpClientTools,
@@ -80,6 +83,7 @@ export type AgentRuntimeManagerOptions = {
   mcpServersRepo?: McpServersRepository
   mcpAuthRepository?: McpAuthRepository
   mcpServerHealth?: McpServerHealthRegistry
+  artifactsRepo?: AgentArtifactsRepository
   resolveMcpCommand?: McpClientToolsOptions['resolveCommand']
   stateManagement?: Omit<TiaStateManagementToolsOptions, 'workspaceRootPath' | 'confirm'>
 }
@@ -1066,6 +1070,39 @@ export class AgentRuntimeManager implements AppAgentRuntime {
       )
     }
     for (const listener of this.listeners.get(event.sessionId) ?? []) listener(event)
+
+    if (
+      event.type === 'tool.completed' &&
+      runtime.persistence === 'durable' &&
+      this.options.artifactsRepo
+    ) {
+      try {
+        const sourceMessageId = runtime.messages.find((message) =>
+          message.parts.some(
+            (part) => part.type === 'tool' && part.toolCallId === event.toolCallId
+          )
+        )?.id
+        const extracted = await extractArtifactsFromToolCompleted(
+          event,
+          runtime.snapshot.workspacePath,
+          sourceMessageId
+        )
+        for (const artifact of extracted) {
+          const persisted = await this.options.artifactsRepo.create(artifact)
+          await this.publish(
+            runtime,
+            runtime.mapper.applicationEvent({ type: 'artifact.created', artifact: persisted })
+          )
+        }
+      } catch (error) {
+        logger.warn('[AgentRuntime] Artifact extraction failed', {
+          event: 'agent-artifact-extraction-failed',
+          sessionId: event.sessionId,
+          toolName: event.toolName,
+          error: error instanceof Error ? error.message : 'Unknown artifact error'
+        })
+      }
+    }
   }
 
   private async requireLive(sessionId: string): Promise<LiveSession> {

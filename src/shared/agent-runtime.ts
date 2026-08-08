@@ -1,3 +1,5 @@
+import type { AgentArtifact } from './artifacts'
+
 export type AgentSessionId = string
 export type AgentMessageId = string
 export type AgentToolCallId = string
@@ -203,6 +205,10 @@ export type AppAgentEvent =
       toolName: string
       output: unknown
       isError: boolean
+    })
+  | (AgentEventBase & {
+      type: 'artifact.created'
+      artifact: AgentArtifact
     })
   | (AgentEventBase & {
       type: 'queue.changed'

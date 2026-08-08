@@ -26,3 +26,21 @@ export function useInstallMarketplaceSkill() {
     onSuccess: () => client.invalidateQueries({ queryKey: skillMarketplaceKeys.all })
   })
 }
+
+export function useUpdateMarketplaceSkill() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { skillId: string }) =>
+      api.post('/v1/desktop/skill-marketplace/update', input),
+    onSuccess: () => client.invalidateQueries({ queryKey: skillMarketplaceKeys.all })
+  })
+}
+
+export function useRemoveMarketplaceSkill() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { skillId: string }) =>
+      api.post('/v1/desktop/skill-marketplace/remove', input),
+    onSuccess: () => client.invalidateQueries({ queryKey: skillMarketplaceKeys.all })
+  })
+}

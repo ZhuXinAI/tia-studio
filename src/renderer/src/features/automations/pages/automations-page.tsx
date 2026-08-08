@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Clock3, Pause, Play, Plus, Save, Trash2, X } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { CheckCircle2, Clock3, ExternalLink, Pause, Play, Plus, Save, Trash2, X } from 'lucide-react'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import type { SaveTiaAutomationInput, TiaAutomationRecord } from '../../../../../shared/automations'
 import { Button } from '../../../components/ui/button'
@@ -11,9 +11,12 @@ import { useProviders } from '../../settings/providers/providers-query'
 import { useWorkspaces } from '../../workspaces/workspaces-query'
 import {
   useAutomations,
+  useAutomationReviewQueue,
+  useAutomationRuns,
   useCreateAutomation,
   useDeleteAutomation,
   useRunAutomation,
+  useReviewAutomationRun,
   useUpdateAutomation
 } from '../automations-query'
 import { useTranslation } from '../../../i18n/use-app-translation'
@@ -76,6 +79,10 @@ function formatTimestamp(value: string | null, locale: string, neverLabel: strin
     : neverLabel
 }
 
+function runStatusLabel(status: string, translate: (key: string) => string): string {
+  return translate(`automations.runStatus.${status}`)
+}
+
 export function AutomationsPage(): React.JSX.Element {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
@@ -86,9 +93,12 @@ export function AutomationsPage(): React.JSX.Element {
   const updateMutation = useUpdateAutomation()
   const deleteMutation = useDeleteAutomation()
   const runMutation = useRunAutomation()
+  const reviewMutation = useReviewAutomationRun()
+  const { data: reviewQueue = [] } = useAutomationReviewQueue()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | 'new' | null>(null)
   const selected = automations.find((item) => item.id === selectedId) ?? null
+  const { data: selectedRuns = [] } = useAutomationRuns(selectedId)
   const [draft, setDraft] = useState<Draft>(() => createDraft([], []))
 
   function scheduleSummary(rrule: string): string {
@@ -152,6 +162,15 @@ export function AutomationsPage(): React.JSX.Element {
     })
   }
 
+  async function reviewRun(runId: string): Promise<void> {
+    try {
+      await reviewMutation.mutateAsync(runId)
+      toast.success(t('automations.reviewed'))
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('automations.reviewFailed'))
+    }
+  }
+
   const mutationPending = createMutation.isPending || updateMutation.isPending
   const showAside = automations.length > 0
   const suggestedSchedules = [
@@ -186,6 +205,23 @@ export function AutomationsPage(): React.JSX.Element {
           <Plus className="size-4" /> {t('automations.new')}
         </Button>
       </header>
+      {reviewQueue.length ? (
+        <div className="flex items-center justify-between gap-3 border-b border-amber-500/20 bg-amber-500/10 px-6 py-3 text-sm">
+          <span className="flex items-center gap-2"><CheckCircle2 className="size-4 text-amber-600" /> {t(reviewQueue.length === 1 ? 'automations.reviewQueueOne' : 'automations.reviewQueueMany', { count: reviewQueue.length })}</span>
+          <div className="flex items-center gap-1">
+            <Button asChild variant="ghost" size="sm"><NavLink to={reviewQueue[0]?.sessionId ? `/chat/${reviewQueue[0].sessionId}` : '/automations'}>{t('automations.reviewLatest')}</NavLink></Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={reviewMutation.isPending || !reviewQueue[0]}
+              onClick={() => reviewQueue[0] && void reviewRun(reviewQueue[0].id)}
+            >
+              {t('automations.markReviewed')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <div
         className={cn(
@@ -420,6 +456,36 @@ export function AutomationsPage(): React.JSX.Element {
                   {selected.lastError}
                 </p>
               ) : null}
+              <section className="rounded-xl border border-[color:var(--surface-border)]">
+                <div className="flex items-center justify-between border-b border-[color:var(--surface-border)] px-4 py-3">
+                  <h3 className="text-sm font-medium">{t('automations.runHistory')}</h3>
+                  <span className="text-xs text-muted-foreground">{selectedRuns.length} runs</span>
+                </div>
+                {selectedRuns.length ? (
+                  <div className="divide-y divide-[color:var(--surface-border)]">
+                    {selectedRuns.slice(0, 8).map((run) => (
+                      <div key={run.id} className="flex items-center justify-between gap-3 px-4 py-3 text-xs">
+                        <div className="min-w-0"><p className="font-medium">{runStatusLabel(run.status, t)}</p><p className="text-muted-foreground">{formatTimestamp(run.startedAt, i18n.language, t('automations.never'))}{run.error ? ` · ${run.error}` : ''}</p></div>
+                        <div className="flex items-center gap-1">
+                          {run.status === 'needs-review' ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-[10px]"
+                              disabled={reviewMutation.isPending}
+                              onClick={() => void reviewRun(run.id)}
+                            >
+                              {t('automations.markReviewed')}
+                            </Button>
+                          ) : null}
+                          {run.sessionId ? <Button asChild variant="ghost" size="icon" className="size-7" aria-label={t('automations.openRun')}><NavLink to={`/chat/${run.sessionId}`}><ExternalLink className="size-3.5" /></NavLink></Button> : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <p className="p-4 text-xs text-muted-foreground">{t('automations.noRuns')}</p>}
+              </section>
               <div className="flex justify-between border-t border-[color:var(--surface-border)] pt-5">
                 <Button variant="outline" onClick={() => void toggleStatus(selected)}>
                   {selected.status === 'active' ? (

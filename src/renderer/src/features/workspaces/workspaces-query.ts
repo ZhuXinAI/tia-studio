@@ -18,6 +18,11 @@ type RelocateWorkspaceInput = {
   rootPath: string
 }
 
+export type UpdateWorkspaceInput = {
+  name?: string
+  rootPath?: string
+}
+
 const apiClient = createApiClient()
 
 export const workspaceKeys = {
@@ -36,6 +41,13 @@ export async function createWorkspace(input: CreateWorkspaceInput): Promise<Work
 export async function relocateWorkspace(
   workspaceId: string,
   input: RelocateWorkspaceInput
+): Promise<WorkspaceRecord> {
+  return apiClient.patch<WorkspaceRecord>(`/v1/workspaces/${workspaceId}`, input)
+}
+
+export async function updateWorkspace(
+  workspaceId: string,
+  input: UpdateWorkspaceInput
 ): Promise<WorkspaceRecord> {
   return apiClient.patch<WorkspaceRecord>(`/v1/workspaces/${workspaceId}`, input)
 }
@@ -69,6 +81,18 @@ export function useRelocateWorkspace() {
   return useMutation({
     mutationFn: ({ workspaceId, input }: { workspaceId: string; input: RelocateWorkspaceInput }) =>
       relocateWorkspace(workspaceId, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.list() })
+    }
+  })
+}
+
+export function useUpdateWorkspace() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ workspaceId, input }: { workspaceId: string; input: UpdateWorkspaceInput }) =>
+      updateWorkspace(workspaceId, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: workspaceKeys.list() })
     }

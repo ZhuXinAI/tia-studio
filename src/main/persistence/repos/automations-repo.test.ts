@@ -6,6 +6,7 @@ import { migrateAppSchema } from '../migrate'
 import { ProvidersRepository } from './providers-repo'
 import { WorkspaceRecordsRepository } from './workspace-records-repo'
 import { AutomationsRepository } from './automations-repo'
+import { AutomationRunsRepository } from './automation-runs-repo'
 import { removeTestDirectory } from '../../../test/remove-test-directory'
 
 let directory: string | null = null
@@ -55,6 +56,17 @@ describe('AutomationsRepository', () => {
       nextRunAt: '2026-07-19T01:00:00.000Z',
       lastError: 'provider unavailable'
     })
+
+    const runsRepository = new AutomationRunsRepository(db)
+    const run = await runsRepository.create({ automationId: created.id })
+    await runsRepository.update(run.id, { status: 'needs-review', summary: 'Ready' })
+    expect(await runsRepository.markReviewed(run.id)).toMatchObject({
+      id: run.id,
+      status: 'completed',
+      summary: 'Ready',
+      completedAt: expect.any(String)
+    })
+    expect(await runsRepository.listNeedsReview()).toEqual([])
 
     expect(await repository.delete(created.id)).toBe(true)
     expect(await repository.list()).toEqual([])
