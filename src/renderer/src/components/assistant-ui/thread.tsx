@@ -16,7 +16,7 @@ import {
   ReasoningTrigger
 } from '@renderer/components/assistant-ui/reasoning'
 import { ToolFallback } from '@renderer/components/assistant-ui/tool-fallback'
-import { WorkTrace } from '@renderer/components/assistant-ui/work-trace'
+import { WorkTraceContent, WorkTraceSummary } from '@renderer/components/assistant-ui/work-trace'
 import { DotMatrix } from '@renderer/components/assistant-ui/dot-matrix'
 import {
   ToolGroupContent,
@@ -60,6 +60,7 @@ import {
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from '../../i18n/use-app-translation'
 import { describeRequestError } from '../../lib/request-errors'
+import { shouldShowUserMessagePending } from './user-message-pending'
 
 export type ThreadGroupPart = MessagePrimitive.GroupedParts.GroupPart
 
@@ -397,6 +398,10 @@ const AssistantMessage: FC = () => {
     ToolGroup,
     ReasoningGroup
   } = useContext(ThreadComponentsContext)
+  const hasWorkTrace = useAuiState((s) =>
+    s.message.parts.some((part) => part.type === 'reasoning' || part.type === 'tool-call')
+  )
+  const [workTraceOpen, setWorkTraceOpen] = useState(false)
 
   const ACTION_BAR_PT = 'pt-1.5'
   // Keep the action bar inside the contained root's paint box, then cancel its reserved space in flow.
@@ -412,6 +417,9 @@ const AssistantMessage: FC = () => {
         data-slot="aui_assistant-message-content"
         className="text-foreground px-2 leading-relaxed wrap-break-word"
       >
+        {hasWorkTrace ? (
+          <WorkTraceSummary open={workTraceOpen} onOpenChange={setWorkTraceOpen} />
+        ) : null}
         <MessagePrimitive.GroupedParts
           groupBy={groupPartByType({
             reasoning: ['group-chainOfThought'],
@@ -422,7 +430,7 @@ const AssistantMessage: FC = () => {
           {({ part, children }) => {
             switch (part.type) {
               case 'group-chainOfThought':
-                return <WorkTrace>{children}</WorkTrace>
+                return <WorkTraceContent open={workTraceOpen}>{children}</WorkTraceContent>
               case 'group-tool':
                 if (ToolGroup) {
                   return <ToolGroup group={part}>{children}</ToolGroup>
@@ -532,13 +540,13 @@ const UserMessage: FC = () => {
 const UserMessagePending: FC = () => {
   const { t } = useTranslation()
   const pending = useAuiState((s) => {
-    if (!s.thread.isRunning) return false
-    if (s.message.isLast) return true
-
-    return (
-      s.message.index === s.thread.messages.length - 2 &&
-      s.thread.messages.at(s.message.index + 1)?.role === 'assistant'
-    )
+    const nextMessage = s.thread.messages.at(s.message.index + 1)
+    return shouldShowUserMessagePending({
+      threadRunning: s.thread.isRunning,
+      isLastMessage: s.message.isLast,
+      nextMessageRole: nextMessage?.role,
+      nextMessageRunning: nextMessage?.status?.type === 'running'
+    })
   })
 
   if (!pending) return null

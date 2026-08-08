@@ -12,7 +12,21 @@ import { AppV2Shell } from './app-v2-shell'
 import { useAppV2ShellRightRail } from './app-v2-shell-right-rail'
 import { useAppV2ShellBottomDrawer } from './app-v2-shell-bottom-drawer'
 
-vi.mock('./app-v2-sidebar', () => ({ AppV2Sidebar: () => <aside>Sidebar</aside> }))
+vi.mock('./app-v2-sidebar', () => ({
+  AppV2Sidebar: ({
+    isCollapsed,
+    onToggleCollapsed
+  }: {
+    isCollapsed: boolean
+    onToggleCollapsed: () => void
+  }) => (
+    <aside data-testid="sidebar-mock" data-collapsed={isCollapsed}>
+      <button type="button" data-testid="sidebar-toggle" onClick={onToggleCollapsed}>
+        Sidebar
+      </button>
+    </aside>
+  )
+}))
 vi.mock('./app-v2-shell-right-rail', async (importOriginal) => {
   const original = await importOriginal<typeof import('./app-v2-shell-right-rail')>()
   return { ...original, AppV2ShellRightRail: () => <aside>Right rail</aside> }
@@ -119,14 +133,21 @@ describe('AppV2Shell window chrome', () => {
       )
     })
 
-    const newChatButton = container.querySelector('a[aria-label="New chat"]')
     const terminalButton = container.querySelector('button[aria-label="Toggle terminal drawer"]')
     const toolsButton = container.querySelector('button[aria-label="Toggle tools panel"]')
-    expect(newChatButton).not.toBeNull()
+    const threadContainer = container.querySelector('[data-testid="app-v2-thread-container"]')
+    expect(container.querySelector('a[aria-label="New chat"]')).toBeNull()
     expect(terminalButton).not.toBeNull()
     expect(toolsButton).not.toBeNull()
+    expect(threadContainer?.contains(terminalButton)).toBe(true)
+    expect(threadContainer?.contains(toolsButton)).toBe(true)
     expect(terminalButton?.getAttribute('aria-pressed')).toBe('false')
     expect(toolsButton?.getAttribute('aria-pressed')).toBe('false')
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-testid="sidebar-toggle"]')?.click()
+    })
+    expect(container.querySelector('a[aria-label="New chat"]')).not.toBeNull()
 
     await act(async () => {
       terminalButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
@@ -139,5 +160,35 @@ describe('AppV2Shell window chrome', () => {
     })
     expect(toolsButton?.getAttribute('aria-pressed')).toBe('true')
     expect(container.textContent).toContain('Right rail')
+  })
+
+  it('starts Windows thread content below the native menu row', async () => {
+    const query = createDesktopBootstrapQueryValue({
+      apiBaseUrl: 'http://127.0.0.1:4769',
+      authMode: 'none',
+      app: { name: 'TIA Studio', version: '0.3.4', platform: 'win32' },
+      capabilities: {
+        autoUpdate: false,
+        managedRuntimes: false,
+        nativeDirectoryPicker: false,
+        runtimeOnboarding: false
+      }
+    })
+    window.history.replaceState({}, '', `/?desktopBootstrap=${query}`)
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={['/chat/thread-1']}>
+          <Routes>
+            <Route element={<AppV2Shell />}>
+              <Route path="/chat/:threadId" element={<div>Thread</div>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      )
+    })
+
+    expect(container.querySelector('.drag-region')).toBeNull()
+    expect(container.querySelector('main')?.className).toContain('pt-8')
   })
 })

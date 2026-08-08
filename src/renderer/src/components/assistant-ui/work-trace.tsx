@@ -1,11 +1,6 @@
 import { useAuiState } from '@assistant-ui/react'
 import { ChevronDownIcon } from 'lucide-react'
-import { useEffect, useState, type FC, type PropsWithChildren } from 'react'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger
-} from '@renderer/components/ui/collapsible'
+import { useEffect, useState, type PropsWithChildren } from 'react'
 import { isWorkTraceActive, resolveWorkDuration } from './work-duration'
 import { DotMatrix } from './dot-matrix'
 import { useTranslation } from '../../i18n/use-app-translation'
@@ -16,7 +11,7 @@ function formatWorkDuration(milliseconds: number): string {
   return `${Math.floor(seconds / 60)}m ${seconds % 60}s`
 }
 
-const WorkTrace: FC<PropsWithChildren> = ({ children }) => {
+function useWorkTracePresentation(): { activelyWorking: boolean; label: string } {
   const { t } = useTranslation()
   const running = useAuiState((state) => state.message.status?.type === 'running')
   const threadRunning = useAuiState((state) => state.thread.isRunning)
@@ -34,7 +29,6 @@ const WorkTrace: FC<PropsWithChildren> = ({ children }) => {
     return typeof duration === 'number' ? duration : undefined
   })
   const startedAt = workStartedAt ?? messageCreatedAt
-  const [open, setOpen] = useState(false)
   const [elapsed, setElapsed] = useState(() => (startedAt ? Date.now() - startedAt : 0))
   const activelyWorking = isWorkTraceActive({
     messageRunning: running,
@@ -63,20 +57,49 @@ const WorkTrace: FC<PropsWithChildren> = ({ children }) => {
     }
   )
 
+  return { activelyWorking, label }
+}
+
+export function WorkTraceSummary({
+  open,
+  onOpenChange
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}): React.JSX.Element {
+  const { t } = useTranslation()
+  const { activelyWorking, label } = useWorkTracePresentation()
+
   return (
-    <Collapsible className="group/work-trace mb-3" open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="flex items-center gap-2 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
-        {activelyWorking ? (
-          <DotMatrix state="thinking" label={t('threads.ui.working')} className="size-3.5" />
-        ) : null}
-        <span className="tabular-nums">{label}</span>
-        <ChevronDownIcon className="size-4 transition-transform group-data-[state=open]/work-trace:rotate-180" />
-      </CollapsibleTrigger>
-      <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-        <div className="flex flex-col gap-2 pb-2 pt-1">{children}</div>
-      </CollapsibleContent>
-    </Collapsible>
+    <button
+      type="button"
+      data-slot="work-trace-trigger"
+      data-state={open ? 'open' : 'closed'}
+      aria-expanded={open}
+      className="group/work-trace mb-3 flex items-center gap-2 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      onClick={() => onOpenChange(!open)}
+    >
+      {activelyWorking ? (
+        <DotMatrix state="thinking" label={t('threads.ui.working')} className="size-3.5" />
+      ) : null}
+      <span className="tabular-nums">{label}</span>
+      <ChevronDownIcon className={`size-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+    </button>
   )
 }
 
-export { WorkTrace }
+export function WorkTraceContent({
+  open,
+  children
+}: PropsWithChildren<{ open: boolean }>): React.JSX.Element | null {
+  if (!open) return null
+
+  return (
+    <div
+      data-slot="work-trace-content"
+      className="flex flex-col gap-2 pb-2 pt-1 animate-in fade-in-0 duration-150"
+    >
+      {children}
+    </div>
+  )
+}

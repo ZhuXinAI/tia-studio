@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { TerminalEvent, TerminalRun } from '../../../../shared/terminal'
+import type {
+  TerminalClientEvent,
+  TerminalEvent,
+  TerminalRun,
+  TerminalSocketEvent
+} from '../../../../shared/terminal'
 import { createApiClient } from '../../lib/api-client'
 import { getDesktopBootstrap } from '../../lib/desktop-bootstrap'
 import { createHttpError } from '../../lib/request-errors'
@@ -23,8 +28,23 @@ export function useTerminalRuns(sessionId: string | null) {
 export function useStartTerminal(sessionId: string) {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: ({ command, cwd }: { command: string; cwd?: string }) =>
-      api.post<TerminalRun>(`/v1/agent/sessions/${sessionId}/terminal`, { command, cwd }),
+    mutationFn: ({
+      command,
+      cwd,
+      cols,
+      rows
+    }: {
+      command?: string
+      cwd?: string
+      cols?: number
+      rows?: number
+    }) =>
+      api.post<TerminalRun>(`/v1/agent/sessions/${sessionId}/terminal`, {
+        ...(command ? { command } : {}),
+        ...(cwd ? { cwd } : {}),
+        ...(cols ? { cols } : {}),
+        ...(rows ? { rows } : {})
+      }),
     onSuccess: () => client.invalidateQueries({ queryKey: terminalKeys.session(sessionId) })
   })
 }
@@ -33,7 +53,9 @@ export function useStopTerminal(sessionId: string) {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (terminalId: string) =>
-      api.post(`/v1/agent/sessions/${encodeURIComponent(sessionId)}/terminal/${encodeURIComponent(terminalId)}/stop`),
+      api.post(
+        `/v1/agent/sessions/${encodeURIComponent(sessionId)}/terminal/${encodeURIComponent(terminalId)}/stop`
+      ),
     onSuccess: () => client.invalidateQueries({ queryKey: terminalKeys.session(sessionId) })
   })
 }
@@ -92,4 +114,59 @@ export function subscribeToTerminal(
     }
   })()
   return () => controller.abort()
+}
+
+export function subscribeToTerminalSocket(
+  sessionId: string,
+  terminalId: string,
+  onEvent: (event: TerminalSocketEvent) => void,
+  onError?: (error: unknown) => void,
+  onClose?: () => void,
+  onOpen?: (send: (event: TerminalClientEvent) => void) => void
+): () => void {
+  let disposed = false
+  let socket: WebSocket | null = null
+
+  void (async () => {
+    try {
+      const bootstrap = await getDesktopBootstrap()
+      if (disposed) return
+
+      const url = new URL(bootstrap.apiBaseUrl)
+      url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+      url.pathname = `/v1/agent/sessions/${encodeURIComponent(sessionId)}/terminal/${encodeURIComponent(terminalId)}/socket`
+      url.search = ''
+      if (bootstrap.authMode === 'bearer' && bootstrap.authToken) {
+        url.searchParams.set('token', bootstrap.authToken)
+      }
+
+      socket = new WebSocket(url)
+      const sendEvent = (event: TerminalClientEvent): void => {
+        if (socket?.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify(event))
+        }
+      }
+      socket.onopen = () => onOpen?.(sendEvent)
+      socket.onmessage = (event) => {
+        try {
+          onEvent(JSON.parse(String(event.data)) as TerminalSocketEvent)
+        } catch (error) {
+          onError?.(error)
+        }
+      }
+      socket.onerror = () => onError?.(new Error('Terminal connection failed'))
+      socket.onclose = () => {
+        socket = null
+        if (!disposed) onClose?.()
+      }
+    } catch (error) {
+      if (!disposed) onError?.(error)
+    }
+  })()
+
+  return () => {
+    disposed = true
+    socket?.close()
+    socket = null
+  }
 }

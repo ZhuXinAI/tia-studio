@@ -76,6 +76,10 @@ import { AutomationService } from './automations/automation-service'
 import { listWorkspaceFiles } from './workspaces/workspace-file-search'
 import { McpOAuthService } from './mcp/mcp-oauth'
 import { TerminalService } from './terminal/terminal-service'
+import {
+  attachTerminalWebSocketServer,
+  type TerminalWebSocketServer
+} from './terminal/terminal-websocket'
 import { GitReviewService } from './git/git-review-service'
 import { PythonToolingService } from './python/python-tooling-service'
 import { BrowserTabManager } from './browser/browser-tab-manager'
@@ -110,6 +114,7 @@ let uiConfigStore: UiConfigStore | null = null
 let agentRuntimeManager: AgentRuntimeManager | null = null
 let automationService: AutomationService | null = null
 let terminalService: TerminalService | null = null
+let terminalWebSocketServer: TerminalWebSocketServer | null = null
 let gitReviewService: GitReviewService | null = null
 let pythonToolingService: PythonToolingService | null = null
 let browserTabManager: BrowserTabManager | null = null
@@ -707,12 +712,17 @@ async function startLocalApiServer(): Promise<void> {
       }
     }
   )
+  terminalWebSocketServer = attachTerminalWebSocketServer({
+    server: localApiServer as import('node:http').Server,
+    terminal: terminalService,
+    token: isBrowserAnnotationModeEnabled ? undefined : serverConfig.token
+  })
 
   await channelMessageRouter.start()
   await channelService.start()
 }
 
-function stopLocalApiServer(): void {
+async function stopLocalApiServer(): Promise<void> {
   if (channelService) {
     void channelService.stop()
     channelService = null
@@ -723,11 +733,11 @@ function stopLocalApiServer(): void {
     channelMessageRouter = null
   }
 
-  if (!localApiServer) {
-    return
-  }
+  const websocketServer = terminalWebSocketServer
+  terminalWebSocketServer = null
+  await websocketServer?.close()
 
-  localApiServer.close()
+  localApiServer?.close()
   localApiServer = null
 }
 
@@ -921,7 +931,7 @@ app.on('before-quit', (event) => {
     pythonToolingService = null
     await agentRuntimeManager?.shutdown()
     agentRuntimeManager = null
-    stopLocalApiServer()
+    await stopLocalApiServer()
     app.quit()
   })()
 })

@@ -16,6 +16,8 @@
       "collapseSidebar": "收起侧边栏",
       "toggleTerminal": "切换终端抽屉",
       "toggleTools": "切换工具面板",
+      "resizeTerminal": "调整终端抽屉大小",
+      "resizeTools": "调整工具面板大小",
       "integrations": "集成",
       "commandCenter": "指挥中心",
       "memoryVault": "记忆库"
@@ -148,7 +150,7 @@
   },
   "terminalRail": {
     "title": "终端",
-    "description": "命令会限制在此工作区内",
+    "description": "连接到此工作区的交互式 Shell",
     "close": "关闭终端",
     "commandPlaceholder": "运行命令…",
     "commandLabel": "终端命令",
@@ -157,7 +159,13 @@
     "stop": "停止终端",
     "outputLabel": "Terminal output",
     "waiting": "等待输出…",
-    "empty": "运行命令后可在此查看输出。"
+    "empty": "",
+    "starting": "正在启动 Shell…",
+    "connecting": "正在连接…",
+    "connected": "已连接",
+    "disconnected": "连接已断开",
+    "exited": "已退出",
+    "connectionFailed": "终端连接失败"
   },
   "pythonRail": {
     "title": "Python",

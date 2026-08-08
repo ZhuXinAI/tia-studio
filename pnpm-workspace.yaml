@@ -8,6 +8,7 @@ allowBuilds:
   electron: true
   electron-winstaller: true
   esbuild: true
+  node-pty: true
   protobufjs: true
   sharp: true
   wechat-kf-relay: true

@@ -8,7 +8,7 @@ import {
   Shield,
   ShieldCheck
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -18,7 +18,7 @@ import type {
   AgentSessionSnapshot,
   AgentTodoItem
 } from '../../../../shared/agent-runtime'
-import { Thread } from '../../components/assistant-ui/thread'
+import { Thread, type ThreadComponents } from '../../components/assistant-ui/thread'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import {
@@ -65,6 +65,25 @@ type ComposerSettings = Pick<
   AgentSessionSnapshot,
   'providerId' | 'provider' | 'modelId' | 'thinkingLevel' | 'accessMode' | 'status'
 >
+
+type ActiveThreadComposerContextValue = {
+  session: AgentSessionSnapshot
+  behavior: AgentSendBehavior
+  providers: ProviderRecord[]
+  workspaces: WorkspaceRecord[]
+  onBehaviorChange: (behavior: AgentSendBehavior) => void
+  onAccessChange: (full: boolean) => void
+  onModelChange: (provider: ProviderRecord, modelId: string) => void
+  onThinkingLevelChange: (level: AgentSessionSnapshot['thinkingLevel']) => void
+}
+
+const ActiveThreadComposerContext = createContext<ActiveThreadComposerContextValue | null>(null)
+
+function useActiveThreadComposerContext(): ActiveThreadComposerContextValue {
+  const context = useContext(ActiveThreadComposerContext)
+  if (!context) throw new Error('Active thread composer context is unavailable')
+  return context
+}
 
 function resolveProviderThinkingLevel(
   provider: ProviderRecord,
@@ -228,6 +247,61 @@ function ThreadComposerBehavior({
       </select>
     </div>
   )
+}
+
+const ActiveThreadComposerHeader: React.FC = () => {
+  const { session, behavior, onBehaviorChange } = useActiveThreadComposerContext()
+
+  return (
+    <>
+      <ThreadComposerBehavior
+        status={session.status}
+        behavior={behavior}
+        onBehaviorChange={onBehaviorChange}
+      />
+      <ThreadTodoPanel todos={session.todos ?? []} />
+      <ThreadQueuePanel queue={session.queue} />
+      {session.pendingInteraction ? (
+        <ThreadInteractionCard sessionId={session.id} request={session.pendingInteraction} />
+      ) : null}
+    </>
+  )
+}
+
+const ActiveThreadComposerLeadingControls: React.FC = () => {
+  const { session, onAccessChange } = useActiveThreadComposerContext()
+  return <ThreadComposerAccessControl settings={session} onAccessChange={onAccessChange} />
+}
+
+const ActiveThreadComposerControls: React.FC = () => {
+  const { session, providers, onModelChange, onThinkingLevelChange } =
+    useActiveThreadComposerContext()
+  return (
+    <ThreadComposerControls
+      settings={session}
+      providers={providers}
+      onModelChange={onModelChange}
+      onThinkingLevelChange={onThinkingLevelChange}
+    />
+  )
+}
+
+const ActiveThreadComposerAddons: React.FC = () => {
+  const { session, workspaces } = useActiveThreadComposerContext()
+  return (
+    <ComposerMentions
+      workspaceId={
+        session.workspaceId ?? workspaces.find((item) => item.builtInKind === 'chats')?.id
+      }
+    />
+  )
+}
+
+const ACTIVE_THREAD_COMPONENTS: ThreadComponents = {
+  ComposerHeader: ActiveThreadComposerHeader,
+  ComposerLeadingControls: ActiveThreadComposerLeadingControls,
+  ComposerControls: ActiveThreadComposerControls,
+  ComposerAddons: ActiveThreadComposerAddons
 }
 
 function DraftWorkspacePicker({
@@ -644,49 +718,20 @@ export function ThreadPageV2(): React.JSX.Element {
           }}
         >
           <ThreadWorkspaceTools sessionId={session.id} />
-          <Thread
-            components={{
-              ComposerHeader: () => (
-                <>
-                  <ThreadComposerBehavior
-                    status={session.status}
-                    behavior={behavior}
-                    onBehaviorChange={setBehavior}
-                  />
-                  <ThreadTodoPanel todos={session.todos ?? []} />
-                  <ThreadQueuePanel queue={session.queue} />
-                  {session.pendingInteraction ? (
-                    <ThreadInteractionCard
-                      sessionId={session.id}
-                      request={session.pendingInteraction}
-                    />
-                  ) : null}
-                </>
-              ),
-              ComposerLeadingControls: () => (
-                <ThreadComposerAccessControl
-                  settings={session}
-                  onAccessChange={(full) => void toggleAccess(full)}
-                />
-              ),
-              ComposerControls: () => (
-                <ThreadComposerControls
-                  settings={session}
-                  providers={providers}
-                  onModelChange={(nextProvider, modelId) => void changeModel(nextProvider, modelId)}
-                  onThinkingLevelChange={(level) => void changeThinkingLevel(level)}
-                />
-              ),
-              ComposerAddons: () => (
-                <ComposerMentions
-                  workspaceId={
-                    session.workspaceId ??
-                    workspaces.find((item) => item.builtInKind === 'chats')?.id
-                  }
-                />
-              )
+          <ActiveThreadComposerContext.Provider
+            value={{
+              session,
+              behavior,
+              providers,
+              workspaces,
+              onBehaviorChange: setBehavior,
+              onAccessChange: (full) => void toggleAccess(full),
+              onModelChange: (nextProvider, modelId) => void changeModel(nextProvider, modelId),
+              onThinkingLevelChange: (level) => void changeThinkingLevel(level)
             }}
-          />
+          >
+            <Thread components={ACTIVE_THREAD_COMPONENTS} />
+          </ActiveThreadComposerContext.Provider>
         </PiThreadRuntimeProvider>
       </div>
     </section>

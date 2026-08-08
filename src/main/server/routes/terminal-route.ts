@@ -5,8 +5,10 @@ import type { TerminalEvent } from '../../../shared/terminal'
 import type { TerminalService } from '../../terminal/terminal-service'
 
 const startTerminalSchema = z.object({
-  command: z.string().trim().min(1).max(8_000),
-  cwd: z.string().trim().max(4_000).optional()
+  command: z.string().trim().min(1).max(8_000).optional(),
+  cwd: z.string().trim().max(4_000).optional(),
+  cols: z.number().int().min(20).max(240).optional(),
+  rows: z.number().int().min(8).max(120).optional()
 })
 
 async function body(context: { req: { json(): Promise<unknown> } }): Promise<unknown> {

@@ -359,15 +359,14 @@ function WorkspaceThreads({
 type AppV2SidebarProps = {
   isCollapsed: boolean
   onToggleCollapsed: () => void
-  onOpenCommandPalette: () => void
 }
 
 export function AppV2Sidebar({
   isCollapsed,
-  onToggleCollapsed,
-  onOpenCommandPalette
+  onToggleCollapsed
 }: AppV2SidebarProps): React.JSX.Element {
   const { t } = useTranslation()
+  const windowsPlatform = isWindowsPlatform()
   const location = useLocation()
   const navigate = useNavigate()
   const params = useParams()
@@ -486,14 +485,14 @@ export function AppV2Sidebar({
       <aside
         className={cn(
           'app-shell-pane flex h-full w-12 shrink-0 flex-col items-center gap-2 border-r border-[color:var(--chat-surface-border)] px-1.5 pb-3',
-          isWindowsPlatform() ? 'pt-3' : 'pt-12'
+          windowsPlatform ? 'px-0 pt-3' : 'pt-12'
         )}
       >
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="no-drag size-8"
+          className={cn('no-drag size-8', windowsPlatform && 'self-start')}
           onClick={onToggleCollapsed}
           aria-label={t('appShell.nav.expandSidebar')}
           title={t('appShell.nav.expandSidebar')}
@@ -508,17 +507,6 @@ export function AppV2Sidebar({
           >
             <MessageSquarePlus className="size-4" />
           </NavLink>
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-8"
-          onClick={onOpenCommandPalette}
-          aria-label={t('commandPalette.title')}
-          title="Command palette (Ctrl/⌘K)"
-        >
-          <Search className="size-4" />
         </Button>
         <Button asChild variant="ghost" size="icon" className="size-8">
           <NavLink to="/integrations" aria-label={t('appShell.nav.integrations')} title={t('appShell.nav.integrations')}>
@@ -570,7 +558,7 @@ export function AppV2Sidebar({
     <aside
       className={cn(
         'app-shell-pane flex h-full w-[18rem] shrink-0 flex-col border-r border-[color:var(--chat-surface-border)]',
-        isWindowsPlatform() ? 'pt-0' : 'pt-9'
+        windowsPlatform ? 'pt-0' : 'pt-9'
       )}
     >
       <div className="space-y-2.5 border-b border-[color:var(--chat-surface-border)] px-3 pb-3.5 pt-2.5">
@@ -580,7 +568,7 @@ export function AppV2Sidebar({
               type="button"
               variant="ghost"
               size="icon"
-              className="no-drag size-8"
+              className={cn('no-drag size-8', windowsPlatform && '-ml-3')}
               onClick={onToggleCollapsed}
               aria-label={t('appShell.nav.collapseSidebar')}
               title={t('appShell.nav.collapseSidebar')}
@@ -758,21 +746,6 @@ export function AppV2Sidebar({
                 )
               })}
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="no-drag h-8 gap-1.5 px-2 text-xs text-muted-foreground"
-              onClick={onOpenCommandPalette}
-              aria-label={t('commandPalette.title')}
-              title="Command palette (Ctrl/⌘K)"
-            >
-              <Search className="size-3.5" />
-              <span>Search</span>
-              <kbd className="rounded border border-[color:var(--chat-surface-border)] px-1 py-0.5 text-[10px]">
-                Ctrl/⌘K
-              </kbd>
-            </Button>
           </div>
         </SidebarSection>
         {errorMessage ? <p className="mt-2 px-2 text-xs text-destructive">{errorMessage}</p> : null}

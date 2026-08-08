@@ -16,6 +16,8 @@
       "collapseSidebar": "Collapse sidebar",
       "toggleTerminal": "Toggle terminal drawer",
       "toggleTools": "Toggle tools panel",
+      "resizeTerminal": "Resize terminal drawer",
+      "resizeTools": "Resize tools panel",
       "integrations": "Integrations",
       "commandCenter": "Command center",
       "memoryVault": "Memory Vault"
@@ -148,7 +150,7 @@
   },
   "terminalRail": {
     "title": "Terminal",
-    "description": "Commands stay inside this workspace",
+    "description": "Interactive shell scoped to this workspace",
     "close": "Close terminal",
     "commandPlaceholder": "Run a command…",
     "commandLabel": "Terminal command",
@@ -157,7 +159,13 @@
     "stop": "Stop terminal",
     "outputLabel": "Terminal output",
     "waiting": "Waiting for output…",
-    "empty": "Run a command to inspect its output here."
+    "empty": "",
+    "starting": "Starting shell…",
+    "connecting": "Connecting…",
+    "connected": "Live",
+    "disconnected": "Disconnected",
+    "exited": "Exited",
+    "connectionFailed": "Terminal connection failed"
   },
   "pythonRail": {
     "title": "Python",
