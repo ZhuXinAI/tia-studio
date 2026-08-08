@@ -16,6 +16,11 @@ export const terminalKeys = {
   session: (sessionId: string) => [...terminalKeys.all, sessionId] as const
 }
 
+export const TERMINAL_SOCKET_CONNECTION_FAILED = 'terminal-socket-connection-failed'
+
+const TERMINAL_SOCKET_MAX_RECONNECT_ATTEMPTS = 5
+const TERMINAL_SOCKET_RECONNECT_BASE_DELAY_MS = 250
+
 export function useTerminalRuns(sessionId: string | null) {
   return useQuery({
     queryKey: terminalKeys.session(sessionId ?? ''),
@@ -121,13 +126,33 @@ export function subscribeToTerminalSocket(
   terminalId: string,
   onEvent: (event: TerminalSocketEvent) => void,
   onError?: (error: unknown) => void,
-  onClose?: () => void,
-  onOpen?: (send: (event: TerminalClientEvent) => void) => void
+  onClose?: (willRetry: boolean) => void,
+  onOpen?: (send: (event: TerminalClientEvent) => void) => void,
+  onRetryExhausted?: () => void
 ): () => void {
   let disposed = false
   let socket: WebSocket | null = null
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  let reconnectAttempt = 0
 
-  void (async () => {
+  const scheduleReconnect = (): boolean => {
+    if (disposed || reconnectAttempt >= TERMINAL_SOCKET_MAX_RECONNECT_ATTEMPTS) return false
+    const delay = Math.min(TERMINAL_SOCKET_RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempt, 2_000)
+    reconnectAttempt += 1
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null
+      void connect()
+    }, delay)
+    return true
+  }
+
+  const handleClose = (): void => {
+    const willRetry = scheduleReconnect()
+    onClose?.(willRetry)
+    if (!willRetry) onRetryExhausted?.()
+  }
+
+  const connect = async (): Promise<void> => {
     try {
       const bootstrap = await getDesktopBootstrap()
       if (disposed) return
@@ -140,33 +165,47 @@ export function subscribeToTerminalSocket(
         url.searchParams.set('token', bootstrap.authToken)
       }
 
-      socket = new WebSocket(url)
+      const currentSocket = new WebSocket(url)
+      socket = currentSocket
       const sendEvent = (event: TerminalClientEvent): void => {
-        if (socket?.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify(event))
+        if (currentSocket.readyState === WebSocket.OPEN) {
+          currentSocket.send(JSON.stringify(event))
         }
       }
-      socket.onopen = () => onOpen?.(sendEvent)
-      socket.onmessage = (event) => {
+      currentSocket.onopen = () => {
+        reconnectAttempt = 0
+        onOpen?.(sendEvent)
+      }
+      currentSocket.onmessage = (event) => {
         try {
           onEvent(JSON.parse(String(event.data)) as TerminalSocketEvent)
         } catch (error) {
           onError?.(error)
         }
       }
-      socket.onerror = () => onError?.(new Error('Terminal connection failed'))
-      socket.onclose = () => {
-        socket = null
-        if (!disposed) onClose?.()
+      currentSocket.onerror = () => {
+        if (disposed || socket !== currentSocket) return
+        onError?.(new Error(TERMINAL_SOCKET_CONNECTION_FAILED))
+        currentSocket.close()
+      }
+      currentSocket.onclose = () => {
+        if (socket === currentSocket) socket = null
+        if (!disposed) handleClose()
       }
     } catch (error) {
-      if (!disposed) onError?.(error)
+      if (disposed) return
+      onError?.(error)
+      handleClose()
     }
-  })()
+  }
+
+  void connect()
 
   return () => {
     disposed = true
+    if (reconnectTimer) clearTimeout(reconnectTimer)
     socket?.close()
+    reconnectTimer = null
     socket = null
   }
 }

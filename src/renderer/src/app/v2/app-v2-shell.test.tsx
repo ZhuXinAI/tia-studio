@@ -133,7 +133,7 @@ describe('AppV2Shell window chrome', () => {
       )
     })
 
-    const terminalButton = container.querySelector('button[aria-label="Toggle terminal drawer"]')
+    const terminalButton = container.querySelector('button[aria-label="Toggle tool drawer"]')
     const toolsButton = container.querySelector('button[aria-label="Toggle tools panel"]')
     const threadContainer = container.querySelector('[data-testid="app-v2-thread-container"]')
     expect(container.querySelector('a[aria-label="New chat"]')).toBeNull()

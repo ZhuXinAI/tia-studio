@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
+import { ScrollArea } from '../../../components/ui/scroll-area'
 import { cn } from '../../../lib/utils'
 import { McpServersSettingsPage } from '../../settings/pages/mcp-servers-settings-page'
 import {
@@ -98,9 +99,11 @@ export function SkillsPage(): React.JSX.Element {
       </header>
 
       {activeTab === 'mcps' ? (
-        <div className="chat-scrollbar min-h-0 flex-1 overflow-y-auto px-7 py-6">
-          <McpServersSettingsPage embedded />
-        </div>
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="px-7 py-6">
+            <McpServersSettingsPage embedded />
+          </div>
+        </ScrollArea>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="border-b border-[color:var(--surface-border)] px-7 py-4">
@@ -115,8 +118,9 @@ export function SkillsPage(): React.JSX.Element {
             </div>
           </div>
 
-          <div className="chat-scrollbar min-h-0 flex-1 overflow-y-auto px-7 py-5">
-            <div className="mx-auto max-w-5xl">
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="px-7 py-5">
+              <div className="mx-auto max-w-5xl">
               <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
                 <span>
                   {t('skills.catalogLabel')} · {visibleSkills.length} shown
@@ -195,8 +199,9 @@ export function SkillsPage(): React.JSX.Element {
                   </article>
                 ))}
               </div>
+              </div>
             </div>
-          </div>
+          </ScrollArea>
         </div>
       )}
     </section>

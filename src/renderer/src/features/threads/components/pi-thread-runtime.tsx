@@ -3,7 +3,8 @@ import {
   SimpleImageAttachmentAdapter,
   useExternalStoreRuntime,
   type AppendMessage,
-  type CompleteAttachment
+  type CompleteAttachment,
+  type ExternalThreadQueueAdapter
 } from '@assistant-ui/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
@@ -176,6 +177,11 @@ export function PiThreadRuntimeProvider({
   const pendingOptimisticMessagesRef = useRef<OptimisticUserMessage[]>([])
   const onSessionChangeRef = useRef(onSessionChange)
   const onErrorRef = useRef(onError)
+  const behaviorRef = useRef(behavior)
+  const statusRef = useRef(session.status)
+  const submitMessageRef = useRef<
+    (message: AppendMessage, requestedBehavior: AgentSendBehavior) => Promise<void>
+  >(async () => undefined)
 
   useEffect(() => {
     onSessionChangeRef.current = onSessionChange
@@ -183,7 +189,12 @@ export function PiThreadRuntimeProvider({
   }, [onError, onSessionChange])
 
   useEffect(() => {
+    behaviorRef.current = behavior
+  }, [behavior])
+
+  useEffect(() => {
     setView((current) => ({ ...current, snapshot: session }))
+    statusRef.current = session.status
   }, [session])
 
   useEffect(() => {
@@ -219,6 +230,7 @@ export function PiThreadRuntimeProvider({
         }
         setView((current) => {
           const next = reduceAgentEvent(current, event)
+          statusRef.current = next.snapshot.status
           if (settledOptimisticMessageId) {
             next.messages = next.messages.filter(
               (message) => message.id !== settledOptimisticMessageId
@@ -238,17 +250,16 @@ export function PiThreadRuntimeProvider({
     [view.snapshot]
   )
 
-  const runtime = useExternalStoreRuntime({
-    isRunning: view.snapshot.status === 'running',
-    isLoading: view.snapshot.status === 'starting' || view.snapshot.status === 'recovering',
-    messages: mergeAssistantRunMessages(view.messages),
-    convertMessage: convertMessageForView,
-    adapters,
-    onNew: async (message) => {
+  const submitMessage = useCallback(
+    async (message: AppendMessage, requestedBehavior: AgentSendBehavior): Promise<void> => {
       const content = extractAppendMessage(message)
       const optimistic = createOptimisticUserMessage(session.id, content)
-      pendingOptimisticMessagesRef.current = [...pendingOptimisticMessagesRef.current, optimistic]
-      const previousStatus = view.snapshot.status
+      const previousStatus = statusRef.current
+      pendingOptimisticMessagesRef.current = [
+        ...pendingOptimisticMessagesRef.current,
+        optimistic
+      ]
+      statusRef.current = 'running'
       setView((current) => ({
         ...current,
         messages: [...current.messages, optimistic.message],
@@ -257,7 +268,7 @@ export function PiThreadRuntimeProvider({
       try {
         const receipt = await sendAgentMessage({
           sessionId: session.id,
-          behavior: resolveActiveSendBehavior(previousStatus, behavior),
+          behavior: resolveActiveSendBehavior(previousStatus, requestedBehavior),
           ...content
         })
         if (!receipt.accepted) throw new Error(receipt.error ?? 'Pi rejected the message')
@@ -265,6 +276,7 @@ export function PiThreadRuntimeProvider({
         pendingOptimisticMessagesRef.current = pendingOptimisticMessagesRef.current.filter(
           (item) => item.message.id !== optimistic.message.id
         )
+        statusRef.current = previousStatus
         setView((current) => ({
           ...current,
           messages: current.messages.filter((item) => item.id !== optimistic.message.id),
@@ -273,6 +285,40 @@ export function PiThreadRuntimeProvider({
         throw error
       }
     },
+    [session.id]
+  )
+
+  useEffect(() => {
+    submitMessageRef.current = submitMessage
+  }, [submitMessage])
+
+  // The main process owns the authoritative follow-up/steer queue. Providing
+  // this adapter keeps Assistant UI's composer enabled during a run while
+  // preserving that server-side queue and its live queue.changed events.
+  const queue = useMemo<ExternalThreadQueueAdapter>(
+    () => ({
+      items: [],
+      enqueue: (message, options) => {
+        void submitMessageRef.current(
+          message,
+          options.steer ? 'steer' : behaviorRef.current
+        ).catch((error) => onErrorRef.current(error))
+      },
+      steer: () => undefined,
+      remove: () => undefined,
+      clear: () => undefined
+    }),
+    []
+  )
+
+  const runtime = useExternalStoreRuntime({
+    isRunning: view.snapshot.status === 'running',
+    isLoading: view.snapshot.status === 'starting' || view.snapshot.status === 'recovering',
+    messages: mergeAssistantRunMessages(view.messages),
+    convertMessage: convertMessageForView,
+    adapters,
+    queue,
+    onNew: (message) => submitMessage(message, behaviorRef.current),
     onCancel: async () => {
       const previousStatus = view.snapshot.status
       setView((current) => ({

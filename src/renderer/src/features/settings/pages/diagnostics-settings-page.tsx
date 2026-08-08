@@ -11,7 +11,6 @@ import {
 } from '../../../components/ui/card'
 import { createApiClient } from '../../../lib/api-client'
 import { useTranslation } from '../../../i18n/use-app-translation'
-import { SettingsContent } from './settings-content'
 
 const api = createApiClient()
 
@@ -43,11 +42,11 @@ export function DiagnosticsSettingsPage(): React.JSX.Element {
   })
 
   return (
-    <SettingsContent size="wide">
+    <>
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="section-kicker">{t('diagnostics.kicker')}</p>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('diagnostics.title')}</h1>
+          <h1 className="settings-page-title">{t('diagnostics.title')}</h1>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
             {t('diagnostics.description')}
           </p>
@@ -186,7 +185,7 @@ export function DiagnosticsSettingsPage(): React.JSX.Element {
           </CardContent>
         </Card>
       </div>
-    </SettingsContent>
+    </>
   )
 }
 

@@ -77,7 +77,11 @@ export function PythonRail({
                     {lastResult.passed ? <CheckCircle2 className="size-3.5 text-emerald-500" /> : <CircleAlert className="size-3.5 text-destructive" />}
                     {lastResult.kind} · {lastResult.durationMs} ms
                   </div>
-                  <pre className="max-h-64 overflow-auto whitespace-pre-wrap p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">{lastResult.output || t('pythonRail.noOutput')}</pre>
+                  <ScrollArea className="max-h-64">
+                    <pre className="whitespace-pre-wrap p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
+                      {lastResult.output || t('pythonRail.noOutput')}
+                    </pre>
+                  </ScrollArea>
                 </div>
               ) : null}
             </>

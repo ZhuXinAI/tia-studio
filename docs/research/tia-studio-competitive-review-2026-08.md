@@ -20,7 +20,7 @@ TIA Studio 已经不是一个只有聊天框的 Agent 壳：它有本机工作�
 
 | # | 当前交付面 | 当前实现证据 | 当前验证/边界 |
 | --- | --- | --- | --- |
-| 1 | Artifact / Result Center | `src/main/artifacts/artifact-extractor.ts`、`src/main/persistence/repos/artifacts-repo.ts`、Artifact rail；文件下载按 session + workspace realpath 校验，默认 attachment | repository、extractor、agent route 测试；不开放任意路径读取，不做文件分享/版本链 |
+| 1 | Artifact / Result Center | `src/main/agents/deliverable-tool.ts`、`src/main/persistence/repos/artifacts-repo.ts`、Artifact rail；只有 Agent 明确发布的 deliverable 才进入面板，文件下载按 session + workspace realpath 校验，默认 attachment | repository、deliverable tool、agent route 测试；不开放任意路径读取，不做文件分享/版本链 |
 | 2 | 集成 Terminal | `src/main/terminal/terminal-service.ts`、session-scoped stop/SSE route、Terminal rail | terminal route/service 测试；cwd 只能来自 session workspace，仍不是 PTY/多机终端 |
 | 3 | Git Review | `src/main/git/git-review-service.ts`、Git rail；diff、分支、stage/unstage | Git service/route 测试；不自动 commit、push、删除或创建 PR |
 | 4 | Python tooling | `src/main/python/python-tooling-service.ts`、Python route/rail；解释器发现、compile、pytest | Python focused tests；仍缺 LSP、断点调试、Profiler、Notebook |

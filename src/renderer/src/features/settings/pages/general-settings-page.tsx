@@ -9,7 +9,6 @@ import {
   type SupportedLocale
 } from '../../../i18n/config'
 import { i18n } from '../../../i18n'
-import { SettingsContent } from './settings-content'
 
 const systemLanguageValue = 'system'
 
@@ -62,11 +61,9 @@ export function GeneralSettingsPage(): React.JSX.Element {
   }
 
   return (
-    <SettingsContent>
+    <>
       <header className="border-b border-[color:var(--surface-border)] pb-5">
-        <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
-          {t('settings.general.title')}
-        </h1>
+        <h1 className="settings-page-title">{t('settings.general.title')}</h1>
       </header>
 
       <section className="space-y-4 rounded-[1.4rem] border border-[color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-paper)_98%,transparent),color-mix(in_srgb,var(--surface-panel)_70%,transparent))] p-6 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_42%,transparent)]">
@@ -96,6 +93,6 @@ export function GeneralSettingsPage(): React.JSX.Element {
           })}
         </p>
       </section>
-    </SettingsContent>
+    </>
   )
 }

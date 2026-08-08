@@ -75,7 +75,7 @@ function TransientThreadSurface({
         sideOffset={10}
         dissmissOnInteractOutside={false}
         aria-label={presentation.title}
-        className="z-[100] flex h-[min(42rem,var(--radix-popover-content-available-height))] w-[min(36rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-[color:var(--surface-border)] bg-background shadow-2xl outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-top-2"
+        className="z-[100] flex max-h-[calc(100dvh-2rem)] min-h-0 min-w-0 h-[min(42rem,var(--radix-popover-content-available-height))] w-[min(36rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-[color:var(--surface-border)] bg-background shadow-2xl outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
       >
         <header className="flex shrink-0 items-center gap-3 border-b border-[color:var(--surface-border)] px-4 py-3">
           <div className="min-w-0 flex-1">
@@ -101,7 +101,7 @@ function TransientThreadSurface({
             </Button>
           </AssistantModalPrimitive.Trigger>
         </header>
-        <div className="min-h-0 flex-1">{children}</div>
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{children}</div>
       </AssistantModalPrimitive.Content>
     </AssistantModalPrimitive.Root>
   )

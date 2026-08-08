@@ -25,6 +25,7 @@ import {
 } from '@renderer/components/assistant-ui/tool-group'
 import { TooltipIconButton } from '@renderer/components/assistant-ui/tooltip-icon-button'
 import { Button } from '@renderer/components/ui/button'
+import { ScrollArea } from '@renderer/components/ui/scroll-area'
 import { cn } from '@renderer/lib/utils'
 import {
   ActionBarPrimitive,
@@ -126,7 +127,7 @@ const ThreadRoot: FC<{
 
   return (
     <ThreadPrimitive.Root
-      className="aui-root aui-thread-root bg-background @container flex h-full flex-col"
+      className="aui-root aui-thread-root min-w-0 bg-background @container flex h-full flex-col"
       style={{
         ['--thread-max-width' as string]: '44rem',
         ['--composer-bg' as string]:
@@ -138,11 +139,11 @@ const ThreadRoot: FC<{
       <ThreadPrimitive.Viewport
         turnAnchor="top"
         data-slot="aui_thread-viewport"
-        className="chat-scrollbar relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth"
+        className="chat-scrollbar relative flex min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-scroll scroll-smooth"
       >
         <div
           className={cn(
-            'mx-auto flex w-full max-w-(--thread-max-width) flex-1 flex-col px-4 pt-4',
+            'mx-auto flex min-w-0 w-full max-w-(--thread-max-width) flex-1 flex-col px-4 pt-4',
             isEmpty && 'justify-center'
           )}
         >
@@ -379,9 +380,9 @@ const MessageError: FC = () => {
       className="aui-message-error-root border-destructive bg-destructive/10 text-destructive dark:bg-destructive/5 mt-2 rounded-md border p-3 text-sm dark:text-red-200"
     >
       <p className="font-medium">{t('threads.errors.title')}</p>
-      <p className="aui-message-error-message mt-1 max-h-24 overflow-y-auto break-words whitespace-pre-wrap">
-        {detail}
-      </p>
+      <ScrollArea className="mt-1 max-h-24">
+        <p className="aui-message-error-message break-words whitespace-pre-wrap">{detail}</p>
+      </ScrollArea>
       <p className="mt-2 text-xs text-destructive/80 dark:text-red-200/80">
         {t('threads.errors.providerHint')}
       </p>

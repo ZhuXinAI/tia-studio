@@ -100,9 +100,7 @@ export function RuntimeSetupPage(): React.JSX.Element {
     <div className="mx-auto flex max-w-6xl flex-col gap-6 py-8">
       <header className="space-y-3 border-b border-[color:var(--surface-border)] pb-5">
         <p className="section-kicker">Managed runtimes</p>
-        <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
-          {t('settings.runtime.title')}
-        </h1>
+        <h1 className="settings-page-title">{t('settings.runtime.title')}</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">
           {t('settings.runtime.description')}
         </p>

@@ -40,6 +40,13 @@ const browser: TiaStudioApi['browser'] = {
     ipcRenderer.on(browserIpcChannels.state, handler)
     return () => ipcRenderer.removeListener(browserIpcChannels.state, handler)
   },
+  onRequestOpen: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, request: unknown): void => {
+      listener(request as Parameters<typeof listener>[0])
+    }
+    ipcRenderer.on(browserIpcChannels.requestOpen, handler)
+    return () => ipcRenderer.removeListener(browserIpcChannels.requestOpen, handler)
+  },
   cdp: browserCdp
 }
 

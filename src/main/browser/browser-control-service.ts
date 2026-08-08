@@ -17,6 +17,7 @@ import { normalizeBrowserUrl } from '../../shared/browser'
 
 const CDP_PROTOCOL_VERSION = '1.3'
 const MAX_CDP_PAYLOAD_BYTES = 256 * 1024
+const MAX_CDP_SCREENSHOT_PAYLOAD_BYTES = 8 * 1024 * 1024
 const MAX_CDP_KEYS = 128
 const MAX_CDP_STRING_BYTES = 128 * 1024
 
@@ -59,7 +60,7 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
 }
 
-function clonePayload(value: unknown, label: string): unknown {
+function clonePayload(value: unknown, label: string, maxBytes = MAX_CDP_PAYLOAD_BYTES): unknown {
   let serialized: string | undefined
   try {
     serialized = JSON.stringify(value)
@@ -67,8 +68,8 @@ function clonePayload(value: unknown, label: string): unknown {
     throw new Error(`The CDP ${label} is not serializable`)
   }
   if (serialized === undefined) return null
-  if (Buffer.byteLength(serialized, 'utf8') > MAX_CDP_PAYLOAD_BYTES) {
-    throw new Error(`The CDP ${label} exceeds the ${MAX_CDP_PAYLOAD_BYTES}-byte limit`)
+  if (Buffer.byteLength(serialized, 'utf8') > maxBytes) {
+    throw new Error(`The CDP ${label} exceeds the ${maxBytes}-byte limit`)
   }
   try {
     return JSON.parse(serialized) as unknown
@@ -185,7 +186,13 @@ export class BrowserControlService {
     this.attachTarget(normalizedTabId, target)
     try {
       const result = await target.webContents.debugger.sendCommand(allowedMethod, params)
-      return clonePayload(result, 'response')
+      return clonePayload(
+        result,
+        'response',
+        allowedMethod === 'Page.captureScreenshot'
+          ? MAX_CDP_SCREENSHOT_PAYLOAD_BYTES
+          : MAX_CDP_PAYLOAD_BYTES
+      )
     } catch (error) {
       throw new Error(errorMessage(error, `CDP command ${allowedMethod} failed`))
     }

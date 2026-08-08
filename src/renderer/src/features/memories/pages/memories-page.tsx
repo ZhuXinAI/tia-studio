@@ -4,6 +4,14 @@ import { toast } from 'sonner'
 import type { AgentMemory, SaveAgentMemoryInput } from '../../../../../shared/memory'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
+import { ScrollArea } from '../../../components/ui/scroll-area'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '../../../components/ui/select'
 import { Switch } from '../../../components/ui/switch'
 import { Textarea } from '../../../components/ui/textarea'
 import { useTranslation } from '../../../i18n/use-app-translation'
@@ -124,8 +132,9 @@ export function MemoriesPage(): React.JSX.Element {
         </Button>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-6">
-        <div className="mx-auto grid min-h-full max-w-6xl gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="p-6">
+          <div className="mx-auto grid min-h-full max-w-6xl gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
           <aside className="space-y-4">
             <div className="flex items-center gap-2 rounded-xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] px-3 py-2">
               <BookOpen className="size-4 text-muted-foreground" />
@@ -145,21 +154,22 @@ export function MemoriesPage(): React.JSX.Element {
             />
             <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
               {t('memories.scope')}
-              <select
-                value={workspaceFilter}
-                onChange={(event) => setWorkspaceFilter(event.target.value)}
-                className="h-9 rounded-md border border-input bg-background px-2 text-sm font-normal text-foreground"
-              >
-                <option value="all">{t('memories.allScopes')}</option>
-                <option value="global">{t('memories.globalOnly')}</option>
-                {workspaces
-                  .filter((workspace) => !workspace.builtInKind)
-                  .map((workspace) => (
-                    <option key={workspace.id} value={workspace.id}>
-                      {workspace.name}
-                    </option>
-                  ))}
-              </select>
+              <Select value={workspaceFilter} onValueChange={setWorkspaceFilter}>
+                <SelectTrigger className="h-9 font-normal">
+                  <SelectValue placeholder={t('memories.allScopes')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('memories.allScopes')}</SelectItem>
+                  <SelectItem value="global">{t('memories.globalOnly')}</SelectItem>
+                  {workspaces
+                    .filter((workspace) => !workspace.builtInKind)
+                    .map((workspace) => (
+                      <SelectItem key={workspace.id} value={workspace.id}>
+                        {workspace.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </label>
             <div className="space-y-1">
               {isLoading ? (
@@ -248,25 +258,29 @@ export function MemoriesPage(): React.JSX.Element {
                 </label>
                 <label className="grid gap-1.5 text-sm font-medium">
                   {t('memories.scopeField')}
-                  <select
+                  <Select
                     value={draft.workspaceId ?? 'global'}
-                    onChange={(event) =>
+                    onValueChange={(value) =>
                       setDraft({
                         ...draft,
-                        workspaceId: event.target.value === 'global' ? null : event.target.value
+                        workspaceId: value === 'global' ? null : value
                       })
                     }
-                    className="h-10 rounded-md border border-input bg-background px-3 font-normal"
                   >
-                    <option value="global">{t('memories.global')}</option>
-                    {workspaces
-                      .filter((workspace) => !workspace.builtInKind)
-                      .map((workspace) => (
-                        <option key={workspace.id} value={workspace.id}>
-                          {workspace.name}
-                        </option>
-                      ))}
-                  </select>
+                    <SelectTrigger className="font-normal">
+                      <SelectValue placeholder={t('memories.global')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="global">{t('memories.global')}</SelectItem>
+                      {workspaces
+                        .filter((workspace) => !workspace.builtInKind)
+                        .map((workspace) => (
+                          <SelectItem key={workspace.id} value={workspace.id}>
+                            {workspace.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                 </label>
                 <div className="flex items-center justify-between rounded-xl border border-[color:var(--surface-border)] p-3">
                   <div>
@@ -357,8 +371,9 @@ export function MemoriesPage(): React.JSX.Element {
               </div>
             )}
           </main>
+          </div>
         </div>
-      </div>
+      </ScrollArea>
     </section>
   )
 }

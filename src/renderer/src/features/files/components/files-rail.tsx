@@ -19,6 +19,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Virtuoso } from 'react-virtuoso'
 import type { WorkspaceFileEntry } from '../../../../../shared/workspace-files'
 import { Button } from '../../../components/ui/button'
+import { ScrollArea } from '../../../components/ui/scroll-area'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import {
   useSaveWorkspaceFile,
@@ -371,9 +372,11 @@ function FileViewer({
             />
           </Suspense>
         ) : (
-          <pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-words bg-muted/20 p-3 font-mono text-[11px] leading-relaxed text-foreground">
-            {fileQuery.data.content || t('filesRail.emptyFile')}
-          </pre>
+          <ScrollArea className="min-h-0 flex-1 bg-muted/20">
+            <pre className="whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-relaxed text-foreground">
+              {fileQuery.data.content || t('filesRail.emptyFile')}
+            </pre>
+          </ScrollArea>
         )
       ) : null}
     </div>

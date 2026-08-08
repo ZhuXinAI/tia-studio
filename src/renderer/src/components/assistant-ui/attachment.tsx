@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui
 import { Dialog, DialogTitle, DialogContent, DialogTrigger } from '@renderer/components/ui/dialog'
 import { TooltipIconButton } from '@renderer/components/assistant-ui/tooltip-icon-button'
 import { cn } from '@renderer/lib/utils'
+import { ScrollArea } from '@renderer/components/ui/scroll-area'
 import { useTranslation } from '../../i18n/use-app-translation'
 
 const useFileSrc = (file: File | undefined) => {
@@ -241,10 +242,16 @@ export const UserMessageAttachments: FC = () => {
 }
 
 export const ComposerAttachments: FC = () => {
+  const attachmentCount = useAuiState((state) => state.composer.attachments.length)
+
+  if (attachmentCount === 0) return null
+
   return (
-    <div className="aui-composer-attachments flex w-full flex-row items-center gap-2 overflow-x-auto empty:hidden">
-      <ComposerPrimitive.Attachments>{() => <AttachmentUI />}</ComposerPrimitive.Attachments>
-    </div>
+    <ScrollArea orientation="horizontal" className="aui-composer-attachments w-full">
+      <div className="flex min-w-max flex-row items-center gap-2">
+        <ComposerPrimitive.Attachments>{() => <AttachmentUI />}</ComposerPrimitive.Attachments>
+      </div>
+    </ScrollArea>
   )
 }
 

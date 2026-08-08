@@ -106,12 +106,10 @@ export function WorkspacesAdminPage(): React.JSX.Element {
   }
 
   return (
-    <section className="mx-auto max-w-6xl space-y-8 py-8">
+    <section className="w-full space-y-8">
       <header>
         <p className="section-kicker">{t('workspacesAdmin.kicker')}</p>
-        <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
-          {t('workspacesAdmin.title')}
-        </h1>
+        <h1 className="settings-page-title">{t('workspacesAdmin.title')}</h1>
         <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
           {t('workspacesAdmin.description')}
         </p>

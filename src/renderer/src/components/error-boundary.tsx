@@ -2,6 +2,7 @@ import { Component, type ReactNode } from 'react'
 import { i18n } from '../i18n'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
+import { ScrollArea } from './ui/scroll-area'
 
 interface ErrorBoundaryProps {
   children: ReactNode
@@ -52,11 +53,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                   <summary className="cursor-pointer font-medium">
                     {i18n.t('common.errorBoundary.details')}
                   </summary>
-                  <pre className="mt-2 overflow-auto text-xs">
-                    {this.state.error.message}
-                    {'\n\n'}
-                    {this.state.error.stack}
-                  </pre>
+                  <ScrollArea className="mt-2 max-h-64">
+                    <pre className="p-1 text-xs">
+                      {this.state.error.message}
+                      {'\n\n'}
+                      {this.state.error.stack}
+                    </pre>
+                  </ScrollArea>
                 </details>
               )}
 

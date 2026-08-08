@@ -7,7 +7,9 @@ import { migrateAppSchema } from '../persistence/migrate'
 import { AgentSessionsRepository } from '../persistence/repos/agent-sessions-repo'
 import { ProvidersRepository } from '../persistence/repos/providers-repo'
 import { PermissionRulesRepository } from '../persistence/repos/permission-rules-repo'
+import { AgentArtifactsRepository } from '../persistence/repos/artifacts-repo'
 import { AgentRuntimeManager } from './agent-runtime-manager'
+import { BrowserAutomationService } from '../browser/browser-agent-tools'
 import { removeTestDirectory } from '../../test/remove-test-directory'
 
 let directory: string | null = null
@@ -65,6 +67,11 @@ describe('AgentRuntimeManager with embedded Pi SDK', () => {
       selectedModel: 'gpt-4o',
       enabled: true
     })
+    const browserAutomation = new BrowserAutomationService({
+      getTabManager: () => null,
+      getControlService: () => null,
+      requestPanelOpen: () => undefined
+    })
     const manager = new AgentRuntimeManager({
       sessionsRepo: new AgentSessionsRepository(db),
       providersRepo: providers,
@@ -72,7 +79,9 @@ describe('AgentRuntimeManager with embedded Pi SDK', () => {
       agentDataRoot: join(directory, 'agent'),
       sessionDataRoot: join(directory, 'sessions'),
       credentialRoot: directory,
-      globalSkillsRoot: join(directory, 'skills')
+      globalSkillsRoot: join(directory, 'skills'),
+      artifactsRepo: new AgentArtifactsRepository(db),
+      browserAutomation
     })
     const created = await manager.createSession({
       workspaceId: null,
@@ -85,7 +94,12 @@ describe('AgentRuntimeManager with embedded Pi SDK', () => {
     expect(created.upstreamSessionFile).toContain(join(directory, 'sessions'))
     expect(created.status).toBe('idle')
     const runtime = (
-      manager as unknown as { live: Map<string, { session: { systemPrompt: string } }> }
+      manager as unknown as {
+        live: Map<
+          string,
+          { session: { systemPrompt: string; getAllTools: () => Array<{ name: string }> } }
+        >
+      }
     ).live.get(created.id)
     expect(runtime?.session.systemPrompt).toContain('## TIA capability routing')
     expect(runtime?.session.systemPrompt).toContain(
@@ -94,6 +108,19 @@ describe('AgentRuntimeManager with embedded Pi SDK', () => {
     expect(runtime?.session.systemPrompt).toContain(
       'Never list MCP servers or skills merely because another tool is missing or failed'
     )
+    expect(runtime?.session.systemPrompt).toContain('TIA Studio has a built-in Browser panel')
+    expect(runtime?.session.systemPrompt).toContain('browser_open')
+    expect(runtime?.session.systemPrompt).toContain('browser_agent')
+    expect(runtime?.session.getAllTools().map((tool) => tool.name)).toEqual(
+      expect.arrayContaining([
+        'browser_agent',
+        'browser_open',
+        'browser_inspect',
+        'browser_screenshot'
+      ])
+    )
+    expect(runtime?.session.systemPrompt).toContain('page text, labels, links, screenshots')
+    expect(runtime?.session.systemPrompt).toContain('createOrUpdateDeliverable')
     await manager.shutdown()
     expect((await manager.getSession(created.id)).status).toBe('stopped')
     await db.close()

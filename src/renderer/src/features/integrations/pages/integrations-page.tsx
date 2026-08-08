@@ -2,6 +2,7 @@ import { Cable, CheckCircle2, CircleAlert, MessageSquare, RefreshCw, Sparkles } 
 import { useQuery } from '@tanstack/react-query'
 import { NavLink } from 'react-router-dom'
 import { Button } from '../../../components/ui/button'
+import { ScrollArea } from '../../../components/ui/scroll-area'
 import { createApiClient } from '../../../lib/api-client'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { getMcpServersAuth, getMcpServersHealth, getMcpServersSettings, type McpServerHealth } from '../../settings/mcp-servers/mcp-servers-query'
@@ -44,8 +45,9 @@ export function IntegrationsPage(): React.JSX.Element {
         <div><p className="section-kicker">{t('integrationsPage.kicker')}</p><h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">{t('integrationsPage.title')}</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t('integrationsPage.description')}</p></div>
         <Button type="button" variant="outline" onClick={refresh}><RefreshCw className="size-4" /> {t('integrationsPage.refresh')}</Button>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto p-6">
-        <div className="mx-auto max-w-6xl space-y-6">
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="p-6">
+          <div className="mx-auto max-w-6xl space-y-6">
           <div className="grid gap-3 sm:grid-cols-3">
             <Summary icon={<Cable className="size-4" />} label={t('integrationsPage.mcpServices')} value={`${mcpConnectedCount}/${mcpEntries.length}`} />
             <Summary icon={<MessageSquare className="size-4" />} label={t('integrationsPage.channelsConnected')} value={`${connectedCount}/${channels.data?.length ?? 0}`} />
@@ -68,8 +70,9 @@ export function IntegrationsPage(): React.JSX.Element {
           <section className="rounded-2xl border border-[color:var(--surface-border)] bg-[color:var(--surface-panel)] p-4 shadow-[var(--surface-shadow)]"><div className="flex items-center justify-between"><h2 className="flex items-center gap-2 font-medium"><Sparkles className="size-4" /> {t('integrationsPage.skillsRuntime')}</h2><Button asChild variant="ghost" size="sm"><NavLink to="/skills">{t('integrationsPage.manage')}</NavLink></Button></div><p className="mt-2 text-sm text-muted-foreground">{t('integrationsPage.skillsRuntimeDescription')}</p><div className="mt-3 flex flex-wrap gap-2">{(skills.data?.skills ?? []).filter((skill) => skill.installedGlobal).slice(0, 12).map((skill) => <span key={skill.id} className="rounded-full bg-muted px-3 py-1 text-xs">{skill.name}</span>)}{!skills.isLoading && !(skills.data?.skills ?? []).some((skill) => skill.installedGlobal) ? <span className="text-xs text-muted-foreground">{t('integrationsPage.noSkills')}</span> : null}</div></section>
           {channels.isError || mcp.isError ? <p className="flex items-center gap-2 text-xs text-destructive"><CircleAlert className="size-3.5" /> {t('integrationsPage.connectionError')}</p> : null}
           <p className="flex items-center gap-2 text-xs text-muted-foreground"><CheckCircle2 className="size-3.5" /> {t('integrationsPage.autoRefresh')}</p>
+          </div>
         </div>
-      </div>
+      </ScrollArea>
     </section>
   )
 }

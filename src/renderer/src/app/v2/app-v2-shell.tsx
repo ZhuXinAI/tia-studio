@@ -118,7 +118,9 @@ export function AppV2Shell(): React.JSX.Element {
                         <div
                           className={clsx(
                             'drag-region flex h-8 shrink-0 items-center gap-1.5 overflow-hidden px-2.5',
-                            !isThreadChromeRoute && 'bg-[color:var(--surface-paper)]'
+                            isSettingsRoute
+                              ? 'bg-background'
+                              : !isThreadChromeRoute && 'bg-[color:var(--surface-paper)]'
                           )}
                         >
                           {isThreadChromeRoute && isSidebarCollapsed ? (
@@ -185,7 +187,9 @@ export function AppV2Shell(): React.JSX.Element {
                       <main
                         className={clsx(
                           'min-h-0 min-w-0 flex-1',
-                          isThreadChromeRoute ? 'bg-background' : 'bg-[color:var(--surface-paper)]',
+                          isThreadChromeRoute || isSettingsRoute
+                            ? 'bg-background'
+                            : 'bg-[color:var(--surface-paper)]',
                           isThreadChromeRoute && windowsPlatform && 'pt-8',
                           isSettingsRoute ? 'overflow-hidden' : 'overflow-hidden'
                         )}

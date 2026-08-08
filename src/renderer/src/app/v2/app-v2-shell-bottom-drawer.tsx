@@ -45,7 +45,7 @@ export function AppV2ShellBottomDrawer({
       aria-label={t('terminalRail.title')}
       data-testid="app-v2-bottom-drawer"
       style={{ height: `${height}px` }}
-      className="app-shell-pane relative max-h-[70vh] min-h-0 shrink-0 overflow-hidden border-t border-[color:var(--chat-surface-border)]"
+      className="app-shell-pane relative max-h-[70vh] min-h-0 shrink-0 animate-in slide-in-from-bottom-4 fade-in-0 overflow-hidden border-t border-[color:var(--chat-surface-border)] duration-200 motion-reduce:animate-none"
     >
       <div
         role="separator"

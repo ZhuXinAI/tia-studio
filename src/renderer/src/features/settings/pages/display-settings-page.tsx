@@ -17,7 +17,6 @@ import {
   setAppearanceTokens,
   type AppearanceTokens
 } from '../appearance-tokens'
-import { SettingsContent } from './settings-content'
 
 function ThemePreview({ theme }: { theme: Theme }): React.JSX.Element {
   if (theme === 'light') {
@@ -111,12 +110,9 @@ export function DisplaySettingsPage(): React.JSX.Element {
   }
 
   return (
-    <SettingsContent>
+    <>
       <header className="space-y-3 border-b border-[color:var(--surface-border)] pb-5">
-        <p className="section-kicker">{t('settings.display.kickers.themeAppearance')}</p>
-        <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
-          {t('settings.display.title')}
-        </h1>
+        <h1 className="settings-page-title">{t('settings.display.title')}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           {t('settings.display.description')}
         </p>
@@ -159,9 +155,7 @@ export function DisplaySettingsPage(): React.JSX.Element {
 
           <div className="space-y-4 rounded-[1.25rem] border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-5">
             <div className="space-y-1">
-              <p className="section-kicker text-[0.66rem]">
-                {t('settings.display.tokens.kicker')}
-              </p>
+              <p className="section-kicker text-[0.66rem]">{t('settings.display.tokens.kicker')}</p>
               <h3 className="text-sm font-medium">{t('settings.display.tokens.title')}</h3>
               <p className="text-sm text-muted-foreground">
                 {t('settings.display.tokens.description')}
@@ -201,6 +195,6 @@ export function DisplaySettingsPage(): React.JSX.Element {
           </div>
         </CardContent>
       </Card>
-    </SettingsContent>
+    </>
   )
 }

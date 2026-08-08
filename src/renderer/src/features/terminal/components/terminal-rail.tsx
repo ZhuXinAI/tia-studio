@@ -1,14 +1,6 @@
 import { FitAddon } from '@xterm/addon-fit'
 import { Terminal as XtermTerminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
-import {
-  CircleAlert,
-  CircleCheck,
-  LoaderCircle,
-  Square,
-  Terminal as TerminalIcon,
-  X
-} from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type {
@@ -16,12 +8,11 @@ import type {
   TerminalRun,
   TerminalSocketEvent
 } from '../../../../../shared/terminal'
-import { Button } from '../../../components/ui/button'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import {
+  TERMINAL_SOCKET_CONNECTION_FAILED,
   subscribeToTerminalSocket,
   useStartTerminal,
-  useStopTerminal,
   useTerminalRuns
 } from '../terminal-query'
 
@@ -41,27 +32,16 @@ function connectionLabel(
   return t('terminalRail.starting')
 }
 
-function StatusIcon({ state }: { state: TerminalConnectionState }): React.JSX.Element {
-  if (state === 'connected') return <CircleCheck className="size-3.5 text-emerald-400" />
-  if (state === 'connecting')
-    return <LoaderCircle className="size-3.5 animate-spin text-amber-300" />
-  if (state === 'disconnected') return <CircleAlert className="size-3.5 text-rose-300" />
-  return <LoaderCircle className="size-3.5 animate-spin text-muted-foreground" />
-}
-
 export function TerminalRail({
   sessionId,
-  slotElement,
-  onClose
+  slotElement
 }: {
   sessionId: string
   slotElement: HTMLDivElement | null
-  onClose: () => void
 }): React.JSX.Element | null {
   const { t } = useTranslation()
   const { data: runs = [], isLoading } = useTerminalRuns(sessionId)
   const startMutation = useStartTerminal(sessionId)
-  const stopMutation = useStopTerminal(sessionId)
   const terminalMountRef = useRef<HTMLDivElement | null>(null)
   const startRequestedRef = useRef(false)
   const sendEventRef = useRef<(event: TerminalClientEvent) => void>(() => undefined)
@@ -182,19 +162,28 @@ export function TerminalRail({
       },
       (error) => {
         if (!disposed) {
-          setConnectionState('disconnected')
+          setConnectionState('connecting')
           setTerminalError(
-            error instanceof Error ? error.message : t('terminalRail.connectionFailed')
+            error instanceof Error && error.message !== TERMINAL_SOCKET_CONNECTION_FAILED
+              ? error.message
+              : t('terminalRail.connectionRetrying')
           )
         }
       },
-      () => {
-        if (!disposed) setConnectionState('disconnected')
+      (willRetry) => {
+        if (!disposed) setConnectionState(willRetry ? 'connecting' : 'disconnected')
       },
       (send) => {
         sendEventRef.current = send
         setConnectionState('connected')
+        setTerminalError(null)
         fitAndResize()
+      },
+      () => {
+        if (!disposed) {
+          setConnectionState('disconnected')
+          setTerminalError(t('terminalRail.connectionFailed'))
+        }
       }
     )
 
@@ -218,48 +207,6 @@ export function TerminalRail({
       className="flex h-full min-h-0 flex-col bg-[#080a10] text-white"
       data-testid="terminal-rail"
     >
-      <header className="flex min-h-12 shrink-0 items-center gap-3 border-b border-white/10 bg-black/20 px-4">
-        <div className="flex min-w-0 items-center gap-2">
-          <TerminalIcon className="size-4 shrink-0 text-slate-200" />
-          <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold text-slate-100">
-              {t('terminalRail.title')}
-            </h2>
-            <p className="truncate text-[11px] text-slate-400">{t('terminalRail.description')}</p>
-          </div>
-        </div>
-        <div className="ml-auto flex shrink-0 items-center gap-3">
-          <span className="hidden items-center gap-1.5 text-[11px] text-slate-400 sm:flex">
-            <StatusIcon state={connectionState} />
-            {statusText}
-          </span>
-          {terminalId && status === 'running' ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7 text-slate-400 hover:bg-white/10 hover:text-white"
-              disabled={stopMutation.isPending}
-              onClick={() => void stopMutation.mutateAsync(terminalId)}
-              aria-label={t('terminalRail.stop')}
-              title={t('terminalRail.stop')}
-            >
-              <Square className="size-3.5" />
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-7 text-slate-400 hover:bg-white/10 hover:text-white"
-            onClick={onClose}
-            aria-label={t('terminalRail.close')}
-            title={t('terminalRail.close')}
-          >
-            <X className="size-4" />
-          </Button>
-        </div>
-      </header>
       {terminalError || startMutation.error ? (
         <p
           role="alert"

@@ -159,7 +159,11 @@ export function GitRail({
               </div>
               <div className="rounded-xl border border-border/60">
                 <div className="border-b border-border/60 px-3 py-2 text-xs font-medium">{t('gitRail.diff')}</div>
-                <pre className="max-h-[34rem] overflow-auto whitespace-pre-wrap p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">{review.diff || t('gitRail.noDiff')}</pre>
+                <ScrollArea className="max-h-[34rem]">
+                  <pre className="whitespace-pre-wrap p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
+                    {review.diff || t('gitRail.noDiff')}
+                  </pre>
+                </ScrollArea>
               </div>
             </>
           ) : null}

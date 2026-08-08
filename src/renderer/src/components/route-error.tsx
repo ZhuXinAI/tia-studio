@@ -2,6 +2,7 @@ import { useTranslation } from '../i18n/use-app-translation'
 import { useRouteError, isRouteErrorResponse } from 'react-router-dom'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
+import { ScrollArea } from './ui/scroll-area'
 
 export function RouteError(): React.JSX.Element {
   const { t } = useTranslation()
@@ -40,7 +41,9 @@ export function RouteError(): React.JSX.Element {
               <summary className="cursor-pointer font-medium">
                 {t('common.routeError.details')}
               </summary>
-              <pre className="mt-2 overflow-auto text-xs">{errorDetails}</pre>
+              <ScrollArea className="mt-2 max-h-64">
+                <pre className="p-1 text-xs">{errorDetails}</pre>
+              </ScrollArea>
             </details>
           )}
 

@@ -22,9 +22,9 @@ import {
   CardTitle
 } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
+import { ScrollArea } from '../../../components/ui/scroll-area'
 import { toErrorMessage } from '../../threads/thread-page-routing'
 import { getPermissionRules, revokePermissionRule } from '../permissions/permission-rules-query'
-import { SettingsContent } from './settings-content'
 import { useTranslation } from '../../../i18n/use-app-translation'
 
 const pageSize = 10
@@ -98,13 +98,11 @@ export function PermissionsSettingsPage(): React.JSX.Element {
   }
 
   return (
-    <SettingsContent>
+    <>
       <header>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {t('settings.permissions.title')}
-            </h1>
+            <h1 className="settings-page-title">{t('settings.permissions.title')}</h1>
             <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
               {t('settings.permissions.description')}
             </p>
@@ -137,7 +135,9 @@ export function PermissionsSettingsPage(): React.JSX.Element {
         <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
         <div>
           <p className="font-medium">{t('settings.permissions.askFirst')}</p>
-          <p className="mt-1 text-muted-foreground">{t('settings.permissions.askFirstDescription')}</p>
+          <p className="mt-1 text-muted-foreground">
+            {t('settings.permissions.askFirstDescription')}
+          </p>
           <NavLink
             to="/command-center"
             className="mt-2 inline-flex text-xs font-medium underline underline-offset-4"
@@ -156,7 +156,9 @@ export function PermissionsSettingsPage(): React.JSX.Element {
               </CardTitle>
               <CardDescription>{t('settings.permissions.approvalsDescription')}</CardDescription>
             </div>
-            <span className="text-xs text-muted-foreground">{filteredRules.length} {t('settings.permissions.visible')}</span>
+            <span className="text-xs text-muted-foreground">
+              {filteredRules.length} {t('settings.permissions.visible')}
+            </span>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -208,12 +210,16 @@ export function PermissionsSettingsPage(): React.JSX.Element {
               className="border-border flex items-start gap-4 rounded-lg border p-4"
             >
               <div className="min-w-0 flex-1 space-y-2">
-                <code className="bg-muted block w-fit max-w-full overflow-x-auto rounded px-2 py-1 text-xs">
-                  {rule.argvPrefix.join(' ')}
-                </code>
+                <ScrollArea orientation="horizontal" className="max-w-full rounded">
+                  <code className="bg-muted block w-max min-w-full rounded px-2 py-1 text-xs">
+                    {rule.argvPrefix.join(' ')}
+                  </code>
+                </ScrollArea>
                 <dl className="text-muted-foreground grid gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
                   <div>
-                    <dt className="inline font-medium text-foreground">{t('settings.permissions.decision')}: </dt>
+                    <dt className="inline font-medium text-foreground">
+                      {t('settings.permissions.decision')}:{' '}
+                    </dt>
                     <dd
                       className={`inline rounded-full px-2 py-0.5 text-[11px] ${rule.decision === 'deny' ? 'bg-red-500/10 text-red-600' : rule.decision === 'ask' ? 'bg-amber-500/10 text-amber-700' : 'bg-emerald-500/10 text-emerald-700'}`}
                     >
@@ -294,7 +300,7 @@ export function PermissionsSettingsPage(): React.JSX.Element {
           ) : null}
         </CardContent>
       </Card>
-    </SettingsContent>
+    </>
   )
 }
 

@@ -2,13 +2,14 @@ import * as React from 'react'
 import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '../../lib/utils'
+import { ScrollArea } from './scroll-area'
 
 function Sidebar({ className, ...props }: React.ComponentProps<'aside'>): React.JSX.Element {
   return (
     <aside
       data-slot="sidebar"
       className={cn(
-        'text-card-foreground flex h-full w-80 shrink-0 flex-col border-r [border-color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-subtle)_88%,transparent),color-mix(in_srgb,var(--surface-panel)_88%,transparent))] backdrop-blur-xl',
+        'text-card-foreground flex h-full w-64 shrink-0 flex-col border-r [border-color:var(--surface-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-subtle)_88%,transparent),color-mix(in_srgb,var(--surface-panel)_88%,transparent))] backdrop-blur-xl',
         className
       )}
       {...props}
@@ -29,13 +30,21 @@ function SidebarHeader({ className, ...props }: React.ComponentProps<'div'>): Re
   )
 }
 
-function SidebarContent({ className, ...props }: React.ComponentProps<'div'>): React.JSX.Element {
+function SidebarContent({
+  className,
+  children,
+  dir,
+  ...props
+}: React.ComponentProps<'div'>): React.JSX.Element {
   return (
-    <div
+    <ScrollArea
       data-slot="sidebar-content"
-      className={cn('flex-1 overflow-y-auto px-3 py-4', className)}
+      className={cn('min-h-0 flex-1 px-3 py-4', className)}
+      dir={dir === 'rtl' ? 'rtl' : dir === 'ltr' ? 'ltr' : undefined}
       {...props}
-    />
+    >
+      {children}
+    </ScrollArea>
   )
 }
 
@@ -80,14 +89,13 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<'li'>): R
 }
 
 const sidebarMenuButtonVariants = cva(
-  'focus-visible:ring-ring/50 relative flex w-full items-center gap-2 rounded-lg border border-transparent px-3 py-2.5 text-left text-sm outline-none transition-[background-color,color,border-color] focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50',
+  'focus-visible:ring-ring/50 relative flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm outline-none transition-[background-color,color] focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
         default:
           'text-muted-foreground hover:bg-[color:var(--surface-muted)] hover:text-foreground',
-        active:
-          'border-[color:var(--surface-border-strong)] bg-[color:var(--surface-active)] text-foreground'
+        active: 'bg-[color:var(--surface-active)] text-foreground'
       }
     },
     defaultVariants: {
@@ -135,13 +143,12 @@ function SidebarMenuSubItem({
 }
 
 const sidebarMenuSubButtonVariants = cva(
-  'focus-visible:ring-ring/50 flex w-full items-center justify-between rounded-md border border-transparent px-2.5 py-2 text-left text-xs text-muted-foreground outline-none transition-[background-color,color,border-color] focus-visible:ring-[3px] hover:bg-[color:var(--surface-muted)] hover:text-foreground',
+  'focus-visible:ring-ring/50 flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-xs text-muted-foreground outline-none transition-[background-color,color] focus-visible:ring-[3px] hover:bg-[color:var(--surface-muted)] hover:text-foreground',
   {
     variants: {
       variant: {
         default: '',
-        active:
-          'border-[color:var(--surface-border-strong)] bg-[color:var(--surface-active)] text-foreground'
+        active: 'bg-[color:var(--surface-active)] text-foreground'
       }
     },
     defaultVariants: {

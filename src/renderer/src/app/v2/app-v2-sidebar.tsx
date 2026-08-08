@@ -26,6 +26,7 @@ import { toast } from 'sonner'
 import type { AgentSessionSnapshot } from '../../../../shared/agent-runtime'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
+import { ScrollArea } from '../../components/ui/scroll-area'
 import { isDesktopWindowsPlatform } from '../../lib/desktop-bootstrap'
 import { pickDirectory } from '../../lib/desktop-features'
 import { cn } from '../../lib/utils'
@@ -169,7 +170,6 @@ function ThreadLink({
         />
       ) : null}
       <NavLink to={href} className="flex min-w-0 flex-1 items-center gap-2 px-1.5 py-1">
-        <ThreadStatusIcon status={status} />
         <span className="truncate">{displayTitle}</span>
       </NavLink>
       {isScheduled ? (
@@ -213,6 +213,7 @@ function ThreadLink({
           <Trash2 className="size-3.5" />
         </Button>
       </div>
+      <ThreadStatusIcon status={status} />
     </div>
   )
 }
@@ -630,7 +631,8 @@ export function AppV2Sidebar({
         </div>
       </div>
 
-      <div className="chat-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4">
+      <ScrollArea className="min-h-0 flex-1 px-3 py-4">
+        <div className="space-y-4">
         <SidebarSection
           title={t('threads.sidebar.workspaces')}
           isOpen={isWorkspacesOpen}
@@ -777,7 +779,8 @@ export function AppV2Sidebar({
             />
           ) : null}
         </SidebarSection>
-      </div>
+        </div>
+      </ScrollArea>
 
       <div className="border-t border-[color:var(--chat-surface-border)] p-3">
         <Button asChild variant="ghost" className="w-full justify-start">

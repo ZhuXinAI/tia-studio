@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import type { SaveTiaAutomationInput, TiaAutomationRecord } from '../../../../../shared/automations'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
+import { ScrollArea } from '../../../components/ui/scroll-area'
 import { Textarea } from '../../../components/ui/textarea'
 import { cn } from '../../../lib/utils'
 import { useProviders } from '../../settings/providers/providers-query'
@@ -230,44 +231,47 @@ export function AutomationsPage(): React.JSX.Element {
         )}
       >
         {showAside ? (
-          <aside className="chat-scrollbar overflow-y-auto border-r border-[color:var(--surface-border)] p-3">
-            {isLoading ? (
-              <p className="p-3 text-sm text-muted-foreground">{t('automations.loading')}</p>
-            ) : null}
-            <div className="space-y-1">
-              {automations.map((automation) => (
-                <button
-                  key={automation.id}
-                  onClick={() => {
-                    setSelectedId(automation.id)
-                    setEditingId(null)
-                  }}
-                  className={cn(
-                    'w-full rounded-lg px-3 py-2.5 text-left',
-                    selectedId === automation.id
-                      ? 'bg-[color:var(--surface-active)]'
-                      : 'hover:bg-[color:var(--surface-muted)]'
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        'size-2 rounded-full',
-                        automation.status === 'active' ? 'bg-emerald-500' : 'bg-muted-foreground'
-                      )}
-                    />
-                    <span className="truncate text-sm font-medium">{automation.name}</span>
-                  </div>
-                  <p className="mt-1 truncate pl-4 text-xs text-muted-foreground">
-                    {scheduleSummary(automation.rrule)}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </aside>
+          <ScrollArea className="h-full min-h-0 border-r border-[color:var(--surface-border)]">
+            <aside className="p-3">
+              {isLoading ? (
+                <p className="p-3 text-sm text-muted-foreground">{t('automations.loading')}</p>
+              ) : null}
+              <div className="space-y-1">
+                {automations.map((automation) => (
+                  <button
+                    key={automation.id}
+                    onClick={() => {
+                      setSelectedId(automation.id)
+                      setEditingId(null)
+                    }}
+                    className={cn(
+                      'w-full rounded-lg px-3 py-2.5 text-left',
+                      selectedId === automation.id
+                        ? 'bg-[color:var(--surface-active)]'
+                        : 'hover:bg-[color:var(--surface-muted)]'
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          'size-2 rounded-full',
+                          automation.status === 'active' ? 'bg-emerald-500' : 'bg-muted-foreground'
+                        )}
+                      />
+                      <span className="truncate text-sm font-medium">{automation.name}</span>
+                    </div>
+                    <p className="mt-1 truncate pl-4 text-xs text-muted-foreground">
+                      {scheduleSummary(automation.rrule)}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </aside>
+          </ScrollArea>
         ) : null}
 
-        <main className="chat-scrollbar min-h-0 overflow-y-auto p-6">
+        <ScrollArea className="h-full min-h-0">
+          <main className="p-6">
           {editingId ? (
             <div className="mx-auto max-w-3xl space-y-5">
               <div className="flex items-center justify-between">
@@ -553,7 +557,8 @@ export function AutomationsPage(): React.JSX.Element {
               </div>
             </div>
           )}
-        </main>
+          </main>
+        </ScrollArea>
       </div>
     </section>
   )

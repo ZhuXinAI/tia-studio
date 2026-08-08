@@ -13,6 +13,7 @@ import { type FC, memo, useState } from 'react'
 import { CheckIcon, CopyIcon } from 'lucide-react'
 
 import { TooltipIconButton } from '@renderer/components/assistant-ui/tooltip-icon-button'
+import { ScrollArea } from '@renderer/components/ui/scroll-area'
 import { cn } from '@renderer/lib/utils'
 import { useTranslation } from '../../i18n/use-app-translation'
 
@@ -166,13 +167,12 @@ const defaultComponents = memoizeMarkdownComponents({
     <hr className={cn('aui-md-hr border-muted-foreground/20 my-3', className)} {...props} />
   ),
   table: ({ className, ...props }) => (
-    <table
-      className={cn(
-        'aui-md-table my-3 w-full border-separate border-spacing-0 overflow-y-auto',
-        className
-      )}
-      {...props}
-    />
+    <ScrollArea orientation="horizontal" className="my-3 w-full">
+      <table
+        className={cn('aui-md-table w-full border-separate border-spacing-0', className)}
+        {...props}
+      />
+    </ScrollArea>
   ),
   th: ({ className, ...props }) => (
     <th
@@ -211,13 +211,15 @@ const defaultComponents = memoizeMarkdownComponents({
     <sup className={cn('aui-md-sup [&>a]:text-xs [&>a]:no-underline', className)} {...props} />
   ),
   pre: ({ className, ...props }) => (
-    <pre
-      className={cn(
-        'aui-md-pre border-border/50 bg-muted/30 overflow-x-auto rounded-t-none rounded-b-xl border border-t-0 p-3.5 text-[13px] leading-relaxed',
-        className
-      )}
-      {...props}
-    />
+    <ScrollArea orientation="horizontal" className="w-full rounded-b-xl">
+      <pre
+        className={cn(
+          'aui-md-pre border-border/50 bg-muted/30 rounded-t-none rounded-b-xl border border-t-0 p-3.5 text-[13px] leading-relaxed',
+          className
+        )}
+        {...props}
+      />
+    </ScrollArea>
   ),
   code: function Code({ className, ...props }) {
     const isCodeBlock = useIsMarkdownCodeBlock()

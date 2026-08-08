@@ -52,6 +52,9 @@ describe('BrowserControlService', () => {
     await expect(service.executeCommand('tab-1', 'DOM.getDocument')).resolves.toEqual(
       expect.objectContaining({ method: 'DOM.getDocument' })
     )
+    await expect(service.executeCommand('tab-1', 'Page.captureScreenshot')).resolves.toEqual(
+      expect.objectContaining({ method: 'Page.captureScreenshot' })
+    )
 
     expect(debuggerInstance.attach).toHaveBeenCalledTimes(1)
     expect(debuggerInstance.attach).toHaveBeenCalledWith('1.3')

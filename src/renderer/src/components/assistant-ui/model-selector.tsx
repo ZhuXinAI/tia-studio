@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Brain, Bot, Check, ChevronDown, Search } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
+import { ScrollArea } from '@renderer/components/ui/scroll-area'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -138,73 +139,71 @@ export function ModelSelector({
             className="h-8 pl-7 text-xs"
           />
         </div>
-        <div
-          role="listbox"
-          aria-label={ariaLabel}
-          className="chat-scrollbar max-h-60 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain"
-        >
-          {groups.map(({ group, options: groupOptions }, groupIndex) => (
-            <div key={group}>
-              {groupIndex > 0 ? <DropdownMenuSeparator /> : null}
-              <DropdownMenuLabel className="px-2 text-xs text-muted-foreground">
-                {group}
-              </DropdownMenuLabel>
-              {groupOptions.map((option) =>
-                option.thinking?.supportsThinking ? (
-                  <DropdownMenuSub key={option.id}>
-                    <DropdownMenuSubTrigger
-                      disabled={option.disabled}
-                      className="min-w-0 gap-2 py-2"
-                      onSelect={(event) => {
-                        event.preventDefault()
-                        onValueChange(option.id)
-                      }}
-                    >
-                      {renderOptionLabel(option)}
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="w-56">
-                      <DropdownMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Brain className="size-3.5" />
-                        {t('threads.composer.thinkingMode')}
-                      </DropdownMenuLabel>
-                      <DropdownMenuRadioGroup
-                        value={levelFor(option)}
-                        onValueChange={(level) => {
+        <ScrollArea className="min-w-0 [&>[data-radix-scroll-area-viewport]]:h-auto [&>[data-radix-scroll-area-viewport]]:max-h-60">
+          <div role="listbox" aria-label={ariaLabel} className="overscroll-contain">
+            {groups.map(({ group, options: groupOptions }, groupIndex) => (
+              <div key={group}>
+                {groupIndex > 0 ? <DropdownMenuSeparator /> : null}
+                <DropdownMenuLabel className="px-2 text-xs text-muted-foreground">
+                  {group}
+                </DropdownMenuLabel>
+                {groupOptions.map((option) =>
+                  option.thinking?.supportsThinking ? (
+                    <DropdownMenuSub key={option.id}>
+                      <DropdownMenuSubTrigger
+                        disabled={option.disabled}
+                        className="min-w-0 gap-2 py-2"
+                        onSelect={(event) => {
+                          event.preventDefault()
                           onValueChange(option.id)
-                          onThinkingLevelChange?.(option, level as AgentThinkingLevel)
                         }}
                       >
-                        {thinkingLevelsFor(option).map((level) => (
-                          <DropdownMenuRadioItem key={level} value={level} className="gap-2">
-                            <span className="flex-1">
-                              {level === 'off'
-                                ? t('threads.composer.thinkingOff')
-                                : t(`threads.composer.thinkingLevels.${level}`)}
-                            </span>
-                          </DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                ) : (
-                  <DropdownMenuItem
-                    key={option.id}
-                    disabled={option.disabled}
-                    onSelect={() => onValueChange(option.id)}
-                    className="min-w-0 gap-2 py-2"
-                  >
-                    {renderOptionLabel(option)}
-                  </DropdownMenuItem>
-                )
-              )}
-            </div>
-          ))}
-          {groups.length === 0 ? (
-            <p className="px-2 py-3 text-center text-xs text-muted-foreground">
-              {t('threads.composer.noModels')}
-            </p>
-          ) : null}
-        </div>
+                        {renderOptionLabel(option)}
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-56">
+                        <DropdownMenuLabel className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Brain className="size-3.5" />
+                          {t('threads.composer.thinkingMode')}
+                        </DropdownMenuLabel>
+                        <DropdownMenuRadioGroup
+                          value={levelFor(option)}
+                          onValueChange={(level) => {
+                            onValueChange(option.id)
+                            onThinkingLevelChange?.(option, level as AgentThinkingLevel)
+                          }}
+                        >
+                          {thinkingLevelsFor(option).map((level) => (
+                            <DropdownMenuRadioItem key={level} value={level} className="gap-2">
+                              <span className="flex-1">
+                                {level === 'off'
+                                  ? t('threads.composer.thinkingOff')
+                                  : t(`threads.composer.thinkingLevels.${level}`)}
+                              </span>
+                            </DropdownMenuRadioItem>
+                          ))}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  ) : (
+                    <DropdownMenuItem
+                      key={option.id}
+                      disabled={option.disabled}
+                      onSelect={() => onValueChange(option.id)}
+                      className="min-w-0 gap-2 py-2"
+                    >
+                      {renderOptionLabel(option)}
+                    </DropdownMenuItem>
+                  )
+                )}
+              </div>
+            ))}
+            {groups.length === 0 ? (
+              <p className="px-2 py-3 text-center text-xs text-muted-foreground">
+                {t('threads.composer.noModels')}
+              </p>
+            ) : null}
+          </div>
+        </ScrollArea>
       </DropdownMenuContent>
     </DropdownMenu>
   )

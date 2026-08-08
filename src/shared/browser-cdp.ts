@@ -14,6 +14,7 @@ export const browserCdpMethods = [
   'Page.reload',
   'Page.stopLoading',
   'Page.getNavigationHistory',
+  'Page.captureScreenshot',
   'Runtime.enable',
   'Runtime.disable',
   'Runtime.evaluate',

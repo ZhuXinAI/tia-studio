@@ -168,6 +168,13 @@ body {
   font-family: var(--font-display);
 }
 
+.settings-page-title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+
 .font-metadata {
   font-family: var(--font-metadata);
   letter-spacing: 0.08em;

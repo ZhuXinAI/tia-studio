@@ -11,7 +11,8 @@ export const browserIpcChannels = {
   goForward: 'tia-browser:go-forward',
   stop: 'tia-browser:stop',
   setViewBounds: 'tia-browser:set-view-bounds',
-  state: 'tia-browser:state'
+  state: 'tia-browser:state',
+  requestOpen: 'tia-browser:request-open'
 } as const
 
 export type BrowserBounds = {
@@ -36,6 +37,10 @@ export type BrowserTabsState = {
   activeTabId: string | null
 }
 
+export type BrowserPanelOpenRequest = {
+  sessionId?: string
+}
+
 export type BrowserBridge = {
   getState: () => Promise<BrowserTabsState>
   createTab: (url?: string) => Promise<BrowserTab>
@@ -48,6 +53,7 @@ export type BrowserBridge = {
   stop: (tabId: string) => Promise<void>
   setViewBounds: (bounds: BrowserBounds | null) => void
   onState: (listener: (state: BrowserTabsState) => void) => () => void
+  onRequestOpen: (listener: (request: BrowserPanelOpenRequest) => void) => () => void
   cdp: BrowserCdpBridge
 }
 
@@ -60,8 +66,17 @@ export function normalizeBrowserUrl(value: string): string | null {
   if (trimmed === 'about:blank') return trimmed
   if (!trimmed) return null
 
+  const looksLikeHostPort =
+    /^(?:localhost|(?:\d{1,3}\.){3}\d{1,3}|(?:[a-z0-9-]+\.)+[a-z]{2,}|\[[0-9a-f:]+\]):\d+(?:[/?#]|$)/i.test(
+      trimmed
+    )
+  const explicitProtocol = /^[a-z][a-z\d+.-]*:/i.test(trimmed)
+  if (explicitProtocol && !looksLikeHostPort && !/^https?:/i.test(trimmed)) return null
+
   try {
-    const url = new URL(trimmed)
+    const url = new URL(
+      looksLikeHostPort ? `https://${trimmed}` : explicitProtocol ? trimmed : `https://${trimmed}`
+    )
     return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null
   } catch {
     return null

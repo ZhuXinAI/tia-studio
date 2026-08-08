@@ -16,7 +16,6 @@ import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -97,8 +96,8 @@ export function SettingsSidebarNav(): React.JSX.Element {
   }
 
   return (
-    <Sidebar className="h-full border-b-0 border-r border-[color:var(--surface-border)]">
-      <SidebarHeader className="space-y-3 border-b border-[color:var(--surface-border)]">
+    <Sidebar className="app-shell-pane h-full border-b-0 border-r border-[color:var(--chat-surface-border)]">
+      <SidebarHeader className="space-y-3 border-b border-[color:var(--chat-surface-border)]">
         <Button
           asChild
           variant="ghost"
@@ -106,19 +105,17 @@ export function SettingsSidebarNav(): React.JSX.Element {
         >
           <NavLink to="/chat">
             <ArrowLeft className="size-4" />
-            Back to app
+            {t('settings.sidebar.backToApp')}
           </NavLink>
         </Button>
       </SidebarHeader>
 
-      <SidebarContent className="py-5">
-        <SidebarGroup>
-          <SidebarGroupLabel>Configuration</SidebarGroupLabel>
+      <SidebarContent className="py-4">
+        <SidebarGroup className="my-0">
           <SidebarMenu>{renderItems(configurationItems)}</SidebarMenu>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-5">
-          <SidebarGroupLabel>Preferences</SidebarGroupLabel>
+        <SidebarGroup className="my-0 mt-4">
           <SidebarMenu>{renderItems(preferenceItems)}</SidebarMenu>
         </SidebarGroup>
       </SidebarContent>

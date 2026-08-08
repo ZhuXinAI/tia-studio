@@ -15,6 +15,7 @@ import type { BrowserBridge, BrowserTab, BrowserTabsState } from '../../../../..
 import { normalizeBrowserUrl } from '../../../../../shared/browser'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
+import { ScrollArea } from '../../../components/ui/scroll-area'
 import { useTranslation } from '../../../i18n/use-app-translation'
 
 type BrowserRailProps = {
@@ -247,57 +248,59 @@ function NativeBrowserRail({
   return createPortal(
     <div className="flex h-full min-h-0 flex-col bg-background/95">
       <div className="flex min-h-10 items-center gap-1 border-b border-border/60 px-2">
-        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-1">
-          {state.tabs.map((tab) => (
-            <div
-              key={tab.id}
-              className={`group flex min-w-0 max-w-44 items-center rounded-md border text-xs ${
-                tab.id === state.activeTabId
-                  ? 'border-border bg-muted/70 text-foreground'
-                  : 'border-transparent text-muted-foreground hover:bg-muted/40'
-              }`}
+        <ScrollArea orientation="horizontal" className="min-w-0 flex-1">
+          <div className="flex min-w-max items-center gap-1 py-1">
+            {state.tabs.map((tab) => (
+              <div
+                key={tab.id}
+                className={`group flex min-w-0 max-w-44 items-center rounded-md border text-xs ${
+                  tab.id === state.activeTabId
+                    ? 'border-border bg-muted/70 text-foreground'
+                    : 'border-transparent text-muted-foreground hover:bg-muted/40'
+                }`}
+              >
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 truncate px-2 py-1.5 text-left"
+                  onClick={() => runAction(() => bridge.activateTab(tab.id))}
+                  aria-label={t('browserRail.activateTab', { title: displayTabTitle(tab) })}
+                  aria-pressed={tab.id === state.activeTabId}
+                >
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {tab.loading ? (
+                      <LoaderCircle className="size-3 shrink-0 animate-spin" />
+                    ) : (
+                      <Globe2 className="size-3 shrink-0" />
+                    )}
+                    <span className="truncate">{displayTabTitle(tab)}</span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="mr-1 rounded p-0.5 opacity-60 hover:bg-background hover:opacity-100"
+                  onClick={() => runAction(() => bridge.closeTab(tab.id))}
+                  aria-label={t('browserRail.closeTab', { title: displayTabTitle(tab) })}
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 shrink-0"
+              onClick={() =>
+                runAction(async () => {
+                  await bridge.createTab()
+                })
+              }
+              aria-label={t('browserRail.newTab')}
             >
-              <button
-                type="button"
-                className="min-w-0 flex-1 truncate px-2 py-1.5 text-left"
-                onClick={() => runAction(() => bridge.activateTab(tab.id))}
-                aria-label={t('browserRail.activateTab', { title: displayTabTitle(tab) })}
-                aria-pressed={tab.id === state.activeTabId}
-              >
-                <span className="flex min-w-0 items-center gap-1.5">
-                  {tab.loading ? (
-                    <LoaderCircle className="size-3 shrink-0 animate-spin" />
-                  ) : (
-                    <Globe2 className="size-3 shrink-0" />
-                  )}
-                  <span className="truncate">{displayTabTitle(tab)}</span>
-                </span>
-              </button>
-              <button
-                type="button"
-                className="mr-1 rounded p-0.5 opacity-60 hover:bg-background hover:opacity-100"
-                onClick={() => runAction(() => bridge.closeTab(tab.id))}
-                aria-label={t('browserRail.closeTab', { title: displayTabTitle(tab) })}
-              >
-                <X className="size-3" />
-              </button>
-            </div>
-          ))}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-7 shrink-0"
-            onClick={() =>
-              runAction(async () => {
-                await bridge.createTab()
-              })
-            }
-            aria-label={t('browserRail.newTab')}
-          >
-            <Plus className="size-3.5" />
-          </Button>
-        </div>
+              <Plus className="size-3.5" />
+            </Button>
+          </div>
+        </ScrollArea>
         <Button
           type="button"
           variant="ghost"

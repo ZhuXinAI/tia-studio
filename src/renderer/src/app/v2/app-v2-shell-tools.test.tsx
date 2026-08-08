@@ -110,4 +110,95 @@ describe('ThreadWorkspaceTools', () => {
     expect(setRightRailOpen).toHaveBeenCalledWith(true)
     expect(setBottomDrawerOpen).not.toHaveBeenCalled()
   })
+
+  it('organizes the bottom drawer as terminal and browser tabs', async () => {
+    await act(async () => {
+      root.render(
+        <AppV2ShellRightRailContext.Provider
+          value={{
+            isOpen: false,
+            setIsOpen: vi.fn(),
+            toggle: vi.fn(),
+            setHasContent: vi.fn(),
+            slotElement: rightSlot
+          }}
+        >
+          <AppV2ShellBottomDrawerContext.Provider
+            value={{
+              isOpen: true,
+              setIsOpen: vi.fn(),
+              toggle: vi.fn(),
+              setHasContent: vi.fn(),
+              slotElement: bottomSlot
+            }}
+          >
+            <ThreadWorkspaceTools sessionId="session-1" />
+          </AppV2ShellBottomDrawerContext.Provider>
+        </AppV2ShellRightRailContext.Provider>
+      )
+    })
+
+    expect(bottomSlot.querySelector('[data-testid="bottom-tools-panel"]')).not.toBeNull()
+    expect(bottomSlot.querySelector('[role="tab"][aria-label="Terminal"]')).not.toBeNull()
+    expect(bottomSlot.querySelector('[role="tab"][aria-label="Browser"]')).not.toBeNull()
+    expect(bottomSlot.querySelector('[data-testid="terminal-content"]')).not.toBeNull()
+
+    await act(async () => {
+      bottomSlot
+        .querySelector<HTMLButtonElement>('button[role="tab"][aria-label="Browser"]')
+        ?.click()
+    })
+
+    expect(bottomSlot.querySelector('[data-testid="browser-content"]')).not.toBeNull()
+    expect(bottomSlot.querySelector('[data-testid="terminal-content"]')).toBeNull()
+  })
+
+  it('opens the browser panel when the main process requests it for this session', async () => {
+    let requestListener: ((request: { sessionId?: string }) => void) | undefined
+    Object.defineProperty(window, 'tiaStudio', {
+      configurable: true,
+      value: {
+        browser: {
+          onRequestOpen: (listener: (request: { sessionId?: string }) => void) => {
+            requestListener = listener
+            return () => undefined
+          }
+        }
+      }
+    })
+
+    const setRightRailOpen = vi.fn()
+    await act(async () => {
+      root.render(
+        <AppV2ShellRightRailContext.Provider
+          value={{
+            isOpen: true,
+            setIsOpen: setRightRailOpen,
+            toggle: vi.fn(),
+            setHasContent: vi.fn(),
+            slotElement: rightSlot
+          }}
+        >
+          <AppV2ShellBottomDrawerContext.Provider
+            value={{
+              isOpen: false,
+              setIsOpen: vi.fn(),
+              toggle: vi.fn(),
+              setHasContent: vi.fn(),
+              slotElement: bottomSlot
+            }}
+          >
+            <ThreadWorkspaceTools sessionId="session-1" />
+          </AppV2ShellBottomDrawerContext.Provider>
+        </AppV2ShellRightRailContext.Provider>
+      )
+    })
+
+    await act(async () => {
+      requestListener?.({ sessionId: 'session-1' })
+    })
+    expect(rightSlot.querySelector('[data-testid="browser-content"]')).not.toBeNull()
+    expect(setRightRailOpen).toHaveBeenCalledWith(true)
+    delete (window as Window & { tiaStudio?: unknown }).tiaStudio
+  })
 })

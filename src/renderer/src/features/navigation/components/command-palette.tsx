@@ -21,6 +21,7 @@ import {
   DialogTitle
 } from '../../../components/ui/dialog'
 import { Input } from '../../../components/ui/input'
+import { ScrollArea } from '../../../components/ui/scroll-area'
 import { cn } from '../../../lib/utils'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { useAgentSessions } from '../../threads/agent-sessions-query'
@@ -182,7 +183,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="top-[18%] max-w-xl translate-y-0 gap-0 overflow-hidden p-0">
+      <DialogContent className="max-w-xl gap-0 overflow-hidden p-0">
         <DialogTitle className="sr-only">{t('commandPalette.title')}</DialogTitle>
         <DialogDescription className="sr-only">{t('commandPalette.description')}</DialogDescription>
         <div className="flex items-center gap-3 border-b border-[color:var(--surface-border)] px-4">
@@ -200,11 +201,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
             {t('commandPalette.escape')}
           </kbd>
         </div>
-        <div
-          className="max-h-[min(28rem,60vh)] overflow-y-auto p-2"
-          role="listbox"
-          aria-label={t('commandPalette.title')}
-        >
+        <ScrollArea className="w-full [&>[data-radix-scroll-area-viewport]]:h-auto [&>[data-radix-scroll-area-viewport]]:max-h-[min(28rem,60vh)]">
+          <div className="p-2" role="listbox" aria-label={t('commandPalette.title')}>
           {filteredActions.length ? (
             filteredActions.map((action, index) => {
               const Icon = action.icon
@@ -242,7 +240,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
               {t('commandPalette.noResults')}
             </p>
           )}
-        </div>
+          </div>
+        </ScrollArea>
         <div className="flex items-center justify-between border-t border-[color:var(--surface-border)] px-4 py-2 text-[11px] text-muted-foreground">
           <span>
             {t('commandPalette.navigateHint')} · {t('commandPalette.openHint')}

@@ -84,6 +84,7 @@ import { GitReviewService } from './git/git-review-service'
 import { PythonToolingService } from './python/python-tooling-service'
 import { BrowserTabManager } from './browser/browser-tab-manager'
 import { BrowserControlService } from './browser/browser-control-service'
+import { BrowserAutomationService } from './browser/browser-agent-tools'
 import { WorkspaceFileService } from './workspaces/workspace-file-service'
 import type { HealthDependencies } from '../shared/health'
 
@@ -119,6 +120,7 @@ let gitReviewService: GitReviewService | null = null
 let pythonToolingService: PythonToolingService | null = null
 let browserTabManager: BrowserTabManager | null = null
 let browserControlService: BrowserControlService | null = null
+let browserAutomationService: BrowserAutomationService | null = null
 let gracefulQuitStarted = false
 
 function logAppLifecycle(eventName: string, data?: Record<string, unknown>): void {
@@ -360,6 +362,11 @@ async function startLocalApiServer(): Promise<void> {
   const channelEventBus = new ChannelEventBus()
   const whatsAppAuthStateStore = new WhatsAppAuthStateStore()
   const wechatAuthStateStore = new WechatAuthStateStore()
+  browserAutomationService ??= new BrowserAutomationService({
+    getTabManager: () => browserTabManager,
+    getControlService: () => browserControlService,
+    requestPanelOpen: (sessionId) => browserTabManager?.requestPanelOpen(sessionId)
+  })
   agentRuntimeManager = new AgentRuntimeManager({
     sessionsRepo: agentSessionsRepo,
     providersRepo,
@@ -372,6 +379,7 @@ async function startLocalApiServer(): Promise<void> {
     mcpAuthRepository,
     mcpServerHealth,
     artifactsRepo,
+    browserAutomation: browserAutomationService,
     resolveMcpCommand: (command, args, env) =>
       resolveManagedRuntimeService().resolveManagedCommand(command, args, env),
     stateManagement: {
@@ -922,6 +930,8 @@ app.on('before-quit', (event) => {
   browserTabManager = null
   browserControlService?.dispose()
   browserControlService = null
+  browserAutomationService?.dispose()
+  browserAutomationService = null
   void (async () => {
     automationService?.stop()
     automationService = null

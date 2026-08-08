@@ -334,12 +334,10 @@ export function ProvidersSettingsPage(): React.JSX.Element {
 
   return (
     <>
-      <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 py-8 pb-12">
+      <main className="flex w-full flex-col gap-8">
         <header className="flex items-end justify-between gap-6 border-b border-[color:var(--surface-border)] pb-5">
           <div className="space-y-2">
-            <h1 className="font-editorial text-[2rem] leading-none tracking-[-0.035em]">
-              {t('settings.providers.page.title')}
-            </h1>
+            <h1 className="settings-page-title">{t('settings.providers.page.title')}</h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
               {t('settings.providers.page.description')}
             </p>

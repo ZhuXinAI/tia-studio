@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { normalizeBrowserUrl } from './browser'
 
 describe('browser URL policy', () => {
-  it('accepts HTTP, HTTPS, and the blank tab URL', () => {
+  it('accepts HTTP, HTTPS, hostnames without a scheme, and the blank tab URL', () => {
     expect(normalizeBrowserUrl(' https://example.com/path ')).toBe('https://example.com/path')
     expect(normalizeBrowserUrl('http://localhost:3000/')).toBe('http://localhost:3000/')
+    expect(normalizeBrowserUrl('example.com')).toBe('https://example.com/')
+    expect(normalizeBrowserUrl('localhost:3000')).toBe('https://localhost:3000/')
     expect(normalizeBrowserUrl('about:blank')).toBe('about:blank')
   })
 
@@ -12,7 +14,7 @@ describe('browser URL policy', () => {
     expect(normalizeBrowserUrl('javascript:alert(1)')).toBeNull()
     expect(normalizeBrowserUrl('file:///etc/passwd')).toBeNull()
     expect(normalizeBrowserUrl('data:text/html,hello')).toBeNull()
-    expect(normalizeBrowserUrl('example.com')).toBeNull()
+    expect(normalizeBrowserUrl('javascript:3000')).toBeNull()
     expect(normalizeBrowserUrl('')).toBeNull()
   })
 })

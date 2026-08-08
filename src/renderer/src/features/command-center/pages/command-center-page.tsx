@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import type { AgentSessionSnapshot } from '../../../../../shared/agent-runtime'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
+import { ScrollArea } from '../../../components/ui/scroll-area'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { cancelAgentRun, useAgentSessions } from '../../threads/agent-sessions-query'
 import { getThreadDisplayTitle } from '../../threads/thread-page-routing'
@@ -83,8 +84,9 @@ export function CommandCenterPage(): React.JSX.Element {
         </div>
         <Button type="button" onClick={() => navigate('/chat/new')}><Plus className="size-4" /> {t('commandCenter.newThread')}</Button>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto p-6">
-        <div className="mx-auto max-w-6xl space-y-6">
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="p-6">
+          <div className="mx-auto max-w-6xl space-y-6">
           <div className="grid gap-3 sm:grid-cols-3">
             <SummaryCard icon={<Activity className="size-4" />} label={t('commandCenter.running')} value={running.length} tone="text-blue-500" />
             <SummaryCard icon={<ShieldAlert className="size-4" />} label={t('commandCenter.needsApproval')} value={approvals.length} tone="text-amber-500" />
@@ -130,8 +132,9 @@ export function CommandCenterPage(): React.JSX.Element {
             </div>
           </div>
           <p className="flex items-center gap-2 text-xs text-muted-foreground"><Clock3 className="size-3.5" /> {t('commandCenter.autoRefresh')}</p>
+          </div>
         </div>
-      </div>
+      </ScrollArea>
     </section>
   )
 }

@@ -24,6 +24,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger
 } from '@renderer/components/ui/collapsible'
+import { ScrollArea } from '@renderer/components/ui/scroll-area'
 import { cn } from '@renderer/lib/utils'
 import { useTranslation } from '../../i18n/use-app-translation'
 
@@ -247,14 +248,16 @@ function ReasoningContent({
   )
 }
 
-function ReasoningText({ className, children, ...props }: React.ComponentProps<'div'>) {
+function ReasoningText({ className, children, dir, ...props }: React.ComponentProps<'div'>) {
   const isPreview = useContext(ReasoningPreviewContext)
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!isPreview) return
-    const scrollEl = scrollRef.current
+    const scrollEl = scrollRef.current?.querySelector<HTMLElement>(
+      '[data-radix-scroll-area-viewport]'
+    )
     const contentEl = contentRef.current
     if (!scrollEl || !contentEl) return
     const pin = () => {
@@ -267,11 +270,12 @@ function ReasoningText({ className, children, ...props }: React.ComponentProps<'
   }, [isPreview])
 
   return (
-    <div
+    <ScrollArea
       ref={scrollRef}
       data-slot="reasoning-text"
+      dir={dir === 'rtl' ? 'rtl' : dir === 'ltr' ? 'ltr' : undefined}
       className={cn(
-        'aui-reasoning-text relative z-0 max-h-64 overflow-y-auto ps-6 pt-2 pb-2 leading-relaxed text-pretty',
+        'aui-reasoning-text relative z-0 max-h-64',
         'transform-gpu transition-[transform,opacity] ease-[cubic-bezier(0.32,0.72,0,1)]',
         'motion-reduce:animate-none',
         'group-data-open/collapsible-content:animate-in',
@@ -288,10 +292,13 @@ function ReasoningText({ className, children, ...props }: React.ComponentProps<'
       )}
       {...props}
     >
-      <div ref={contentRef} className="aui-reasoning-text-content space-y-4">
+      <div
+        ref={contentRef}
+        className="aui-reasoning-text-content space-y-4 ps-6 pt-2 pb-2 leading-relaxed text-pretty"
+      >
         {children}
       </div>
-    </div>
+    </ScrollArea>
   )
 }
 

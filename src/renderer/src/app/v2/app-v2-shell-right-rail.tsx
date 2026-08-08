@@ -40,7 +40,7 @@ export function AppV2ShellRightRail({
       aria-label={t('appShell.nav.toggleTools')}
       data-testid="app-v2-right-rail"
       style={{ width: `${width}px` }}
-      className="app-shell-pane relative hidden min-h-0 min-w-0 shrink-0 overflow-hidden border-l border-[color:var(--chat-surface-border)] xl:flex"
+      className="app-shell-pane relative hidden min-h-0 min-w-0 shrink-0 animate-in slide-in-from-right-4 fade-in-0 overflow-hidden border-l border-[color:var(--chat-surface-border)] duration-200 motion-reduce:animate-none xl:flex"
     >
       <div
         role="separator"

@@ -7,7 +7,12 @@ import {
   type IpcMainInvokeEvent
 } from 'electron'
 import { randomUUID } from 'node:crypto'
-import type { BrowserBounds, BrowserTab, BrowserTabsState } from '../../shared/browser'
+import type {
+  BrowserBounds,
+  BrowserPanelOpenRequest,
+  BrowserTab,
+  BrowserTabsState
+} from '../../shared/browser'
 import { browserIpcChannels, normalizeBrowserUrl } from '../../shared/browser'
 import type { BrowserControlService } from './browser-control-service'
 
@@ -272,6 +277,12 @@ export class BrowserTabManager {
     tab.view.webContents.stop()
     tab.loading = false
     this.emitState()
+  }
+
+  requestPanelOpen(sessionId?: string): void {
+    if (this.disposed || this.browserWindow.isDestroyed()) return
+    const request: BrowserPanelOpenRequest = sessionId?.trim() ? { sessionId } : {}
+    this.browserWindow.webContents.send(browserIpcChannels.requestOpen, request)
   }
 
   dispose(): void {

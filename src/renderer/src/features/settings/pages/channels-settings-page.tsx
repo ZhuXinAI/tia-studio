@@ -11,6 +11,7 @@ import {
   DialogTitle
 } from '../../../components/ui/dialog'
 import { Input } from '../../../components/ui/input'
+import { ScrollArea } from '../../../components/ui/scroll-area'
 import { Switch } from '../../../components/ui/switch'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import { useWorkspaces } from '../../workspaces/workspaces-query'
@@ -26,7 +27,6 @@ import {
   listChannels,
   updateChannel
 } from '../channels/channels-query'
-import { SettingsContent } from './settings-content'
 
 const settingsSelectClassName =
   'h-11 rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-paper)] px-3 py-2 text-sm shadow-[inset_0_1px_0_color-mix(in_srgb,var(--surface-paper)_44%,transparent)] disabled:opacity-100'
@@ -425,12 +425,10 @@ export function ChannelsSettingsPage(): React.JSX.Element {
   }
 
   return (
-    <SettingsContent size="wide">
+    <>
       <header className="space-y-3 border-b border-[color:var(--surface-border)] pb-5">
         <p className="section-kicker">Global routing and communication</p>
-        <h1 className="font-editorial text-[2.8rem] leading-none tracking-[-0.045em]">
-          {t('settings.channels.title')}
-        </h1>
+        <h1 className="settings-page-title">{t('settings.channels.title')}</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">
           {t('settings.channels.description')}
         </p>
@@ -610,341 +608,351 @@ export function ChannelsSettingsPage(): React.JSX.Element {
           }
         }}
       >
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <p className="section-kicker">Channel details</p>
-            <DialogTitle>
-              {formMode === 'create'
-                ? t('settings.channels.form.createTitle')
-                : t('settings.channels.form.editTitle')}
-            </DialogTitle>
-            <DialogDescription>
-              {formMode === 'create'
-                ? t('settings.channels.createDescription')
-                : t('settings.channels.form.editDescription')}
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="flex h-[88vh] max-h-[88vh] min-h-0 max-w-lg flex-col gap-0 overflow-hidden p-0">
+          <ScrollArea className="min-h-0 flex-1 px-6 py-5">
+            <DialogHeader className="pr-8">
+              <p className="section-kicker">Channel details</p>
+              <DialogTitle>
+                {formMode === 'create'
+                  ? t('settings.channels.form.createTitle')
+                  : t('settings.channels.form.editTitle')}
+              </DialogTitle>
+              <DialogDescription>
+                {formMode === 'create'
+                  ? t('settings.channels.createDescription')
+                  : t('settings.channels.form.editDescription')}
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="space-y-3">
-            {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+            <div className="space-y-3 pt-5">
+              {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
 
-            <div className="grid gap-2">
-              <label
-                htmlFor={
-                  formMode === 'create'
-                    ? 'settings-channel-create-type'
-                    : 'settings-channel-form-type'
-                }
-                className="text-sm font-medium"
-              >
-                {t('settings.channels.form.type')}
-              </label>
-              <select
-                id={
-                  formMode === 'create'
-                    ? 'settings-channel-create-type'
-                    : 'settings-channel-form-type'
-                }
-                className={settingsSelectClassName}
-                value={formState.type}
-                disabled={formMode === 'edit'}
-                onChange={(event) =>
-                  setFormState((currentState) => ({
-                    ...currentState,
-                    type: event.target.value as ChannelType,
-                    appId: '',
-                    appSecret: '',
-                    botToken: '',
-                    botId: '',
-                    secret: ''
-                  }))
-                }
-              >
-                <option value="discord">{t('settings.channels.channelTypes.discord')}</option>
-                <option value="lark">{t('settings.channels.channelTypes.lark')}</option>
-                <option value="telegram">{t('settings.channels.channelTypes.telegram')}</option>
-                <option value="whatsapp">{t('settings.channels.channelTypes.whatsapp')}</option>
-                <option value="wechat">{t('settings.channels.channelTypes.wechat')}</option>
-                <option value="wecom">{t('settings.channels.channelTypes.wecom')}</option>
-              </select>
-            </div>
-
-            <div className="grid gap-2">
-              <label
-                htmlFor={
-                  formMode === 'create'
-                    ? 'settings-channel-create-name'
-                    : 'settings-channel-form-name'
-                }
-                className="text-sm font-medium"
-              >
-                {t('settings.channels.form.channelName')}
-              </label>
-              <Input
-                id={
-                  formMode === 'create'
-                    ? 'settings-channel-create-name'
-                    : 'settings-channel-form-name'
-                }
-                value={formState.name}
-                onChange={(event) =>
-                  setFormState((currentState) => ({
-                    ...currentState,
-                    name: event.target.value
-                  }))
-                }
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <label
-                htmlFor={
-                  formMode === 'create'
-                    ? 'settings-channel-create-workspace'
-                    : 'settings-channel-form-workspace'
-                }
-                className="text-sm font-medium"
-              >
-                {t('automations.fields.workspace')}
-              </label>
-              <select
-                id={
-                  formMode === 'create'
-                    ? 'settings-channel-create-workspace'
-                    : 'settings-channel-form-workspace'
-                }
-                className={settingsSelectClassName}
-                value={formState.workspaceId}
-                onChange={(event) =>
-                  setFormState((currentState) => ({
-                    ...currentState,
-                    workspaceId: event.target.value
-                  }))
-                }
-              >
-                <option value="">{t('threads.sidebar.chats')}</option>
-                {routableWorkspaces.map((workspace) => (
-                  <option key={workspace.id} value={workspace.id}>
-                    {workspace.name}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-muted-foreground">
-                {t('settings.channels.workspaceHint')}
-              </p>
-            </div>
-
-            {formState.type === 'discord' || formState.type === 'telegram' ? (
               <div className="grid gap-2">
                 <label
                   htmlFor={
                     formMode === 'create'
-                      ? 'settings-channel-create-bot-token'
-                      : 'settings-channel-form-bot-token'
+                      ? 'settings-channel-create-type'
+                      : 'settings-channel-form-type'
                   }
                   className="text-sm font-medium"
                 >
-                  {t('settings.channels.form.botToken')}
+                  {t('settings.channels.form.type')}
+                </label>
+                <select
+                  id={
+                    formMode === 'create'
+                      ? 'settings-channel-create-type'
+                      : 'settings-channel-form-type'
+                  }
+                  className={settingsSelectClassName}
+                  value={formState.type}
+                  disabled={formMode === 'edit'}
+                  onChange={(event) =>
+                    setFormState((currentState) => ({
+                      ...currentState,
+                      type: event.target.value as ChannelType,
+                      appId: '',
+                      appSecret: '',
+                      botToken: '',
+                      botId: '',
+                      secret: ''
+                    }))
+                  }
+                >
+                  <option value="discord">{t('settings.channels.channelTypes.discord')}</option>
+                  <option value="lark">{t('settings.channels.channelTypes.lark')}</option>
+                  <option value="telegram">{t('settings.channels.channelTypes.telegram')}</option>
+                  <option value="whatsapp">{t('settings.channels.channelTypes.whatsapp')}</option>
+                  <option value="wechat">{t('settings.channels.channelTypes.wechat')}</option>
+                  <option value="wecom">{t('settings.channels.channelTypes.wecom')}</option>
+                </select>
+              </div>
+
+              <div className="grid gap-2">
+                <label
+                  htmlFor={
+                    formMode === 'create'
+                      ? 'settings-channel-create-name'
+                      : 'settings-channel-form-name'
+                  }
+                  className="text-sm font-medium"
+                >
+                  {t('settings.channels.form.channelName')}
                 </label>
                 <Input
                   id={
                     formMode === 'create'
-                      ? 'settings-channel-create-bot-token'
-                      : 'settings-channel-form-bot-token'
+                      ? 'settings-channel-create-name'
+                      : 'settings-channel-form-name'
                   }
-                  type="password"
-                  placeholder={
-                    formMode === 'edit'
-                      ? t('settings.channels.form.botTokenPlaceholder')
-                      : undefined
-                  }
-                  value={formState.botToken}
+                  value={formState.name}
                   onChange={(event) =>
                     setFormState((currentState) => ({
                       ...currentState,
-                      botToken: event.target.value
+                      name: event.target.value
                     }))
                   }
                 />
               </div>
-            ) : formState.type === 'whatsapp' ? (
-              <p className="text-sm text-muted-foreground">{t('settings.channels.whatsappHint')}</p>
-            ) : formState.type === 'wechat' ? (
-              <p className="text-sm text-muted-foreground">{t('settings.channels.wechatHint')}</p>
-            ) : formState.type === 'wecom' ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <label
-                    htmlFor={
-                      formMode === 'create'
-                        ? 'settings-channel-create-app-id'
-                        : 'settings-channel-form-app-id'
-                    }
-                    className="text-sm font-medium"
-                  >
-                    {t('settings.channels.form.botId')}
-                  </label>
-                  <Input
-                    id={
-                      formMode === 'create'
-                        ? 'settings-channel-create-app-id'
-                        : 'settings-channel-form-app-id'
-                    }
-                    placeholder={
-                      formMode === 'edit' ? t('settings.channels.form.appIdPlaceholder') : undefined
-                    }
-                    value={formState.botId}
-                    onChange={(event) =>
-                      setFormState((currentState) => ({
-                        ...currentState,
-                        botId: event.target.value
-                      }))
-                    }
-                  />
-                </div>
 
+              <div className="grid gap-2">
+                <label
+                  htmlFor={
+                    formMode === 'create'
+                      ? 'settings-channel-create-workspace'
+                      : 'settings-channel-form-workspace'
+                  }
+                  className="text-sm font-medium"
+                >
+                  {t('automations.fields.workspace')}
+                </label>
+                <select
+                  id={
+                    formMode === 'create'
+                      ? 'settings-channel-create-workspace'
+                      : 'settings-channel-form-workspace'
+                  }
+                  className={settingsSelectClassName}
+                  value={formState.workspaceId}
+                  onChange={(event) =>
+                    setFormState((currentState) => ({
+                      ...currentState,
+                      workspaceId: event.target.value
+                    }))
+                  }
+                >
+                  <option value="">{t('threads.sidebar.chats')}</option>
+                  {routableWorkspaces.map((workspace) => (
+                    <option key={workspace.id} value={workspace.id}>
+                      {workspace.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  {t('settings.channels.workspaceHint')}
+                </p>
+              </div>
+
+              {formState.type === 'discord' || formState.type === 'telegram' ? (
                 <div className="grid gap-2">
                   <label
                     htmlFor={
                       formMode === 'create'
-                        ? 'settings-channel-create-app-secret'
-                        : 'settings-channel-form-app-secret'
+                        ? 'settings-channel-create-bot-token'
+                        : 'settings-channel-form-bot-token'
                     }
                     className="text-sm font-medium"
                   >
-                    {t('settings.channels.form.secret')}
+                    {t('settings.channels.form.botToken')}
                   </label>
                   <Input
                     id={
                       formMode === 'create'
-                        ? 'settings-channel-create-app-secret'
-                        : 'settings-channel-form-app-secret'
+                        ? 'settings-channel-create-bot-token'
+                        : 'settings-channel-form-bot-token'
                     }
                     type="password"
                     placeholder={
                       formMode === 'edit'
-                        ? t('settings.channels.form.appSecretPlaceholder')
+                        ? t('settings.channels.form.botTokenPlaceholder')
                         : undefined
                     }
-                    value={formState.secret}
+                    value={formState.botToken}
                     onChange={(event) =>
                       setFormState((currentState) => ({
                         ...currentState,
-                        secret: event.target.value
+                        botToken: event.target.value
                       }))
                     }
                   />
                 </div>
-              </div>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <label
-                    htmlFor={
-                      formMode === 'create'
-                        ? 'settings-channel-create-app-id'
-                        : 'settings-channel-form-app-id'
-                    }
-                    className="text-sm font-medium"
-                  >
-                    {t('settings.channels.form.appId')}
-                  </label>
-                  <Input
+              ) : formState.type === 'whatsapp' ? (
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.channels.whatsappHint')}
+                </p>
+              ) : formState.type === 'wechat' ? (
+                <p className="text-sm text-muted-foreground">{t('settings.channels.wechatHint')}</p>
+              ) : formState.type === 'wecom' ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <label
+                      htmlFor={
+                        formMode === 'create'
+                          ? 'settings-channel-create-app-id'
+                          : 'settings-channel-form-app-id'
+                      }
+                      className="text-sm font-medium"
+                    >
+                      {t('settings.channels.form.botId')}
+                    </label>
+                    <Input
+                      id={
+                        formMode === 'create'
+                          ? 'settings-channel-create-app-id'
+                          : 'settings-channel-form-app-id'
+                      }
+                      placeholder={
+                        formMode === 'edit'
+                          ? t('settings.channels.form.appIdPlaceholder')
+                          : undefined
+                      }
+                      value={formState.botId}
+                      onChange={(event) =>
+                        setFormState((currentState) => ({
+                          ...currentState,
+                          botId: event.target.value
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <label
+                      htmlFor={
+                        formMode === 'create'
+                          ? 'settings-channel-create-app-secret'
+                          : 'settings-channel-form-app-secret'
+                      }
+                      className="text-sm font-medium"
+                    >
+                      {t('settings.channels.form.secret')}
+                    </label>
+                    <Input
+                      id={
+                        formMode === 'create'
+                          ? 'settings-channel-create-app-secret'
+                          : 'settings-channel-form-app-secret'
+                      }
+                      type="password"
+                      placeholder={
+                        formMode === 'edit'
+                          ? t('settings.channels.form.appSecretPlaceholder')
+                          : undefined
+                      }
+                      value={formState.secret}
+                      onChange={(event) =>
+                        setFormState((currentState) => ({
+                          ...currentState,
+                          secret: event.target.value
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <label
+                      htmlFor={
+                        formMode === 'create'
+                          ? 'settings-channel-create-app-id'
+                          : 'settings-channel-form-app-id'
+                      }
+                      className="text-sm font-medium"
+                    >
+                      {t('settings.channels.form.appId')}
+                    </label>
+                    <Input
+                      id={
+                        formMode === 'create'
+                          ? 'settings-channel-create-app-id'
+                          : 'settings-channel-form-app-id'
+                      }
+                      placeholder={
+                        formMode === 'edit'
+                          ? t('settings.channels.form.appIdPlaceholder')
+                          : undefined
+                      }
+                      value={formState.appId}
+                      onChange={(event) =>
+                        setFormState((currentState) => ({
+                          ...currentState,
+                          appId: event.target.value
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <label
+                      htmlFor={
+                        formMode === 'create'
+                          ? 'settings-channel-create-app-secret'
+                          : 'settings-channel-form-app-secret'
+                      }
+                      className="text-sm font-medium"
+                    >
+                      {t('settings.channels.form.appSecret')}
+                    </label>
+                    <Input
+                      id={
+                        formMode === 'create'
+                          ? 'settings-channel-create-app-secret'
+                          : 'settings-channel-form-app-secret'
+                      }
+                      type="password"
+                      placeholder={
+                        formMode === 'edit'
+                          ? t('settings.channels.form.appSecretPlaceholder')
+                          : undefined
+                      }
+                      value={formState.appSecret}
+                      onChange={(event) =>
+                        setFormState((currentState) => ({
+                          ...currentState,
+                          appSecret: event.target.value
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+
+              {formMode === 'edit' &&
+              formState.type !== 'whatsapp' &&
+              formState.type !== 'wechat' ? (
+                <p className="text-xs text-muted-foreground">
+                  {t('settings.channels.form.credentialsOptional')}
+                </p>
+              ) : null}
+
+              {supportsGroupMentionSetting(formState.type) ? (
+                <div className="flex items-start justify-between gap-4 rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-4">
+                  <div className="grid gap-1">
+                    <label
+                      htmlFor={
+                        formMode === 'create'
+                          ? 'settings-channel-create-group-require-mention'
+                          : 'settings-channel-form-group-require-mention'
+                      }
+                      className="text-sm font-medium"
+                    >
+                      {t('settings.channels.form.groupRequireMentionLabel')}
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      {t('settings.channels.groupRequireMentionDescription')}
+                    </p>
+                  </div>
+                  <Switch
                     id={
-                      formMode === 'create'
-                        ? 'settings-channel-create-app-id'
-                        : 'settings-channel-form-app-id'
-                    }
-                    placeholder={
-                      formMode === 'edit' ? t('settings.channels.form.appIdPlaceholder') : undefined
-                    }
-                    value={formState.appId}
-                    onChange={(event) =>
-                      setFormState((currentState) => ({
-                        ...currentState,
-                        appId: event.target.value
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <label
-                    htmlFor={
-                      formMode === 'create'
-                        ? 'settings-channel-create-app-secret'
-                        : 'settings-channel-form-app-secret'
-                    }
-                    className="text-sm font-medium"
-                  >
-                    {t('settings.channels.form.appSecret')}
-                  </label>
-                  <Input
-                    id={
-                      formMode === 'create'
-                        ? 'settings-channel-create-app-secret'
-                        : 'settings-channel-form-app-secret'
-                    }
-                    type="password"
-                    placeholder={
-                      formMode === 'edit'
-                        ? t('settings.channels.form.appSecretPlaceholder')
-                        : undefined
-                    }
-                    value={formState.appSecret}
-                    onChange={(event) =>
-                      setFormState((currentState) => ({
-                        ...currentState,
-                        appSecret: event.target.value
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-            )}
-
-            {formMode === 'edit' && formState.type !== 'whatsapp' && formState.type !== 'wechat' ? (
-              <p className="text-xs text-muted-foreground">
-                {t('settings.channels.form.credentialsOptional')}
-              </p>
-            ) : null}
-
-            {supportsGroupMentionSetting(formState.type) ? (
-              <div className="flex items-start justify-between gap-4 rounded-lg border border-[color:var(--surface-border)] bg-[color:var(--surface-panel-soft)] p-4">
-                <div className="grid gap-1">
-                  <label
-                    htmlFor={
                       formMode === 'create'
                         ? 'settings-channel-create-group-require-mention'
                         : 'settings-channel-form-group-require-mention'
                     }
-                    className="text-sm font-medium"
-                  >
-                    {t('settings.channels.form.groupRequireMentionLabel')}
-                  </label>
-                  <p className="text-xs text-muted-foreground">
-                    {t('settings.channels.groupRequireMentionDescription')}
-                  </p>
+                    checked={formState.groupRequireMention}
+                    onCheckedChange={(checked) =>
+                      setFormState((currentState) => ({
+                        ...currentState,
+                        groupRequireMention: checked
+                      }))
+                    }
+                  />
                 </div>
-                <Switch
-                  id={
-                    formMode === 'create'
-                      ? 'settings-channel-create-group-require-mention'
-                      : 'settings-channel-form-group-require-mention'
-                  }
-                  checked={formState.groupRequireMention}
-                  onCheckedChange={(checked) =>
-                    setFormState((currentState) => ({
-                      ...currentState,
-                      groupRequireMention: checked
-                    }))
-                  }
-                />
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </div>
+          </ScrollArea>
 
-          <DialogFooter>
+          <DialogFooter className="border-t border-[color:var(--surface-border)] px-6 py-4">
             <Button
               type="button"
               variant="outline"
@@ -1003,6 +1011,6 @@ export function ChannelsSettingsPage(): React.JSX.Element {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </SettingsContent>
+    </>
   )
 }

@@ -21,6 +21,14 @@ import type {
 import { Thread, type ThreadComponents } from '../../components/assistant-ui/thread'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
+import { ScrollArea } from '../../components/ui/scroll-area'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '../../components/ui/select'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -236,15 +244,21 @@ function ThreadComposerBehavior({
   return (
     <div className="flex items-center justify-end gap-2 px-1">
       <span className="text-xs text-muted-foreground">{t('threads.composer.runningBehavior')}</span>
-      <select
+      <Select
         value={behavior === 'steer' ? 'steer' : 'follow-up'}
-        onChange={(event) => onBehaviorChange(event.target.value as AgentSendBehavior)}
-        className="h-7 max-w-44 rounded-lg border border-border/60 bg-muted/35 px-2 text-xs text-muted-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
-        aria-label={t('threads.composer.runningBehavior')}
+        onValueChange={(value) => onBehaviorChange(value as AgentSendBehavior)}
       >
-        <option value="follow-up">{t('threads.composer.followUp')}</option>
-        <option value="steer">{t('threads.composer.steer')}</option>
-      </select>
+        <SelectTrigger
+          className="h-7 w-44 rounded-lg border-border/60 bg-muted/35 px-2 text-xs text-muted-foreground shadow-none hover:bg-muted focus:ring-2 focus:ring-ring"
+          aria-label={t('threads.composer.runningBehavior')}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="follow-up">{t('threads.composer.followUp')}</SelectItem>
+          <SelectItem value="steer">{t('threads.composer.steer')}</SelectItem>
+        </SelectContent>
+      </Select>
     </div>
   )
 }
@@ -364,25 +378,27 @@ function DraftWorkspacePicker({
             {selectedWorkspace.builtInKind === 'chats' ? <Check className="size-4" /> : null}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <div className="max-h-48 overflow-y-auto">
-            {filteredWorkspaces.map((workspace) => (
-              <DropdownMenuItem key={workspace.id} onSelect={() => onSelect(workspace.id)}>
-                <Folder className="mr-2 size-4 shrink-0 text-muted-foreground" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate">{workspace.name}</span>
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {workspace.rootPath}
+          <ScrollArea className="w-full [&>[data-radix-scroll-area-viewport]]:h-auto [&>[data-radix-scroll-area-viewport]]:max-h-48">
+            <div>
+              {filteredWorkspaces.map((workspace) => (
+                <DropdownMenuItem key={workspace.id} onSelect={() => onSelect(workspace.id)}>
+                  <Folder className="mr-2 size-4 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{workspace.name}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {workspace.rootPath}
+                    </span>
                   </span>
-                </span>
-                {workspace.id === selectedWorkspace.id ? <Check className="ml-2 size-4" /> : null}
-              </DropdownMenuItem>
-            ))}
-            {filteredWorkspaces.length === 0 ? (
-              <p className="px-2.5 py-2 text-xs text-muted-foreground">
-                {t('threads.sidebar.noWorkspaces')}
-              </p>
-            ) : null}
-          </div>
+                  {workspace.id === selectedWorkspace.id ? <Check className="ml-2 size-4" /> : null}
+                </DropdownMenuItem>
+              ))}
+              {filteredWorkspaces.length === 0 ? (
+                <p className="px-2.5 py-2 text-xs text-muted-foreground">
+                  {t('threads.sidebar.noWorkspaces')}
+                </p>
+              ) : null}
+            </div>
+          </ScrollArea>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

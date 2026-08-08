@@ -1,7 +1,8 @@
 import { createPortal } from 'react-dom'
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
-import { Folder, Globe2, PackageOpen, X } from 'lucide-react'
+import { Folder, Globe2, PackageOpen, Terminal as TerminalIcon, X } from 'lucide-react'
 import { Button } from '../../components/ui/button'
+import { ScrollArea } from '../../components/ui/scroll-area'
 import { useTranslation } from '../../i18n/use-app-translation'
 import { useAgentArtifacts } from '../../features/artifacts/artifacts-query'
 import { ArtifactRail } from '../../features/artifacts/components/artifact-rail'
@@ -18,11 +19,17 @@ const FilesRail = lazy(() =>
 )
 
 type WorkspaceTool = 'browser' | 'files' | 'artifacts'
+type BottomDrawerTool = 'terminal' | 'browser'
 
 const workspaceToolIcons = {
   browser: Globe2,
   files: Folder,
   artifacts: PackageOpen
+} as const
+
+const bottomDrawerToolIcons = {
+  terminal: TerminalIcon,
+  browser: Globe2
 } as const
 
 function WorkspaceToolEmptyState({
@@ -81,7 +88,7 @@ function WorkspaceToolEmptyState({
           <X className="size-4" />
         </Button>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+      <ScrollArea className="min-h-0 flex-1 px-3 py-3">
         <div className="divide-y divide-border/60 border-y border-border/60">
           {tools.map((tool) => {
             const Icon = workspaceToolIcons[tool.id]
@@ -113,7 +120,7 @@ function WorkspaceToolEmptyState({
             )
           })}
         </div>
-      </div>
+      </ScrollArea>
     </div>,
     slotElement
   )
@@ -147,11 +154,11 @@ function WorkspaceToolPanel({
   return createPortal(
     <div className="flex h-full min-h-0 flex-col bg-background/95" data-testid="tools-panel">
       <header className="flex min-h-10 items-center gap-1 border-b border-border/60 px-2">
-        <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto py-1">
+        <ScrollArea orientation="horizontal" className="min-w-0 flex-1">
           <div
             role="tablist"
             aria-label={t('threads.tools.title')}
-            className="flex min-w-max gap-0.5"
+            className="flex min-w-max gap-0.5 py-1"
           >
             {tools.map((tool) => {
               const Icon = workspaceToolIcons[tool.id]
@@ -182,7 +189,7 @@ function WorkspaceToolPanel({
               )
             })}
           </div>
-        </div>
+        </ScrollArea>
         <Button
           type="button"
           variant="ghost"
@@ -218,6 +225,90 @@ function WorkspaceToolPanel({
   )
 }
 
+function WorkspaceBottomDrawerPanel({
+  sessionId,
+  activeTool,
+  slotElement,
+  onSelect,
+  onClose
+}: {
+  sessionId: string
+  activeTool: BottomDrawerTool
+  slotElement: HTMLDivElement | null
+  onSelect: (tool: BottomDrawerTool) => void
+  onClose: () => void
+}): React.JSX.Element | null {
+  const { t } = useTranslation()
+  const [contentSlotElement, setContentSlotElement] = useState<HTMLDivElement | null>(null)
+  const tools: Array<{ id: BottomDrawerTool; label: string }> = [
+    { id: 'terminal', label: t('threads.tools.terminal') },
+    { id: 'browser', label: t('threads.tools.preview') }
+  ]
+
+  if (!slotElement) return null
+
+  return createPortal(
+    <div
+      className="flex h-full min-h-0 flex-col bg-[#080a10] text-white"
+      data-testid="bottom-tools-panel"
+    >
+      <header className="flex min-h-10 items-center gap-1 border-b border-white/10 bg-black/20 px-2">
+        <ScrollArea
+          orientation="horizontal"
+          role="tablist"
+          aria-label={t('threads.tools.title')}
+          className="min-w-0 flex-1"
+        >
+          <div className="flex min-w-max items-center gap-0.5 py-1">
+            {tools.map((tool) => {
+              const Icon = bottomDrawerToolIcons[tool.id]
+              const isActive = tool.id === activeTool
+              return (
+                <button
+                  key={tool.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-label={tool.label}
+                  className={cn(
+                    'inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] transition-colors',
+                    isActive
+                      ? 'bg-white/10 text-white'
+                      : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                  )}
+                  onClick={() => onSelect(tool.id)}
+                >
+                  <Icon className="size-3.5" />
+                  <span>{tool.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </ScrollArea>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-7 shrink-0 text-slate-400 hover:bg-white/10 hover:text-white"
+          onClick={onClose}
+          aria-label={t('threads.tools.closePanel')}
+          title={t('threads.tools.closePanel')}
+        >
+          <X className="size-4" />
+        </Button>
+      </header>
+      <div ref={setContentSlotElement} className="min-h-0 flex-1 overflow-hidden" />
+      {contentSlotElement && activeTool === 'terminal' ? (
+        <TerminalRail sessionId={sessionId} slotElement={contentSlotElement} />
+      ) : null}
+      {contentSlotElement && activeTool === 'browser' ? (
+        <BrowserRail slotElement={contentSlotElement} onClose={onClose} />
+      ) : null}
+    </div>,
+    slotElement
+  )
+}
+
 export function ThreadWorkspaceTools({ sessionId }: { sessionId: string }): React.JSX.Element {
   const { data: artifacts = [] } = useAgentArtifacts(sessionId)
   const {
@@ -233,6 +324,7 @@ export function ThreadWorkspaceTools({ sessionId }: { sessionId: string }): Reac
     slotElement: bottomDrawerSlotElement
   } = useAppV2ShellBottomDrawer()
   const [activeTool, setActiveTool] = useState<WorkspaceTool | null>(null)
+  const [activeBottomTool, setActiveBottomTool] = useState<BottomDrawerTool>('terminal')
 
   useEffect(() => {
     setHasRightRailContent(true)
@@ -242,6 +334,16 @@ export function ThreadWorkspaceTools({ sessionId }: { sessionId: string }): Reac
       setHasBottomDrawerContent(false)
     }
   }, [setHasBottomDrawerContent, setHasRightRailContent])
+
+  useEffect(() => {
+    const browser = window.tiaStudio?.browser
+    if (!browser) return
+    return browser.onRequestOpen((request) => {
+      if (request.sessionId && request.sessionId !== sessionId) return
+      setActiveTool('browser')
+      setRightRailOpen(true)
+    })
+  }, [sessionId, setRightRailOpen])
 
   const selectTool = useCallback(
     (tool: WorkspaceTool): void => {
@@ -275,9 +377,11 @@ export function ThreadWorkspaceTools({ sessionId }: { sessionId: string }): Reac
         />
       ) : null}
       {isBottomDrawerOpen ? (
-        <TerminalRail
+        <WorkspaceBottomDrawerPanel
           sessionId={sessionId}
+          activeTool={activeBottomTool}
           slotElement={bottomDrawerSlotElement}
+          onSelect={setActiveBottomTool}
           onClose={() => setBottomDrawerOpen(false)}
         />
       ) : null}

@@ -133,9 +133,7 @@ export function WebSearchSettingsPage(): React.JSX.Element {
     <div className="mx-auto flex max-w-5xl flex-col gap-6 py-8">
       <header className="space-y-3 border-b border-[color:var(--surface-border)] pb-5">
         <p className="section-kicker">External tool browsing</p>
-        <h1 className="font-editorial text-[2.5rem] leading-none tracking-[-0.04em]">
-          {t('settings.webSearch.title')}
-        </h1>
+        <h1 className="settings-page-title">{t('settings.webSearch.title')}</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">
           {t('settings.webSearch.description')}
         </p>
