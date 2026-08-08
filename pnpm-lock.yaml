@@ -50,6 +50,12 @@ importers:
       '@electron-toolkit/utils':
         specifier: ^4.0.0
         version: 4.0.0(electron@39.7.0)
+      '@headless-tree/core':
+        specifier: ^1.7.0
+        version: 1.7.0
+      '@headless-tree/react':
+        specifier: ^1.7.0
+        version: 1.7.0(@headless-tree/core@1.7.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@hono/node-server':
         specifier: ^1.19.9
         version: 1.19.9(hono@4.12.3)
@@ -1162,6 +1168,16 @@ packages:
 
   '@hapi/hoek@9.3.0':
     resolution: {integrity: sha512-/c6rf4UJlmHlC9b5BaNvzAcFv7HZ2QHaV0D4/HNlBdvFnvQq8RI4kYdhyPCl7Xj+oWvTWQ8ujhqS53LIgAe6KQ==}
+
+  '@headless-tree/core@1.7.0':
+    resolution: {integrity: sha512-LxcX7LNepwfOPrZcs4PNfDwCzbi326uCAX5jYBfw94jI+pZQA7ANaE/No3LW0XFgcBcQtK/G2bInbVEhLF1C/Q==}
+
+  '@headless-tree/react@1.7.0':
+    resolution: {integrity: sha512-hcnG4mpTP98KVWZYqKsXNOoiv7ZQqZVM2jWwzEWtF+VDSz+1O/juMI+/Q0G4lZM+ez07/tmBBWjvZub/mLAUXQ==}
+    peerDependencies:
+      '@headless-tree/core': '*'
+      react: '*'
+      react-dom: '*'
 
   '@hono/node-server@1.19.9':
     resolution: {integrity: sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw==}
@@ -8263,6 +8279,14 @@ snapshots:
       '@hapi/hoek': 9.3.0
 
   '@hapi/hoek@9.3.0': {}
+
+  '@headless-tree/core@1.7.0': {}
+
+  '@headless-tree/react@1.7.0(@headless-tree/core@1.7.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      '@headless-tree/core': 1.7.0
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
 
   '@hono/node-server@1.19.9(hono@4.12.3)':
     dependencies:

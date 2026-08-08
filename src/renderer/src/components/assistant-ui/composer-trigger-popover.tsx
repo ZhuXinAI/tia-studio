@@ -10,6 +10,7 @@ import {
 } from '@assistant-ui/react'
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { ScrollArea } from '@renderer/components/ui/scroll-area'
 
 type IconComponent = FC<{ className?: string }>
 
@@ -54,35 +55,37 @@ function ComposerTriggerItems({
             <ChevronLeft className="size-3.5" />
             {backLabel}
           </ComposerPrimitive.Unstable_TriggerPopoverBack>
-          <div className="min-h-0 overflow-y-auto py-1">
-            {items.map((item, index) => {
-              const iconKey =
-                typeof item.metadata?.icon === 'string' ? item.metadata.icon : undefined
-              const Icon = iconFor(iconKey, iconMap, fallbackIcon)
-              return (
-                <ComposerPrimitive.Unstable_TriggerPopoverItem
-                  key={`${item.type}:${item.id}`}
-                  item={item}
-                  index={index}
-                  className="hover:bg-accent data-[highlighted]:bg-accent flex w-full min-w-0 cursor-pointer items-center gap-2 px-3 py-2 text-left outline-none"
-                  title={item.description ?? item.label}
-                >
-                  <Icon className="size-3.5 shrink-0 text-primary" />
-                  <span className="min-w-0 shrink truncate text-sm font-medium">{item.label}</span>
-                  {item.description ? (
-                    <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
-                      {item.description}
-                    </span>
-                  ) : null}
-                </ComposerPrimitive.Unstable_TriggerPopoverItem>
-              )
-            })}
-            {items.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-muted-foreground">
-                {isLoading ? loadingLabel : emptyItemsLabel}
-              </p>
-            ) : null}
-          </div>
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="py-1">
+              {items.map((item, index) => {
+                const iconKey =
+                  typeof item.metadata?.icon === 'string' ? item.metadata.icon : undefined
+                const Icon = iconFor(iconKey, iconMap, fallbackIcon)
+                return (
+                  <ComposerPrimitive.Unstable_TriggerPopoverItem
+                    key={`${item.type}:${item.id}`}
+                    item={item}
+                    index={index}
+                    className="hover:bg-accent data-[highlighted]:bg-accent flex w-full min-w-0 cursor-pointer items-center gap-2 px-3 py-2 text-left outline-none"
+                    title={item.description ?? item.label}
+                  >
+                    <Icon className="size-3.5 shrink-0 text-primary" />
+                    <span className="min-w-0 shrink truncate text-sm font-medium">{item.label}</span>
+                    {item.description ? (
+                      <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+                        {item.description}
+                      </span>
+                    ) : null}
+                  </ComposerPrimitive.Unstable_TriggerPopoverItem>
+                )
+              })}
+              {items.length === 0 ? (
+                <p className="px-3 py-2 text-sm text-muted-foreground">
+                  {isLoading ? loadingLabel : emptyItemsLabel}
+                </p>
+              ) : null}
+            </div>
+          </ScrollArea>
         </div>
       )}
     </ComposerPrimitive.Unstable_TriggerPopoverItems>

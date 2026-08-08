@@ -79,6 +79,7 @@ import { TerminalService } from './terminal/terminal-service'
 import { GitReviewService } from './git/git-review-service'
 import { PythonToolingService } from './python/python-tooling-service'
 import { BrowserTabManager } from './browser/browser-tab-manager'
+import { BrowserControlService } from './browser/browser-control-service'
 import { WorkspaceFileService } from './workspaces/workspace-file-service'
 import type { HealthDependencies } from '../shared/health'
 
@@ -112,6 +113,7 @@ let terminalService: TerminalService | null = null
 let gitReviewService: GitReviewService | null = null
 let pythonToolingService: PythonToolingService | null = null
 let browserTabManager: BrowserTabManager | null = null
+let browserControlService: BrowserControlService | null = null
 let gracefulQuitStarted = false
 
 function logAppLifecycle(eventName: string, data?: Record<string, unknown>): void {
@@ -755,7 +757,8 @@ function createMainWindow(): BrowserWindow {
       sandbox: false
     }
   })
-  browserTabManager = new BrowserTabManager(browserWindow)
+  browserControlService = new BrowserControlService(browserWindow)
+  browserTabManager = new BrowserTabManager(browserWindow, browserControlService)
 
   browserWindow.on('ready-to-show', () => {
     browserWindow.show()
@@ -763,6 +766,8 @@ function createMainWindow(): BrowserWindow {
   browserWindow.on('closed', () => {
     browserTabManager?.dispose()
     browserTabManager = null
+    browserControlService?.dispose()
+    browserControlService = null
     if (mainWindow === browserWindow) {
       mainWindow = null
     }
@@ -905,6 +910,8 @@ app.on('before-quit', (event) => {
   }
   browserTabManager?.dispose()
   browserTabManager = null
+  browserControlService?.dispose()
+  browserControlService = null
   void (async () => {
     automationService?.stop()
     automationService = null

@@ -11,16 +11,18 @@ import {
   Save,
   X
 } from 'lucide-react'
+import { asyncDataLoaderFeature, hotkeysCoreFeature, selectionFeature } from '@headless-tree/core'
+import { useTree } from '@headless-tree/react'
 import { createPortal } from 'react-dom'
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Virtuoso } from 'react-virtuoso'
-import type { WorkspaceDirectory, WorkspaceFileEntry } from '../../../../../shared/workspace-files'
+import type { WorkspaceFileEntry } from '../../../../../shared/workspace-files'
 import { Button } from '../../../components/ui/button'
 import { useTranslation } from '../../../i18n/use-app-translation'
 import {
   useSaveWorkspaceFile,
-  useWorkspaceDirectories,
+  getWorkspaceDirectory,
   useWorkspaceFile,
   workspaceFileKeys
 } from '../files-query'
@@ -30,9 +32,11 @@ const CodeEditor = lazy(() =>
   import('./code-editor').then((module) => ({ default: module.CodeEditor }))
 )
 
-type TreeItem = {
+const FILE_TREE_ROOT_ID = '__tia-workspace-root__'
+
+type WorkspaceTreeItem = {
+  id: string
   entry: WorkspaceFileEntry
-  depth: number
 }
 
 function fileIcon(name: string): React.JSX.Element {
@@ -46,72 +50,103 @@ function fileIcon(name: string): React.JSX.Element {
   return <File className="size-3.5 shrink-0 text-muted-foreground" />
 }
 
-function getDirectoryData(
-  paths: string[],
-  queries: ReturnType<typeof useWorkspaceDirectories>
-): Map<string, { data?: WorkspaceDirectory; isLoading: boolean; isError: boolean }> {
-  return new Map(
-    paths.map((path, index) => [
-      path,
-      {
-        data: queries[index]?.data,
-        isLoading: queries[index]?.isLoading ?? false,
-        isError: queries[index]?.isError ?? false
-      }
-    ])
-  )
-}
-
 function FilesTree({
   sessionId,
   selectedPath,
-  onSelect
+  onSelect,
+  refreshToken
 }: {
   sessionId: string
   selectedPath: string | null
   onSelect: (entry: WorkspaceFileEntry) => void
+  refreshToken: number
 }): React.JSX.Element {
   const { t } = useTranslation()
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set(['']))
-  const directoryPaths = useMemo(
-    () => [...expandedPaths].sort((left, right) => left.localeCompare(right)),
-    [expandedPaths]
-  )
-  const directoryQueries = useWorkspaceDirectories(sessionId, directoryPaths)
-  const directoryData = getDirectoryData(directoryPaths, directoryQueries)
-  const visibleItems = useMemo(() => {
-    const items: TreeItem[] = []
+  const [directoryErrors, setDirectoryErrors] = useState<Record<string, string>>({})
+  const itemData = useRef(new Map<string, WorkspaceTreeItem>())
+  const rootItem = useRef<WorkspaceTreeItem>({
+    id: FILE_TREE_ROOT_ID,
+    entry: { name: 'Workspace', relativePath: '', kind: 'directory' }
+  })
 
-    function visit(relativePath: string, depth: number): void {
-      const directory = directoryData.get(relativePath)?.data
-      if (!directory) return
-      for (const entry of directory.entries) {
-        items.push({ entry, depth })
-        if (entry.kind === 'directory' && expandedPaths.has(entry.relativePath)) {
-          visit(entry.relativePath, depth + 1)
+  const tree = useTree<WorkspaceTreeItem>({
+    initialState: {
+      expandedItems: [FILE_TREE_ROOT_ID]
+    },
+    rootItemId: FILE_TREE_ROOT_ID,
+    getItemName: (item) => item.getItemData()?.entry.name ?? item.getId(),
+    isItemFolder: (item) => item.getItemData()?.entry.kind === 'directory',
+    createLoadingItemData: () => ({
+      id: '__tia-loading-item__',
+      entry: { name: t('filesRail.loading'), relativePath: '', kind: 'file' }
+    }),
+    dataLoader: {
+      getItem: async (itemId) => {
+        if (itemId === FILE_TREE_ROOT_ID) return rootItem.current
+        const cached = itemData.current.get(itemId)
+        if (cached) return cached
+        // getChildrenWithData normally fills this cache before an item is
+        // rendered. The fallback keeps a malformed/stale response from making
+        // the tree crash while the next directory refresh repairs it.
+        const fallback: WorkspaceTreeItem = {
+          id: itemId,
+          entry: {
+            name: itemId.split('/').pop() ?? itemId,
+            relativePath: itemId,
+            kind: 'file'
+          }
+        }
+        itemData.current.set(itemId, fallback)
+        return fallback
+      },
+      getChildrenWithData: async (itemId) => {
+        const relativePath = itemId === FILE_TREE_ROOT_ID ? '' : itemId
+        try {
+          const directory = await getWorkspaceDirectory(sessionId, relativePath)
+          setDirectoryErrors((current) => {
+            if (!(relativePath in current)) return current
+            const next = { ...current }
+            delete next[relativePath]
+            return next
+          })
+          return directory.entries.map((entry) => {
+            const item: WorkspaceTreeItem = { id: entry.relativePath, entry }
+            itemData.current.set(item.id, item)
+            return { id: item.id, data: item }
+          })
+        } catch (error) {
+          setDirectoryErrors((current) => ({
+            ...current,
+            [relativePath]: describeRequestError(error, t('filesRail.loadFailed'))
+          }))
+          return []
         }
       }
-    }
+    },
+    onPrimaryAction: (item) => {
+      const data = item.getItemData()
+      if (data?.entry.kind === 'file') onSelect(data.entry)
+    },
+    features: [asyncDataLoaderFeature, selectionFeature, hotkeysCoreFeature]
+  })
 
-    visit('', 0)
-    return items
-  }, [directoryData, expandedPaths])
-  const rootQuery = directoryData.get('')
+  useEffect(() => {
+    if (refreshToken === 0) return
+    const folders = [tree.getRootItem(), ...tree.getItems().filter((item) => item.isFolder())]
+    void Promise.all(
+      folders.map((item) => item.invalidateChildrenIds(false).catch(() => undefined))
+    )
+  }, [refreshToken, tree])
 
-  function toggleDirectory(relativePath: string): void {
-    setExpandedPaths((current) => {
-      const next = new Set(current)
-      if (next.has(relativePath)) next.delete(relativePath)
-      else next.add(relativePath)
-      return next
-    })
+  const items = tree.getItems()
+  const rootError = directoryErrors['']
+  const isRootLoading = tree.getState().loadingItemChildrens?.includes(FILE_TREE_ROOT_ID) ?? false
+
+  if (rootError && !items.length) {
+    return <p className="p-3 text-xs text-destructive">{rootError}</p>
   }
 
-  if (rootQuery?.isError) {
-    return <p className="p-3 text-xs text-destructive">{t('filesRail.loadFailed')}</p>
-  }
-
-  if (rootQuery?.isLoading && !rootQuery.data) {
+  if (isRootLoading && !items.length) {
     return (
       <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
         <LoaderCircle className="size-3.5 animate-spin" /> {t('filesRail.loading')}
@@ -119,54 +154,62 @@ function FilesTree({
     )
   }
 
-  if (!visibleItems.length) {
+  if (!items.length) {
     return <p className="p-3 text-xs text-muted-foreground">{t('filesRail.empty')}</p>
   }
 
   return (
-    <Virtuoso
-      data={visibleItems}
-      className="h-full"
-      itemContent={(_, item) => {
-        const isExpanded =
-          item.entry.kind === 'directory' && expandedPaths.has(item.entry.relativePath)
-        const childQuery =
-          item.entry.kind === 'directory' ? directoryData.get(item.entry.relativePath) : undefined
-        const isSelected = item.entry.kind === 'file' && item.entry.relativePath === selectedPath
-        return (
-          <button
-            type="button"
-            className={`flex w-full items-center gap-1.5 py-1.5 pr-2 text-left text-xs hover:bg-muted/50 ${isSelected ? 'bg-primary/10 text-primary' : 'text-foreground'}`}
-            style={{ paddingLeft: `${8 + item.depth * 14}px` }}
-            onClick={() =>
-              item.entry.kind === 'directory'
-                ? toggleDirectory(item.entry.relativePath)
-                : onSelect(item.entry)
-            }
-            aria-expanded={item.entry.kind === 'directory' ? isExpanded : undefined}
-          >
-            {item.entry.kind === 'directory' ? (
-              isExpanded ? (
-                <ChevronDown className="size-3 shrink-0" />
+    <div {...tree.getContainerProps(t('filesRail.tree'))} className="h-full min-h-0">
+      <Virtuoso
+        data={items}
+        className="h-full"
+        computeItemKey={(_, item) => item.getKey()}
+        itemContent={(_, item) => {
+          const data = item.getItemData()
+          const isFolder = item.isFolder()
+          const isSelected = item.isSelected() || data?.entry.relativePath === selectedPath
+          const directoryError = isFolder ? directoryErrors[data?.entry.relativePath ?? ''] : null
+          const itemProps = item.getProps()
+          return (
+            <button
+              {...itemProps}
+              type="button"
+              className={`flex w-full items-center gap-1.5 py-1.5 pr-2 text-left text-xs hover:bg-muted/50 ${isSelected ? 'bg-primary/10 text-primary' : 'text-foreground'}`}
+              style={{ paddingLeft: `${8 + item.getItemMeta().level * 14}px` }}
+            >
+              {isFolder ? (
+                item.isExpanded() ? (
+                  <ChevronDown className="size-3 shrink-0" />
+                ) : (
+                  <ChevronRight className="size-3 shrink-0" />
+                )
               ) : (
-                <ChevronRight className="size-3 shrink-0" />
-              )
-            ) : (
-              <span className="size-3 shrink-0" />
-            )}
-            {item.entry.kind === 'directory' ? (
-              <Folder className="size-3.5 shrink-0 text-amber-500" />
-            ) : (
-              fileIcon(item.entry.name)
-            )}
-            <span className="min-w-0 flex-1 truncate" title={item.entry.relativePath}>
-              {item.entry.name}
-            </span>
-            {childQuery?.isLoading ? <LoaderCircle className="size-3 animate-spin" /> : null}
-          </button>
-        )
-      }}
-    />
+                <span className="size-3 shrink-0" />
+              )}
+              {isFolder ? (
+                <Folder className="size-3.5 shrink-0 text-amber-500" />
+              ) : (
+                fileIcon(data?.entry.name ?? item.getItemName())
+              )}
+              <span
+                className="min-w-0 flex-1 truncate"
+                title={data?.entry.relativePath ?? item.getItemName()}
+              >
+                {data?.entry.name ?? item.getItemName()}
+              </span>
+              {directoryError ? (
+                <AlertTriangle
+                  className="size-3 shrink-0 text-destructive"
+                  aria-label={directoryError}
+                />
+              ) : item.isLoading() ? (
+                <LoaderCircle className="size-3 animate-spin" />
+              ) : null}
+            </button>
+          )
+        }}
+      />
+    </div>
   )
 }
 
@@ -348,6 +391,7 @@ export function FilesRail({
 }): React.JSX.Element | null {
   const { t } = useTranslation()
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
+  const [treeRefreshToken, setTreeRefreshToken] = useState(0)
   const queryClient = useQueryClient()
 
   if (!slotElement) return null
@@ -366,7 +410,10 @@ export function FilesRail({
             variant="ghost"
             size="icon"
             className="size-7"
-            onClick={() => void queryClient.invalidateQueries({ queryKey: workspaceFileKeys.all })}
+            onClick={() => {
+              setTreeRefreshToken((current) => current + 1)
+              void queryClient.invalidateQueries({ queryKey: workspaceFileKeys.all })
+            }}
             aria-label={t('filesRail.refresh')}
           >
             <RefreshCw className="size-3.5" />
@@ -390,8 +437,10 @@ export function FilesRail({
         </div>
         <div className="min-h-0 flex-1">
           <FilesTree
+            key={sessionId}
             sessionId={sessionId}
             selectedPath={selectedPath}
+            refreshToken={treeRefreshToken}
             onSelect={(entry) => setSelectedPath(entry.relativePath)}
           />
         </div>

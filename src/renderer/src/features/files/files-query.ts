@@ -1,4 +1,4 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { WorkspaceDirectory, WorkspaceFileContent } from '../../../../shared/workspace-files'
 import { createApiClient } from '../../lib/api-client'
 
@@ -32,16 +32,6 @@ export function getWorkspaceFile(
   return api.get<WorkspaceFileContent>(
     `/v1/agent/sessions/${encodeURIComponent(sessionId)}/files/content?path=${encodedPath(relativePath)}`
   )
-}
-
-export function useWorkspaceDirectories(sessionId: string, relativePaths: string[]) {
-  return useQueries({
-    queries: relativePaths.map((relativePath) => ({
-      queryKey: workspaceFileKeys.directory(sessionId, relativePath),
-      queryFn: () => getWorkspaceDirectory(sessionId, relativePath),
-      staleTime: 2_000
-    }))
-  })
 }
 
 export function useWorkspaceFile(sessionId: string, relativePath: string | null) {

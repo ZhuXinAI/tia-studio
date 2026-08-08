@@ -14,6 +14,8 @@
       "settings": "设置",
       "expandSidebar": "展开侧边栏",
       "collapseSidebar": "收起侧边栏",
+      "toggleTerminal": "切换终端抽屉",
+      "toggleTools": "切换工具面板",
       "integrations": "集成",
       "commandCenter": "指挥中心",
       "memoryVault": "记忆库"
@@ -870,7 +872,13 @@
       "openFiles": "Open files",
       "openGit": "打开 Git 审查",
       "openPython": "打开 Python 工具",
-      "openBrowser": "打开浏览器"
+      "openBrowser": "打开浏览器",
+      "title": "工具",
+      "emptyDescription": "选择一个工具，在此面板中打开。",
+      "closePanel": "关闭工具面板",
+      "browserDescription": "在嵌入式标签页中浏览网页。",
+      "filesDescription": "浏览和编辑工作区文件。",
+      "artifactsDescription": "查看此线程生成的输出。"
     },
     "page": {
       "todo": "{{count}} 项待办",

@@ -2,20 +2,13 @@ import {
   Check,
   ChevronDown,
   Circle,
-  Code2,
   Folder,
-  GitBranch,
-  Globe2,
   ListTodo,
-  PackageOpen,
-  Terminal as TerminalIcon,
   Search,
   Shield,
   ShieldCheck
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { lazy, Suspense } from 'react'
-import { createPortal } from 'react-dom'
 import { NavLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -66,19 +59,7 @@ import {
 import type { ProviderRecord } from '../../features/settings/providers/providers-query'
 import { useTranslation } from '../../i18n/use-app-translation'
 import { normalizeThinkingLevelForProvider } from '../../../../shared/thinking'
-import { ArtifactRail } from '../../features/artifacts/components/artifact-rail'
-import { useAgentArtifacts } from '../../features/artifacts/artifacts-query'
-import { TerminalRail } from '../../features/terminal/components/terminal-rail'
-import { GitRail } from '../../features/git/components/git-rail'
-import { PythonRail } from '../../features/python/components/python-rail'
-import { BrowserRail } from '../../features/browser/components/browser-rail'
-import { useAppV2ShellRightRail } from './app-v2-shell-right-rail'
-
-const FilesRail = lazy(() =>
-  import('../../features/files/components/files-rail').then((module) => ({
-    default: module.FilesRail
-  }))
-)
+import { ThreadWorkspaceTools } from './app-v2-shell-tools'
 
 type ComposerSettings = Pick<
   AgentSessionSnapshot,
@@ -105,15 +86,13 @@ function ThreadComposerControls({
   providers,
   creating = false,
   onModelChange,
-  onThinkingLevelChange,
-  onAccessChange
+  onThinkingLevelChange
 }: {
   settings: ComposerSettings
   providers: ProviderRecord[]
   creating?: boolean
   onModelChange: (provider: ProviderRecord, modelId: string) => void
   onThinkingLevelChange: (level: AgentSessionSnapshot['thinkingLevel']) => void
-  onAccessChange: (full: boolean) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const enabledProviders = providers.filter((provider) => provider.enabled)
@@ -142,71 +121,84 @@ function ThreadComposerControls({
   const selectedModelOptionId = `${settings.providerId}\u0000${settings.modelId}`
 
   return (
-    <>
-      <ModelSelector
-        options={modelOptions}
-        value={selectedModelOptionId}
-        disabled={disabled}
-        ariaLabel={t('threads.composer.selectModel')}
-        onValueChange={(selectedId) => {
-          const option = modelOptions.find((candidate) => candidate.id === selectedId)
-          if (option) onModelChange(option.provider, option.modelId)
-        }}
-        thinkingLevel={settings.thinkingLevel}
-        onThinkingLevelChange={(option, level) => {
-          const candidate = modelOptions.find((item) => item.id === option.id)
-          if (candidate) onModelChange(candidate.provider, candidate.modelId)
-          onThinkingLevelChange(level)
-        }}
-      />
+    <ModelSelector
+      options={modelOptions}
+      value={selectedModelOptionId}
+      disabled={disabled}
+      ariaLabel={t('threads.composer.selectModel')}
+      onValueChange={(selectedId) => {
+        const option = modelOptions.find((candidate) => candidate.id === selectedId)
+        if (option) onModelChange(option.provider, option.modelId)
+      }}
+      thinkingLevel={settings.thinkingLevel}
+      onThinkingLevelChange={(option, level) => {
+        const candidate = modelOptions.find((item) => item.id === option.id)
+        if (candidate) onModelChange(candidate.provider, candidate.modelId)
+        onThinkingLevelChange(level)
+      }}
+    />
+  )
+}
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className={
-              settings.accessMode === 'full'
-                ? 'h-7 gap-1.5 rounded-lg bg-amber-900/30 px-2 text-xs font-medium text-amber-800 hover:bg-amber-900/40 dark:text-amber-200'
-                : 'h-7 gap-1.5 rounded-lg px-2 text-xs font-normal text-muted-foreground'
-            }
-            aria-label={t('threads.composer.selectPermission')}
-            disabled={disabled}
-          >
-            {settings.accessMode === 'full' ? (
-              <ShieldCheck className="size-3.5" />
-            ) : (
-              <Shield className="size-3.5" />
-            )}
-            {settings.accessMode === 'full'
-              ? t('threads.composer.fullAccess')
-              : t('threads.composer.askPermission')}
-            <ChevronDown className="size-3 opacity-60" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" side="top" className="w-52">
-          <DropdownMenuItem onSelect={() => onAccessChange(false)}>
-            <Shield className="mr-2 size-4" />
-            <span className="flex-1">{t('threads.composer.askPermission')}</span>
-            {settings.accessMode === 'standard' ? <Check className="size-4" /> : null}
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => onAccessChange(true)}>
-            <ShieldCheck className="mr-2 size-4" />
-            <span className="flex-1">{t('threads.composer.fullAccess')}</span>
-            {settings.accessMode === 'full' ? <Check className="size-4" /> : null}
-          </DropdownMenuItem>
-          {settings.status === 'running' ? (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs text-muted-foreground">
-                {t('threads.composer.permissionLocked')}
-              </DropdownMenuLabel>
-            </>
-          ) : null}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </>
+function ThreadComposerAccessControl({
+  settings,
+  creating = false,
+  onAccessChange
+}: {
+  settings: ComposerSettings
+  creating?: boolean
+  onAccessChange: (full: boolean) => void
+}): React.JSX.Element {
+  const { t } = useTranslation()
+  const disabled = settings.status === 'running' || creating
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={
+            settings.accessMode === 'full'
+              ? 'h-7 gap-1.5 rounded-lg bg-amber-900/30 px-2 text-xs font-medium text-amber-800 hover:bg-amber-900/40 dark:text-amber-200'
+              : 'h-7 gap-1.5 rounded-lg px-2 text-xs font-normal text-muted-foreground'
+          }
+          aria-label={t('threads.composer.selectPermission')}
+          disabled={disabled}
+        >
+          {settings.accessMode === 'full' ? (
+            <ShieldCheck className="size-3.5" />
+          ) : (
+            <Shield className="size-3.5" />
+          )}
+          {settings.accessMode === 'full'
+            ? t('threads.composer.fullAccess')
+            : t('threads.composer.askPermission')}
+          <ChevronDown className="size-3 opacity-60" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" side="top" className="w-52">
+        <DropdownMenuItem onSelect={() => onAccessChange(false)}>
+          <Shield className="mr-2 size-4" />
+          <span className="flex-1">{t('threads.composer.askPermission')}</span>
+          {settings.accessMode === 'standard' ? <Check className="size-4" /> : null}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => onAccessChange(true)}>
+          <ShieldCheck className="mr-2 size-4" />
+          <span className="flex-1">{t('threads.composer.fullAccess')}</span>
+          {settings.accessMode === 'full' ? <Check className="size-4" /> : null}
+        </DropdownMenuItem>
+        {settings.status === 'running' ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs text-muted-foreground">
+              {t('threads.composer.permissionLocked')}
+            </DropdownMenuLabel>
+          </>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -235,168 +227,6 @@ function ThreadComposerBehavior({
         <option value="steer">{t('threads.composer.steer')}</option>
       </select>
     </div>
-  )
-}
-
-function ThreadWorkspaceTools({ sessionId }: { sessionId: string }): React.JSX.Element {
-  const { t } = useTranslation()
-  const { data: artifacts = [] } = useAgentArtifacts(sessionId)
-  const { isOpen, setIsOpen, setHasContent, slotElement } = useAppV2ShellRightRail()
-  const [activeTool, setActiveTool] = useState<
-    'artifacts' | 'terminal' | 'files' | 'git' | 'python' | 'browser'
-  >('artifacts')
-
-  useEffect(() => {
-    setHasContent(true)
-    return () => setHasContent(false)
-  }, [setHasContent])
-
-  return (
-    <>
-      <div className="flex items-center gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground"
-          aria-label={t('threads.tools.openArtifacts')}
-          aria-pressed={isOpen && activeTool === 'artifacts'}
-          onClick={() => {
-            setActiveTool('artifacts')
-            setIsOpen(true)
-          }}
-        >
-          <PackageOpen className="size-3.5" />
-          {t('threads.tools.artifacts')}
-          {artifacts.length ? (
-            <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
-              {artifacts.length}
-            </span>
-          ) : null}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground"
-          aria-label={t('threads.tools.openFiles')}
-          aria-pressed={isOpen && activeTool === 'files'}
-          onClick={() => {
-            setActiveTool('files')
-            setIsOpen(true)
-          }}
-        >
-          <Folder className="size-3.5" /> {t('threads.tools.files')}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground"
-          aria-label={t('threads.tools.openTerminal')}
-          aria-pressed={isOpen && activeTool === 'terminal'}
-          onClick={() => {
-            setActiveTool('terminal')
-            setIsOpen(true)
-          }}
-        >
-          <TerminalIcon className="size-3.5" /> {t('threads.tools.terminal')}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground"
-          aria-label={t('threads.tools.openGit')}
-          aria-pressed={isOpen && activeTool === 'git'}
-          onClick={() => {
-            setActiveTool('git')
-            setIsOpen(true)
-          }}
-        >
-          <GitBranch className="size-3.5" /> {t('threads.tools.git')}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground"
-          aria-label={t('threads.tools.openPython')}
-          aria-pressed={isOpen && activeTool === 'python'}
-          onClick={() => {
-            setActiveTool('python')
-            setIsOpen(true)
-          }}
-        >
-          <Code2 className="size-3.5" /> {t('threads.tools.python')}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 gap-1.5 rounded-lg px-2 text-xs text-muted-foreground"
-          aria-label={t('threads.tools.openBrowser')}
-          aria-pressed={isOpen && activeTool === 'browser'}
-          onClick={() => {
-            setActiveTool('browser')
-            setIsOpen(true)
-          }}
-        >
-          <Globe2 className="size-3.5" /> {t('threads.tools.preview')}
-        </Button>
-      </div>
-      {isOpen && activeTool === 'artifacts' ? (
-        <ArtifactRail
-          sessionId={sessionId}
-          slotElement={slotElement}
-          onClose={() => setIsOpen(false)}
-        />
-      ) : null}
-      {isOpen && activeTool === 'terminal' ? (
-        <TerminalRail
-          sessionId={sessionId}
-          slotElement={slotElement}
-          onClose={() => setIsOpen(false)}
-        />
-      ) : null}
-      {isOpen && activeTool === 'files' ? (
-        <Suspense fallback={<FilesRailLoading slotElement={slotElement} />}>
-          <FilesRail
-            sessionId={sessionId}
-            slotElement={slotElement}
-            onClose={() => setIsOpen(false)}
-          />
-        </Suspense>
-      ) : null}
-      {isOpen && activeTool === 'git' ? (
-        <GitRail sessionId={sessionId} slotElement={slotElement} onClose={() => setIsOpen(false)} />
-      ) : null}
-      {isOpen && activeTool === 'python' ? (
-        <PythonRail
-          sessionId={sessionId}
-          slotElement={slotElement}
-          onClose={() => setIsOpen(false)}
-        />
-      ) : null}
-      {isOpen && activeTool === 'browser' ? (
-        <BrowserRail slotElement={slotElement} onClose={() => setIsOpen(false)} />
-      ) : null}
-    </>
-  )
-}
-
-function FilesRailLoading({
-  slotElement
-}: {
-  slotElement: HTMLDivElement | null
-}): React.JSX.Element | null {
-  const { t } = useTranslation()
-  if (!slotElement) return null
-  return createPortal(
-    <div className="grid h-full place-items-center bg-background/95 text-xs text-muted-foreground">
-      {t('filesRail.loading')}
-    </div>,
-    slotElement
   )
 }
 
@@ -740,6 +570,20 @@ export function ThreadPageV2(): React.JSX.Element {
                 }}
               />
             ),
+            ComposerLeadingControls: () => (
+              <ThreadComposerAccessControl
+                settings={{
+                  providerId: draftProvider.id,
+                  provider: draftProvider.type,
+                  modelId: draftModel,
+                  thinkingLevel: draftThinkingLevel,
+                  accessMode: draftAccessMode,
+                  status: 'idle'
+                }}
+                creating={isCreatingThread}
+                onAccessChange={(full) => setDraftAccessMode(full ? 'full' : 'standard')}
+              />
+            ),
             ComposerControls: () => (
               <ThreadComposerControls
                 settings={{
@@ -760,7 +604,6 @@ export function ThreadPageV2(): React.JSX.Element {
                   )
                 }}
                 onThinkingLevelChange={setDraftThinkingLevel}
-                onAccessChange={(full) => setDraftAccessMode(full ? 'full' : 'standard')}
               />
             ),
             ComposerAddons: () => <ComposerMentions workspaceId={workspace.id} />
@@ -800,6 +643,7 @@ export function ThreadPageV2(): React.JSX.Element {
             void queryClient.invalidateQueries({ queryKey: agentSessionKeys.all })
           }}
         >
+          <ThreadWorkspaceTools sessionId={session.id} />
           <Thread
             components={{
               ComposerHeader: () => (
@@ -809,7 +653,6 @@ export function ThreadPageV2(): React.JSX.Element {
                     behavior={behavior}
                     onBehaviorChange={setBehavior}
                   />
-                  <ThreadWorkspaceTools sessionId={session.id} />
                   <ThreadTodoPanel todos={session.todos ?? []} />
                   <ThreadQueuePanel queue={session.queue} />
                   {session.pendingInteraction ? (
@@ -820,13 +663,18 @@ export function ThreadPageV2(): React.JSX.Element {
                   ) : null}
                 </>
               ),
+              ComposerLeadingControls: () => (
+                <ThreadComposerAccessControl
+                  settings={session}
+                  onAccessChange={(full) => void toggleAccess(full)}
+                />
+              ),
               ComposerControls: () => (
                 <ThreadComposerControls
                   settings={session}
                   providers={providers}
                   onModelChange={(nextProvider, modelId) => void changeModel(nextProvider, modelId)}
                   onThinkingLevelChange={(level) => void changeThinkingLevel(level)}
-                  onAccessChange={(full) => void toggleAccess(full)}
                 />
               ),
               ComposerAddons: () => (

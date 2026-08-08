@@ -77,6 +77,7 @@ export type ThreadComponents = {
   ToolGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined
   ReasoningGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined
   AssistantActionBar?: ComponentType | undefined
+  ComposerLeadingControls?: ComponentType | undefined
   ComposerControls?: ComponentType | undefined
   ComposerHeader?: ComponentType | undefined
   ComposerAddons?: ComponentType | undefined
@@ -278,20 +279,24 @@ const ComposerDirectiveInput: FC<{ disabled: boolean }> = ({ disabled }) => {
   const { t } = useTranslation()
   const { value } = unstable_useComposerInput({ disabled })
   const [scrollTop, setScrollTop] = useState(0)
+  const placeholder = t('threads.composer.messagePlaceholder')
 
   return (
     <div className="relative min-h-10">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 overflow-hidden px-2.5 py-1 text-base wrap-break-word"
+        className="pointer-events-none absolute inset-0 overflow-hidden px-2.5 py-1 text-base leading-6 wrap-break-word"
       >
         <div style={{ transform: `translateY(-${scrollTop}px)` }}>
-          <DirectiveText type="text" text={value} status={{ type: 'complete' }} />
+          {value ? (
+            <DirectiveText type="text" text={value} status={{ type: 'complete' }} />
+          ) : (
+            <span className="text-muted-foreground/80">{placeholder}</span>
+          )}
         </div>
       </div>
       <ComposerPrimitive.Input
-        placeholder={t('threads.composer.messagePlaceholder')}
-        className="aui-composer-input caret-primary placeholder:text-muted-foreground/80 relative z-10 max-h-32 min-h-10 w-full resize-none bg-transparent px-2.5 py-1 text-base text-transparent outline-none selection:bg-primary/25"
+        className="aui-composer-input caret-primary relative z-10 max-h-32 min-h-10 w-full resize-none bg-transparent px-2.5 py-1 text-base leading-6 text-transparent outline-none selection:bg-primary/25"
         rows={1}
         autoFocus
         disabled={disabled}
@@ -305,13 +310,14 @@ const ComposerDirectiveInput: FC<{ disabled: boolean }> = ({ disabled }) => {
 
 const ComposerAction: FC<{ disabled: boolean }> = ({ disabled }) => {
   const { t } = useTranslation()
-  const { ComposerControls } = useContext(ThreadComponentsContext)
+  const { ComposerLeadingControls, ComposerControls } = useContext(ThreadComponentsContext)
   return (
-    <div className="aui-composer-action-wrapper relative flex items-center justify-between">
-      <div className="flex min-w-0 items-center gap-1">
+    <div className="aui-composer-action-wrapper relative flex min-h-7 shrink-0 items-center justify-between">
+      <div className="flex min-w-0 shrink-0 items-center gap-1.5">
         <ComposerAddAttachment disabled={disabled} />
+        {ComposerLeadingControls ? <ComposerLeadingControls /> : null}
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex min-w-0 items-center gap-1.5">
         {ComposerControls ? <ComposerControls /> : null}
         {disabled ? (
           <Button

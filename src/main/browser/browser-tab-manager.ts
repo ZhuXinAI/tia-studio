@@ -9,6 +9,7 @@ import {
 import { randomUUID } from 'node:crypto'
 import type { BrowserBounds, BrowserTab, BrowserTabsState } from '../../shared/browser'
 import { browserIpcChannels, normalizeBrowserUrl } from '../../shared/browser'
+import type { BrowserControlService } from './browser-control-service'
 
 const BROWSER_PARTITION = 'persist:tia-browser'
 const DEFAULT_BROWSER_URL = 'about:blank'
@@ -82,7 +83,10 @@ export class BrowserTabManager {
   private viewBounds: BrowserBounds | null = null
   private disposed = false
 
-  constructor(private readonly browserWindow: BrowserWindow) {
+  constructor(
+    private readonly browserWindow: BrowserWindow,
+    private readonly browserControl?: BrowserControlService
+  ) {
     // Browser tabs are intentionally isolated from the app renderer and do not receive
     // any preload bridge. Permission prompts are denied until the browser has an
     // explicit, user-facing permission flow.
@@ -168,6 +172,7 @@ export class BrowserTabManager {
 
     this.tabs.set(tab.id, tab)
     this.installWebContentsHandlers(tab)
+    this.browserControl?.registerTab(tab.id, view.webContents)
     this.activeTabId = tab.id
     this.attachActiveView()
     this.emitState()
@@ -196,6 +201,7 @@ export class BrowserTabManager {
     }
 
     this.tabs.delete(tabId)
+    this.browserControl?.unregisterTab(tabId)
     if (this.activeTabId === tabId) {
       this.activeTabId = ids[closingIndex + 1] ?? ids[closingIndex - 1] ?? null
     }
@@ -289,6 +295,7 @@ export class BrowserTabManager {
     this.viewBounds = null
 
     for (const tab of this.tabs.values()) {
+      this.browserControl?.unregisterTab(tab.id)
       if (!tab.view.webContents.isDestroyed()) {
         tab.view.webContents.close({ waitForBeforeUnload: false })
       }
@@ -352,6 +359,7 @@ export class BrowserTabManager {
     })
     contents.on('destroyed', () => {
       if (!this.tabs.has(tab.id) || this.disposed) return
+      this.browserControl?.unregisterTab(tab.id)
       this.tabs.delete(tab.id)
       if (this.activeTabId === tab.id) {
         this.activeTabId = this.tabs.keys().next().value ?? null

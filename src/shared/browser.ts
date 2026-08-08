@@ -1,3 +1,5 @@
+import type { BrowserCdpBridge } from './browser-cdp'
+
 export const browserIpcChannels = {
   getState: 'tia-browser:get-state',
   createTab: 'tia-browser:create-tab',
@@ -46,6 +48,7 @@ export type BrowserBridge = {
   stop: (tabId: string) => Promise<void>
   setViewBounds: (bounds: BrowserBounds | null) => void
   onState: (listener: (state: BrowserTabsState) => void) => () => void
+  cdp: BrowserCdpBridge
 }
 
 export type TiaStudioApi = {
