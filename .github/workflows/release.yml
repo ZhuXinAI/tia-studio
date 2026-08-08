@@ -29,7 +29,6 @@ permissions:
 jobs:
   release:
     name: Release (${{ matrix.name }})
-    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == matrix.platform
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -54,20 +53,23 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.release_tag) || github.ref }}
 
       - name: Setup Node.js
+        if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == matrix.platform
         uses: actions/setup-node@v6
         with:
           node-version: '22'
 
       - name: Setup pnpm
+        if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == matrix.platform
         run: |
           npm install --global pnpm@9
           pnpm --version
 
       - name: Install dependencies
+        if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == matrix.platform
         run: pnpm install
 
       - name: Check macOS signing and notarization secrets
-        if: matrix.is_macos
+        if: matrix.is_macos && (github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == matrix.platform)
         env:
           HAS_MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE != '' }}
           HAS_MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD != '' }}
@@ -94,7 +96,7 @@ jobs:
           fi
 
       - name: Import Code Signing Certificate (macOS)
-        if: matrix.is_macos
+        if: matrix.is_macos && (github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == matrix.platform)
         env:
           CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
           CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
@@ -115,6 +117,7 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
       - name: Build and release
+        if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == matrix.platform
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -125,7 +128,7 @@ jobs:
           ${{ matrix.release_command }}
 
       - name: Locate built app (macOS)
-        if: matrix.is_macos
+        if: matrix.is_macos && (github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == matrix.platform)
         id: locate_macos_app
         run: |
           APP_PATH=$(find dist -maxdepth 3 -name "*.app" | head -n 1)
@@ -139,14 +142,14 @@ jobs:
           echo "Found app bundle at $APP_PATH"
 
       - name: Verify macOS codesign and Gatekeeper state
-        if: matrix.is_macos
+        if: matrix.is_macos && (github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == matrix.platform)
         run: |
           codesign --verify --deep --strict --verbose=2 "${{ steps.locate_macos_app.outputs.app_path }}"
           spctl -a -vvv --type exec "${{ steps.locate_macos_app.outputs.app_path }}"
           xcrun stapler validate "${{ steps.locate_macos_app.outputs.app_path }}"
 
       - name: Cleanup Keychain (macOS)
-        if: matrix.is_macos && always()
+        if: matrix.is_macos && always() && (github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == matrix.platform)
         run: |
           security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
 
