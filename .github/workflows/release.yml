@@ -7,6 +7,21 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag to build or rebuild
+        required: true
+        type: string
+      platform:
+        description: Platform to build
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - macos
+          - windows
 
 permissions:
   contents: write
@@ -14,6 +29,7 @@ permissions:
 jobs:
   release:
     name: Release (${{ matrix.name }})
+    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == matrix.platform
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -21,10 +37,12 @@ jobs:
         include:
           - name: macOS Arm64
             os: macos-latest
+            platform: macos
             is_macos: true
             release_command: node ./scripts/run-electron-builder.mjs --mac --arm64 --publish always
           - name: Windows
-            os: windows-latest
+            os: windows-2022
+            platform: windows
             is_macos: false
             release_command: node ./scripts/run-electron-builder.mjs --win --x64 --publish always
 
@@ -33,6 +51,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.release_tag) || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -136,7 +155,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      RELEASE_TAG: ${{ github.ref_name }}
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
 
     steps:
       - name: Checkout code
