@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import {
   BookOpen,
-  Cable,
   Check,
   Clock3,
   Command,
@@ -75,14 +74,6 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
         keywords: 'operations runs approvals errors',
         icon: Command,
         href: '/command-center'
-      },
-      {
-        id: 'integrations',
-        label: t('commandPalette.integrations'),
-        description: t('commandPalette.integrationsDescription'),
-        keywords: 'connections mcp channels health',
-        icon: Cable,
-        href: '/integrations'
       },
       {
         id: 'memories',

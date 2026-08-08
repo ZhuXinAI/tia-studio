@@ -15,7 +15,6 @@ import { SkillsPage } from '../features/skills/pages/skills-page'
 import { AutomationsPage } from '../features/automations/pages/automations-page'
 import { PermissionsSettingsPage } from '../features/settings/pages/permissions-settings-page'
 import { CommandCenterPage } from '../features/command-center/pages/command-center-page'
-import { IntegrationsPage } from '../features/integrations/pages/integrations-page'
 import { MemoriesPage } from '../features/memories/pages/memories-page'
 import { WorkspacesAdminPage } from '../features/workspaces/pages/workspaces-admin-page'
 import { DiagnosticsSettingsPage } from '../features/settings/pages/diagnostics-settings-page'
@@ -68,10 +67,6 @@ export const appRoutes: RouteObject[] = [
       {
         path: 'command-center',
         element: <CommandCenterPage />
-      },
-      {
-        path: 'integrations',
-        element: <IntegrationsPage />
       },
       {
         path: 'memories',

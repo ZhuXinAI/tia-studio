@@ -18,7 +18,6 @@
       "toggleTools": "切换工具面板",
       "resizeTerminal": "调整工具抽屉大小",
       "resizeTools": "调整工具面板大小",
-      "integrations": "集成",
       "commandCenter": "指挥中心",
       "memoryVault": "记忆库"
     },
@@ -64,8 +63,6 @@
     "newChatDescription": "开始一个空白线程",
     "commandCenter": "指挥中心",
     "commandCenterDescription": "监控运行中的线程和审批",
-    "integrations": "集成",
-    "integrationsDescription": "检查 MCP、频道和技能状态",
     "memories": "记忆库",
     "memoriesDescription": "编辑明确的全局和工作区上下文",
     "skills": "技能与 MCP",
@@ -113,27 +110,6 @@
       "stopped": "已停止",
       "idle": "空闲"
     }
-  },
-  "integrationsPage": {
-    "kicker": "连接",
-    "title": "集成",
-    "description": "在一个界面查看 MCP 服务、消息频道和已安装技能。",
-    "refresh": "刷新",
-    "mcpServices": "MCP 服务",
-    "channelsConnected": "已连接频道",
-    "skillsInstalled": "已安装技能",
-    "manage": "管理",
-    "notSignedIn": "未登录",
-    "checking": "检查中",
-    "noMcp": "尚未配置 MCP 服务。",
-    "messagingChannels": "消息频道",
-    "paired": "{{count}} 个已配对",
-    "noChannels": "尚未配置频道。",
-    "skillsRuntime": "技能与运行时工具",
-    "skillsRuntimeDescription": "已安装技能可在各工作区使用；运行时工具可在设置中检查。",
-    "noSkills": "尚未安装市场技能。",
-    "connectionError": "部分连接数据加载失败，请打开详细设置进行恢复。",
-    "autoRefresh": "连接健康状态会自动刷新。"
   },
   "artifactRail": {
     "title": "产物",

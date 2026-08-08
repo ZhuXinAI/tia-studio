@@ -4,7 +4,6 @@ import {
   CircleHelp,
   Clock3,
   Command,
-  Cable,
   BookOpen,
   Folder,
   FolderPlus,
@@ -510,11 +509,6 @@ export function AppV2Sidebar({
           </NavLink>
         </Button>
         <Button asChild variant="ghost" size="icon" className="size-8">
-          <NavLink to="/integrations" aria-label={t('appShell.nav.integrations')} title={t('appShell.nav.integrations')}>
-            <Cable className="size-4" />
-          </NavLink>
-        </Button>
-        <Button asChild variant="ghost" size="icon" className="size-8">
           <NavLink
             to="/skills"
             aria-label={t('appShell.nav.openSkills')}
@@ -602,12 +596,6 @@ export function AppV2Sidebar({
             <NavLink to="/skills">
               <Sparkles className="size-3.5" />
               {t('appShell.nav.skills')}
-            </NavLink>
-          </Button>
-          <Button asChild variant="ghost" className={sidebarNavItemClassName}>
-            <NavLink to="/integrations">
-              <Cable className="size-3.5" />
-              {t('appShell.nav.integrations')}
             </NavLink>
           </Button>
           <Button asChild variant="ghost" className={sidebarNavItemClassName}>

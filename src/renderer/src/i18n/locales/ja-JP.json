@@ -18,7 +18,6 @@
       "toggleTools": "Toggle tools panel",
       "resizeTerminal": "Resize tool drawer",
       "resizeTools": "Resize tools panel",
-      "integrations": "Integrations",
       "commandCenter": "Command center",
       "memoryVault": "Memory Vault"
     },
@@ -64,8 +63,6 @@
     "newChatDescription": "Start a blank thread",
     "commandCenter": "Command center",
     "commandCenterDescription": "Monitor running threads and approvals",
-    "integrations": "Integrations",
-    "integrationsDescription": "Check MCP, channels, and skills health",
     "memories": "Memory Vault",
     "memoriesDescription": "Edit explicit global and workspace context",
     "skills": "Skills & MCPs",
@@ -113,27 +110,6 @@
       "stopped": "Stopped",
       "idle": "Idle"
     }
-  },
-  "integrationsPage": {
-    "kicker": "Connections",
-    "title": "Integrations",
-    "description": "One view for MCP services, messaging channels, and installed skills.",
-    "refresh": "Refresh",
-    "mcpServices": "MCP services",
-    "channelsConnected": "Channels connected",
-    "skillsInstalled": "Skills installed",
-    "manage": "Manage",
-    "notSignedIn": "not-signed-in",
-    "checking": "checking",
-    "noMcp": "No MCP services configured.",
-    "messagingChannels": "Messaging channels",
-    "paired": "{{count}} paired",
-    "noChannels": "No channels configured.",
-    "skillsRuntime": "Skills and runtime tools",
-    "skillsRuntimeDescription": "Installed skills become available across workspaces; runtime-backed tools can be checked in Settings.",
-    "noSkills": "No marketplace skills installed yet.",
-    "connectionError": "Some connection data could not be loaded. Open the detailed settings page for recovery.",
-    "autoRefresh": "Connection health is refreshed automatically."
   },
   "artifactRail": {
     "title": "Artifacts",

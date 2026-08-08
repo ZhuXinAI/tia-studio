@@ -27,7 +27,6 @@ export function AppV2Shell(): React.JSX.Element {
     location.pathname === '/skills' ||
     location.pathname === '/automations' ||
     location.pathname === '/command-center' ||
-    location.pathname === '/integrations' ||
     location.pathname === '/memories'
   const isWorkspaceRoute = /^\/workspaces\/[^/]+(?:\/|$)/.test(location.pathname)
   const isThreadChromeRoute = isChatRoute || isWorkspaceRoute

@@ -26,7 +26,7 @@ TIA Studio 已经不是一个只有聊天框的 Agent 壳：它有本机工作�
 | 4 | Python tooling | `src/main/python/python-tooling-service.ts`、Python route/rail；解释器发现、compile、pytest | Python focused tests；仍缺 LSP、断点调试、Profiler、Notebook |
 | 5 | Agent Command Center | Command Center route/page；跨线程运行、审批、错误、取消入口 | renderer/agent route 测试；取消不会绕过审批，审批仍需打开对应线程处理 |
 | 6 | Browser Preview | Browser rail；仅允许 `http`/`https`，sandbox iframe，可外部打开 | UI 代码证据；不等于浏览器自动化或真实 provider 预览环境 |
-| 7 | Integrations Center | Integrations page 汇总 MCP health、OAuth 状态、频道、Skills | MCP/channel route 测试；健康汇总仍依赖各连接自身状态，不提供统一多端消息历史 |
+| 7 | Integrations Center | 已按 IA 复核移除；MCP 健康与配置留在 Skills & MCP，消息频道留在 Settings > Channels | 原页面只是重复汇总，没有独立操作闭环 |
 | 8 | Automation review queue | RRULE 服务、运行记录、`needs-review` 状态、显式 `PATCH .../review` | automation route/repository/service 测试；时区、退避、幂等、通知和保留策略仍待补 |
 | 9 | Memory Vault | memories migration/repository/route/page；全局/工作区、启用/删除、明确控制 | memory tests；当前不会自动把记忆注入每个线程，尚无线程级附加预览 |
 | 10 | Command Palette | 全局快捷键、导航和搜索 workspace/thread 的 palette | app shell/router focused tests；搜索索引仍是本机 UI 导航，不是全局动作编排器 |
@@ -59,7 +59,7 @@ TIA Studio 已经不是一个只有聊天框的 Agent 壳：它有本机工作�
 | Git Review | ✅ 分支状态、变更文件、unified diff、stage/unstage | ◐ Agent 可做开发，但官方页未展示同等 Review 控制台 | ✅ Git/代码审查生态成熟 | ◐ 插件/外部 Git | ◐ 插件基础设施 | ◐ Git 扩展 |
 | 审批/安全策略 | ✅ allow once/session/workspace、硬阻断、可撤销规则 | ？官方页未展开本地命令安全模型 | ✅ IDE 权限/安全能力成熟但模型不同 | ◐ 依赖本机环境 | ◐ 简单学习场景 | ◐ Hub 身份/权限可组合 |
 | Memory/上下文管理 | ✅ 显式、可编辑、可删除、全局/工作区 Memory Vault | ◐ 专家团可能依赖上下文，但官方页未展示用户可编辑 Memory Vault | ◐ 项目索引/设置，不是同一显式记忆模型 | — | — | ◐ Notebook 本身承载上下文 |
-| 连接健康/诊断 | ✅ Integrations + MCP health + Diagnostics + SSE 状态 | ◐ 多渠道入口明确，内部诊断未在页面核验 | ✅ IDE/插件诊断成熟 | ◐ 生态工具成熟 | ✅ 简化安装/运行 | ✅ Hub/Kernel/服务生态成熟 |
+| 连接健康/诊断 | ✅ MCP health + Diagnostics + SSE 状态；按域分布在 Skills & MCP、Channels、Diagnostics | ◐ 多渠道入口明确，内部诊断未在页面核验 | ✅ IDE/插件诊断成熟 | ◐ 生态工具成熟 | ✅ 简化安装/运行 | ✅ Hub/Kernel/服务生态成熟 |
 | 本机优先/凭据边界 | ✅ SQLite、本机 API、工作区内路径限制、凭据不进诊断快照 | ？官方页强调免部署/全平台，数据边界需另查 | ◐ 桌面 IDE，云能力因配置而异 | ✅ 本地开源应用 | ✅ 本地开源应用 | ◐ 可本地或 Hub 部署 |
 | 团队协作/成员/邀请 | — 当前明确标注 local-only，暂无远程成员目录 | ◐ 小团队/企业场景定位强，具体协作模型需单独核验 | ✅ Team/企业生态 | ◐ 社区驱动 | ◐ 插件/社区 | ✅ JupyterHub 面向公司、课堂、研究组 |
 
